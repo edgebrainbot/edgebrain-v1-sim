@@ -1,0 +1,82 @@
+# Edge-Learning-Go2
+
+[![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-red?logo=ubuntu)](https://ubuntu.com/)
+[![ROS2 Foxy/Humble](https://img.shields.io/badge/ros2-foxy/humble-brightgreen.svg?logo=ros)](https://wiki.ros.org/foxy)
+[![License](https://img.shields.io/badge/license-Apache2.0-yellow.svg?logo=apache)](https://opensource.org/license/apache-2-0)
+
+---
+
+
+## 💡 User Guide
+
+### ⚙️ Dependencies
+
+
+### 🔨 Setup
+
+1. Clone this repository:
+
+```bash
+git clone git@github.com:Charlescai123/edge-learning-go2.git
+```
+
+## ⏳ To Do ##
+
+<!-- * [x] Add BEV map to the repo -->
+<!-- * [x] Fast Marching Method (FMM) implementation -->
+
+* [ ] Code Refactorization
+* [ ] Incorporate more challenging scenarios
+    * [x] Dense forests (sandy terrain, trees)
+    * [ ] inclined staircases, and rainy conditions
+* [ ] Go2 real robot deployment
+    * [ ] Gazebo real-time testing
+    * [ ] ROS/ROS2 integration
+* [ ] Restructure the code as FSM and add teleoperation (optional)
+* [ ] Migration to Isaac-Lab
+
+---
+
+## 🏷️ Misc
+
+---
+
+Digital Twin Video (In Rviz):
+
+https://github.com/user-attachments/assets/6d2f6dc1-04ef-45a7-abfa-cc55f1900507
+
+## 📝 Citation
+
+Please star or cite below papers if you find this repo helpful 🙏
+
+```
+@misc{cai2025runtimelearningquadrupedrobots,
+      title={Runtime Learning of Quadruped Robots in Wild Environments}, 
+      author={Yihao Cai and Yanbing Mao and Lui Sha and Hongpeng Cao and Marco Caccamo},
+      year={2025},
+      eprint={2503.04794},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2503.04794}, 
+}
+```
+
+```
+@misc{cao2024simplexenabledsafecontinuallearning,
+      title={Simplex-enabled Safe Continual Learning Machine}, 
+      author={Hongpeng Cao and Yanbing Mao and Yihao Cai and Lui Sha and Marco Caccamo},
+      year={2024},
+      eprint={2409.05898},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2409.05898}, 
+}
+```
+
+---
+
+## 🎉 Acknowledgments
+
+Special thanks to the contributions from these repos:
+
+- [quadruped_ros2_control](https://github.com/legubiao/quadruped_ros2_control): ROS2 Framework for ocs-based mpc control.
