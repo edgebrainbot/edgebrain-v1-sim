@@ -11,6 +11,14 @@
 
 ### ⚙️ Dependencies
 
+* *Jetpack 6.2
+* *ROS2 Humble
+
+---
+
+We recommend purchasing an NVMe SSD, as it offers significantly faster read and write speeds compared to the built-in 64GB eMMC. Once installed, use the [SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe drive.
+
+
 
 ### 🔨 Setup
 
