@@ -19,6 +19,16 @@
 We recommend purchasing an NVMe SSD, as it offers significantly faster read and write speeds compared to the built-in 64GB eMMC. Once installed, use the [SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe drive.
 
 
+Real-Time Kerenel Patch:
+
+> **Note:** The real-time (RT) kernel enables in-response CPU scheduling, resulting in improved system responsiveness for real-time applications. We strongly recommend that users apply the RT kernel patch for their system’s real-time performance.
+
+> without `sudo`, then you cannot used `unitree_mujoco_hardware`. This conflict could be solved by one of below two
+> methods:
+> 1. Uninstall CycloneDDS ROS2 RMW, used another ROS2 RMW, such as FastDDS **[Recommended]**.
+> 2. Follow the guide in [unitree_ros2](https://github.com/unitreerobotics/unitree_ros2) to configure the ROS2 RMW by
+     compiling cyclone dds.
+
 
 ### 🔨 Setup
 
