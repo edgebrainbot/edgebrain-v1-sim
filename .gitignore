@@ -42,5 +42,5 @@ share/python-wheels/
 .installed.cfg
 *.egg
 *.tar.gz
-test*
+# test*
 MANIFEST
