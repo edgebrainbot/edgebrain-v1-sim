@@ -20,34 +20,14 @@
 We recommend purchasing an NVMe SSD, as it offers significantly faster read and write speeds compared to the built-in 64GB eMMC. Once installed, use the [SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe drive.
 
 
-Real-Time Kerenel Patch:
-
-> **Note:** The real-time (RT) kernel enables in-response CPU scheduling, resulting in improved system responsiveness for real-time applications. We strongly recommend that users apply the RT kernel patch for their system’s real-time performance.
+> **Real-time (RT) Kernel:** To patch the RT kernel, please refer to [Jetson-RT-Kernel](https://github.com/Charlescai123/Jetson-RT-Kernel) for more details.
 
 
-> **Warning:** Nvidia has provided the rt-kernel with a Debian package management-based [OTA](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/Kernel/KernelCustomization.html#real-time-kernel-using-ota-update). But since it has been reported to cause the system to [freeze at boot](https://forums.developer.nvidia.com/t/boot-freezing-when-installing-preemptrt-on-nvme-setup-with-agx-orin-dev-kit-jetpack-6-2/323869) when entering the GUI, we recommend building and installing the kernel manually.
+Package Dependency:
 
-* Follow the [tutorials](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/Kernel/KernelCustomization.html#sd-kernel-kernelcustomization) for compiling the kernel. The entire procedure typically generate:
-    * A bindary real-time kernel image
-    * The kernel module 5.15.148-rt-tegra
-    * A set of DTB (Device Tree Blob) files for boot configuration
-
-* (Optional) If UEFI Secure Boot is not enabled, you can skip the kernel signing and encryption steps. Or otherwise, follow [Secure Boot](https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/SD/Security/SecureBoot.html#sd-security-secureboot).
-
-* To install the kernel, there're two options:
-    * Flash the new kernel and modules onto the Jetson device using `flash.sh`
-
-    * Copy the kernel image, modules, and DTB files manually to the Jetson root filesystem
-
-
-Here are some useful links for reference: 
-- https://chipnbits.github.io/content/projects/RLUnicycle/rtkernel/rtpatch.html
-- https://forums.developer.nvidia.com/t/preempt-rt-patches-for-jetson-nano/72941
-- https://forums.developer.nvidia.com/t/jetson-agx-orin-rt-linux-without-reflashing/283832
-- https://forums.developer.nvidia.com/t/no-display-with-preempt-rt-patches/240876
-- https://forums.developer.nvidia.com/t/build-the-real-time-kernel/229571
-- https://blog.csdn.net/weixin_43854380/article/details/126584835
-- https://github.com/kozyilmaz/nvidia-jetson-rt/blob/master/docs/README.03-realtime.md
+* *Coal (Extension of the Flexible Collision Library) - 3.0.1*
+* *pinocchio (Rigid Body Dynamics Library) - 3.7.0*
+* *Mujoco - 3.2.7*
 
 
 ### 🔨 Setup
