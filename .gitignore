@@ -22,7 +22,7 @@ corl_ckpts/
 .Python
 # data/
 build/
-install/
+# install/
 log/
 debug/
 develop-eggs/
