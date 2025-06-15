@@ -20,7 +20,7 @@ corl_ckpts/
 
 # Distribution / packaging
 .Python
-data/
+# data/
 build/
 install/
 log/
