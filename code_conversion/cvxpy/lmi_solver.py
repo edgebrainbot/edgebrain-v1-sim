@@ -113,8 +113,10 @@ class LMISolver:
         # Define problem and objective
         problem = cp.Problem(cp.Minimize(0), constraints)
 
+        import pdb
+        pdb.set_trace()
         # Solve the problem
-        problem.solve(solver=cp.CVXOPT)
+        problem.solve(solver=cp.CVXOPT, verbose=False)
 
         # Extract optimal values
         # Check if the problem is solved successfully
