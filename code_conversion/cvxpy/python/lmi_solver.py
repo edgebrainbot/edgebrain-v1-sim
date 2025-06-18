@@ -1,19 +1,18 @@
 import logging
 import sys
+import os
 import time
+sys.path.insert(0, os.path.abspath("python"))
+sys.path.insert(0, os.path.abspath("python/cvxopt"))
 
 import asyncio
 import numpy as np
-import cvxpy as cp
-# import cvxpy as cp
+import python.cvxpy as cp
+
+import cvxpy
 from typing import Tuple, Any, Optional
-import multiprocessing as mp
 
 from omegaconf import DictConfig
-from numpy import linalg as LA
-import matplotlib.pyplot as plt
-from collections import deque
-from numpy.linalg import pinv
 
 
 class LMISolver:
@@ -116,7 +115,7 @@ class LMISolver:
         import pdb
         pdb.set_trace()
         # Solve the problem
-        problem.solve(solver=cp.CVXOPT, verbose=False)
+        problem.solve(solver="CVXOPT", verbose=False)
 
         # Extract optimal values
         # Check if the problem is solved successfully
@@ -163,129 +162,6 @@ class LMISolver:
 
         return res, is_solved
 
-    @staticmethod
-    # @tf.function
-    def patch_lmi_old(roll, pitch, yaw, device="cuda:0"):
-        """
-         Computes the patch gain with roll pitch yaw.
-
-         Args:
-           roll: Roll angle (rad).
-           pitch: Pitch angle (rad).
-           yaw: Yaw angle (rad).
-           device: device to torch tensor
-
-         Returns:
-           F_kp: Proportional feedback gain matrix.
-           F_kd: Derivative feedback gain matrix.
-         """
-
-        # Rotation matrices
-        Rx = np.array([[1, 0, 0],
-                       [0, np.cos(roll), -np.sin(roll)],
-                       [0, np.sin(roll), np.cos(roll)]])
-        Ry = np.array([[np.cos(pitch), 0, np.sin(pitch)],
-                       [0, 1, 0],
-                       [-np.sin(pitch), 0, np.cos(pitch)]])
-        Rz = np.array([[np.cos(yaw), -np.sin(yaw), 0],
-                       [np.sin(yaw), np.cos(yaw), 0],
-                       [0, 0, 1]])
-        Rzyx = Rz.dot(Ry.dot(Rx))
-        # print(f"Rzyx: {Rzyx}")
-
-        # Rzyx = np.array([[np.cos(yaw) / np.cos(pitch), np.sin(yaw) / np.cos(pitch), 0],
-        #                  [-np.sin(yaw), np.cos(yaw), 0],
-        #                  [np.cos(yaw) * np.tan(pitch), np.sin(yaw) * np.tan(pitch), 1]])
-
-        # Sampling period
-        T = 1 / 22  # work in 25 to 30
-
-        # System matrices (continuous-time)
-        aA = np.zeros((10, 10))
-        aA[0, 6] = 1
-        aA[1:4, 7:10] = Rzyx
-        aB = np.zeros((10, 6))
-        aB[4:, :] = np.eye(6)
-
-        # System matrices (discrete-time)
-        B = aB * T
-        A = np.eye(10) + T * aA
-
-        alpha = 0.9
-        kappa = 0.01
-        gamma = 1  # 1
-        mu = 1e-6
-
-        b1 = 1 / 0.15  # height  0.15
-        b2 = 1 / 0.35  # velocity 0.35
-        # b3 = 1 / 0.1   # yaw 0.1
-        b4 = 1 / 1.  # yaw rate 1
-
-        D = np.array([[b1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, b2, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 0, 0, 0, 0, b4]])
-        c1 = 1 / 5
-        c2 = 1 / 10
-        C = np.array([[c1, 0, 0, 0, 0, 0],
-                      [0, c1, 0, 0, 0, 0],
-                      [0, 0, c1, 0, 0, 0],
-                      [0, 0, 0, c2, 0, 0],
-                      [0, 0, 0, 0, c2, 0],
-                      [0, 0, 0, 0, 0, c2]])
-
-        Q = cp.Variable((10, 10), PSD=True)
-        T = cp.Variable((6, 6), PSD=True)
-        R = cp.Variable((6, 10))
-
-        constraints = [cp.bmat([[(alpha - kappa * (1 + (1 / gamma))) * Q, Q @ A.T + R.T @ B.T],
-                                [A @ Q + B @ R, Q / (1 + gamma)]]) >> 0,
-                       cp.bmat([[Q, R.T],
-                                [R, T]]) >> 0,
-                       np.identity(3) - D @ Q @ D.transpose() >> 0,
-                       np.identity(6) - C @ T @ C.transpose() >> 0,
-                       Q - mu * np.identity(10) >> 0,
-                       T - mu * np.identity(6) >> 0,
-                       ]
-
-        # Define problem and objective
-        problem = cp.Problem(cp.Minimize(0), constraints)
-
-        # Solve the problem
-        problem.solve(solver=cp.CVXOPT)
-
-        # Extract optimal values
-        # Check if the problem is solved successfully
-        if problem.status == 'optimal':
-            logging.info("Optimization successful.")
-        else:
-            print("Optimization failed.")
-
-        optimal_Q = Q.value
-        optimal_R = R.value
-
-        P = np.linalg.inv(optimal_Q)
-
-        # Compute aF
-        aF = np.round(aB @ optimal_R @ P, 0)
-        Fb2 = aF[6:10, 0:4]
-
-        # Compute F_kp
-        F_kp = -np.block([
-            [np.zeros((2, 6))],
-            [np.zeros((4, 2)), Fb2]])
-        # Compute F_kd
-        F_kd = -aF[4:10, 4:10]
-
-        # print(f"Solved F_kp is: {F_kp}")
-        # print(f"Solved F_kd is: {F_kd}")
-
-        # Check if the problem is solved successfully
-        if np.all(np.linalg.eigvals(P) > 0):
-            logging.info("LMIs feasible")
-        else:
-            print("LMIs infeasible")
-
-        return F_kp, F_kd
 
 
 if __name__ == '__main__':
