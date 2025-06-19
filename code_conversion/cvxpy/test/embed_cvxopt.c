@@ -15,15 +15,12 @@
    On Ubuntu Linux compile with:
 
    gcc -o embed_cvxopt embed_cvxopt.c \
-     -I/Users/charlescai/Desktop/edge-learning-go2/code_conversion/cvxpy/c \
-        $(/opt/homebrew/opt/python@3.12/bin/python3.12-config --includes) \
-        $(/opt/homebrew/opt/python@3.12/bin/python3.12-config --ldflags)
+     -I../c -I/usr/include/python3.10 -lpython3.10
 */
 
 #include "cvxopt.h"
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   Py_Initialize();
 
