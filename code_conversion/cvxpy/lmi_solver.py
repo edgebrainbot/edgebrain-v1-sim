@@ -115,7 +115,7 @@ class LMISolver:
         # import pdb
         # pdb.set_trace()
         # Solve the problem
-        problem.solve(solver="CVXOPT", verbose=False)
+        problem.solve(solver=cp.CVXOPT, verbose=False)
 
         # Extract optimal values
         # Check if the problem is solved successfully
