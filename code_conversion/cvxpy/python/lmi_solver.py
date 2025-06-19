@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.abspath("python/cvxopt"))
 
 import asyncio
 import numpy as np
-import python.cvxpy as cp
+# import python.cvxpy as cp
+import cvxpy as cp
 
-import cvxpy
 from typing import Tuple, Any, Optional
 
 from omegaconf import DictConfig
@@ -112,8 +112,8 @@ class LMISolver:
         # Define problem and objective
         problem = cp.Problem(cp.Minimize(0), constraints)
 
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
         # Solve the problem
         problem.solve(solver="CVXOPT", verbose=False)
 
