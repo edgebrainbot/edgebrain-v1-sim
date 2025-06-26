@@ -721,7 +721,7 @@ def conelp(c, G, h, dims = None, A = None, b = None, primalstart = None,
         #     [ A   0   0  ] [ y  ] = [  0 ].
         #     [ G   0  -I  ] [ z  ]   [  0 ]
 
-        xcopy(c, dx);
+        xcopy(c, dx)
         xscal(-1.0, dx)
         yscal(0.0, y)
         blas.scal(0.0, z)

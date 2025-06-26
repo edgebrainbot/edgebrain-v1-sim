@@ -51,7 +51,6 @@ typedef union {
 #define CWRAP(i,m) (i >= 0 ? i : m+i)
 #define OUT_RNG(i, dim) (i < -dim || i >= dim)
 
-
 #define VALID_TC_MAT(t) (t=='i' || t=='d' || t=='z')
 #define VALID_TC_SP(t)  (t=='d' || t=='z')
 #define TC2ID(c) (c=='i' ? 0 : (c=='d' ? 1 : 2))

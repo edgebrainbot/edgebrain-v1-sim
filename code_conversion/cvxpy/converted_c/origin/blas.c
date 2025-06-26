@@ -31,18 +31,6 @@ typedef _Dcomplex complex_t;
 
 #define USE_CBLAS_ZDOT 0
 
-PyDoc_STRVAR(blas__doc__,"Interface to the double-precision real and "
-    "complex BLAS.\n\n"
-    "Double and complex matrices and vectors are stored in CVXOPT \n"
-    "matrices using the conventional BLAS storage schemes, with the\n"
-    "CVXOPT matrix buffers interpreted as one-dimensional arrays.\n"
-    "For each matrix argument X, an additional integer argument\n"
-    "offsetX specifies the start of the array, i.e., the pointer\n"
-    "X->buffer + offsetX is passed to the BLAS function.  The other \n"
-    "arguments (dimensions and options) have the same meaning as in\n"
-    "the BLAS definition.  Default values of the dimension arguments\n"
-    "are derived from the CVXOPT matrix sizes.");
-
 
 /* BLAS 1 prototypes */
 extern void dswap_(int *n, double *x, int *incx, double *y, int *incy);
