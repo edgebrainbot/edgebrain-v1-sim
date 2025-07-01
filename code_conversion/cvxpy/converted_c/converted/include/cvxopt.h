@@ -23,6 +23,7 @@
 #include "blas_redefines.h"
 #include "assert.h"
 #include "stddef.h"
+#include "stdbool.h"
 
 /* ANSI99 complex is disabled during build of CHOLMOD */
 
@@ -44,13 +45,11 @@
 
 #define int_t     ptrdiff_t
 
-typedef enum {
-    MATRIX_TYPE_DENSE,
-    MATRIX_TYPE_SPARSE
-} MatrixType;
+#define MAT_DENSE   1
+#define MAT_SPARSE  2
 
 typedef struct {
-  MatrixType tag;        // MATRIX_TYPE_DENSE
+  int mat_type;          // MAT_DENSE
   void *buffer;          /* in column-major-mode array of type 'id' */
   int nrows, ncols;      /* number of rows and columns */
   int   id;              /* DOUBLE, INT, COMPLEX */
@@ -68,7 +67,7 @@ typedef struct {
 } ccs;
 
 typedef struct {
-  MatrixType tag;    // MATRIX_TYPE_SPARSE
+  int mat_type;    // MAT_SPARSE
   ccs *obj;
 } spmatrix;
 
@@ -84,16 +83,16 @@ spmatrix *SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int);
 
 static inline int is_matrix(void *ptr) {
     if (!ptr) return 0;
-    return ((matrix *)ptr)->tag == MATRIX_TYPE_DENSE;
+    return ((matrix *)ptr)->mat_type == MAT_DENSE;
 }
 
 static inline int is_spmatrix(void *ptr) {
     if (!ptr) return 0;
-    return ((spmatrix *)ptr)->tag == MATRIX_TYPE_SPARSE;
+    return ((spmatrix *)ptr)->mat_type == MAT_SPARSE;
 }
 
-#define Matrix_Check(PTR) is_matrix(PTR)
-#define SpMatrix_Check(PTR) is_spmatrix(PTR)
+#define Matrix_Check(MAT) is_matrix(MAT)
+#define SpMatrix_Check(MAT) is_spmatrix(MAT)
 
 /*
  * Below this line are non-essential convenience macros

@@ -34,9 +34,9 @@ extern int intOne;
 extern void (*write_num[])(void *, int, void *, int) ;
 extern int (*convert_num[])(void *, void *, int, int_t) ;
 // extern PyObject * (*num2PyObject[])(void *, int) ;
-extern void (*scal[])(int *, number *, void *, int *) ;
-extern void (*axpy[])(int *, void *, void *, int *, void *, int *) ;
-extern void (*gemm[])(char *, char *, int *, int *, int *, void *,
+extern void (*scal_[])(int *, number *, void *, int *) ;
+extern void (*axpy_[])(int *, void *, void *, int *, void *, int *) ;
+extern void (*gemm_[])(char *, char *, int *, int *, int *, void *,
     void *, int *, void *, int *, void *, void *, int *) ;
 extern int (*div_array[])(void *, number, int) ;
 extern int get_id(void *, int ) ;
@@ -56,10 +56,10 @@ extern void * convert_mtx_alloc(matrix *, int) ;
 // PyTypeObject spmatrix_tp ;
 spmatrix * SpMatrix_New(int_t, int_t, int_t, int ) ;
 
-extern void (*scal[])(int *, number *, void *, int *) ;
-extern void (*gemm[])(char *, char *, int *, int *, int *, void *, void *,
+extern void (*scal_[])(int *, number *, void *, int *) ;
+extern void (*gemm_[])(char *, char *, int *, int *, int *, void *, void *,
     int *, void *, int *, void *, void *, int *) ;
-extern void (*syrk[])(char *, char *, int *, int *, void *, void *,
+extern void (*syrk_[])(char *, char *, int *, int *, void *, void *,
     int *, void *, void *, int *) ;
 
 // static int sp_daxpy(number, void *, void *, int, int, int, void **) ;
@@ -67,13 +67,13 @@ extern void (*syrk[])(char *, char *, int *, int *, void *, void *,
 // int (*sp_axpy[])(number, void *, void *, int, int, int, void **)
 // = { NULL, sp_daxpy, sp_zaxpy };
 
-// static int sp_dgemm(char, char, number, void *, void *, number, void *,
-//     int, int, int, int, void **, int, int, int) ;
-// static int sp_zgemm(char, char, number, void *, void *, number, void *,
-//     int, int, int, int, void **, int, int, int) ;
-// int (*sp_gemm[])(char, char, number, void *, void *, number, void *,
-//     int, int, int, int, void **, int, int, int)
-//     = { NULL, sp_dgemm, sp_zgemm };
+static int sp_dgemm(char, char, number, void *, void *, number, void *,
+    int, int, int, int, void **, int, int, int) ;
+static int sp_zgemm(char, char, number, void *, void *, number, void *,
+    int, int, int, int, void **, int, int, int) ;
+int (*sp_gemm[])(char, char, number, void *, void *, number, void *,
+    int, int, int, int, void **, int, int, int)
+    = { NULL, sp_dgemm, sp_zgemm };
 
 static int sp_dgemv(char, int, int, number, void *, int,
     void *, int, number, void *, int) ;
@@ -177,37 +177,33 @@ static int comp_complex(const void *x, const void *y) {
 //   return 0;
 // }
 
-// ccs * alloc_ccs(int_t nrows, int_t ncols, int_t nnz, int id)
-// {
-//   ccs *obj = malloc(sizeof(ccs));
-//   if (!obj) {
-//     PyErr_NoMemory();
-//     return NULL;
-//   }
+ccs * alloc_ccs(int_t nrows, int_t ncols, int_t nnz, int id)
+{
+  ccs *obj = malloc(sizeof(ccs));
+    if (!obj) err_no_memory;
 
-//   obj->nrows = nrows;
-//   obj->ncols = ncols;
-//   obj->id = id;
+  obj->nrows = nrows;
+  obj->ncols = ncols;
+  obj->id = id;
 
-//   obj->values = malloc(E_SIZE[id]*nnz);
-//   obj->colptr = calloc(ncols+1,sizeof(int_t));
-//   obj->rowind = malloc(sizeof(int_t)*nnz);
+  obj->values = malloc(E_SIZE[id]*nnz);
+  obj->colptr = calloc(ncols+1,sizeof(int_t));
+  obj->rowind = malloc(sizeof(int_t)*nnz);
 
-//   if (!obj->values || !obj->colptr || !obj->rowind) {
-//     free(obj->values); free(obj->colptr); free(obj->rowind); free(obj);
-//     PyErr_NoMemory();
-//     return NULL;
-//   }
+  if (!obj->values || !obj->colptr || !obj->rowind) {
+    free(obj->values); free(obj->colptr); free(obj->rowind); free(obj);
+    err_no_memory;
+  }
 
-//   return obj;
-// }
+  return obj;
+}
 
-// void free_ccs(ccs *obj) {
-//   free(obj->values);
-//   free(obj->rowind);
-//   free(obj->colptr);
-//   free(obj);
-// }
+void free_ccs(ccs *obj) {
+  free(obj->values);
+  free(obj->rowind);
+  free(obj->colptr);
+  free(obj);
+}
 
 // static int
 // realloc_ccs(ccs *obj, int_t nnz) {
@@ -484,66 +480,66 @@ static int comp_complex(const void *x, const void *y) {
 // }
 
 
-// static ccs * transpose(ccs *A, int conjugate) {
+static ccs * transpose(ccs *A, int conjugate) {
 
-//   ccs *B = alloc_ccs(A->ncols, A->nrows, CCS_NNZ(A), A->id);
-//   if (!B) return NULL;
+  ccs *B = alloc_ccs(A->ncols, A->nrows, CCS_NNZ(A), A->id);
+  if (!B) return NULL;
 
-//   int_t i, j, *buf = calloc(A->nrows,sizeof(int_t));
-//   if (!buf) { free_ccs(B); return NULL; }
+  int_t i, j, *buf = calloc(A->nrows,sizeof(int_t));
+  if (!buf) { free_ccs(B); return NULL; }
 
-//   /* Run through matrix and count number of elms in each row */
-//   for (i=0; i<A->colptr[A->ncols]; i++) buf[ A->rowind[i] ]++;
+  /* Run through matrix and count number of elms in each row */
+  for (i=0; i<A->colptr[A->ncols]; i++) buf[ A->rowind[i] ]++;
 
-//   /* generate new colptr */
-//   for (i=0; i<B->ncols; i++)
-//     B->colptr[i+1] = B->colptr[i] + buf[i];
+  /* generate new colptr */
+  for (i=0; i<B->ncols; i++)
+    B->colptr[i+1] = B->colptr[i] + buf[i];
 
-//   /* fill in rowind and values */
-//   for (i=0; i<A->nrows; i++) buf[i] = 0;
-//   for (i=0; i<A->ncols; i++) {
-//     if (A->id == DOUBLE)
-//       for (j=A->colptr[i]; j<A->colptr[i+1]; j++) {
-//         B->rowind[ B->colptr[A->rowind[j]] + buf[A->rowind[j]] ] = i;
-//         ((double *)B->values)[B->colptr[A->rowind[j]] + buf[A->rowind[j]]++] =
-//             ((double *)A->values)[j];
-//       }
-//     else
-//       for (j=A->colptr[i]; j<A->colptr[i+1]; j++) {
-//         B->rowind[ B->colptr[A->rowind[j]] + buf[A->rowind[j]] ] = i;
-// #ifndef _MSC_VER
-//         ((double complex *)B->values)[B->colptr[A->rowind[j]]+buf[A->rowind[j]]++] =
-//             (conjugate ? conj(((double complex *)A->values)[j]) :
-//               ((double complex *)A->values)[j]);
-// #else
-//         ((_Dcomplex *)B->values)[B->colptr[A->rowind[j]]+buf[A->rowind[j]]++] =
-//             (conjugate ? conj(((_Dcomplex *)A->values)[j]) :
-//               ((_Dcomplex *)A->values)[j]);
-// #endif
-//       }
-//   }
-//   free(buf);
-//   return B;
-// }
+  /* fill in rowind and values */
+  for (i=0; i<A->nrows; i++) buf[i] = 0;
+  for (i=0; i<A->ncols; i++) {
+    if (A->id == DOUBLE)
+      for (j=A->colptr[i]; j<A->colptr[i+1]; j++) {
+        B->rowind[ B->colptr[A->rowind[j]] + buf[A->rowind[j]] ] = i;
+        ((double *)B->values)[B->colptr[A->rowind[j]] + buf[A->rowind[j]]++] =
+            ((double *)A->values)[j];
+      }
+    else
+      for (j=A->colptr[i]; j<A->colptr[i+1]; j++) {
+        B->rowind[ B->colptr[A->rowind[j]] + buf[A->rowind[j]] ] = i;
+#ifndef _MSC_VER
+        ((double complex *)B->values)[B->colptr[A->rowind[j]]+buf[A->rowind[j]]++] =
+            (conjugate ? conj(((double complex *)A->values)[j]) :
+              ((double complex *)A->values)[j]);
+#else
+        ((_Dcomplex *)B->values)[B->colptr[A->rowind[j]]+buf[A->rowind[j]]++] =
+            (conjugate ? conj(((_Dcomplex *)A->values)[j]) :
+              ((_Dcomplex *)A->values)[j]);
+#endif
+      }
+  }
+  free(buf);
+  return B;
+}
 
-// static int sort_ccs(ccs *A) {
+static int sort_ccs(ccs *A) {
 
-//   ccs *t = transpose(A, 0);
-//   if (!t) return -1;
+  ccs *t = transpose(A, 0);
+  if (!t) return -1;
 
-//   ccs *t2 = transpose(t, 0);
-//   if (!t2) {
-//     free_ccs(t); return -1;
-//   }
+  ccs *t2 = transpose(t, 0);
+  if (!t2) {
+    free_ccs(t); return -1;
+  }
 
-//   free(A->colptr); free(A->rowind); free(A->values);
-//   A->colptr = t2->colptr; A->rowind = t2->rowind; A->values = t2->values;
+  free(A->colptr); free(A->rowind); free(A->values);
+  A->colptr = t2->colptr; A->rowind = t2->rowind; A->values = t2->values;
 
-//   free(t2);
-//   free_ccs(t);
+  free(t2);
+  free_ccs(t);
 
-//   return 0;
-// }
+  return 0;
+}
 
 /*
    Sparse accumulator (spa) - dense representation of a sparse vector
@@ -555,62 +551,61 @@ typedef struct {
   int nnz, n, id;
 } spa;
 
-// static spa * alloc_spa(int_t n, int id) {
+static spa * alloc_spa(int_t n, int id) {
 
-//   spa *s = malloc(sizeof(spa));
+  spa *s = malloc(sizeof(spa));
 
-//   if (s) {
-//     s->val = malloc( E_SIZE[id]*n );
-//     s->nz  = malloc( n*sizeof(char) );
-//     s->idx = malloc( n*sizeof(int) );
-//     s->nnz = 0;
-//     s->n = n;
-//     s->id = id;
-//   }
+  if (s) {
+    s->val = malloc( E_SIZE[id]*n );
+    s->nz  = malloc( n*sizeof(char) );
+    s->idx = malloc( n*sizeof(int) );
+    s->nnz = 0;
+    s->n = n;
+    s->id = id;
+  }
 
-//   if (!s || !s->val || !s->nz || !s->idx) {
-//     free(s->val); free(s->nz); free(s->idx); free(s);
-//     PyErr_NoMemory();
-//     return NULL;
-//   }
+  if (!s || !s->val || !s->nz || !s->idx) {
+    free(s->val); free(s->nz); free(s->idx); free(s);
+    err_no_memory;
+  }
 
-//   int_t i;
-//   for (i=0; i<n; i++) s->nz[i] = 0;
+  int_t i;
+  for (i=0; i<n; i++) s->nz[i] = 0;
 
-//   return s;
-// }
+  return s;
+}
 
-// static void free_spa(spa *s) {
-//   if (s) {
-//     free(s->val); free(s->nz); free(s->idx); free(s);
-//   }
-// }
+static void free_spa(spa *s) {
+  if (s) {
+    free(s->val); free(s->nz); free(s->idx); free(s);
+  }
+}
 
-// static void init_spa(spa *s, ccs *X, int col) {
-//   int_t i;
-//   for (i=0; i<s->nnz; i++)
-//     s->nz[s->idx[i]] = 0;
+static void init_spa(spa *s, ccs *X, int col) {
+  int_t i;
+  for (i=0; i<s->nnz; i++)
+    s->nz[s->idx[i]] = 0;
 
-//   s->nnz = 0;
+  s->nnz = 0;
 
-//   if (X && X->id == DOUBLE) {
-//     for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
-//       s->nz[X->rowind[i]] = 1;
-//       ((double *)s->val)[X->rowind[i]] = ((double *)X->values)[i];
-//       s->idx[s->nnz++] = X->rowind[i];
-//     }
-//   } else if (X && X->id == COMPLEX) {
-//     for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
-//       s->nz[X->rowind[i]] = 1;
-// #ifndef _MSC_VER
-//       ((double complex *)s->val)[X->rowind[i]] = ((double complex *)X->values)[i];
-// #else
-//       ((_Dcomplex *)s->val)[X->rowind[i]] = ((_Dcomplex *)X->values)[i];
-// #endif
-//       s->idx[s->nnz++] = X->rowind[i];
-//     }
-//   }
-// }
+  if (X && X->id == DOUBLE) {
+    for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
+      s->nz[X->rowind[i]] = 1;
+      ((double *)s->val)[X->rowind[i]] = ((double *)X->values)[i];
+      s->idx[s->nnz++] = X->rowind[i];
+    }
+  } else if (X && X->id == COMPLEX) {
+    for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
+      s->nz[X->rowind[i]] = 1;
+#ifndef _MSC_VER
+      ((double complex *)s->val)[X->rowind[i]] = ((double complex *)X->values)[i];
+#else
+      ((_Dcomplex *)s->val)[X->rowind[i]] = ((_Dcomplex *)X->values)[i];
+#endif
+      s->idx[s->nnz++] = X->rowind[i];
+    }
+  }
+}
 
 // static inline void
 // spa_daxpy_partial (double a, ccs *X, int col, spa *y) {
@@ -647,55 +642,55 @@ typedef struct {
 //   }
 // }
 
-// static inline void spa_daxpy (double a, ccs *X, int col, spa *y) {
-//   int i;
+static inline void spa_daxpy (double a, ccs *X, int col, spa *y) {
+  int i;
 
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
-//     if (y->nz[X->rowind[i]]) {
-//       ((double *)y->val)[X->rowind[i]] += a*((double *)X->values)[i];
-//     }
-//     else {
-//       ((double *)y->val)[X->rowind[i]] = a*((double *)X->values)[i];
-//       y->nz[X->rowind[i]] = 1;
-//       y->idx[y->nnz++] = X->rowind[i];
-//     }
-//   }
-// }
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
+    if (y->nz[X->rowind[i]]) {
+      ((double *)y->val)[X->rowind[i]] += a*((double *)X->values)[i];
+    }
+    else {
+      ((double *)y->val)[X->rowind[i]] = a*((double *)X->values)[i];
+      y->nz[X->rowind[i]] = 1;
+      y->idx[y->nnz++] = X->rowind[i];
+    }
+  }
+}
 
-// #ifndef _MSC_VER
-// static inline void spa_zaxpy (double complex a, ccs *X, char conjx, int col, spa *y)
-// #else
-// static inline void spa_zaxpy (_Dcomplex a, ccs *X, char conjx, int col, spa *y)
-// #endif
-// {
-//   int i;
-// #ifdef _MSC_VER
-//   _Dcomplex tmp;
-// #endif
+#ifndef _MSC_VER
+static inline void spa_zaxpy (double complex a, ccs *X, char conjx, int col, spa *y)
+#else
+static inline void spa_zaxpy (_Dcomplex a, ccs *X, char conjx, int col, spa *y)
+#endif
+{
+  int i;
+#ifdef _MSC_VER
+  _Dcomplex tmp;
+#endif
 
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
-//     if (y->nz[X->rowind[i]]) {
-// #ifndef _MSC_VER
-//       ((double complex *)y->val)[X->rowind[i]] +=
-//           a*CONJ(conjx,((double complex *)X->values)[i]);
-// #else
-//       tmp = _Cmulcc(a,CONJ(conjx,((_Dcomplex *)X->values)[i]));
-//       ((_Dcomplex *)y->val)[X->rowind[i]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)y->val)[X->rowind[i]]),cimag(tmp)+cimag(((_Dcomplex *)y->val)[X->rowind[i]]));
-// #endif
-//     }
-//     else {
-// #ifndef _MSC_VER
-//       ((double complex *)y->val)[X->rowind[i]] =
-//           a*CONJ(conjx,((double complex *)X->values)[i]);
-// #else
-//       ((_Dcomplex *)y->val)[X->rowind[i]] =
-// 	_Cmulcc(a,CONJ(conjx,((_Dcomplex *)X->values)[i]));
-// #endif
-//       y->nz[X->rowind[i]] = 1;
-//       y->idx[y->nnz++] = X->rowind[i];
-//     }
-//   }
-// }
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
+    if (y->nz[X->rowind[i]]) {
+#ifndef _MSC_VER
+      ((double complex *)y->val)[X->rowind[i]] +=
+          a*CONJ(conjx,((double complex *)X->values)[i]);
+#else
+      tmp = _Cmulcc(a,CONJ(conjx,((_Dcomplex *)X->values)[i]));
+      ((_Dcomplex *)y->val)[X->rowind[i]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)y->val)[X->rowind[i]]),cimag(tmp)+cimag(((_Dcomplex *)y->val)[X->rowind[i]]));
+#endif
+    }
+    else {
+#ifndef _MSC_VER
+      ((double complex *)y->val)[X->rowind[i]] =
+          a*CONJ(conjx,((double complex *)X->values)[i]);
+#else
+      ((_Dcomplex *)y->val)[X->rowind[i]] =
+	_Cmulcc(a,CONJ(conjx,((_Dcomplex *)X->values)[i]));
+#endif
+      y->nz[X->rowind[i]] = 1;
+      y->idx[y->nnz++] = X->rowind[i];
+    }
+  }
+}
 
 // static inline void
 // spa_daxpy_uplo (double a, ccs *X, int col, spa *y, int j, char uplo) {
@@ -737,14 +732,14 @@ spa_zaxpy_uplo (double complex a, ccs *X, int col, spa *y, int j, char uplo) {
 }
 */
 
-// static inline void spa_symb_axpy (ccs *X, int col, spa *y) {
-//   int i;
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
-//     if (!y->nz[X->rowind[i]]) {
-//       y->nz[X->rowind[i]] = 1;
-//       y->idx[y->nnz++] = X->rowind[i];
-//     }
-// }
+static inline void spa_symb_axpy (ccs *X, int col, spa *y) {
+  int i;
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
+    if (!y->nz[X->rowind[i]]) {
+      y->nz[X->rowind[i]] = 1;
+      y->idx[y->nnz++] = X->rowind[i];
+    }
+}
 
 // static inline void
 // spa_symb_axpy_uplo (ccs *X, int col, spa *y, int j, char uplo) {
@@ -760,66 +755,66 @@ spa_zaxpy_uplo (double complex a, ccs *X, int col, spa *y, int j, char uplo) {
 //     }
 // }
 
-// static inline double spa_ddot (ccs *X, int col, spa *y) {
-//   int i;
-//   double a = 0;
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
-//     if (y->nz[X->rowind[i]])
-//       a += ((double *)X->values)[i]*((double *)y->val)[X->rowind[i]];
+static inline double spa_ddot (ccs *X, int col, spa *y) {
+  int i;
+  double a = 0;
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
+    if (y->nz[X->rowind[i]])
+      a += ((double *)X->values)[i]*((double *)y->val)[X->rowind[i]];
 
-//   return a;
-// }
+  return a;
+}
 
-// #ifndef _MSC_VER
-// static inline
-// double complex spa_zdot (ccs *X, int col, spa *y, char conjx, char conjy) {
-// #else
-// static inline
-// _Dcomplex spa_zdot (ccs *X, int col, spa *y, char conjx, char conjy) {
-// #endif
-//   int i;
-// #ifndef _MSC_VER
-//   double complex a = 0;
-// #else
-//   _Dcomplex a, tmp;
-//   a = _Cbuild(0.0,0.0);
-//   tmp = _Cbuild(0.0,0.0);
-// #endif
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
-//     if (y->nz[X->rowind[i]]) {
-// #ifndef _MSC_VER
-//       a += CONJ(conjx, ((double complex *)X->values)[i])*
-//       CONJ(conjy,((double complex *)y->val)[X->rowind[i]]);
-// #else
-//   tmp = _Cmulcc(CONJ(conjx,((_Dcomplex *)X->values)[i]),CONJ(conjy,((_Dcomplex *)y->val)[X->rowind[i]]));
-//       a = _Cbuild(creal(a)+creal(tmp),cimag(a)+cimag(tmp));
-// #endif
-//     }
-//   return a;
-// }
+#ifndef _MSC_VER
+static inline
+double complex spa_zdot (ccs *X, int col, spa *y, char conjx, char conjy) {
+#else
+static inline
+_Dcomplex spa_zdot (ccs *X, int col, spa *y, char conjx, char conjy) {
+#endif
+  int i;
+#ifndef _MSC_VER
+  double complex a = 0;
+#else
+  _Dcomplex a, tmp;
+  a = _Cbuild(0.0,0.0);
+  tmp = _Cbuild(0.0,0.0);
+#endif
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
+    if (y->nz[X->rowind[i]]) {
+#ifndef _MSC_VER
+      a += CONJ(conjx, ((double complex *)X->values)[i])*
+      CONJ(conjy,((double complex *)y->val)[X->rowind[i]]);
+#else
+  tmp = _Cmulcc(CONJ(conjx,((_Dcomplex *)X->values)[i]),CONJ(conjy,((_Dcomplex *)y->val)[X->rowind[i]]));
+      a = _Cbuild(creal(a)+creal(tmp),cimag(a)+cimag(tmp));
+#endif
+    }
+  return a;
+}
 
-// static void spa2compressed(spa *s, ccs *A, int col) {
-//   int i, k=0;
+static void spa2compressed(spa *s, ccs *A, int col) {
+  int i, k=0;
 
-//   switch (A->id) {
-//   case (DOUBLE):
-//     for (i=A->colptr[col]; i<A->colptr[col+1]; i++) {
-//       A->rowind[i] = s->idx[k];
-//       ((double *)A->values)[i] = ((double *)s->val)[s->idx[k++]];
-//     }
-//   break;
-//   case COMPLEX:
-//     for (i=A->colptr[col]; i<A->colptr[col+1]; i++) {
-//       A->rowind[i] = s->idx[k];
-// #ifndef _MSC_VER
-//       ((double complex *)A->values)[i] = ((double complex *)s->val)[s->idx[k++]];
-// #else
-//       ((_Dcomplex *)A->values)[i] = ((_Dcomplex *)s->val)[s->idx[k++]];
-// #endif
-//     }
-//     break;
-//   }
-// }
+  switch (A->id) {
+  case (DOUBLE):
+    for (i=A->colptr[col]; i<A->colptr[col+1]; i++) {
+      A->rowind[i] = s->idx[k];
+      ((double *)A->values)[i] = ((double *)s->val)[s->idx[k++]];
+    }
+  break;
+  case COMPLEX:
+    for (i=A->colptr[col]; i<A->colptr[col+1]; i++) {
+      A->rowind[i] = s->idx[k];
+#ifndef _MSC_VER
+      ((double complex *)A->values)[i] = ((double complex *)s->val)[s->idx[k++]];
+#else
+      ((_Dcomplex *)A->values)[i] = ((_Dcomplex *)s->val)[s->idx[k++]];
+#endif
+    }
+    break;
+  }
+}
 
 // static int sp_daxpy(number a, void *x, void *y, int sp_x, int sp_y,
 //     int partial, void **z)
@@ -906,7 +901,7 @@ spa_zaxpy_uplo (double complex a, ccs *X, int col, spa *y, int j, char uplo) {
 //     memcpy(Z->values, X, sizeof(double)*mn);
 
 //     int mn_int = (int) mn;
-//     scal[Y->id](&mn_int, &a, Z->values, &intOne);
+//     scal_[Y->id](&mn_int, &a, Z->values, &intOne);
 
 //     int j, k;
 //     for (j=0; j<Y->ncols; j++) {
@@ -1042,7 +1037,7 @@ spa_zaxpy_uplo (double complex a, ccs *X, int col, spa *y, int j, char uplo) {
 // #endif
 
 //     int mn_int = (int) mn;
-//     scal[Y->id](&mn_int, &a, Z->values, &intOne);
+//     scal_[Y->id](&mn_int, &a, Z->values, &intOne);
 
 //     int j, k;
 //     for (j=0; j<Y->ncols; j++) {
@@ -1073,7 +1068,7 @@ static int inline sp_dgemv(char tA, int m, int n, number alpha, void *a, int oA,
   ccs *A = a;
   double *X = x, *Y = y;
 
-  scal[A->id]((tA == 'N' ? &m : &n), &beta, Y, &iy);
+  scal_[A->id]((tA == 'N' ? &m : &n), &beta, Y, &iy);
 
   if (!m) return 0;
   int i, j, k, oi = oA % A->nrows, oj = oA / A->nrows;
@@ -1111,7 +1106,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
   _Dcomplex tmp; 
 #endif
 
-  scal[A->id]((tA == 'N' ? &m : &n), &beta, Y, &iy);
+  scal_[A->id]((tA == 'N' ? &m : &n), &beta, Y, &iy);
 
   if (!m) return 0;
   int i, j, k, oi = oA % A->nrows, oj = oA / A->nrows;
@@ -1154,7 +1149,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //     number beta, void *y, int iy)
 // {
 //   double *X = x, *Y = y;
-//   scal[A->id](&n, &beta, y, &iy);
+//   scal_[A->id](&n, &beta, y, &iy);
 
 //   if (!n) return 0;
 //   int i, j, k, oi = oA % A->nrows, oj = oA / A->nrows;
@@ -1195,7 +1190,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //   _Dcomplex *X = x, *Y = y;
 //   _Dcomplex tmp;
 // #endif
-//   scal[A->id](&n, &beta, y, &iy);
+//   scal_[A->id](&n, &beta, y, &iy);
 
 //   if (!n) return 0;
 //   int i, j, k, oi = oA % A->nrows, oj = oA / A->nrows;
@@ -1249,923 +1244,923 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //   return 0;
 // }
 
-// static int sp_dgemm(char tA, char tB, number alpha, void *a, void *b,
-//     number beta, void *c, int sp_a, int sp_b, int sp_c, int partial,
-//     void **z, int m, int n, int k)
-// {
-
-//   if (sp_a && sp_b && sp_c && partial) {
-
-//     ccs *A = (tA == 'T' ? a : transpose(a, 0));
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-//     ccs *C = c;
-//     int j, l;
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s) {
-//       if (A != a) free_ccs(A);
-//       return -1;
-//     }
-
-//     for (j=0; j<n; j++) {
-//       for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-//         init_spa(s, A, C->rowind[l]);
-//         ((double *)C->values)[l] = alpha.d*spa_ddot (B, j, s) +
-//             beta.d*((double *)C->values)[l];
-//       }
-//     }
-//     free_spa(s);
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (sp_a && sp_b && sp_c && !partial) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-//     ccs *C = c;
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s || !colptr_new) {
-//       free(colptr_new);
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       return -1;
-//     }
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-//       if (beta.d != 0.0)
-//         spa_symb_axpy (C, j, s);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
-//         spa_symb_axpy (A, B->rowind[l], s);
-
-//       colptr_new[j+1] = colptr_new[j] + s->nnz;
-//     }
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, MAX(nnz,CCS_NNZ(C)), C->id);
-//     if (!Z) {
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       free(colptr_new); free_spa(s);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-//       if (beta.d != 0.0)
-//         spa_daxpy (beta.d, C, j, s);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
-//         spa_daxpy (alpha.d*((double *)B->values)[l], A, B->rowind[l], s);
-
-//       spa2compressed(s, Z, j);
-//     }
-
-//     free_spa(s);
-
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-
-//     if (sort_ccs(Z)) {
-//       free_ccs(Z); return -1;
-//     }
-//     *z = Z;
-//   }
-//   else if (sp_a && sp_b && !sp_c) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-//     double *C = c;
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s) {
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       return -1;
-//     }
-
-//     int mn = m*n;
-//     scal[A->id](&mn, &beta, C, &intOne);
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
-//         spa_daxpy (((double *)B->values)[l], A, B->rowind[l], s);
-
-//       for (l=0; l<s->nnz; l++)
-//         C[j*A->nrows + s->idx[l]] += alpha.d*((double *)s->val)[s->idx[l]];
-//     }
-//     free_spa(s);
-
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (!sp_a && sp_b && !sp_c) {
-
-//     double *A = a, *C = c;
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-
-//     int j, l, mn_ = m*n;
-//     scal[DOUBLE](&mn_, &beta, C, &intOne);
-
-//     for (j=0; j<n; j++) {
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
-//         double a_ = alpha.d*((double *)B->values)[l];
-//         axpy[DOUBLE](&m, &a_, A + (tA=='N' ? B->rowind[l]*m : B->rowind[l]),
-//             (tA=='N' ? &intOne : &k), C + j*m, &intOne);
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (sp_a && !sp_b && !sp_c) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-//     double *B = b, *C = c;
-
-//     int j, l, mn_ = m*n, ib = (tB == 'N' ? k : 1);
-//     scal[DOUBLE](&mn_, &beta, C, &intOne);
-
-//     for (j=0; j<A->ncols; j++) {
-//       for (l=A->colptr[j]; l<A->colptr[j+1]; l++) {
-
-//         double a_ = alpha.d*((double *)A->values)[l];
-//         axpy[DOUBLE](&n, &a_, B + (tB == 'N' ? j : j*n), &ib,
-//             C + A->rowind[l], &m);
-//       }
-//     }
-//     if (A != a) free_ccs(A);
-//   }
-
-//   else if (!sp_a && sp_b && sp_c && partial) {
-
-//     double *A = a, val;
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0)), *C = c;
-//     int j, l, o;
-
-//     for (j=0; j<n; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-//         val = 0;
-//         for (l=B->colptr[j]; l < B->colptr[j+1]; l++)
-//           val += A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m :
-//           B->rowind[l] + C->rowind[o]*B->nrows]*
-//           ((double *)B->values)[l];
-
-//         ((double *)C->values)[o] = alpha.d*val +
-//             beta.d*((double *)C->values)[o];
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//   }
-//   else if (!sp_a && sp_b && sp_c && !partial) {
-
-//     double *A = a;
-//     ccs *B = (tB == 'N' ? b : transpose(b,0)), *C = c;
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
-
-//     if (!colptr_new) {
-//       if (B != b) free_ccs(B);
-//       free(colptr_new);
-//       return -1;
-//     }
-
-//     int j, l;
-//     for (j=0; j<n; j++)
-//       colptr_new[j+1] = colptr_new[j] +
-//       MAX(((B->colptr[j+1]-B->colptr[j])>0)*m, C->colptr[j+1]-C->colptr[j]);
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, nnz, C->id);
-//     if (!Z) {
-//       if (B != b) free_ccs(B);
-//       free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-//     for (l=0; l<nnz; l++) ((double *)Z->values)[l] = 0;
-
-//     for (j=0; j<C->ncols; j++) {
-
-//       if (B->colptr[j+1]-B->colptr[j])
-//         for (l=0; l<m; l++)
-//           Z->rowind[Z->colptr[j]+l] = l;
-
-//       for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
-
-//         double a_ = alpha.d*((double *)B->values)[k];
-//         axpy[DOUBLE](&m, &a_, A +
-//             (tA=='N' ? B->rowind[k]*m : B->rowind[k]),
-//             (tA=='N' ? &intOne : &k),
-//             (double *)Z->values + Z->colptr[j], &intOne);
-//       }
-
-//       if (beta.d != 0.0) {
-//         if (Z->colptr[j+1]-Z->colptr[j] == m) {
-//           for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-//             ((double *)Z->values)[Z->colptr[j]+C->rowind[l]] +=
-//                 beta.d*((double *)C->values)[l];
-//           }
-//         }
-//         else {
-//           for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-//             ((double *)Z->values)[Z->colptr[j]+l-C->colptr[j]] =
-//                 beta.d*((double *)C->values)[l];
-//             Z->rowind[Z->colptr[j]+l-C->colptr[j]] = C->rowind[l];
-//           }
-//         }
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//     *z = Z;
-//   }
-//   else if (sp_a && !sp_b && sp_c && partial) {
-
-//     ccs *A = (tA == 'N' ? transpose(a,0) : a), *C = c;
-//     double *B = b, val;
-
-//     int j, l, o;
-//     for (j=0; j<n; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-//         val = 0;
-//         for (l=A->colptr[C->rowind[o]]; l < A->colptr[C->rowind[o]+1]; l++)
-//           val += ((double *)A->values)[l]*
-//           B[tB == 'N' ? j*A->nrows + A->rowind[l] :
-//           A->rowind[l]*C->ncols + j];
-
-//         ((double *)C->values)[o] = alpha.d*val +
-//             beta.d*((double *)C->values)[o];
-//       }
-//     }
-//     if (A != a) free_ccs(A);
-//   }
-//   else if (sp_a && !sp_b && sp_c && !partial) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a,0)), *C = c;
-//     double *B = b;
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     int_t *colptr_new = calloc(n+1,sizeof(int_t));
-//     if (!s || !colptr_new) {
-//       free(s); free(colptr_new);
-//       if (A != a) free_ccs(A);
-//       return -1;
-//     }
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=0; l<A->ncols; l++)
-//         spa_symb_axpy(A, l, s);
-
-//       if (beta.d != 0.0) spa_symb_axpy(C, j, s);
-//       colptr_new[j+1] = colptr_new[j] + s->nnz;
-//     }
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, nnz, C->id);
-//     if (!Z) {
-//       if (A != a) free_ccs(A);
-//       free_spa(s); free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=0; l<k; l++) {
-//         spa_daxpy(alpha.d*B[tB == 'N' ? l + j*k : j + l*n], A, l, s);
-//       }
-
-//       if (beta.d != 0.0) spa_daxpy(beta.d, C, j, s);
-//       spa2compressed(s, Z, j);
-//     }
-//     free_spa(s);
-//     if (A != a) free_ccs(A);
-//     if (sort_ccs(Z)) {
-//       free_ccs(Z); return -1;
-//     }
-//     *z = Z;
-//   }
-//   else if (!sp_a && !sp_b && sp_c && partial) {
-//     ccs *C = c;
-//     double *A = a, *B = b, val;
-
-//     int j, l, o;
-//     for (j=0; j<C->ncols; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-//         val = 0;
-//         for (l=0; l<k; l++)
-//           val += A[tA == 'N' ? m*l + C->rowind[o] : l + C->rowind[o]*k]*
-//           B[tB == 'N' ? j*k + l : l*n + j];
-
-//         ((double *)C->values)[o] = alpha.d*val +
-//             beta.d*((double *)C->values)[o];
-//       }
-//     }
-//   }
-//   else if (!sp_a && !sp_b && sp_c && !partial) {
-
-//     double *A = a, *B = b;
-//     ccs *C = c;
-
-//     ccs *Z = alloc_ccs(m, n, m*n, C->id);
-//     if (!Z) return -1;
-
-//     int j, l;
-//     for (j=0; j<m*n; j++) ((double *)Z->values)[j] = 0.0;
-
-//     int ldA = MAX(1, (tA == 'N' ? m : k));
-//     int ldB = MAX(1, (tB == 'N' ? k : n));
-//     int ldC = MAX(1, m);
-
-//     gemm[DOUBLE](&tA, &tB, &m, &n, &k, &alpha, A, &ldA,
-//         B, &ldB, &Zero[DOUBLE], Z->values, &ldC);
-
-//     for (j=0; j<n; j++) {
-//       for (l=0; l<m; l++)
-//         Z->rowind[j*m + l] = l;
-
-//       Z->colptr[j+1] = Z->colptr[j] + m;
-//     }
-
-//     if (beta.d != 0.0) {
-//       for (j=0; j<n; j++) {
-//         for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-//           ((double *)Z->values)[j*m + C->rowind[l]] +=
-//               beta.d*((double *)C->values)[l];
-//         }
-//       }
-//     }
-//     *z = Z;
-//   }
-//   return 0;
-// }
-
-// static int sp_zgemm(char tA, char tB, number alpha, void *a, void *b,
-//     number beta, void *c, int sp_a, int sp_b, int sp_c, int partial, void **z,
-//     int m, int n, int k)
-// {
-// #ifdef _MSC_VER
-//   _Dcomplex tmp1,tmp2;
-// #endif
-
-//   if (sp_a && sp_b && sp_c && partial) {
-
-//     ccs *A = (tA == 'N' ? transpose(a, 0) : a);
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-//     ccs *C = c;
-//     int j, l;
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s) {
-//       if (A != a) free_ccs(A);
-//       return -1;
-//     }
-
-//     for (j=0; j<n; j++) {
-//       for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-//         init_spa(s, A, C->rowind[l]);
-// #ifndef _MSC_VER
-//         ((double complex *)C->values)[l] = alpha.z*spa_zdot(B, j, s, tB, tA) +
-//             beta.z*((double complex *)C->values)[l];
-// #else
-// 	tmp1 = _Cmulcc(alpha.z,spa_zdot(B, j, s, tB, tA));
-// 	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
-//         ((_Dcomplex *)C->values)[l] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
-// #endif
-//       }
-//     }
-//     free_spa(s);
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (sp_a && sp_b && sp_c && !partial) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-//     ccs *C = c;
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s || !colptr_new) {
-//       free(colptr_new);
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       return -1;
-//     }
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-// #ifndef _MSC_VER
-//       if (beta.z != 0.0)
-// #else
-//       if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0)
-// #endif
-//         spa_symb_axpy (C, j, s);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
-//         spa_symb_axpy (A, B->rowind[l], s);
-
-//       colptr_new[j+1] = colptr_new[j] + s->nnz;
-//     }
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, nnz, A->id);
-//     if (!Z) {
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       free(colptr_new); free_spa(s);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-// #ifndef _MSC_VER
-//       if (beta.z != 0.0)
-// #else
-//       if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0)
-// #endif
-//         spa_zaxpy (beta.z, C, 'N', j, s);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
-// #ifndef _MSC_VER
-//         spa_zaxpy(alpha.z*CONJ(tB, ((double complex *)B->values)[l]), A, tA, B->rowind[l], s);
-// #else
-//         spa_zaxpy(_Cmulcc(alpha.z,CONJ(tB, ((_Dcomplex *)B->values)[l])), A, tA, B->rowind[l], s);
-// #endif
-
-//       spa2compressed(s, Z, j);
-//     }
-
-//     free_spa(s);
-
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-
-//     if (sort_ccs(Z)) {
-//       free_ccs(Z); return -1;
-//     }
-//     *z = Z;
-//   }
-//   else if (sp_a && sp_b && !sp_c) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-// #ifndef _MSC_VER
-//     double complex *C = c;
-// #else
-//     _Dcomplex *C = c;
-//     _Dcomplex tmp;
-// #endif
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     if (!s) {
-//       if (A != a) free_ccs(A);
-//       if (B != b) free_ccs(B);
-//       return -1;
-//     }
-
-//     int mn = m*n;
-//     scal[A->id](&mn, &beta, C, &intOne);
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
-// #ifndef _MSC_VER
-//         spa_zaxpy (CONJ(tB,((double complex *)B->values)[l]), A, tA, B->rowind[l], s);
-// #else
-//         spa_zaxpy (CONJ(tB,((_Dcomplex *)B->values)[l]), A, tA, B->rowind[l], s);
-// #endif
-//       }
-
-//       for (l=0; l<s->nnz; l++) {
-// #ifndef _MSC_VER
-//         C[j*A->nrows + s->idx[l]] += alpha.z*((double complex *)s->val)[s->idx[l]];
-// #else
-//         tmp = _Cmulcc(alpha.z,((_Dcomplex *)s->val)[s->idx[l]]);
-//         C[j*A->nrows + s->idx[l]] = _Cbuild(creal(tmp)+creal(C[j*A->nrows + s->idx[l]]),cimag(tmp)+cimag(C[j*A->nrows + s->idx[l]])); 
-// #endif
-//       }
-//     }
-//     free_spa(s);
-
-//     if (A != a) free_ccs(A);
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (!sp_a && sp_b && !sp_c) {
-
-// #ifndef _MSC_VER
-//     double complex *A = a, *C = c;
-// #else
-//     _Dcomplex *A = a, *C = c;
-//     _Dcomplex tmp;
-// #endif
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0));
-
-//     int i, j, l, mn_ = m*n;
-//     scal[COMPLEX](&mn_, &beta, C, &intOne);
-
-//     for (j=0; j<n; j++) {
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
-
-//         for (i=0; i<m; i++) {
-// #ifndef _MSC_VER
-//           C[i+j*m] += alpha.z*CONJ(tA,A[tA=='N' ? i+B->rowind[l]*m :
-//           B->rowind[l]+i*k])*
-//           CONJ(tB,((double complex *)B->values)[l]);
-// #else
-//           tmp = _Cmulcc(alpha.z, _Cmulcc(CONJ(tA,A[tA=='N' ? i+B->rowind[l]*m : B->rowind[l]+i*k]),CONJ(tB,((_Dcomplex *)B->values)[l])));
-// 	  C[i+j*m] = _Cbuild(creal(tmp)+creal(C[i+j*m]),cimag(tmp)+cimag(C[i+j*m]));
-// #endif
-// 	}
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//   }
-
-//   else if (sp_a && !sp_b && !sp_c) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a, 0));
-// #ifndef _MSC_VER
-//     double complex *B = b, *C = c;
-// #else
-//     _Dcomplex *B = b, *C = c;
-//     _Dcomplex tmp;
-// #endif
-
-//     int i, j, l, mn_ = m*n;
-//     scal[COMPLEX](&mn_, &beta, C, &intOne);
-
-//     for (j=0; j<A->ncols; j++) {
-//       for (l=A->colptr[j]; l<A->colptr[j+1]; l++) {
-
-//         for (i=0; i<n; i++) {
-// #ifndef _MSC_VER
-//           C[A->rowind[l]+i*m] += alpha.z*CONJ(tA,((double complex *)A->values)[l])*
-//           CONJ(tB,B[tB=='N' ? j+i*k : i+j*n]);
-// #else
-// 	  tmp = _Cmulcc(alpha.z,_Cmulcc(CONJ(tA,((_Dcomplex *)A->values)[l]),CONJ(tB,B[tB=='N' ? j+i*k : i+j*n])));
-//           C[A->rowind[l]+i*m] = _Cbuild(creal(tmp)+creal(C[A->rowind[l]+i*m]),cimag(tmp)+cimag(C[A->rowind[l]+i*m]));
-// #endif
-// 	}
-//       }
-//     }
-//     if (A != a) free_ccs(A);
-//   }
-
-//   else if (!sp_a && sp_b && sp_c && partial) {
-
-// #ifndef _MSC_VER
-//     double complex *A = a, val;
-// #else
-//     _Dcomplex *A = a, val;
-//     _Dcomplex tmp1,tmp2;
-// #endif
-//     ccs *B = (tB == 'N' ? b : transpose(b, 0)), *C = c;
-//     int j, l, o;
-
-//     for (j=0; j<n; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-// #ifndef _MSC_VER
-//         val = 0;
-// #else
-// 	val = _Cbuild(0.0,0.0);
-// #endif
-//         for (l=B->colptr[j]; l < B->colptr[j+1]; l++) {
-// #ifndef _MSC_VER
-//           val += CONJ(tA,A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m :
-//           B->rowind[l] + C->rowind[o]*B->nrows])*
-//           CONJ(tB,((double complex *)B->values)[l]);
-// #else
-// 	  tmp1 = _Cmulcc(CONJ(tA,A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m : B->rowind[l] + C->rowind[o]*B->nrows]),
-// 			CONJ(tB,((_Dcomplex *)B->values)[l]));
-//           val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
-// #endif
-// 	}
-
-// #ifndef _MSC_VER
-//         ((double complex *)C->values)[o] = alpha.z*val +
-//             beta.z*((double complex *)C->values)[o];
-// #else
-// 	tmp1 = _Cmulcc(alpha.z,val);
-// 	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
-//         ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
-// #endif
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//   }
-//   else if (!sp_a && sp_b && sp_c && !partial) {
-
-// #ifndef _MSC_VER
-//     double complex *A = a;
-// #else
-//     _Dcomplex *A = a;
-//     _Dcomplex tmp;
-// #endif
-//     ccs *B = (tB == 'N' ? b : transpose(b,0)), *C = c;
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
-
-//     if (!colptr_new) {
-//       if (B != b) free_ccs(B);
-//       free(colptr_new);
-//       return -1;
-//     }
-
-//     int i, j, l;
-//     for (j=0; j<n; j++)
-//       colptr_new[j+1] = colptr_new[j] +
-//       MAX(((B->colptr[j+1]-B->colptr[j])>0)*m, C->colptr[j+1]-C->colptr[j]);
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, nnz, C->id);
-//     if (!Z) {
-//       if (B != b) free_ccs(B);
-//       free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-// #ifndef _MSC_VER
-//     for (l=0; l<nnz; l++) ((double complex *)Z->values)[l] = 0;
-// #else
-//     for (l=0; l<nnz; l++) ((_Dcomplex *)Z->values)[l] = _Cbuild(0.0,0.0);
-// #endif
-
-//     for (j=0; j<C->ncols; j++) {
-
-//       if (B->colptr[j+1]-B->colptr[j])
-//         for (l=0; l<m; l++)
-//           Z->rowind[Z->colptr[j]+l] = l;
-
-//       for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
-
-//         for (i=0; i<m; i++) {
-// #ifndef _MSC_VER
-//           ((double complex*)Z->values)[Z->colptr[j]+i] += alpha.z*
-//               CONJ(tA,A[tA=='N' ? B->rowind[l]*m+i : B->rowind[l]+i*k])*
-//               CONJ(tB,((double complex *)B->values)[l]);
-// #else
-// 	  tmp = _Cmulcc(alpha.z,_Cmulcc(CONJ(tA,A[tA=='N' ? B->rowind[l]*m+i : B->rowind[l]+i*k]),CONJ(tB,((_Dcomplex *)B->values)[l])));
-//           ((_Dcomplex*)Z->values)[Z->colptr[j]+i] = _Cbuild(creal(tmp)+creal(((_Dcomplex*)Z->values)[Z->colptr[j]+i]),cimag(tmp)+cimag(((_Dcomplex*)Z->values)[Z->colptr[j]+i]));
-// #endif
-//         }
-//       }
-
-// #ifndef _MSC_VER
-//       if (beta.z != 0.0) {
-// #else
-//       if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) {
-// #endif
-//         if (Z->colptr[j+1]-Z->colptr[j] == m) {
-//           for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-// #ifndef _MSC_VER
-//             ((double complex *)Z->values)[Z->colptr[j]+C->rowind[l]] +=
-//                 beta.z*((double complex *)C->values)[l];
-// #else
-// 	    tmp = _Cmulcc(beta.z, ((_Dcomplex *)C->values)[l]);
-//             ((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]]),cimag(tmp)+cimag(((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]]));
-// #endif
-//           }
-//         }
-//         else {
-//           for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-// #ifndef _MSC_VER
-//             ((double complex *)Z->values)[Z->colptr[j]+l-C->colptr[j]] =
-//                 beta.z*((double complex *)C->values)[l];
-// #else
-// 	      ((_Dcomplex *)Z->values)[Z->colptr[j]+l-C->colptr[j]] = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
-// #endif
-//             Z->rowind[Z->colptr[j]+l-C->colptr[j]] = C->rowind[l];
-//           }
-//         }
-//       }
-//     }
-//     if (B != b) free_ccs(B);
-//     *z = Z;
-//   }
-//   else if (sp_a && !sp_b && sp_c && partial) {
-
-//     ccs *A = (tA == 'N' ? transpose(a,0) : a), *C = c;
-// #ifndef _MSC_VER
-//     double complex *B = b, val;
-// #else
-//     _Dcomplex *B = b, val;
-//     _Dcomplex tmp1,tmp2;
-// #endif
-
-//     int j, l, o;
-//     for (j=0; j<n; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-// #ifndef _MSC_VER
-//         val = 0;
-// #else
-// 	val = _Cbuild(0.0,0.0);
-// #endif
-//         for (l=A->colptr[C->rowind[o]]; l < A->colptr[C->rowind[o]+1]; l++) {
-// #ifndef _MSC_VER
-//           val += CONJ(tA, ((double complex *)A->values)[l])*
-//           CONJ(tB, B[tB == 'N' ? j*A->nrows + A->rowind[l] :
-//           A->rowind[l]*C->ncols + j]);
-// #else
-// 	  tmp1 = _Cmulcc(CONJ(tA, ((_Dcomplex *)A->values)[l]),CONJ(tB, B[tB == 'N' ? j*A->nrows + A->rowind[l] : A->rowind[l]*C->ncols + j]));
-//           val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
-// #endif
-// 	}
-
-// #ifndef _MSC_VER
-//         ((double complex *)C->values)[o] = alpha.z*val +
-//             beta.z*((double complex *)C->values)[o];
-// #else
-// 	tmp1 = _Cmulcc(alpha.z,val);
-// 	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
-//         ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
-// #endif
-//       }
-//     }
-//     if (A != a) free_ccs(A);
-//   }
-//   else if (sp_a && !sp_b && sp_c && !partial) {
-
-//     ccs *A = (tA == 'N' ? a : transpose(a,0)), *C = c;
-// #ifndef _MSC_VER
-//     double complex *B = b;
-// #else
-//     _Dcomplex *B = b;
-// #endif 
-
-//     spa *s = alloc_spa(A->nrows, A->id);
-//     int_t *colptr_new = calloc(n+1,sizeof(int_t));
-//     if (!s || !colptr_new) {
-//       free(s); free(colptr_new);
-//       if (A != a) free_ccs(A);
-//       return -1;
-//     }
-
-//     int j, l;
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=0; l<A->ncols; l++)
-//         spa_symb_axpy(A, l, s);
-
-// #ifndef _MSC_VER
-//       if (beta.z != 0.0) spa_symb_axpy(C, j, s);
-// #else
-//       if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) spa_symb_axpy(C, j, s);
-// #endif
-//       colptr_new[j+1] = colptr_new[j] + s->nnz;
-//     }
-
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(m, n, nnz, C->id);
-//     if (!Z) {
-//       if (A != a) free_ccs(A);
-//       free_spa(s); free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
-
-//     for (j=0; j<n; j++) {
-//       init_spa(s, NULL, 0);
-
-//       for (l=0; l<k; l++) {
-// #ifndef _MSC_VER
-//         spa_zaxpy(alpha.z*CONJ(tB, B[tB == 'N' ? l + j*k : j + l*n]), A, tA, l, s);
-// #else
-//         spa_zaxpy(_Cmulcc(alpha.z,CONJ(tB, B[tB == 'N' ? l + j*k : j + l*n])), A, tA, l, s);
-// #endif
-//       }
-
-// #ifndef _MSC_VER
-//       if (beta.z != 0.0) spa_zaxpy(beta.z, C, 'N', j, s);
-// #else
-//       if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) spa_zaxpy(beta.z, C, 'N', j, s);
-// #endif
-//       spa2compressed(s, Z, j);
-//     }
-//     free_spa(s);
-//     if (A != a) free_ccs(A);
-//     if (sort_ccs(Z)) {
-//       free_ccs(Z); return -1;
-//     }
-//     *z = Z;
-//   }
-//   else if (!sp_a && !sp_b && sp_c && partial) {
-//     ccs *C = c;
-// #ifndef _MSC_VER
-//     double complex *A = a, *B = b, val;
-// #else
-//     _Dcomplex *A = a, *B = b, val;
-//     _Dcomplex tmp1,tmp2;
-// #endif
-
-//     int j, l, o;
-//     for (j=0; j<C->ncols; j++) {
-//       for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
-
-// #ifndef _MSC_VER
-//         val = 0;
-// #else
-// 	val = _Cbuild(0.0,0.0);
-// #endif
-//         for (l=0; l<k; l++) {
-// #ifndef _MSC_VER
-//           val += CONJ(tA, A[tA=='N' ? m*l+C->rowind[o] : l+C->rowind[o]*k])*
-//           CONJ(tB, B[tB == 'N' ? j*k + l : l*n + j]);
-// #else
-// 	  tmp1 = _Cmulcc(CONJ(tA, A[tA=='N' ? m*l+C->rowind[o] : l+C->rowind[o]*k]),CONJ(tB, B[tB == 'N' ? j*k + l : l*n + j]));
-//           val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
-// #endif
-// 	}
-
-// #ifndef _MSC_VER
-//         ((double complex *)C->values)[o] = alpha.z*val +
-//             beta.z*((double complex *)C->values)[o];
-// #else
-// 	tmp1 = _Cmulcc(alpha.z,val);
-// 	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
-//         ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
-// #endif
-//       }
-//     }
-//   }
-//   else if (!sp_a && !sp_b && sp_c && !partial) {
-
-// #ifndef _MSC_VER
-//     double complex *A = a, *B = b;
-// #else
-//     _Dcomplex *A = a, *B = b;
-//     _Dcomplex tmp;
-// #endif
-//     ccs *C = c;
-
-//     ccs *Z = alloc_ccs(m, n, m*n, C->id);
-//     if (!Z) return -1;
-
-//     int j, l;
-// #ifndef _MSC_VER
-//     for (j=0; j<m*n; j++) ((double complex *)Z->values)[j] = 0.0;
-// #else
-//     for (j=0; j<m*n; j++) ((_Dcomplex *)Z->values)[j] = _Cbuild(0.0,0.0);
-// #endif
-
-//     int ldA = MAX(1, (tA == 'N' ? m : k));
-//     int ldB = MAX(1, (tB == 'N' ? k : n));
-//     int ldC = MAX(1, m);
-
-//     gemm[COMPLEX](&tA, &tB, &m, &n, &k, &alpha, A, &ldA,
-//         B, &ldB, &Zero[COMPLEX], Z->values, &ldC);
-
-//     for (j=0; j<n; j++) {
-//       for (l=0; l<m; l++)
-//         Z->rowind[j*m + l] = l;
-
-//       Z->colptr[j+1] = Z->colptr[j] + m;
-//     }
-
-// #ifndef _MSC_VER
-//     if (beta.z != 0.0) {
-// #else
-//     if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) {
-// #endif
-//       for (j=0; j<n; j++) {
-//         for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
-// #ifndef _MSC_VER
-//           ((double complex *)Z->values)[j*m + C->rowind[l]] +=
-//               beta.z*((double complex *)C->values)[l];
-// #else
-// 	  tmp = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
-//           ((_Dcomplex *)Z->values)[j*m + C->rowind[l]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)Z->values)[j*m + C->rowind[l]]),cimag(tmp)+cimag(((_Dcomplex *)Z->values)[j*m + C->rowind[l]]));
-// #endif
-//         }
-//       }
-//     }
-//     *z = Z;
-//   }
-//   return 0;
-// }
+static int sp_dgemm(char tA, char tB, number alpha, void *a, void *b,
+    number beta, void *c, int sp_a, int sp_b, int sp_c, int partial,
+    void **z, int m, int n, int k)
+{
+
+  if (sp_a && sp_b && sp_c && partial) {
+
+    ccs *A = (tA == 'T' ? a : transpose(a, 0));
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+    ccs *C = c;
+    int j, l;
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s) {
+      if (A != a) free_ccs(A);
+      return -1;
+    }
+
+    for (j=0; j<n; j++) {
+      for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+        init_spa(s, A, C->rowind[l]);
+        ((double *)C->values)[l] = alpha.d*spa_ddot (B, j, s) +
+            beta.d*((double *)C->values)[l];
+      }
+    }
+    free_spa(s);
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+  }
+
+  else if (sp_a && sp_b && sp_c && !partial) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+    ccs *C = c;
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s || !colptr_new) {
+      free(colptr_new);
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      return -1;
+    }
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+      if (beta.d != 0.0)
+        spa_symb_axpy (C, j, s);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
+        spa_symb_axpy (A, B->rowind[l], s);
+
+      colptr_new[j+1] = colptr_new[j] + s->nnz;
+    }
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, MAX(nnz,CCS_NNZ(C)), C->id);
+    if (!Z) {
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      free(colptr_new); free_spa(s);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+      if (beta.d != 0.0)
+        spa_daxpy (beta.d, C, j, s);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
+        spa_daxpy (alpha.d*((double *)B->values)[l], A, B->rowind[l], s);
+
+      spa2compressed(s, Z, j);
+    }
+
+    free_spa(s);
+
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+
+    if (sort_ccs(Z)) {
+      free_ccs(Z); return -1;
+    }
+    *z = Z;
+  }
+  else if (sp_a && sp_b && !sp_c) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+    double *C = c;
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s) {
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      return -1;
+    }
+
+    int mn = m*n;
+    scal_[A->id](&mn, &beta, C, &intOne);
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
+        spa_daxpy (((double *)B->values)[l], A, B->rowind[l], s);
+
+      for (l=0; l<s->nnz; l++)
+        C[j*A->nrows + s->idx[l]] += alpha.d*((double *)s->val)[s->idx[l]];
+    }
+    free_spa(s);
+
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+  }
+
+  else if (!sp_a && sp_b && !sp_c) {
+
+    double *A = a, *C = c;
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+
+    int j, l, mn_ = m*n;
+    scal_[DOUBLE](&mn_, &beta, C, &intOne);
+
+    for (j=0; j<n; j++) {
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
+        double a_ = alpha.d*((double *)B->values)[l];
+        axpy_[DOUBLE](&m, &a_, A + (tA=='N' ? B->rowind[l]*m : B->rowind[l]),
+            (tA=='N' ? &intOne : &k), C + j*m, &intOne);
+      }
+    }
+    if (B != b) free_ccs(B);
+  }
+
+  else if (sp_a && !sp_b && !sp_c) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+    double *B = b, *C = c;
+
+    int j, l, mn_ = m*n, ib = (tB == 'N' ? k : 1);
+    scal_[DOUBLE](&mn_, &beta, C, &intOne);
+
+    for (j=0; j<A->ncols; j++) {
+      for (l=A->colptr[j]; l<A->colptr[j+1]; l++) {
+
+        double a_ = alpha.d*((double *)A->values)[l];
+        axpy_[DOUBLE](&n, &a_, B + (tB == 'N' ? j : j*n), &ib,
+            C + A->rowind[l], &m);
+      }
+    }
+    if (A != a) free_ccs(A);
+  }
+
+  else if (!sp_a && sp_b && sp_c && partial) {
+
+    double *A = a, val;
+    ccs *B = (tB == 'N' ? b : transpose(b, 0)), *C = c;
+    int j, l, o;
+
+    for (j=0; j<n; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+        val = 0;
+        for (l=B->colptr[j]; l < B->colptr[j+1]; l++)
+          val += A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m :
+          B->rowind[l] + C->rowind[o]*B->nrows]*
+          ((double *)B->values)[l];
+
+        ((double *)C->values)[o] = alpha.d*val +
+            beta.d*((double *)C->values)[o];
+      }
+    }
+    if (B != b) free_ccs(B);
+  }
+  else if (!sp_a && sp_b && sp_c && !partial) {
+
+    double *A = a;
+    ccs *B = (tB == 'N' ? b : transpose(b,0)), *C = c;
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+
+    if (!colptr_new) {
+      if (B != b) free_ccs(B);
+      free(colptr_new);
+      return -1;
+    }
+
+    int j, l;
+    for (j=0; j<n; j++)
+      colptr_new[j+1] = colptr_new[j] +
+      MAX(((B->colptr[j+1]-B->colptr[j])>0)*m, C->colptr[j+1]-C->colptr[j]);
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, nnz, C->id);
+    if (!Z) {
+      if (B != b) free_ccs(B);
+      free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+    for (l=0; l<nnz; l++) ((double *)Z->values)[l] = 0;
+
+    for (j=0; j<C->ncols; j++) {
+
+      if (B->colptr[j+1]-B->colptr[j])
+        for (l=0; l<m; l++)
+          Z->rowind[Z->colptr[j]+l] = l;
+
+      for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
+
+        double a_ = alpha.d*((double *)B->values)[k];
+        axpy_[DOUBLE](&m, &a_, A +
+            (tA=='N' ? B->rowind[k]*m : B->rowind[k]),
+            (tA=='N' ? &intOne : &k),
+            (double *)Z->values + Z->colptr[j], &intOne);
+      }
+
+      if (beta.d != 0.0) {
+        if (Z->colptr[j+1]-Z->colptr[j] == m) {
+          for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+            ((double *)Z->values)[Z->colptr[j]+C->rowind[l]] +=
+                beta.d*((double *)C->values)[l];
+          }
+        }
+        else {
+          for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+            ((double *)Z->values)[Z->colptr[j]+l-C->colptr[j]] =
+                beta.d*((double *)C->values)[l];
+            Z->rowind[Z->colptr[j]+l-C->colptr[j]] = C->rowind[l];
+          }
+        }
+      }
+    }
+    if (B != b) free_ccs(B);
+    *z = Z;
+  }
+  else if (sp_a && !sp_b && sp_c && partial) {
+
+    ccs *A = (tA == 'N' ? transpose(a,0) : a), *C = c;
+    double *B = b, val;
+
+    int j, l, o;
+    for (j=0; j<n; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+        val = 0;
+        for (l=A->colptr[C->rowind[o]]; l < A->colptr[C->rowind[o]+1]; l++)
+          val += ((double *)A->values)[l]*
+          B[tB == 'N' ? j*A->nrows + A->rowind[l] :
+          A->rowind[l]*C->ncols + j];
+
+        ((double *)C->values)[o] = alpha.d*val +
+            beta.d*((double *)C->values)[o];
+      }
+    }
+    if (A != a) free_ccs(A);
+  }
+  else if (sp_a && !sp_b && sp_c && !partial) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a,0)), *C = c;
+    double *B = b;
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    int_t *colptr_new = calloc(n+1,sizeof(int_t));
+    if (!s || !colptr_new) {
+      free(s); free(colptr_new);
+      if (A != a) free_ccs(A);
+      return -1;
+    }
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=0; l<A->ncols; l++)
+        spa_symb_axpy(A, l, s);
+
+      if (beta.d != 0.0) spa_symb_axpy(C, j, s);
+      colptr_new[j+1] = colptr_new[j] + s->nnz;
+    }
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, nnz, C->id);
+    if (!Z) {
+      if (A != a) free_ccs(A);
+      free_spa(s); free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=0; l<k; l++) {
+        spa_daxpy(alpha.d*B[tB == 'N' ? l + j*k : j + l*n], A, l, s);
+      }
+
+      if (beta.d != 0.0) spa_daxpy(beta.d, C, j, s);
+      spa2compressed(s, Z, j);
+    }
+    free_spa(s);
+    if (A != a) free_ccs(A);
+    if (sort_ccs(Z)) {
+      free_ccs(Z); return -1;
+    }
+    *z = Z;
+  }
+  else if (!sp_a && !sp_b && sp_c && partial) {
+    ccs *C = c;
+    double *A = a, *B = b, val;
+
+    int j, l, o;
+    for (j=0; j<C->ncols; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+        val = 0;
+        for (l=0; l<k; l++)
+          val += A[tA == 'N' ? m*l + C->rowind[o] : l + C->rowind[o]*k]*
+          B[tB == 'N' ? j*k + l : l*n + j];
+
+        ((double *)C->values)[o] = alpha.d*val +
+            beta.d*((double *)C->values)[o];
+      }
+    }
+  }
+  else if (!sp_a && !sp_b && sp_c && !partial) {
+
+    double *A = a, *B = b;
+    ccs *C = c;
+
+    ccs *Z = alloc_ccs(m, n, m*n, C->id);
+    if (!Z) return -1;
+
+    int j, l;
+    for (j=0; j<m*n; j++) ((double *)Z->values)[j] = 0.0;
+
+    int ldA = MAX(1, (tA == 'N' ? m : k));
+    int ldB = MAX(1, (tB == 'N' ? k : n));
+    int ldC = MAX(1, m);
+
+    gemm_[DOUBLE](&tA, &tB, &m, &n, &k, &alpha, A, &ldA,
+        B, &ldB, &Zero[DOUBLE], Z->values, &ldC);
+
+    for (j=0; j<n; j++) {
+      for (l=0; l<m; l++)
+        Z->rowind[j*m + l] = l;
+
+      Z->colptr[j+1] = Z->colptr[j] + m;
+    }
+
+    if (beta.d != 0.0) {
+      for (j=0; j<n; j++) {
+        for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+          ((double *)Z->values)[j*m + C->rowind[l]] +=
+              beta.d*((double *)C->values)[l];
+        }
+      }
+    }
+    *z = Z;
+  }
+  return 0;
+}
+
+static int sp_zgemm(char tA, char tB, number alpha, void *a, void *b,
+    number beta, void *c, int sp_a, int sp_b, int sp_c, int partial, void **z,
+    int m, int n, int k)
+{
+#ifdef _MSC_VER
+  _Dcomplex tmp1,tmp2;
+#endif
+
+  if (sp_a && sp_b && sp_c && partial) {
+
+    ccs *A = (tA == 'N' ? transpose(a, 0) : a);
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+    ccs *C = c;
+    int j, l;
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s) {
+      if (A != a) free_ccs(A);
+      return -1;
+    }
+
+    for (j=0; j<n; j++) {
+      for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+        init_spa(s, A, C->rowind[l]);
+#ifndef _MSC_VER
+        ((double complex *)C->values)[l] = alpha.z*spa_zdot(B, j, s, tB, tA) +
+            beta.z*((double complex *)C->values)[l];
+#else
+	tmp1 = _Cmulcc(alpha.z,spa_zdot(B, j, s, tB, tA));
+	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
+        ((_Dcomplex *)C->values)[l] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
+#endif
+      }
+    }
+    free_spa(s);
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+  }
+
+  else if (sp_a && sp_b && sp_c && !partial) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+    ccs *C = c;
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s || !colptr_new) {
+      free(colptr_new);
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      return -1;
+    }
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+#ifndef _MSC_VER
+      if (beta.z != 0.0)
+#else
+      if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0)
+#endif
+        spa_symb_axpy (C, j, s);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
+        spa_symb_axpy (A, B->rowind[l], s);
+
+      colptr_new[j+1] = colptr_new[j] + s->nnz;
+    }
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, nnz, A->id);
+    if (!Z) {
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      free(colptr_new); free_spa(s);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+#ifndef _MSC_VER
+      if (beta.z != 0.0)
+#else
+      if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0)
+#endif
+        spa_zaxpy (beta.z, C, 'N', j, s);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++)
+#ifndef _MSC_VER
+        spa_zaxpy(alpha.z*CONJ(tB, ((double complex *)B->values)[l]), A, tA, B->rowind[l], s);
+#else
+        spa_zaxpy(_Cmulcc(alpha.z,CONJ(tB, ((_Dcomplex *)B->values)[l])), A, tA, B->rowind[l], s);
+#endif
+
+      spa2compressed(s, Z, j);
+    }
+
+    free_spa(s);
+
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+
+    if (sort_ccs(Z)) {
+      free_ccs(Z); return -1;
+    }
+    *z = Z;
+  }
+  else if (sp_a && sp_b && !sp_c) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+#ifndef _MSC_VER
+    double complex *C = c;
+#else
+    _Dcomplex *C = c;
+    _Dcomplex tmp;
+#endif
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    if (!s) {
+      if (A != a) free_ccs(A);
+      if (B != b) free_ccs(B);
+      return -1;
+    }
+
+    int mn = m*n;
+    scal_[A->id](&mn, &beta, C, &intOne);
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
+#ifndef _MSC_VER
+        spa_zaxpy (CONJ(tB,((double complex *)B->values)[l]), A, tA, B->rowind[l], s);
+#else
+        spa_zaxpy (CONJ(tB,((_Dcomplex *)B->values)[l]), A, tA, B->rowind[l], s);
+#endif
+      }
+
+      for (l=0; l<s->nnz; l++) {
+#ifndef _MSC_VER
+        C[j*A->nrows + s->idx[l]] += alpha.z*((double complex *)s->val)[s->idx[l]];
+#else
+        tmp = _Cmulcc(alpha.z,((_Dcomplex *)s->val)[s->idx[l]]);
+        C[j*A->nrows + s->idx[l]] = _Cbuild(creal(tmp)+creal(C[j*A->nrows + s->idx[l]]),cimag(tmp)+cimag(C[j*A->nrows + s->idx[l]])); 
+#endif
+      }
+    }
+    free_spa(s);
+
+    if (A != a) free_ccs(A);
+    if (B != b) free_ccs(B);
+  }
+
+  else if (!sp_a && sp_b && !sp_c) {
+
+#ifndef _MSC_VER
+    double complex *A = a, *C = c;
+#else
+    _Dcomplex *A = a, *C = c;
+    _Dcomplex tmp;
+#endif
+    ccs *B = (tB == 'N' ? b : transpose(b, 0));
+
+    int i, j, l, mn_ = m*n;
+    scal_[COMPLEX](&mn_, &beta, C, &intOne);
+
+    for (j=0; j<n; j++) {
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
+
+        for (i=0; i<m; i++) {
+#ifndef _MSC_VER
+          C[i+j*m] += alpha.z*CONJ(tA,A[tA=='N' ? i+B->rowind[l]*m :
+          B->rowind[l]+i*k])*
+          CONJ(tB,((double complex *)B->values)[l]);
+#else
+          tmp = _Cmulcc(alpha.z, _Cmulcc(CONJ(tA,A[tA=='N' ? i+B->rowind[l]*m : B->rowind[l]+i*k]),CONJ(tB,((_Dcomplex *)B->values)[l])));
+	  C[i+j*m] = _Cbuild(creal(tmp)+creal(C[i+j*m]),cimag(tmp)+cimag(C[i+j*m]));
+#endif
+	}
+      }
+    }
+    if (B != b) free_ccs(B);
+  }
+
+  else if (sp_a && !sp_b && !sp_c) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a, 0));
+#ifndef _MSC_VER
+    double complex *B = b, *C = c;
+#else
+    _Dcomplex *B = b, *C = c;
+    _Dcomplex tmp;
+#endif
+
+    int i, j, l, mn_ = m*n;
+    scal_[COMPLEX](&mn_, &beta, C, &intOne);
+
+    for (j=0; j<A->ncols; j++) {
+      for (l=A->colptr[j]; l<A->colptr[j+1]; l++) {
+
+        for (i=0; i<n; i++) {
+#ifndef _MSC_VER
+          C[A->rowind[l]+i*m] += alpha.z*CONJ(tA,((double complex *)A->values)[l])*
+          CONJ(tB,B[tB=='N' ? j+i*k : i+j*n]);
+#else
+	  tmp = _Cmulcc(alpha.z,_Cmulcc(CONJ(tA,((_Dcomplex *)A->values)[l]),CONJ(tB,B[tB=='N' ? j+i*k : i+j*n])));
+          C[A->rowind[l]+i*m] = _Cbuild(creal(tmp)+creal(C[A->rowind[l]+i*m]),cimag(tmp)+cimag(C[A->rowind[l]+i*m]));
+#endif
+	}
+      }
+    }
+    if (A != a) free_ccs(A);
+  }
+
+  else if (!sp_a && sp_b && sp_c && partial) {
+
+#ifndef _MSC_VER
+    double complex *A = a, val;
+#else
+    _Dcomplex *A = a, val;
+    _Dcomplex tmp1,tmp2;
+#endif
+    ccs *B = (tB == 'N' ? b : transpose(b, 0)), *C = c;
+    int j, l, o;
+
+    for (j=0; j<n; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+#ifndef _MSC_VER
+        val = 0;
+#else
+	val = _Cbuild(0.0,0.0);
+#endif
+        for (l=B->colptr[j]; l < B->colptr[j+1]; l++) {
+#ifndef _MSC_VER
+          val += CONJ(tA,A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m :
+          B->rowind[l] + C->rowind[o]*B->nrows])*
+          CONJ(tB,((double complex *)B->values)[l]);
+#else
+	  tmp1 = _Cmulcc(CONJ(tA,A[tA == 'N' ? C->rowind[o] + B->rowind[l]*m : B->rowind[l] + C->rowind[o]*B->nrows]),
+			CONJ(tB,((_Dcomplex *)B->values)[l]));
+          val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
+#endif
+	}
+
+#ifndef _MSC_VER
+        ((double complex *)C->values)[o] = alpha.z*val +
+            beta.z*((double complex *)C->values)[o];
+#else
+	tmp1 = _Cmulcc(alpha.z,val);
+	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
+        ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
+#endif
+      }
+    }
+    if (B != b) free_ccs(B);
+  }
+  else if (!sp_a && sp_b && sp_c && !partial) {
+
+#ifndef _MSC_VER
+    double complex *A = a;
+#else
+    _Dcomplex *A = a;
+    _Dcomplex tmp;
+#endif
+    ccs *B = (tB == 'N' ? b : transpose(b,0)), *C = c;
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+
+    if (!colptr_new) {
+      if (B != b) free_ccs(B);
+      free(colptr_new);
+      return -1;
+    }
+
+    int i, j, l;
+    for (j=0; j<n; j++)
+      colptr_new[j+1] = colptr_new[j] +
+      MAX(((B->colptr[j+1]-B->colptr[j])>0)*m, C->colptr[j+1]-C->colptr[j]);
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, nnz, C->id);
+    if (!Z) {
+      if (B != b) free_ccs(B);
+      free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+#ifndef _MSC_VER
+    for (l=0; l<nnz; l++) ((double complex *)Z->values)[l] = 0;
+#else
+    for (l=0; l<nnz; l++) ((_Dcomplex *)Z->values)[l] = _Cbuild(0.0,0.0);
+#endif
+
+    for (j=0; j<C->ncols; j++) {
+
+      if (B->colptr[j+1]-B->colptr[j])
+        for (l=0; l<m; l++)
+          Z->rowind[Z->colptr[j]+l] = l;
+
+      for (l=B->colptr[j]; l<B->colptr[j+1]; l++) {
+
+        for (i=0; i<m; i++) {
+#ifndef _MSC_VER
+          ((double complex*)Z->values)[Z->colptr[j]+i] += alpha.z*
+              CONJ(tA,A[tA=='N' ? B->rowind[l]*m+i : B->rowind[l]+i*k])*
+              CONJ(tB,((double complex *)B->values)[l]);
+#else
+	  tmp = _Cmulcc(alpha.z,_Cmulcc(CONJ(tA,A[tA=='N' ? B->rowind[l]*m+i : B->rowind[l]+i*k]),CONJ(tB,((_Dcomplex *)B->values)[l])));
+          ((_Dcomplex*)Z->values)[Z->colptr[j]+i] = _Cbuild(creal(tmp)+creal(((_Dcomplex*)Z->values)[Z->colptr[j]+i]),cimag(tmp)+cimag(((_Dcomplex*)Z->values)[Z->colptr[j]+i]));
+#endif
+        }
+      }
+
+#ifndef _MSC_VER
+      if (beta.z != 0.0) {
+#else
+      if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) {
+#endif
+        if (Z->colptr[j+1]-Z->colptr[j] == m) {
+          for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+#ifndef _MSC_VER
+            ((double complex *)Z->values)[Z->colptr[j]+C->rowind[l]] +=
+                beta.z*((double complex *)C->values)[l];
+#else
+	    tmp = _Cmulcc(beta.z, ((_Dcomplex *)C->values)[l]);
+            ((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]]),cimag(tmp)+cimag(((_Dcomplex *)Z->values)[Z->colptr[j]+C->rowind[l]]));
+#endif
+          }
+        }
+        else {
+          for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+#ifndef _MSC_VER
+            ((double complex *)Z->values)[Z->colptr[j]+l-C->colptr[j]] =
+                beta.z*((double complex *)C->values)[l];
+#else
+	      ((_Dcomplex *)Z->values)[Z->colptr[j]+l-C->colptr[j]] = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
+#endif
+            Z->rowind[Z->colptr[j]+l-C->colptr[j]] = C->rowind[l];
+          }
+        }
+      }
+    }
+    if (B != b) free_ccs(B);
+    *z = Z;
+  }
+  else if (sp_a && !sp_b && sp_c && partial) {
+
+    ccs *A = (tA == 'N' ? transpose(a,0) : a), *C = c;
+#ifndef _MSC_VER
+    double complex *B = b, val;
+#else
+    _Dcomplex *B = b, val;
+    _Dcomplex tmp1,tmp2;
+#endif
+
+    int j, l, o;
+    for (j=0; j<n; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+#ifndef _MSC_VER
+        val = 0;
+#else
+	val = _Cbuild(0.0,0.0);
+#endif
+        for (l=A->colptr[C->rowind[o]]; l < A->colptr[C->rowind[o]+1]; l++) {
+#ifndef _MSC_VER
+          val += CONJ(tA, ((double complex *)A->values)[l])*
+          CONJ(tB, B[tB == 'N' ? j*A->nrows + A->rowind[l] :
+          A->rowind[l]*C->ncols + j]);
+#else
+	  tmp1 = _Cmulcc(CONJ(tA, ((_Dcomplex *)A->values)[l]),CONJ(tB, B[tB == 'N' ? j*A->nrows + A->rowind[l] : A->rowind[l]*C->ncols + j]));
+          val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
+#endif
+	}
+
+#ifndef _MSC_VER
+        ((double complex *)C->values)[o] = alpha.z*val +
+            beta.z*((double complex *)C->values)[o];
+#else
+	tmp1 = _Cmulcc(alpha.z,val);
+	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
+        ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
+#endif
+      }
+    }
+    if (A != a) free_ccs(A);
+  }
+  else if (sp_a && !sp_b && sp_c && !partial) {
+
+    ccs *A = (tA == 'N' ? a : transpose(a,0)), *C = c;
+#ifndef _MSC_VER
+    double complex *B = b;
+#else
+    _Dcomplex *B = b;
+#endif 
+
+    spa *s = alloc_spa(A->nrows, A->id);
+    int_t *colptr_new = calloc(n+1,sizeof(int_t));
+    if (!s || !colptr_new) {
+      free(s); free(colptr_new);
+      if (A != a) free_ccs(A);
+      return -1;
+    }
+
+    int j, l;
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=0; l<A->ncols; l++)
+        spa_symb_axpy(A, l, s);
+
+#ifndef _MSC_VER
+      if (beta.z != 0.0) spa_symb_axpy(C, j, s);
+#else
+      if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) spa_symb_axpy(C, j, s);
+#endif
+      colptr_new[j+1] = colptr_new[j] + s->nnz;
+    }
+
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(m, n, nnz, C->id);
+    if (!Z) {
+      if (A != a) free_ccs(A);
+      free_spa(s); free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
+
+    for (j=0; j<n; j++) {
+      init_spa(s, NULL, 0);
+
+      for (l=0; l<k; l++) {
+#ifndef _MSC_VER
+        spa_zaxpy(alpha.z*CONJ(tB, B[tB == 'N' ? l + j*k : j + l*n]), A, tA, l, s);
+#else
+        spa_zaxpy(_Cmulcc(alpha.z,CONJ(tB, B[tB == 'N' ? l + j*k : j + l*n])), A, tA, l, s);
+#endif
+      }
+
+#ifndef _MSC_VER
+      if (beta.z != 0.0) spa_zaxpy(beta.z, C, 'N', j, s);
+#else
+      if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) spa_zaxpy(beta.z, C, 'N', j, s);
+#endif
+      spa2compressed(s, Z, j);
+    }
+    free_spa(s);
+    if (A != a) free_ccs(A);
+    if (sort_ccs(Z)) {
+      free_ccs(Z); return -1;
+    }
+    *z = Z;
+  }
+  else if (!sp_a && !sp_b && sp_c && partial) {
+    ccs *C = c;
+#ifndef _MSC_VER
+    double complex *A = a, *B = b, val;
+#else
+    _Dcomplex *A = a, *B = b, val;
+    _Dcomplex tmp1,tmp2;
+#endif
+
+    int j, l, o;
+    for (j=0; j<C->ncols; j++) {
+      for (o=C->colptr[j]; o<C->colptr[j+1]; o++) {
+
+#ifndef _MSC_VER
+        val = 0;
+#else
+	val = _Cbuild(0.0,0.0);
+#endif
+        for (l=0; l<k; l++) {
+#ifndef _MSC_VER
+          val += CONJ(tA, A[tA=='N' ? m*l+C->rowind[o] : l+C->rowind[o]*k])*
+          CONJ(tB, B[tB == 'N' ? j*k + l : l*n + j]);
+#else
+	  tmp1 = _Cmulcc(CONJ(tA, A[tA=='N' ? m*l+C->rowind[o] : l+C->rowind[o]*k]),CONJ(tB, B[tB == 'N' ? j*k + l : l*n + j]));
+          val = _Cbuild(creal(val)+creal(tmp1),cimag(val)+cimag(tmp1));
+#endif
+	}
+
+#ifndef _MSC_VER
+        ((double complex *)C->values)[o] = alpha.z*val +
+            beta.z*((double complex *)C->values)[o];
+#else
+	tmp1 = _Cmulcc(alpha.z,val);
+	tmp2 = _Cmulcc(beta.z,((_Dcomplex *)C->values)[o]);
+        ((_Dcomplex *)C->values)[o] = _Cbuild(creal(tmp1)+creal(tmp2),cimag(tmp1)+cimag(tmp2));
+#endif
+      }
+    }
+  }
+  else if (!sp_a && !sp_b && sp_c && !partial) {
+
+#ifndef _MSC_VER
+    double complex *A = a, *B = b;
+#else
+    _Dcomplex *A = a, *B = b;
+    _Dcomplex tmp;
+#endif
+    ccs *C = c;
+
+    ccs *Z = alloc_ccs(m, n, m*n, C->id);
+    if (!Z) return -1;
+
+    int j, l;
+#ifndef _MSC_VER
+    for (j=0; j<m*n; j++) ((double complex *)Z->values)[j] = 0.0;
+#else
+    for (j=0; j<m*n; j++) ((_Dcomplex *)Z->values)[j] = _Cbuild(0.0,0.0);
+#endif
+
+    int ldA = MAX(1, (tA == 'N' ? m : k));
+    int ldB = MAX(1, (tB == 'N' ? k : n));
+    int ldC = MAX(1, m);
+
+    gemm_[COMPLEX](&tA, &tB, &m, &n, &k, &alpha, A, &ldA,
+         B, &ldB, &Zero[COMPLEX], Z->values, &ldC);
+
+    for (j=0; j<n; j++) {
+      for (l=0; l<m; l++)
+        Z->rowind[j*m + l] = l;
+
+      Z->colptr[j+1] = Z->colptr[j] + m;
+    }
+
+#ifndef _MSC_VER
+    if (beta.z != 0.0) {
+#else
+    if (creal(beta.z) != 0.0 || cimag(beta.z) != 0.0) {
+#endif
+      for (j=0; j<n; j++) {
+        for (l=C->colptr[j]; l<C->colptr[j+1]; l++) {
+#ifndef _MSC_VER
+          ((double complex *)Z->values)[j*m + C->rowind[l]] +=
+              beta.z*((double complex *)C->values)[l];
+#else
+	  tmp = _Cmulcc(beta.z,((_Dcomplex *)C->values)[l]);
+          ((_Dcomplex *)Z->values)[j*m + C->rowind[l]] = _Cbuild(creal(tmp)+creal(((_Dcomplex *)Z->values)[j*m + C->rowind[l]]),cimag(tmp)+cimag(((_Dcomplex *)Z->values)[j*m + C->rowind[l]]));
+#endif
+        }
+      }
+    }
+    *z = Z;
+  }
+  return 0;
+}
 
 // static int sp_dsyrk(char uplo, char trans, number alpha, void *a,
 //     number beta, void *c, int sp_a, int sp_c, int partial, int k, void **z)
@@ -2277,7 +2272,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 
 //       if (uplo == 'U') {
 //         int m = j+1;
-//         scal[DOUBLE](&m, &beta, C + j*n, &intOne);
+//         scal_[DOUBLE](&m, &beta, C + j*n, &intOne);
 
 //         for (k=0; k<s->nnz; k++) {
 //           if (s->idx[k] <= j)
@@ -2285,7 +2280,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //         }
 //       } else {
 //         int m = n-j;
-//         scal[DOUBLE](&m, &beta, C + j*(n+1), &intOne);
+//         scal_[DOUBLE](&m, &beta, C + j*(n+1), &intOne);
 
 //         for (k=0; k<s->nnz; k++) {
 //           if (s->idx[k] >= j)
@@ -4101,7 +4096,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //   if (!x) return NULL;
 
 //   int n=SP_NNZ(x);
-//   scal[SP_ID(self)](&n, &MinusOne[SP_ID(self)], SP_VAL(x), &intOne);
+//   scal_[SP_ID(self)](&n, &MinusOne[SP_ID(self)], SP_VAL(x), &intOne);
 
 //   return (PyObject *)x;
 // }
@@ -4267,7 +4262,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //   else if (SpMatrix_Check(self) && !SpMatrix_Check(other)) {
 //     if ((ret = spmatrix_add_helper(self, other, 0))) {
 //       int n = MAT_LGT(other), id = MAT_ID(ret);
-//       scal[id](&n, &MinusOne[id], MAT_BUF(ret), &intOne);
+//       scal_[id](&n, &MinusOne[id], MAT_BUF(ret), &intOne);
 //       return ret;
 //     }
 //     else return NULL;
@@ -4333,7 +4328,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 //     convert_num[id](&val, !SpMatrix_Check(self) ? self : other,
 //         PY_NUMBER(other) || PY_NUMBER(self), 0);
 
-//     scal[id]((int *)&SP_NNZ(ret), &val, SP_VAL(ret), (void *)&One[INT]);
+//     scal_[id]((int *)&SP_NNZ(ret), &val, SP_VAL(ret), (void *)&One[INT]);
 //     return (PyObject *)ret;
 //     }
 
@@ -4403,7 +4398,7 @@ static int inline sp_zgemv(char tA, int m, int n, number alpha, void *a, int oA,
 
 //   number val;
 //   convert_num[SP_ID(self)](&val, other, !Matrix_Check(other), 0);
-//   scal[SP_ID(self)]((int *)&SP_NNZ(self), &val, SP_VAL(self),
+//   scal_[SP_ID(self)]((int *)&SP_NNZ(self), &val, SP_VAL(self),
 //       (void *)&One[INT]);
 
 //   Py_INCREF(self);

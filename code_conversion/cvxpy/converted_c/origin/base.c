@@ -370,8 +370,6 @@ int get_id(void *val, int val_type) {
     return COMPLEX;
 }
 
-
-
 static int Matrix_Check_func(void *o) {
   return Matrix_Check((PyObject*)o);
 }
