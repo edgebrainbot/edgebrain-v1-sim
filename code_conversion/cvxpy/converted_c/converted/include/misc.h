@@ -14,11 +14,13 @@
 #include "cvxopt.h"
 
 #ifndef NO_ANSI99_COMPLEX
+
 typedef union {
     double d;
     int_t i;
     double complex z;
 } number;
+
 #endif
 
 typedef struct {
@@ -55,6 +57,21 @@ typedef struct {
     int s_size;         // size of s array
 } DIMs;
 
+// static inline int is_number(void *ptr) {
+//     if (!ptr) return 0;
+//     number *n = (number *)ptr;
+//     return (n->id == INT || n->id == DOUBLE || n->id == COMPLEX);
+// }
+
+// Helper function to calculate sum of array elements
+static int sum_array(int *arr, int len) {
+    int sum = 0;
+    for (int i = 0; i < len; i++) {
+        sum += arr[i];
+    }
+    return sum;
+}
+
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
@@ -78,6 +95,8 @@ typedef struct {
 #define err_dbl_mtrx(s)         ERR_TYPE(s " must be a matrix with typecode 'd'")
 #define err_msk_noparam         "missing options dictionary"
 #define err_no_memory           ERR("no memory use for matrix calculation")
+#define err_bad_internal_call   ERR("Internal error: bad function call or argument usage.")
+#define err_division_by_zero    ERR("division by zero, check if denominator is zero before dividing")
 
 /* C-style cyclic wrap-around for indices */
 #define CWRAP(i,m) ((i) >= 0 ? (i) : ((m)+(i)))

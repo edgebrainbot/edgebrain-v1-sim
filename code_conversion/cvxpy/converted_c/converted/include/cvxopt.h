@@ -39,35 +39,31 @@
 #ifndef __CVXOPT__
 #define __CVXOPT__
 
-#define INT       0
-#define DOUBLE    1
-#define COMPLEX   2
+#define INT           0
+#define DOUBLE        1
+#define COMPLEX       2
+#define MAT_DENSE     3
+#define MAT_SPARSE    4
 
-#define int_t     ptrdiff_t
-
-#define MAT_DENSE   1
-#define MAT_SPARSE  2
+#define int_t  ptrdiff_t
 
 typedef struct {
-  int mat_type;          // MAT_DENSE
-  void *buffer;          /* in column-major-mode array of type 'id' */
-  int nrows, ncols;      /* number of rows and columns */
-  int   id;              /* DOUBLE, INT, COMPLEX */
-  int_t shape[2];
-  int_t strides[2];
-  int_t ob_exports;
+  int  mat_type;        // MAT_DENSE
+  void *buffer;         /* in column-major-mode array of type 'id' */
+  int  nrows, ncols;    /* number of rows and columns */
+  int  id;              /* DOUBLE, INT, COMPLEX */
 } matrix;
 
 typedef struct {
-  void  *values;      /* value list */
-  int_t *colptr;      /* column pointer list */
-  int_t *rowind;      /* row index list */
-  int_t nrows, ncols; /* number of rows and columns */
-  int   id;           /* DOUBLE, COMPLEX */
+  void  *values;        /* value list */
+  int_t *colptr;        /* column pointer list */
+  int_t *rowind;        /* row index list */
+  int_t nrows, ncols;   /* number of rows and columns */
+  int   id;             /* DOUBLE, COMPLEX */
 } ccs;
 
 typedef struct {
-  int mat_type;    // MAT_SPARSE
+  int mat_type;         // MAT_SPARSE
   ccs *obj;
 } spmatrix;
 

@@ -20,7 +20,9 @@ file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
     tests/test_base.c 
     tests/test_blas.c
     tests/test_sparse.c
-    tests/test_misc_solvers
+    tests/test_misc_solvers.c
+    tests/test_lapack.c
+    tests/test_dense.c
 )
 
 # Add the public header include path

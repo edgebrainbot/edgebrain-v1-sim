@@ -89,10 +89,10 @@ int (*sp_gemv[])(char, int, int, number, void *, int, void *, int,
 // int (*sp_symv[])(char, int, number, ccs *, int, void *, int,
 //     number, void *, int) = { NULL, sp_dsymv, sp_zsymv } ;
 
-// static int sp_dsyrk(char, char, number, void *, number,
-//     void *, int, int, int, int, void **) ;
-// int (*sp_syrk[])(char, char, number, void *, number,
-//     void *, int, int, int, int, void **) = { NULL, sp_dsyrk, NULL };
+static int sp_dsyrk(char, char, number, void *, number,
+    void *, int, int, int, int, void **) ;
+int (*sp_syrk[])(char, char, number, void *, number,
+    void *, int, int, int, int, void **) = { NULL, sp_dsyrk, NULL };
 
 typedef struct {
   int_t key, value;
@@ -145,37 +145,37 @@ static int comp_complex(const void *x, const void *y) {
 //     while (((ccs *)O)->colptr[j+1] == k+1) j++;	\
 //     k++; }
 
-// int
-// convert_array(void *dest, void *src, int dest_id, int src_id, int n) {
+int
+convert_array(void *dest, void *src, int dest_id, int src_id, int n) {
 
-//   if (dest_id != MAX(dest_id,src_id))
-//     return -1;
+  if (dest_id != MAX(dest_id,src_id))
+    return -1;
 
-//   int i;
-//   if (dest_id == src_id)
-//     memcpy(dest, src, n*E_SIZE[dest_id]);
-//   else if (dest_id == DOUBLE) {
-//     for (i=0; i<n; i++)
-//       ((double *)dest)[i] = ((int *)src)[i];
-//   } else {
-//     if (src_id == INT) {
-//       for (i=0; i<n; i++)
-// #ifndef _MSC_VER
-//         ((double complex *)dest)[i] = ((int *)src)[i];
-// #else
-//         ((_Dcomplex *)dest)[i] = _Cbuild((double) ((int *)src)[i],0.0);
-// #endif
-//     } else {
-//       for (i=0; i<n; i++)
-// #ifndef _MSC_VER
-//         ((double complex *)dest)[i] = ((double *)src)[i];
-// #else
-//         ((_Dcomplex *)dest)[i] = _Cbuild(((double *)src)[i],0.0);
-// #endif
-//     }
-//   }
-//   return 0;
-// }
+  int i;
+  if (dest_id == src_id)
+    memcpy(dest, src, n*E_SIZE[dest_id]);
+  else if (dest_id == DOUBLE) {
+    for (i=0; i<n; i++)
+      ((double *)dest)[i] = ((int *)src)[i];
+  } else {
+    if (src_id == INT) {
+      for (i=0; i<n; i++)
+#ifndef _MSC_VER
+        ((double complex *)dest)[i] = ((int *)src)[i];
+#else
+        ((_Dcomplex *)dest)[i] = _Cbuild((double) ((int *)src)[i],0.0);
+#endif
+    } else {
+      for (i=0; i<n; i++)
+#ifndef _MSC_VER
+        ((double complex *)dest)[i] = ((double *)src)[i];
+#else
+        ((_Dcomplex *)dest)[i] = _Cbuild(((double *)src)[i],0.0);
+#endif
+    }
+  }
+  return 0;
+}
 
 ccs * alloc_ccs(int_t nrows, int_t ncols, int_t nnz, int id)
 {
@@ -692,24 +692,24 @@ static inline void spa_zaxpy (_Dcomplex a, ccs *X, char conjx, int col, spa *y)
   }
 }
 
-// static inline void
-// spa_daxpy_uplo (double a, ccs *X, int col, spa *y, int j, char uplo) {
-//   int i;
+static inline void
+spa_daxpy_uplo (double a, ccs *X, int col, spa *y, int j, char uplo) {
+  int i;
 
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
-//     if ((uplo == 'U' && X->rowind[i] <= j) ||
-//         (uplo == 'L' && X->rowind[i] >= j)) {
-//       if (y->nz[X->rowind[i]]) {
-//         ((double *)y->val)[X->rowind[i]] += a*((double *)X->values)[i];
-//       }
-//       else {
-//         ((double *)y->val)[X->rowind[i]] = a*((double *)X->values)[i];
-//         y->nz[X->rowind[i]] = 1;
-//         y->idx[y->nnz++] = X->rowind[i];
-//       }
-//     }
-//   }
-// }
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++) {
+    if ((uplo == 'U' && X->rowind[i] <= j) ||
+        (uplo == 'L' && X->rowind[i] >= j)) {
+      if (y->nz[X->rowind[i]]) {
+        ((double *)y->val)[X->rowind[i]] += a*((double *)X->values)[i];
+      }
+      else {
+        ((double *)y->val)[X->rowind[i]] = a*((double *)X->values)[i];
+        y->nz[X->rowind[i]] = 1;
+        y->idx[y->nnz++] = X->rowind[i];
+      }
+    }
+  }
+}
 
 /* Unused function
 static inline void
@@ -741,19 +741,19 @@ static inline void spa_symb_axpy (ccs *X, int col, spa *y) {
     }
 }
 
-// static inline void
-// spa_symb_axpy_uplo (ccs *X, int col, spa *y, int j, char uplo) {
-//   int i;
-//   for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
-//     if ((uplo == 'U' && X->rowind[i] <= j) ||
-//         (uplo == 'L' && X->rowind[i] >= j)) {
+static inline void
+spa_symb_axpy_uplo (ccs *X, int col, spa *y, int j, char uplo) {
+  int i;
+  for (i=X->colptr[col]; i<X->colptr[col+1]; i++)
+    if ((uplo == 'U' && X->rowind[i] <= j) ||
+        (uplo == 'L' && X->rowind[i] >= j)) {
 
-//       if (!y->nz[X->rowind[i]]) {
-//         y->nz[X->rowind[i]] = 1;
-//         y->idx[y->nnz++] = X->rowind[i];
-//       }
-//     }
-// }
+      if (!y->nz[X->rowind[i]]) {
+        y->nz[X->rowind[i]] = 1;
+        y->idx[y->nnz++] = X->rowind[i];
+      }
+    }
+}
 
 static inline double spa_ddot (ccs *X, int col, spa *y) {
   int i;
@@ -2162,207 +2162,207 @@ static int sp_zgemm(char tA, char tB, number alpha, void *a, void *b,
   return 0;
 }
 
-// static int sp_dsyrk(char uplo, char trans, number alpha, void *a,
-//     number beta, void *c, int sp_a, int sp_c, int partial, int k, void **z)
-// {
-//   if (sp_a && sp_c && partial) {
+static int sp_dsyrk(char uplo, char trans, number alpha, void *a,
+    number beta, void *c, int sp_a, int sp_c, int partial, int k, void **z)
+{
+  if (sp_a && sp_c && partial) {
 
-//     ccs *A = (trans == 'N' ?  transpose(a, 0) : a), *C = c;
-//     spa *s = alloc_spa(A->nrows, C->id);
-//     if (!A || !s) {
-//       if (A != a) free_ccs(A);
-//       free_spa(s);
-//       return -1;
-//     }
-//     int j, k;
-//     for (j=0; j<C->ncols; j++) {
-//       for (k=C->colptr[j]; k<C->colptr[j+1]; k++) {
-//         if ((uplo == 'L' && C->rowind[k] >= j) ||
-//             (uplo == 'U' && C->rowind[k] <= j)) {
-//           init_spa(s, A, C->rowind[k]);
-//           ((double *)C->values)[k] = alpha.d*spa_ddot(A, j, s) +
-//               beta.d*((double *)C->values)[k];
-//         }
-//       }
-//     }
-//     free_spa(s);
-//     if (A != a) free_ccs(A);
-//   }
-//   else if (sp_a && sp_c && !partial) {
+    ccs *A = (trans == 'N' ?  transpose(a, 0) : a), *C = c;
+    spa *s = alloc_spa(A->nrows, C->id);
+    if (!A || !s) {
+      if (A != a) free_ccs(A);
+      free_spa(s);
+      return -1;
+    }
+    int j, k;
+    for (j=0; j<C->ncols; j++) {
+      for (k=C->colptr[j]; k<C->colptr[j+1]; k++) {
+        if ((uplo == 'L' && C->rowind[k] >= j) ||
+            (uplo == 'U' && C->rowind[k] <= j)) {
+          init_spa(s, A, C->rowind[k]);
+          ((double *)C->values)[k] = alpha.d*spa_ddot(A, j, s) +
+              beta.d*((double *)C->values)[k];
+        }
+      }
+    }
+    free_spa(s);
+    if (A != a) free_ccs(A);
+  }
+  else if (sp_a && sp_c && !partial) {
 
-//     ccs *A = (trans == 'N' ? a : transpose(a, 0));
-//     ccs *B = (trans == 'N' ? transpose(a, 0) : a);
-//     ccs *C = c;
-//     spa *s = alloc_spa(C->nrows, C->id);
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+    ccs *A = (trans == 'N' ? a : transpose(a, 0));
+    ccs *B = (trans == 'N' ? transpose(a, 0) : a);
+    ccs *C = c;
+    spa *s = alloc_spa(C->nrows, C->id);
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
 
-//     if (!A || !B || !s || !colptr_new) {
-//       if (A != a) free_ccs(A);
-//       if (B != a) free_ccs(B);
-//       free_spa(s); free(colptr_new);
-//       return -1;
-//     }
+    if (!A || !B || !s || !colptr_new) {
+      if (A != a) free_ccs(A);
+      if (B != a) free_ccs(B);
+      free_spa(s); free(colptr_new);
+      return -1;
+    }
 
-//     int j, k;
-//     for (j=0; j<B->ncols; j++) {
-//       init_spa(s, NULL, 0);
-//       if (beta.d != 0.0)
-//         spa_symb_axpy_uplo(C, j, s, j, uplo);
+    int j, k;
+    for (j=0; j<B->ncols; j++) {
+      init_spa(s, NULL, 0);
+      if (beta.d != 0.0)
+        spa_symb_axpy_uplo(C, j, s, j, uplo);
 
-//       for (k=B->colptr[j]; k<B->colptr[j+1]; k++)
-//         spa_symb_axpy_uplo(A, B->rowind[k], s, j, uplo);
+      for (k=B->colptr[j]; k<B->colptr[j+1]; k++)
+        spa_symb_axpy_uplo(A, B->rowind[k], s, j, uplo);
 
-//       colptr_new[j+1] = colptr_new[j] + s->nnz;
-//     }
+      colptr_new[j+1] = colptr_new[j] + s->nnz;
+    }
 
-//     int_t nnz = colptr_new[C->ncols];
-//     ccs *Z = alloc_ccs(C->nrows, C->ncols, nnz, C->id);
-//     if (!Z) {
-//       if (A != a) free_ccs(A);
-//       if (B != a) free_ccs(B);
-//       free_spa(s); free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
+    int_t nnz = colptr_new[C->ncols];
+    ccs *Z = alloc_ccs(C->nrows, C->ncols, nnz, C->id);
+    if (!Z) {
+      if (A != a) free_ccs(A);
+      if (B != a) free_ccs(B);
+      free_spa(s); free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
 
-//     for (j=0; j<B->ncols; j++) {
-//       init_spa(s, NULL, 0);
-//       if (beta.d != 0.0)
-//         spa_daxpy_uplo(beta.d, C, j, s, j, uplo);
+    for (j=0; j<B->ncols; j++) {
+      init_spa(s, NULL, 0);
+      if (beta.d != 0.0)
+        spa_daxpy_uplo(beta.d, C, j, s, j, uplo);
 
-//       for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
-//         spa_daxpy_uplo(alpha.d*((double *)B->values)[k], A, B->rowind[k],
-//             s, j, uplo);
-//       }
-//       spa2compressed(s, Z, j);
-//     }
+      for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
+        spa_daxpy_uplo(alpha.d*((double *)B->values)[k], A, B->rowind[k],
+            s, j, uplo);
+      }
+      spa2compressed(s, Z, j);
+    }
 
-//     if (A != a) free_ccs(A);
-//     if (B != a) free_ccs(B);
-//     free_spa(s);
+    if (A != a) free_ccs(A);
+    if (B != a) free_ccs(B);
+    free_spa(s);
 
-//     if (sort_ccs(Z)) {
-//       free_ccs(Z); return -1;
-//     }
-//     *z = Z;
-//   }
-//   else if (sp_a && !sp_c) {
+    if (sort_ccs(Z)) {
+      free_ccs(Z); return -1;
+    }
+    *z = Z;
+  }
+  else if (sp_a && !sp_c) {
 
-//     int n  = (trans == 'N' ? ((ccs *)a)->nrows : ((ccs *)a)->ncols);
-//     ccs *A = (trans == 'N' ? a : transpose(a, 0));
-//     ccs *B = (trans == 'N' ? transpose(a, 0) : a);
-//     double *C = c;
+    int n  = (trans == 'N' ? ((ccs *)a)->nrows : ((ccs *)a)->ncols);
+    ccs *A = (trans == 'N' ? a : transpose(a, 0));
+    ccs *B = (trans == 'N' ? transpose(a, 0) : a);
+    double *C = c;
 
-//     spa *s = alloc_spa(n, A->id);
-//     if (!A || !B || !s) {
-//       if (A != a) free_ccs(A);
-//       if (B != a) free_ccs(B);
-//       free_spa(s);
-//       return -1;
-//     }
+    spa *s = alloc_spa(n, A->id);
+    if (!A || !B || !s) {
+      if (A != a) free_ccs(A);
+      if (B != a) free_ccs(B);
+      free_spa(s);
+      return -1;
+    }
 
-//     int j, k;
-//     for (j=0; j<B->ncols; j++) {
-//       init_spa(s, NULL, 0);
+    int j, k;
+    for (j=0; j<B->ncols; j++) {
+      init_spa(s, NULL, 0);
 
-//       for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
-//         spa_daxpy_uplo(alpha.d*((double *)B->values)[k], A, B->rowind[k],
-//             s, j, uplo);
-//       }
+      for (k=B->colptr[j]; k<B->colptr[j+1]; k++) {
+        spa_daxpy_uplo(alpha.d*((double *)B->values)[k], A, B->rowind[k],
+            s, j, uplo);
+      }
 
-//       if (uplo == 'U') {
-//         int m = j+1;
-//         scal_[DOUBLE](&m, &beta, C + j*n, &intOne);
+      if (uplo == 'U') {
+        int m = j+1;
+        scal_[DOUBLE](&m, &beta, C + j*n, &intOne);
 
-//         for (k=0; k<s->nnz; k++) {
-//           if (s->idx[k] <= j)
-//             C[j*n + s->idx[k]] += alpha.d*((double *)s->val)[s->idx[k]];
-//         }
-//       } else {
-//         int m = n-j;
-//         scal_[DOUBLE](&m, &beta, C + j*(n+1), &intOne);
+        for (k=0; k<s->nnz; k++) {
+          if (s->idx[k] <= j)
+            C[j*n + s->idx[k]] += alpha.d*((double *)s->val)[s->idx[k]];
+        }
+      } else {
+        int m = n-j;
+        scal_[DOUBLE](&m, &beta, C + j*(n+1), &intOne);
 
-//         for (k=0; k<s->nnz; k++) {
-//           if (s->idx[k] >= j)
-//             C[j*n + s->idx[k]] += alpha.d*((double *)s->val)[s->idx[k]];
-//         }
-//       }
-//     }
-//     if (A != a) free_ccs(A);
-//     if (B != a) free_ccs(B);
-//     free_spa(s);
-//   }
-//   else if (!sp_a && sp_c && partial) {
+        for (k=0; k<s->nnz; k++) {
+          if (s->idx[k] >= j)
+            C[j*n + s->idx[k]] += alpha.d*((double *)s->val)[s->idx[k]];
+        }
+      }
+    }
+    if (A != a) free_ccs(A);
+    if (B != a) free_ccs(B);
+    free_spa(s);
+  }
+  else if (!sp_a && sp_c && partial) {
 
-//     ccs *C = c;
-//     double *A = a;
+    ccs *C = c;
+    double *A = a;
 
-//     int j, i, l, n=C->nrows;
-//     for (j=0; j<n; j++) {
-//       for (i=C->colptr[j]; i<C->colptr[j+1]; i++) {
-//         if ((uplo == 'L' && C->rowind[i] >= j) ||
-//             (uplo == 'U' && C->rowind[i] <= j)) {
+    int j, i, l, n=C->nrows;
+    for (j=0; j<n; j++) {
+      for (i=C->colptr[j]; i<C->colptr[j+1]; i++) {
+        if ((uplo == 'L' && C->rowind[i] >= j) ||
+            (uplo == 'U' && C->rowind[i] <= j)) {
 
-//           ((double *)C->values)[i] *= beta.d;
+          ((double *)C->values)[i] *= beta.d;
 
-//           for (l=0; l<k; l++)
-//             ((double *)C->values)[i] +=
-//                 alpha.d*A[trans == 'N' ? C->rowind[i]+l*n : l+C->rowind[i]*k]*
-//                 A[trans == 'N' ? j+l*n : l+j*k];
-//         }
-//       }
-//     }
-//   }
-//   else if (!sp_a && sp_c) {
+          for (l=0; l<k; l++)
+            ((double *)C->values)[i] +=
+                alpha.d*A[trans == 'N' ? C->rowind[i]+l*n : l+C->rowind[i]*k]*
+                A[trans == 'N' ? j+l*n : l+j*k];
+        }
+      }
+    }
+  }
+  else if (!sp_a && sp_c) {
 
-//     ccs *C = c;
-//     double *A = a, *C_ = malloc( C->nrows*C->nrows*sizeof(double) );
-//     int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
+    ccs *C = c;
+    double *A = a, *C_ = malloc( C->nrows*C->nrows*sizeof(double) );
+    int_t *colptr_new = calloc(C->ncols+1,sizeof(int_t));
 
-//     if (!C_ || !colptr_new) {
-//       free(C_); free(colptr_new); return -1;
-//     }
-//     int j, i, n=C->nrows;
-//     for (j=0; j<n; j++)
-//       colptr_new[j+1] = colptr_new[j] + (uplo == 'U' ? j+1 : n-j);
+    if (!C_ || !colptr_new) {
+      free(C_); free(colptr_new); return -1;
+    }
+    int j, i, n=C->nrows;
+    for (j=0; j<n; j++)
+      colptr_new[j+1] = colptr_new[j] + (uplo == 'U' ? j+1 : n-j);
 
-//     int_t nnz = colptr_new[n];
-//     ccs *Z = alloc_ccs(n, n, nnz, C->id);
-//     if (!Z) {
-//       free(C_); free(colptr_new);
-//       return -1;
-//     }
-//     free(Z->colptr); Z->colptr = colptr_new;
+    int_t nnz = colptr_new[n];
+    ccs *Z = alloc_ccs(n, n, nnz, C->id);
+    if (!Z) {
+      free(C_); free(colptr_new);
+      return -1;
+    }
+    free(Z->colptr); Z->colptr = colptr_new;
 
-//     syrk[DOUBLE](&uplo, &trans, &n, &k, &alpha, A,
-//         (trans == 'N' ? &n : &k), &Zero[DOUBLE], C_, &n);
+    syrk_[DOUBLE](&uplo, &trans, &n, &k, &alpha, A,
+          (trans == 'N' ? &n : &k), &Zero[DOUBLE], C_, &n);
 
-//     for (j=0; j<n; j++) {
-//       for (i=Z->colptr[j]; i<Z->colptr[j+1]; i++) {
-//         if (uplo == 'U') {
-//           ((double *)Z->values)[i] = C_[j*n + i-Z->colptr[j]];
-//           Z->rowind[i] = i-Z->colptr[j];
-//         } else {
-//           ((double *)Z->values)[i] = C_[j*(n+1) + i-Z->colptr[j]];
-//           Z->rowind[i] = j+i-Z->colptr[j];
-//         }
-//       }
+    for (j=0; j<n; j++) {
+      for (i=Z->colptr[j]; i<Z->colptr[j+1]; i++) {
+        if (uplo == 'U') {
+          ((double *)Z->values)[i] = C_[j*n + i-Z->colptr[j]];
+          Z->rowind[i] = i-Z->colptr[j];
+        } else {
+          ((double *)Z->values)[i] = C_[j*(n+1) + i-Z->colptr[j]];
+          Z->rowind[i] = j+i-Z->colptr[j];
+        }
+      }
 
-//       for (i=C->colptr[j]; i<C->colptr[j+1]; i++) {
-//         if (uplo == 'U' && C->rowind[i] <= j)
-//           ((double *)Z->values)[Z->colptr[j]+C->rowind[i]] +=
-//               beta.d*((double *)C->values)[i];
-//         else if (uplo == 'L' && C->rowind[i] >= j)
-//           ((double *)Z->values)[Z->colptr[j]+C->rowind[i]-j] +=
-//               beta.d*((double *)C->values)[i];
-//       }
-//     }
-//     free(C_);
-//     *z = Z;
-//   }
+      for (i=C->colptr[j]; i<C->colptr[j+1]; i++) {
+        if (uplo == 'U' && C->rowind[i] <= j)
+          ((double *)Z->values)[Z->colptr[j]+C->rowind[i]] +=
+              beta.d*((double *)C->values)[i];
+        else if (uplo == 'L' && C->rowind[i] >= j)
+          ((double *)Z->values)[Z->colptr[j]+C->rowind[i]-j] +=
+              beta.d*((double *)C->values)[i];
+      }
+    }
+    free(C_);
+    *z = Z;
+  }
 
-//   return 0;
-// }
+  return 0;
+}
 
 /* No error checking: Il and Jl must be valid indexlist,
    and Il,Jl,V must be of same length (V can also be NULL) */
@@ -2516,18 +2516,18 @@ static int sp_zgemm(char tA, char tB, number alpha, void *a, void *b,
   nnz          : Number of nonzero elements.
   id           : DOUBLE/COMPLEX
  */
-// spmatrix *
-// SpMatrix_New(int_t nrows, int_t ncols, int_t nnz, int id)
-// {
-//   spmatrix *ret;
-//   if (!(ret = (spmatrix *)spmatrix_tp.tp_alloc(&spmatrix_tp, 0)))
-//     return (spmatrix *)PyErr_NoMemory();
+spmatrix *
+SpMatrix_New(int_t nrows, int_t ncols, int_t nnz, int id)
+{
+  spmatrix *ret;
+  if (!(ret = (spmatrix *)malloc(sizeof(spmatrix))))
+    err_no_memory;
 
-//   ret->obj = alloc_ccs(nrows, ncols, nnz, id);
-//   if (!ret->obj) { Py_DECREF(ret); return (spmatrix *)PyErr_NoMemory(); }
+  ret->obj = alloc_ccs(nrows, ncols, nnz, id);
+  if (!ret->obj) err_no_memory;
 
-//   return ret;
-// }
+  return ret;
+}
 
 // static spmatrix * SpMatrix_NewFromCCS(ccs *x)
 // {
@@ -2548,22 +2548,22 @@ static int sp_zgemm(char tA, char tB, number alpha, void *a, void *b,
   A            : spmatrix object
   id           : DOUBLE/COMPLEX
  */
-// spmatrix * SpMatrix_NewFromSpMatrix(spmatrix *A, int id)
-// {
-//   if ((id == DOUBLE) && (SP_ID(A) == COMPLEX))
-//     ERR_TYPE("cannot convert complex to double");
+spmatrix * SpMatrix_NewFromSpMatrix(spmatrix *A, int id)
+{
+  if ((id == DOUBLE) && (SP_ID(A) == COMPLEX))
+    ERR_TYPE("cannot convert complex to double");
 
-//   spmatrix *ret = SpMatrix_New
-//       (SP_NROWS(A), SP_NCOLS(A), SP_NNZ(A), id);
+  spmatrix *ret = SpMatrix_New
+      (SP_NROWS(A), SP_NCOLS(A), SP_NNZ(A), id);
 
-//   if (!ret) NULL;
+  if (!ret) NULL;
 
-//   convert_array(SP_VAL(ret), SP_VAL(A), id, SP_ID(A), SP_NNZ(A));
-//   memcpy(SP_COL(ret), SP_COL(A), (SP_NCOLS(A)+1)*sizeof(int_t));
-//   memcpy(SP_ROW(ret), SP_ROW(A), SP_NNZ(A)*sizeof(int_t));
+  convert_array(SP_VAL(ret), SP_VAL(A), id, SP_ID(A), SP_NNZ(A));
+  memcpy(SP_COL(ret), SP_COL(A), (SP_NCOLS(A)+1)*sizeof(int_t));
+  memcpy(SP_ROW(ret), SP_ROW(A), SP_NNZ(A)*sizeof(int_t));
 
-//   return ret;
-// }
+  return ret;
+}
 
 /*
   SpMatrix_NewFromIJV.
