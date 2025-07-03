@@ -2559,7 +2559,7 @@ static spmatrix * SpMatrix_NewFromCCS(ccs *x)
 spmatrix * SpMatrix_NewFromSpMatrix(spmatrix *A, int id)
 {
   if ((id == DOUBLE) && (SP_ID(A) == COMPLEX))
-    PY_ERR_TYPE("cannot convert complex to double");
+    ERR_TYPE("cannot convert complex to double");
 
   spmatrix *ret = SpMatrix_New
       (SP_NROWS(A), SP_NCOLS(A), SP_NNZ(A), id);

@@ -855,7 +855,7 @@ def conelp(c, G, h, dims = None, A = None, b = None, primalstart = None,
     lmbdasq = matrix(0.0, (cdim_diag + 1, 1))
 
     gap = misc.sdot(s, z, dims)
-
+    
     for iters in range(MAXITERS+1):
 
         # hrx = -A'*y - G'*z

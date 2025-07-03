@@ -2219,7 +2219,6 @@ PyTypeObject matrixiter_tp = {
 };
 
 
-
 PyObject * matrix_log(matrix *self, PyObject *args, PyObject *kwrds)
 {
   PyObject *A;
