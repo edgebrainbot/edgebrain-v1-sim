@@ -102,7 +102,8 @@ spmatrix create_test_spmatrix()
 }
 
 
-void print_matrix(matrix *m) {
+void print_matrix(matrix *m) 
+{
     double *buf = MAT_BUFD(m);
     printf("Matrix (%dx%d):\n", m->nrows, m->ncols);
     for (int r = 0; r < m->nrows; ++r) {
