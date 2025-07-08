@@ -178,6 +178,11 @@ matrix * Matrix_New(int nrows, int ncols, int id)
  */
 matrix *Matrix_NewFromMatrix(matrix *src, int id)
 {
+  if (!src) {
+    fprintf(stderr, "Matrix_NewFromMatrix: input matrix is NULL.\n");
+    return NULL;
+  }
+  
   matrix *a;
 
   if (PY_NUMBER((PyObject *)src))

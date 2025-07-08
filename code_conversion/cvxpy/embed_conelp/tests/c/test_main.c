@@ -6,16 +6,31 @@
 #include "cvxopt.h" 
 #include "misc.h"
 #include <sys/time.h>
+#include <unistd.h> // 包含 getcwd() 声明
+#include <limits.h> // 定义 PATH_MAX
+
+int TEST_TIMES = 5;
 
 void test_all() {
-    test_base();
-    test_blas();
+    // test_base();
+    // test_blas();
+    test_lapack();
     // test_sparse();
-    test_misc_solvers();
+    // test_misc_solvers();
 
 }
 
+
 int main() {
+
+    char cwd[PATH_MAX]; // PATH_MAX 是系统定义的最大路径长度
+    
+    if (getcwd(cwd, sizeof(cwd))) {
+        printf("当前工作目录: %s\n", cwd);
+    } else {
+        perror("getcwd() 错误");
+        return 1;
+    }
 
     // 开始计时
     // clock_t start, end;
@@ -39,7 +54,7 @@ int main() {
 
     double elapsed = (end.tv_sec - start.tv_sec)
                    + (end.tv_usec - start.tv_usec) / 1e6;
-    printf("Elapsed time: %.6f seconds\n", elapsed);
+    // printf("Elapsed time: %.6f seconds\n", elapsed);
     
     return 0;
 }

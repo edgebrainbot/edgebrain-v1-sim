@@ -71,10 +71,15 @@ extern void blas_trmm(matrix *A, matrix *B, char side, char uplo, char transA, c
                void* alpha, int m, int n, int ldA, int ldB, int offsetA, int offsetB);
 extern void blas_trsm(matrix *A, matrix *B, char side, char uplo, char transA, char diag,
           void* alpha, int m, int n, int ldA, int ldB, int offsetA, int offsetB);
+extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB, 
+              void* alpha, void* beta, int m, int n, int k, int ldA, int ldB, 
+              int ldC, int offsetA, int offsetB, int offsetC);
+
 
 /* base library */
 extern void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
 extern void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
+extern void* base_pow(void* A, void* exponent, int A_type, int A_id, int exp_id);
 extern void* base_sqrt(void* A, int A_type, int A_id);
 
 extern matrix * Matrix_New(int, int, int);
@@ -691,28 +696,27 @@ void misc_scale2(matrix *lmbda, matrix *x, DIMs *dims, int mnl, char inverse)
 // }
 
 
-// static char doc_symm[] =
-//     "Converts lower triangular matrix to symmetric.\n\n"
-//     "symm(x, n, offset = 0)\n\n"
-//     "Fills in the upper triangular part of the symmetric matrix stored\n"
-//     "in x[offset : offset+n*n] using 'L' storage.";
+/**
+ * Converts lower triangular matrix to symmetric.
+ * 
+ * Fills in the upper triangular part of the symmetric matrix stored
+ * in x[offset : offset+n*n] using 'L' storage.
+ * 
+ * @param x        Pointer to the matrix structure
+ * @param n        Size of the matrix (n x n)
+ * @param offset   Starting offset in the matrix buffer (default = 0)
+ */
 
-// static PyObject* symm(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *x;
-//     int n, ox = 0, k, len, int1 = 1;
-//     char *kwlist[] = {"x", "n", "offset", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "Oi|i", kwlist, &x, &n,
-//         &ox)) return NULL;
-
-//     if (n > 1) for (k = 0; k < n; k++){
-//         len = n-k-1;
-//         dcopy_(&len, MAT_BUFD(x) + ox + k*(n+1) + 1, &int1, MAT_BUFD(x) +
-//             ox + (k+1)*(n+1)-1, &n);
-//     }
-//     return Py_BuildValue("");
-// }
+void misc_symm(matrix *x, int n, int offset)
+{
+    int ox = offset, k, len, int1 = 1;
+    if (n > 1) for (k = 0; k < n; k++){
+        len = n-k-1;
+        dcopy_(&len, MAT_BUFD(x) + ox + k*(n+1) + 1, &int1, MAT_BUFD(x) +
+            ox + (k+1)*(n+1)-1, &n);
+    }
+    return;
+}
 
 
 /**
@@ -1380,31 +1384,6 @@ void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl) {
 
 
 /**
- * Converts lower triangular matrix to symmetric.
- * 
- * Fills in the upper triangular part of the symmetric matrix stored
- * in x[offset : offset+n*n] using 'L' storage.
- * 
- * @param x        Pointer to the matrix data (double array)
- * @param n        Size of the matrix (n x n)
- * @param offset   Starting offset in the array (default 0)
- */
-
-void misc_symm(matrix *x, int n, int offset)
-{
-    int ox = offset;
-    if (ox < 0) ox = 0;
-
-    int k, nn, int1 = 1;
-    if (n > 1) for (k = 0; k < n; k++){
-        nn = n-k-1;
-        dcopy_(&nn, MAT_BUFD(x) + ox + k*(n+1) + 1, &int1, MAT_BUFD(x) +
-            ox + (k+1)*(n+1)-1, &n);
-    }
-}
-
-
-/**
  * Computes x' * J * y where J = [1, 0; 0, -I]
  * 
  * @param x Input matrix/vector x
@@ -1456,20 +1435,16 @@ double misc_jdot(matrix* x, matrix* y, int n, int offsetx, int offsety)
  * @param[in] z       Second input matrix/spmatrix
  * @param[in] lmbda   lmbda matrix/spmatrix
  * @param[in] dims    Dimensions structure
- * @param[in] mnl_ptr Pointer to number of nonlinear variables (optional)
+ * @param[in] mnl     Number of nonlinear variables (default = 0)
  *
  * @return Scaling structure containing computed scaling factors
  */
-scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int *mnl_ptr) {
-    /*
-     * Returns the Nesterov-Todd scaling W at points s and z, and stores the 
-     * scaled variable in lmbda. 
-     * 
-     *     W * z = W^{-T} * s = lmbda. 
-     */
-    
-    scaling W;
-    memset(&W, 0, sizeof(scaling));
+scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl) 
+{
+
+    scaling *W = malloc(sizeof(scaling));
+    Scaling_Init(W);
+    // memset(&W, 0, sizeof(scaling));
     
     // For the nonlinear block:
     //
@@ -1477,69 +1452,103 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
     //     W['dnli'] = sqrt( z[:mnl] ./ s[:mnl] )
     //     lambda[:mnl] = sqrt( s[:mnl] .* z[:mnl] )
 
-    int mnl;
-    if (mnl_ptr == NULL) {
-        mnl = 0;
+    if (mnl < 0) {
+        mnl = 0;    // Default to 0 if mnl is nonpositive
     } else {
-        ERR_TYPE("unsupported mnl_ptr type");
+        matrix* s_mnl = matrix_slice(s, 0, mnl);
+        matrix* z_mnl = matrix_slice(z, 0, mnl);
+
+        matrix* tmp = base_ediv(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
+        W->dnl = base_sqrt(tmp, 0, DOUBLE);
+        Matrix_Free(tmp);  // Free result of base_ediv 
+
+        double exponent = -1.0;
+        W->dnli = base_pow(W->dnl, &exponent, 0, DOUBLE, DOUBLE);
+        tmp = base_emul(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
+
+        int i = 0;
+        matrix* res = base_sqrt(tmp, 0, DOUBLE);
+        for (; i < mnl; ++i) {
+            ((double *)lmbda->buffer)[i] = ((double *)res->buffer)[i];
+        }
+
+        // Free all
+        Matrix_Free(tmp);
+        Matrix_Free(res);
+        Matrix_Free(s_mnl);
+        Matrix_Free(z_mnl);
+
     }
 
-    // For the 'l' block: 
-    //
-    //     W['d'] = sqrt( sk ./ zk )
-    //     W['di'] = sqrt( zk ./ sk )
-    //     lambdak = sqrt( sk .* zk )
-    //
-    // where sk and zk are the first dims['l'] entries of s and z.
-    // lambda_k is stored in the first dims['l'] positions of lmbda.
+    /* For the 'l' block:
+    *
+    *     W['d'] = sqrt(sk ./ zk)
+    *     W['di'] = sqrt(zk ./ sk)
+    *     lambdak = sqrt(sk .* zk)
+    *
+    * where:
+    * - sk and zk are the first dims['l'] entries of s and z
+    * - lambda_k is stored in the first dims['l'] positions of lmbda
+    */
              
     int m = dims->l;
     // void *res = base_ediv(s, z, )
-    if (m == 0) {
-        W.d = NULL;
-        W.di = NULL;
-    } 
+    // if (m == 0) {
+        // W->d = NULL;
+        // W->di = NULL;
+    // } 
     
-    // W.d = (matrix*)malloc(m * sizeof(matrix));
-    // W.di = (matrix*)malloc(m * sizeof(matrix));
-    // W.d_size = m;
-    // base_ediv()
-    // base_sqrt()
-    // base_ediv()
-    // base_sqrt_div(W.d, &s[mnl], &z[mnl], m);
-    // base_power_inv(W.di, W.d, m);
-    // base_sqrt_mul(&lmbda[mnl], &s[mnl], &z[mnl], m);
+    matrix *s_mnl_m = matrix_slice(s, mnl, m);
+    matrix *z_mnl_m = matrix_slice(z, mnl, m);
+    matrix *tmp = base_ediv(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
+    W->d = base_sqrt(tmp, 0, DOUBLE);
+    Matrix_Free(tmp);  // Free result of base_ediv
 
-    // For the 'q' blocks, compute lists 'v', 'beta'.
-    //
-    // The vector v[k] has unit hyperbolic norm: 
-    // 
-    //     (sqrt( v[k]' * J * v[k] ) = 1 with J = [1, 0; 0, -I]).
-    // 
-    // beta[k] is a positive scalar.
-    //
-    // The hyperbolic Householder matrix H = 2*v[k]*v[k]' - J
-    // defined by v[k] satisfies 
-    // 
-    //     (beta[k] * H) * zk  = (beta[k] * H) \ sk = lambda_k
-    //
-    // where sk = s[indq[k]:indq[k+1]], zk = z[indq[k]:indq[k+1]].
-    //
-    // lambda_k is stored in lmbda[indq[k]:indq[k+1]].
+    double exponent = -1.0;
+    W->di = base_pow(W->d, &exponent, 0, DOUBLE, DOUBLE);
+    tmp = base_emul(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
+    matrix *res = base_sqrt(tmp, 0, DOUBLE);
+    for (int i = 0; i < m; ++i) {
+        ((double *)lmbda->buffer)[mnl + i] = ((double *)res->buffer)[i];
+    }
+    // Free all
+    Matrix_Free(tmp);
+    Matrix_Free(res);
+    Matrix_Free(s_mnl_m);
+    Matrix_Free(z_mnl_m);
+
+    /*
+    * For the 'q' blocks, compute lists 'v' and 'beta':
+    *
+    * - The vector v[k] has unit hyperbolic norm:
+    *     sqrt(v[k]' * J * v[k]) = 1, where J = [1, 0; 0, -I]
+    *   
+    * - beta[k] is a positive scalar
+    *
+    * The hyperbolic Householder matrix H = 2*v[k]*v[k]' - J defined by v[k]
+    * satisfies:
+    *
+    *     (beta[k] * H) * zk = (beta[k] * H) \ sk = lambda_k
+    *
+    * where:
+    * - sk = s[indq[k]:indq[k+1]]
+    * - zk = z[indq[k]:indq[k+1]]
+    * - lambda_k is stored in lmbda[indq[k]:indq[k+1]]
+    */
            
     int ind = mnl + dims->l;
-    W.v_count = dims->q_size;
-    W.v = (matrix**)malloc(dims->q_size * sizeof(matrix*));
-    for (int k = 0; k < dims->q_size; k++) {
-        W.v[k] = Matrix_New(dims->q[k], 1, DOUBLE);
+    W->v_count = dims->q_size;
+    W->v = (matrix**)malloc(dims->q_size * sizeof(matrix*));
+    for (int k = 0; k < dims->q_size; ++k) {
+        W->v[k] = Matrix_New(dims->q[k], 1, DOUBLE);
     }
     
-    W.b_count= dims->q_size;
-    W.beta = (double*)calloc(dims->q_size, sizeof(double));
+    W->b_count= dims->q_size;
+    W->beta = (double*)calloc(dims->q_size, sizeof(double));
 
-    for (int k = 0; k < dims->q_size; k++) {
+    for (int k = 0; k < dims->q_size; ++k) {
         m = dims->q[k];
-        matrix *v = W.v[k];
+        matrix *v = W->v[k];
 
         // a = sqrt( sk' * J * sk )  where J = [1, 0; 0, -I]
         double aa = misc_jnrm2(s, m, ind);
@@ -1548,7 +1557,7 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
         double bb = misc_jnrm2(z, m, ind);
 
         // beta[k] = ( a / b )**1/2
-        W.beta[k] = sqrt(aa / bb);
+        W->beta[k] = sqrt(aa / bb);
 
         // c = sqrt( (sk/a)' * (zk/b) + 1 ) / sqrt(2)    
         number tmp_num = blas_dot(s, z, m, 1, 1, ind, ind);
@@ -1594,30 +1603,31 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
         ind += m;
     }
 
-    // For the 's' blocks: compute two lists 'r' and 'rti'.
-    //
-    //     r[k]' * sk^{-1} * r[k] = diag(lambda_k)^{-1}
-    //     r[k]' * zk * r[k] = diag(lambda_k)
-    //
-    // where sk and zk are the entries inds[k] : inds[k+1] of
-    // s and z, reshaped into symmetric matrices.
-    //
-    // rti[k] is the inverse of r[k]', so 
-    //
-    //     rti[k]' * sk * rti[k] = diag(lambda_k)^{-1}
-    //     rti[k]' * zk^{-1} * rti[k] = diag(lambda_k).
-    //
-    // The vectors lambda_k are stored in 
-    // 
-    //     lmbda[ dims['l'] + sum(dims['q']) : -1 ]
+    /* For the 's' blocks: compute two lists 'r' and 'rti':
+    *
+    *     r[k]' * sk^{-1} * r[k] = diag(lambda_k)^{-1}
+    *     r[k]' * zk * r[k] = diag(lambda_k)
+    *
+    * where:
+    * - sk and zk are the entries inds[k] : inds[k+1] of s and z,
+    *   reshaped into symmetric matrices
+    *
+    * rti[k] is the inverse of r[k]', so:
+    *
+    *     rti[k]' * sk * rti[k] = diag(lambda_k)^{-1}
+    *     rti[k]' * zk^{-1} * rti[k] = diag(lambda_k)
+    *
+    * The vectors lambda_k are stored in:
+    *     lmbda[ dims['l'] + sum(dims['q']) : -1 ]
+    */
             
-    W.r_count = dims->s_size;
-    W.r = (matrix**)malloc(dims->s_size * sizeof(matrix*));
-    W.rti = (matrix**)malloc(dims->s_size * sizeof(matrix*));
+    W->r_count = dims->s_size;
+    W->r = (matrix**)malloc(dims->s_size * sizeof(matrix*));
+    W->rti = (matrix**)malloc(dims->s_size * sizeof(matrix*));
     
-    for (int k = 0; k < dims->s_size; k++) {
-        W.r[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
-        W.rti[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
+    for (int k = 0; k < dims->s_size; ++k) {
+        W->r[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
+        W->rti[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
     }
     
     int max_s = max_array(dims->s, dims->s_size);
@@ -1630,8 +1640,8 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
     int ind2 = ind;
     for (int k = 0; k < dims->s_size; k++) {
         m = dims->s[k];
-        matrix *r = W.r[k];
-        matrix *rti = W.rti[k];
+        matrix *r = W->r[k];
+        matrix *rti = W->rti[k];
 
         // Factor sk = Ls*Ls'; store Ls in ds[inds[k]:inds[k+1]].
         blas_copy(s, Ls, m*m, 1, 1, ind2, 0);
@@ -1660,7 +1670,7 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
 
         // r := r * diag(sqrt(lambda_k))
         // rti := rti * diag(1 ./ sqrt(lambda_k))
-        for (int i = 0; i < m; i++) {
+        for (int i = 0; i < m; ++i) {
             double a = sqrt(((double *)(lmbda->buffer))[ind + i]);
             double tmp_a = 1.0 / a;
             blas_scal(&a, r, m, 1, m*i);
@@ -1699,237 +1709,525 @@ scaling misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, in
  * @param[in,out] s      New iterate in current scaling (input/output)
  * @param[in,out] z      New iterate in current scaling (input/output)
  */
-// void update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z) {
-//     /**
-//      * Updates the Nesterov-Todd scaling matrix W and the scaled variable 
-//      * lmbda so that on exit
-//      * 
-//      *       W * zt = W^{-T} * st = lmbda.
-//      *  
-//      * On entry, the nonlinear, 'l' and 'q' components of the arguments s 
-//      * and z contain W^{-T}*st and W*zt, i.e, the new iterates in the current 
-//      * scaling.
-//      * 
-//      * The 's' components contain the factors Ls, Lz in a factorization of 
-//      * the new iterates in the current scaling, W^{-T}*st = Ls*Ls',   
-//      * W*zt = Lz*Lz'.
-//      */
+void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z) 
+{
 
-//     // Nonlinear and 'l' blocks
-//     //
-//     //    d :=  d .* sqrt( s ./ z )
-//     //    lmbda := lmbda .* sqrt(s) .* sqrt(z)
+    /* Nonlinear and 'l' blocks:
+    *
+    *    d := d .* sqrt(s ./ z)
+    *    lmbda := lmbda .* sqrt(s) .* sqrt(z)
+    */
 
-//     int mnl, ml, m;
-//     if (W->has_dnl) {
-//         mnl = W->dnl_count;
-//     } else {
-//         mnl = 0;
-//     }
-//     ml = W->d_count;
-//     m = mnl + ml;
+    int mnl, ml, m;
+    if (W->has_dnl) {
+        mnl = W->dnl_count;
+    } else {
+        mnl = 0;
+    }
+    ml = W->d_count;
+    m = mnl + ml;
     
-//     // base_sqrt(s, m);
-//     // base_sqrt(z, m);
+    matrix *s_m = matrix_slice(s, 0, m);
+    matrix *z_m = matrix_slice(z, 0, m);
+    matrix *tmp1 = base_sqrt(s_m, 0, DOUBLE);
+    matrix *tmp2 = base_sqrt(z_m, 0, DOUBLE);
+
+    for(int i = 0; i < m; ++i) {
+        ((double *)(s->buffer))[i] = ((double *)tmp1->buffer)[i];
+        ((double *)(z->buffer))[i] = ((double *)tmp2->buffer)[i];
+    }
+
+    Matrix_Free(tmp1);
+    Matrix_Free(tmp2);
+    Matrix_Free(s_m);
+    Matrix_Free(z_m);
  
-//     // d := d .* s .* z 
-//     if (W->has_dnl) {
-//         blas_tbmv(s, W->dnl, 'L', 'N', 'N', mnl, 0, 1, 1, 0, 0);
-//         blas_tbsv(z, W->dnl, 'L', 'N', 'N', mnl, 0, 1, 1, 0, 0);
-//         // for (int i = 0; i < mnl; i++) {
-//             // W->dnli[i] = 1.0 / W->dnl[i];
-//         // }
-//     }
-//     blas_tbmv(s, W->d, 'L', 'N', 'N', ml, 0, 1, 1, mnl, 0);
-//     blas_tbsv(z, W->d, 'L', 'N', 'N', ml, 0, 1, 1, mnl, 0);
-//     // for (int i = 0; i < ml; i++) {
-//         // W->di[i] = 1.0 / W->d[i];
-//     // }
+    // d := d .* s .* z 
+    if (W->has_dnl) {
+        blas_tbmv(s, W->dnl, 'L', 'N', 'N', mnl, 0, 1, 1, 0, 0);
+        blas_tbsv(z, W->dnl, 'L', 'N', 'N', mnl, 0, 1, 1, 0, 0);
+        matrix *tmp = base_pow(W->dnl, &((double){-1.0}), 0, DOUBLE, DOUBLE);
+        for(int i = 0; i < MAT_LGT(W->dnl); ++i) {
+            ((double *)(W->dnl->buffer))[i] = ((double *)tmp->buffer)[i];
+        }
+        Matrix_Free(tmp);
+    }
+    blas_tbmv(s, W->d, 'L', 'N', 'N', ml, 0, 1, 1, mnl, 0);
+    blas_tbsv(z, W->d, 'L', 'N', 'N', ml, 0, 1, 1, mnl, 0);
+    matrix *tmp = base_pow(W->d, &((double){-1.0}), 0, DOUBLE, DOUBLE);
+    for(int i = 0; i < MAT_LGT(W->d); ++i) {
+        ((double *)(W->d->buffer))[i] = ((double *)tmp->buffer)[i];
+    }
+    Matrix_Free(tmp);
          
-//     // lmbda := s .* z
-//     blas_copy(s, lmbda, m, 1, 1, 0, 0);
-//     blas_tbmv(z, lmbda, 'L', 'N', 'N', m, 0, 1, 1, 0, 0);
+    // lmbda := s .* z
+    blas_copy(s, lmbda, m, 1, 1, 0, 0);
+    blas_tbmv(z, lmbda, 'L', 'N', 'N', m, 0, 1, 1, 0, 0);
 
-//     // 'q' blocks.
-//     // 
-//     // Let st and zt be the new variables in the old scaling:
-//     //
-//     //     st = s_k,   zt = z_k
-//     //
-//     // and a = sqrt(st' * J * st),  b = sqrt(zt' * J * zt).
-//     //
-//     // 1. Compute the hyperbolic Householder transformation 2*q*q' - J 
-//     //    that maps st/a to zt/b.
-//     // 
-//     //        c = sqrt( (1 + st'*zt/(a*b)) / 2 ) 
-//     //        q = (st/a + J*zt/b) / (2*c). 
-//     //
-//     //    The new scaling point is 
-//     //
-//     //        wk := betak * sqrt(a/b) * (2*v[k]*v[k]' - J) * q 
-//     //
-//     //    with betak = W['beta'][k].
-//     // 
-//     // 3. The scaled variable:
-//     //
-//     //        lambda_k0 = sqrt(a*b) * c
-//     //        lambda_k1 = sqrt(a*b) * ( (2vk*vk' - J) * (-d*q + u/2) )_1
-//     //
-//     //    where 
-//     //
-//     //        u = st/a - J*zt/b 
-//     //        d = ( vk0 * (vk'*u) + u0/2 ) / (2*vk0 *(vk'*q) - q0 + 1).
-//     //
-//     // 4. Update scaling
-//     //   
-//     //        v[k] := wk^1/2 
-//     //              = 1 / sqrt(2*(wk0 + 1)) * (wk + e).
-//     //        beta[k] *=  sqrt(a/b)
+    /* 'q' blocks:
+    *
+    * Let st and zt be the new variables in the old scaling:
+    *
+    *     st = s_k,   zt = z_k
+    *
+    * and a = sqrt(st' * J * st),  b = sqrt(zt' * J * zt).
+    *
+    * 1. Compute the hyperbolic Householder transformation 2*q*q' - J 
+    *    that maps st/a to zt/b:
+    *
+    *        c = sqrt( (1 + st'*zt/(a*b)) / 2 )
+    *        q = (st/a + J*zt/b) / (2*c)
+    *
+    *    The new scaling point is:
+    *
+    *        wk := betak * sqrt(a/b) * (2*v[k]*v[k]' - J) * q
+    *
+    *    with betak = W['beta'][k]
+    *
+    * 2. The scaled variable:
+    *
+    *        lambda_k0 = sqrt(a*b) * c
+    *        lambda_k1 = sqrt(a*b) * ( (2vk*vk' - J) * (-d*q + u/2) )_1
+    *
+    *    where:
+    *
+    *        u = st/a - J*zt/b
+    *        d = ( vk0 * (vk'*u) + u0/2 ) / (2*vk0 *(vk'*q) - q0 + 1)
+    *
+    * 3. Update scaling:
+    *
+    *        v[k] := wk^(1/2)
+    *              = 1 / sqrt(2*(wk0 + 1)) * (wk + e)
+    *        beta[k] *= sqrt(a/b)
+    */
 
-//     int ind = m;
-//     for (int k = 0; k < W->v_count; k++) {
-//         matrix *v = W->v[k];
-//         m = v->rows;
-//         double *v_data = (double *)v->buffer;
+    int ind = m;
+    for (int k = 0; k < W->v_count; ++k) {
+        matrix *v = W->v[k];
+        m = len(v);
 
-//         // ln = sqrt( lambda_k' * J * lambda_k )
-//         double ln = misc_jnrm2(lmbda, m, ind);
+        double *v_data = (double *)v->buffer;
+        double *s_data = (double *)s->buffer;
+        double *z_data = (double *)z->buffer;
 
-//         // a = sqrt( sk' * J * sk ) = sqrt( st' * J * st ) 
-//         // s := s / a = st / a
-//         double aa = misc_jnrm2(s, m, ind);
-//         double alpha = 1.0 / aa;
-//         blas_scal(&alpha, s, m, 1, ind);
+        // ln = sqrt( lambda_k' * J * lambda_k )
+        double ln = misc_jnrm2(lmbda, m, ind);
 
-//         // b = sqrt( zk' * J * zk ) = sqrt( zt' * J * zt )
-//         // z := z / a = zt / b
-//         double bb = misc_jnrm2(z, m, ind);
+        // a = sqrt( sk' * J * sk ) = sqrt( st' * J * st ) 
+        // s := s / a = st / a
+        double aa = misc_jnrm2(s, m, ind);
+        double alpha = 1.0 / aa;
+        blas_scal(&alpha, s, m, 1, ind);
 
-//         alpha = 1.0 / bb;
-//         blas_scal(&alpha, z, m, 1, ind);
+        // b = sqrt( zk' * J * zk ) = sqrt( zt' * J * zt )
+        // z := z / a = zt / b
+        double bb = misc_jnrm2(z, m, ind);
 
-//         // c = sqrt( ( 1 + (st'*zt) / (a*b) ) / 2 )
-//         number c_tmp = blas_dot(s, z, m, 1, 1, ind, ind);
-//         double cc = sqrt((1.0 + c_tmp.d) / 2.0);
+        alpha = 1.0 / bb;
+        blas_scal(&alpha, z, m, 1, ind);
 
-//         // vs = v' * st / a 
-//         double vs = blas_dot(v_data, s, m_v, 0, ind);
+        // c = sqrt( ( 1 + (st'*zt) / (a*b) ) / 2 )
+        number c_tmp = blas_dot(s, z, m, 1, 1, ind, ind);
+        double cc = sqrt((1.0 + c_tmp.d) / 2.0);
 
-//         // vz = v' * J *zt / b
-//         double vz = jdot(v_data, z, m_v, 0, ind);
+        // vs = v' * st / a 
+        number vs = blas_dot(v, s, m, 1, 1, ind, ind);
 
-//         // vq = v' * q where q = (st/a + J * zt/b) / (2 * c)
-//         double vq = (vs + vz) / 2.0 / cc;
+        // vz = v' * J *zt / b
+        double vz = misc_jdot(v, z, m, 0, ind);
 
-//         // vu = v' * u  where u =  st/a - J * zt/b 
-//         double vu = vs - vz;
+        // vq = v' * q where q = (st/a + J * zt/b) / (2 * c)
+        double vq = (vs.d + vz) / 2.0 / cc;
 
-//         // lambda_k0 = c
-//         lmbda[ind] = cc;
+        // vu = v' * u  where u =  st/a - J * zt/b 
+        double vu = vs.d - vz;
 
-//         // wk0 = 2 * vk0 * (vk' * q) - q0 
-//         double wk0 = 2.0 * v_data[0] * vq - (s[ind] + z[ind]) / 2.0 / cc;
+        // lambda_k0 = c
+        ((double *)lmbda->buffer)[ind] = cc;
 
-//         // d = (v[0] * (vk' * u) - u0/2) / (wk0 + 1)
-//         double dd = (v_data[0] * vu - s[ind]/2.0 + z[ind]/2.0) / (wk0 + 1.0);
+        // wk0 = 2 * vk0 * (vk' * q) - q0 
+        double wk0 = 2.0 * v_data[0] * vq - (s_data[ind] + z_data[ind]) / 2.0 / cc;
 
-//         // lambda_k1 = 2 * v_k1 * vk' * (-d*q + u/2) - d*q1 + u1/2
-//         blas_copy(v_data, lmbda, m_v-1, 1, ind+1);
-//         blas_scal(2.0 * (-dd * vq + 0.5 * vu), lmbda, m_v-1, ind+1);
-//         blas_axpy(s, lmbda, 0.5 * (1.0 - dd/cc), m_v-1, ind+1, ind+1);
-//         blas_axpy(z, lmbda, 0.5 * (1.0 + dd/cc), m_v-1, ind+1, ind+1);
+        // d = (v[0] * (vk' * u) - u0/2) / (wk0 + 1)
+        double dd = (v_data[0] * vu - s_data[ind]/2.0 + z_data[ind]/2.0) / (wk0 + 1.0);
 
-//         // Scale so that sqrt(lambda_k' * J * lambda_k) = sqrt(aa*bb).
-//         blas_scal(sqrt(aa*bb), lmbda, m_v, ind);
+        // lambda_k1 = 2 * v_k1 * vk' * (-d*q + u/2) - d*q1 + u1/2
+        blas_copy(v_data, lmbda, m-1, 1, 1, 1, ind+1);
+        alpha = 2.0 * (-dd * vq + 0.5 * vu);
+        blas_scal(&alpha, lmbda, m-1, 1, ind+1);
+
+        number alpha_n;
+        alpha_n.d = 0.5 * (1.0 - dd/cc);
+        blas_axpy(s, lmbda, &alpha_n, m-1, 1, 1, ind+1, ind+1);
+        blas_axpy(z, lmbda, &alpha_n, m-1, 1, 1, ind+1, ind+1);
+
+        // Scale so that sqrt(lambda_k' * J * lambda_k) = sqrt(aa*bb).
+        alpha = sqrt(aa * bb);
+        blas_scal(&alpha, lmbda, m, 1, ind);
             
-//         // v := (2*v*v' - J) * q 
-//         //    = 2 * (v'*q) * v' - (J* st/a + zt/b) / (2*c)
-//         blas_scal(2.0 * vq, v_data, m_v, 0);
-//         v_data[0] -= s[ind] / 2.0 / cc;
-//         blas_axpy(s, v_data, 0.5/cc, m_v-1, ind+1, 1);
-//         blas_axpy(z, v_data, -0.5/cc, m_v, ind, 0);
+        // v := (2*v*v' - J) * q 
+        //    = 2 * (v'*q) * v' - (J* st/a + zt/b) / (2*c)
+        alpha = 2.0 * vq;
+        blas_scal(&alpha, v_data, -1, 1, 0);
+        v_data[0] -= s_data[ind] / 2.0 / cc;
+        alpha_n.d = 0.5 / cc;
+        blas_axpy(s, v_data, &alpha_n, m-1, 1, 1, ind+1, 1);
+        blas_axpy(z, v_data, &alpha_n, m, 1, 1, ind, 0);
 
-//         // v := v^{1/2} = 1/sqrt(2 * (v0 + 1)) * (v + e)
-//         v_data[0] += 1.0;
-//         blas_scal(1.0 / sqrt(2.0 * v_data[0]), v_data, m_v, 0);
+        // v := v^{1/2} = 1/sqrt(2 * (v0 + 1)) * (v + e)
+        v_data[0] += 1.0;
+        alpha = 1.0 / sqrt(2.0 * v_data[0]);
+        blas_scal(&alpha, v_data, -1, 1, 0);
 
-//         // beta[k] *= ( aa / bb )**1/2
-//         W->beta[k] *= sqrt(aa / bb);
+        // beta[k] *= ( aa / bb )**1/2
+        W->beta[k] *= sqrt(aa / bb);
             
-//         ind += m_v;
-//     }
+        ind += m;
+    }
 
-//     // 's' blocks
-//     // 
-//     // Let st, zt be the updated variables in the old scaling:
-//     // 
-//     //     st = Ls * Ls', zt = Lz * Lz'.
-//     //
-//     // where Ls and Lz are the 's' components of s, z.
-//     //
-//     // 1.  SVD Lz'*Ls = Uk * lambda_k^+ * Vk'.
-//     //
-//     // 2.  New scaling is 
-//     //
-//     //         r[k] := r[k] * Ls * Vk * diag(lambda_k^+)^{-1/2}
-//     //         rti[k] := r[k] * Lz * Uk * diag(lambda_k^+)^{-1/2}.
-//     //
+    // 's' blocks
+    // 
+    // Let st, zt be the updated variables in the old scaling:
+    // 
+    //     st = Ls * Ls', zt = Lz * Lz'.
+    //
+    // where Ls and Lz are the 's' components of s, z.
+    //
+    // 1.  SVD Lz'*Ls = Uk * lambda_k^+ * Vk'.
+    //
+    // 2.  New scaling is 
+    //
+    //         r[k] := r[k] * Ls * Vk * diag(lambda_k^+)^{-1/2}
+    //         rti[k] := r[k] * Lz * Uk * diag(lambda_k^+)^{-1/2}.
+    //
 
-//     // Calculate maximum dimension for workspace
-//     int max_r_sizes[W->r_len];
-//     for (int k = 0; k < W->r_len; k++) {
-//         max_r_sizes[k] = W->r[k]->rows;
-//     }
-//     int max_r_size = max_int(max_r_sizes, W->r_len);
-//     matrix *work = Matrix_New(max_r_size * max_r_size, 1, DOUBLE);
+    // Calculate maximum dimension for workspace
+    int max_r_sizes[W->r_count];
+    for (int k = 0; k < W->r_count; k++) {
+        max_r_sizes[k] = W->r[k]->nrows;
+    }
+    int max_r_size = max_array(max_r_sizes, W->r_count);
+    matrix *work = Matrix_New(max_r_size * max_r_size, 1, DOUBLE);
+    double *lmbda_data = (double *)lmbda->buffer;
     
-//     // Calculate starting indices
-//     int v_total = 0;
-//     for (int k = 0; k < W->v_len; k++) {
-//         v_total += W->v[k]->rows;
+    // Calculate starting indices
+    int v_total = 0;
+    for (int k = 0; k < W->v_count; k++) {
+        v_total += len(W->v[k]);
+    }
+    
+    ind = mnl + ml + v_total;
+    int ind2 = ind;
+    int ind3 = 0;
+    
+    for (int k = 0; k < W->r_count; k++) {
+        matrix *r = W->r[k];
+        matrix *rti = W->rti[k];
+        int m = r->nrows;
+
+        // r := r*sk = r*Ls
+        blas_gemm(r, s, work, 'N', 'N', NULL, NULL, m, m, m, 0, m, m, 0, ind2, 0);
+        blas_copy(work, r, m*m, 1, 1, 0, 0);
+
+        // rti := rti*zk = rti*Lz
+        blas_gemm(rti, z, work, 'N', 'N', NULL, NULL, m, m, m, 0, m, m, 0, ind2, 0);
+        blas_copy(work, rti, m*m, 1, 1, 0, 0);
+
+        // SVD Lz'*Ls = U * lmbds^+ * V'; store U in sk and V' in zk.
+        blas_gemm(z, s, work, 'T', 'N', NULL, NULL, m, m, m, m, m, m, 0, ind2, 0);
+        lapack_gesvd(work, lmbda, 'A', 'A', s, z, m, m, m, m, m, 0, ind, ind2, ind2);
+
+        // r := r*V
+        blas_gemm(r, z, work, 'N', 'T', NULL, NULL, m, m, m, 0, m, m, 0, ind2, 0);
+        blas_copy(work, r, m*m, 1, 1, 0, 0);
+
+        // rti := rti*U
+        blas_gemm(rti, s, work, 'N', 'N', NULL, NULL, m, m, m, 0, m, m, 0, ind2, 0);
+        blas_copy(work, rti, m*m, 1, 1, 0, 0);
+
+        // r := r*lambda^{-1/2}; rti := rti*lambda^{-1/2}
+        for (int i = 0; i < m; i++) {
+            double a = 1.0 / sqrt(lmbda_data[ind + i]);
+            blas_scal(&a, r, m, 1, m * i);
+            blas_scal(&a, rti, m, 1, m * i);
+        }
+
+        ind += m;
+        ind2 += m * m;
+        ind3 += m;
+    }
+    
+    // Clean up workspace
+    Matrix_Free(work);
+}
+
+
+static void solve(matrix *x, matrix *y, matrix *z, scaling *W, 
+                  matrix *H, matrix *Df, matrix *A, int mnl, 
+                  int p, int n, int ldK, int *ipiv) 
+{
+    // Solve the KKT system using the LDL factorization
+    // This function is called by the factor_impl function below
+    // The implementation details are omitted for brevity
+    // ...
+}
+
+
+/* Solution of KKT equations by a dense LDL factorization of the 2x2 system.
+ *
+ * Returns a function that:
+ * 1. Computes the LDL factorization of:
+ *
+ *        [ H + GG' * W^{-1} * W^{-T} * GG   A' ]
+ *        [                                     ]
+ *        [ A                                0  ]
+ *
+ *    given H, Df, W, where GG = [Df; G]
+ *
+ * 2. Returns a function for solving:
+ *
+ *        [ H    A'   GG'   ]   [ ux ]   [ bx ]
+ *        [ A    0    0     ] * [ uy ] = [ by ]
+ *        [ GG   0   -W'*W  ]   [ uz ]   [ bz ]
+ *
+ * Dimensions:
+ * - H is n x n
+ * - A is p x n
+ * - Df is mnl x n
+ * - G is N x n where N = dims['l'] + sum(dims['q']) + sum(k^2 for k in dims['s'])
+ */
+// FactorFunc kkt_ldl2(matrix *G, DIMs *dims, matrix *A, int mnl) {
+    
+//     // p, n = A.size
+//     int p = A->nrows;
+//     int n = A->ncols;
+    
+//     // ldK = n + p 
+//     int ldK = n + p;
+    
+//     // Allocate context structure
+//     KKT_Context *ctx = (KKT_Context*)malloc(sizeof(KKT_Context));
+//     ctx->G = G;
+//     ctx->dims = dims;
+//     ctx->A = A;
+//     ctx->mnl = mnl;
+//     ctx->p = p;
+//     ctx->n = n;
+//     ctx->ldK = ldK;
+    
+//     // K = matrix(0.0, (ldK, ldK))
+//     ctx->K = Matrix_New(ldK, ldK, DOUBLE);
+    
+//     // if p: ipiv = matrix(0, (ldK, 1))
+//     if (p) {
+//         ctx->ipiv = (int*)calloc(ldK, sizeof(int));
+//     } else {
+//         ctx->ipiv = NULL;
 //     }
     
-//     ind = mnl + ml + v_total;
-//     int ind2 = ind;
-//     int ind3 = 0;
+//     // g = matrix(0.0, (mnl + G.size[0], 1))
+//     ctx->g = Matrix_New(mnl + G->nrows, 1);
     
-//     for (int k = 0; k < W->r_len; k++) {
-//         matrix *r = W->r[k];
-//         matrix *rti = W->rti[k];
-//         int m_r = r->rows;
-
-//         // r := r*sk = r*Ls
-//         blas_gemm(r->data, s, work->data, 'N', 'N', m_r, m_r, m_r, m_r, m_r, m_r, 0, ind2);
-//         blas_copy(work->data, r->data, m_r*m_r, 0, 0);
-
-//         // rti := rti*zk = rti*Lz
-//         blas_gemm(rti->data, z, work->data, 'N', 'N', m_r, m_r, m_r, m_r, m_r, m_r, 0, ind2);
-//         blas_copy(work->data, rti->data, m_r*m_r, 0, 0);
-
-//         // SVD Lz'*Ls = U * lmbds^+ * V'; store U in sk and V' in zk.
-//         blas_gemm(z, s, work->data, 'T', 'N', m_r, m_r, m_r, m_r, m_r, m_r, ind2, ind2);
-//         lapack_gesvd(work->data, lmbda, 'A', 'A', m_r, m_r, m_r, s, z, m_r, m_r, ind, ind2, ind2);
-
-//         // r := r*V
-//         blas_gemm(r->data, z, work->data, 'N', 'T', m_r, m_r, m_r, m_r, m_r, m_r, 0, ind2);
-//         blas_copy(work->data, r->data, m_r*m_r, 0, 0);
-
-//         // rti := rti*U
-//         blas_gemm(rti->data, s, work->data, 'N', 'N', m_r, m_r, m_r, m_r, m_r, m_r, 0, ind2);
-//         blas_copy(work->data, rti->data, m_r*m_r, 0, 0);
-
-//         // r := r*lambda^{-1/2}; rti := rti*lambda^{-1/2}
-//         for (int i = 0; i < m_r; i++) {
-//             double a = 1.0 / sqrt(lmbda[ind + i]);
-//             blas_scal(a, r->data, m_r, m_r * i);
-//             blas_scal(a, rti->data, m_r, m_r * i);
-//         }
-
-//         ind += m_r;
-//         ind2 += m_r * m_r;
-//         ind3 += m_r;
-//     }
+//     // u = matrix(0.0, (ldK, 1))
+//     ctx->u = Matrix_New(ldK, 1);
     
-//     // Clean up workspace
-//     Matrix_Free(work);
+//     // Store context pointer to be used by factor function
+//     static KKT_Context *static_ctx = NULL;
+//     static_ctx = ctx;
+    
+//     return factor_impl;
 // }
+
+
+/**
+ * Copy x to y using packed storage.
+ *
+ * The vector x is an element of S, with the 's' components stored in
+ * unpacked storage.  On return, x is copied to y with the 's' 
+ * components stored in packed storage and the off-diagonal entries 
+ * scaled by sqrt(2).
+ *
+ * @param x        Input matrix
+ * @param y        Output matrix  
+ * @param dims     Cone dimensions structure
+ * @param mnl      Additional offset for nonlinear variables (default 0)
+ * @param offsetx  Offset in x (default 0)
+ * @param offsety  Offset in y (default 0)
+ */
+
+void misc_pack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety)
+{
+    double a;
+    int i, k, nlq = mnl, ox = offsetx, oy = offsety, np, iu, ip, int1 = 1, len, n;
+
+    // Default values
+    if (mnl < 0) nlq = 0;  
+    if (offsetx < 0) ox = 0; 
+    if (offsety < 0) oy = 0; 
+
+    // Calculate nlq by adding 'l' dimensions
+    nlq += dims->l;
+
+    // Add all 'q' dimensions
+    for (i = 0; i < dims->q_size; ++i){
+        nlq += dims->q[i];
+    }
+
+    // Copy the linear and quadratic parts
+    dcopy_(&nlq, MAT_BUFD(x) + ox, &int1, MAT_BUFD(y) + oy, &int1);
+
+    // Process semidefinite blocks
+    for (i = 0, np = 0, iu = ox + nlq, ip = oy + nlq; i < dims->s_size; ++i){
+        n = dims->s[i];
+        for (k = 0; k < n; k++){
+            len = n-k;
+            dcopy_(&len, MAT_BUFD(x) + iu + k*(n+1), &int1,  MAT_BUFD(y) +
+                ip, &int1);
+            MAT_BUFD(y)[ip] /= sqrt(2.0);
+            ip += len;
+        }
+        np += n*(n+1)/2;
+        iu += n*n;
+    }
+
+    // Scale the packed semidefinite part
+    a = sqrt(2.0);
+    dscal_(&np, &a, MAT_BUFD(y) + oy + nlq, &int1);
+
+    return;
+}
+
+
+/**
+ * In-place version of pack().
+ *
+ * misc_pack2(x, dims, mnl = 0)
+ *
+ * In-place version of pack(), which also accepts matrix arguments x.
+ * The columns of x are elements of S, with the 's' components stored
+ * in unpacked storage.  On return, the 's' components are stored in
+ * packed storage and the off-diagonal entries are scaled by sqrt(2).
+ *
+ * @param x    Matrix with 's' components in unpacked storage
+ * @param dims Cone dimensions structure
+ * @param mnl  Additional offset (default = 0)
+ */
+void misc_pack2(matrix *x, DIMs *dims, int mnl)
+{
+    double a = sqrt(2.0), *wrk;
+    int i, j, k, nlq = mnl, iu, ip, len, n, maxn, xr, xc;
+
+    // Default values
+    if (mnl < 0) nlq = 0;  
+
+    // Get matrix dimensions
+    xr = x->nrows;
+    xc = x->ncols;
+
+    // Calculate nlq by adding 'l' dimension
+    nlq += dims->l;
+
+    // Add all 'q' dimensions
+    for (i = 0; i < dims->q_size; i++){
+        nlq += dims->q[i];
+    }
+
+    // Find maximum 's' dimension
+    maxn = 0;
+    for (i = 0; i < dims->s_size; i++){
+        maxn = MAX(maxn, dims->s[i]);
+    }
+    
+    // If no 's' blocks, return immediately
+    if (!maxn) return;
+
+    // Allocate workspace
+    if (!(wrk = (double *) calloc(maxn * xc, sizeof(double))))
+        err_no_memory;
+
+    for (i = 0, iu = nlq, ip = nlq; i < dims->s_size; ++i){
+        n = dims->s[i];
+
+        // For each column k in the n x n block
+        for (k = 0; k < n; k++){
+            len = n-k;
+            dlacpy_(" ", &len, &xc, MAT_BUFD(x) + iu + k*(n+1), &xr, wrk, 
+                &maxn);
+            for (j = 1; j < len; j++)
+                dscal_(&xc, &a, wrk + j, &maxn);
+            dlacpy_(" ", &len, &xc, wrk, &maxn, MAT_BUFD(x) + ip, &xr);
+            ip += len;
+        }
+        iu += n*n;
+    }
+
+    free(wrk);
+    return;
+}
+
+
+/**
+ * @brief Unpacks x into y
+ * 
+ * @param x Input matrix - element of S with 's' components stored in packed storage 
+ *          and off-diagonal entries scaled by sqrt(2)
+ * @param y Output matrix - will contain x with 's' components stored in unpacked storage
+ * @param dims Cone dimensions structure containing 'l', 'q', and 's' dimensions
+ * @param mnl Number of nonlinear variables (default = 0)
+ * @param offsetx Offset in x vector (default = 0)  
+ * @param offsety Offset in y vector (default = 0)
+ * 
+ * @details
+ * The vector x is an element of S, with the 's' components stored in
+ * packed storage and off-diagonal entries scaled by sqrt(2).
+ * On return, x is copied to y with the 's' components stored in
+ * unpacked storage.
+ * 
+ * Processing order:
+ * 1. Copy linear ('l') and quadratic ('q') components directly
+ * 2. For semidefinite ('s') components:
+ *    - Unpack from packed storage to full matrix storage
+ *    - Scale off-diagonal entries by 1/sqrt(2)
+ *    - Maintain lower triangular structure
+ */
+void misc_unpack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety)
+{
+    double a = 1.0 / sqrt(2.0);
+    int m = mnl, ox = offsetx, oy = offsety, int1 = 1, iu, ip, len, i, k, n;
+
+    // Default values
+    if (mnl < 0) m = 0;  
+    if (offsetx < 0) ox = 0; 
+    if (offsety < 0) oy = 0; 
+
+    /* Calculate total size of linear and quadratic parts */
+    m += dims->l;
+    
+    /* Add dimensions of all quadratic cones */
+    for (i = 0; i < dims->q_size; i++){
+        m += dims->q[i];
+    }
+
+    /* Copy linear and quadratic parts directly */
+    dcopy_(&m, MAT_BUFD(x) + ox, &int1, MAT_BUFD(y) + oy, &int1);
+
+    /* Process semidefinite cones */
+    /* ip: current position in packed storage (input x) */
+    /* iu: current position in unpacked storage (output y) */
+    for (i = 0, ip = ox + m, iu = oy + m; i < dims->s_size; ++i){
+        n = dims->s[i];
+
+        /* Unpack each column of the semidefinite block */
+        for (k = 0; k < n; ++k){
+            len = n-k;
+            dcopy_(&len, MAT_BUFD(x) + ip, &int1, MAT_BUFD(y) + iu +
+                k*(n+1), &int1);
+            ip += len;
+            len -= 1;
+            dscal_(&len, &a, MAT_BUFD(y) + iu + k*(n+1) + 1, &int1);
+        }
+        iu += n*n;
+    }
+    return;
+}
+

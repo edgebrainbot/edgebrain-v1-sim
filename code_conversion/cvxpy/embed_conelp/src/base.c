@@ -245,6 +245,25 @@ static void mtx_zabs(void *src, void *dest, int n) {
 void (*mtx_abs[])(void *, void *, int) = { mtx_iabs, mtx_dabs, mtx_zabs };
 
 
+static void write_inum(void *dest, int i, void *src, int j) {
+  ((int_t *)dest)[i]  = ((int_t *)src)[j];
+}
+
+static void write_dnum(void *dest, int i, void *src, int j) {
+  ((double *)dest)[i]  = ((double *)src)[j];
+}
+
+static void write_znum(void *dest, int i, void *src, int j) {
+#ifndef _MSC_VER
+  ((double complex *)dest)[i]  = ((double complex *)src)[j];
+#else
+  ((_Dcomplex *)dest)[i]  = ((_Dcomplex *)src)[j];
+#endif
+}
+
+void (*write_num[])(void *, int, void *, int) = {
+    write_inum, write_dnum, write_znum };
+
 /**
  * @brief General matrix-vector product for sparse and dense matrices (GEMV operation)
  * 

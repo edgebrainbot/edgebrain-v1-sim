@@ -113,3 +113,51 @@ void print_matrix(matrix *m)
         printf("\n");
     }
 }
+
+// 生成下三角矩阵
+matrix generate_lower_triangular_matrix(int n) 
+{
+    matrix A;
+    A.nrows = n;
+    A.ncols = n;
+    A.mat_type = MAT_DENSE;
+    A.id = DOUBLE;
+    A.buffer = malloc(sizeof(double) * n * n);
+
+    if (!A.buffer) {
+        fprintf(stderr, "Memory allocation failed in generate_lower_triangular_matrix.\n");
+        A.nrows = A.ncols = 0;
+        return A;
+    }
+
+    double *buf = (double *) A.buffer;
+    for (int j = 0; j < n; ++j)
+        for (int i = 0; i < n; ++i)
+            buf[i + j*n] = (i >= j) ? ((double) rand() / RAND_MAX) : 0.0;
+
+    return A;
+}
+
+// 填充随机矩阵 B
+matrix fill_random_matrix(int rows, int cols) 
+{
+    matrix B;
+    B.nrows = rows;
+    B.ncols = cols;
+    B.mat_type = MAT_DENSE;
+    B.id = DOUBLE;
+    B.buffer = malloc(sizeof(double) * rows * cols);
+
+    if (!B.buffer) {
+        fprintf(stderr, "Memory allocation failed in fill_random_matrix.\n");
+        B.nrows = B.ncols = 0;
+        return B;
+    }
+
+    double *buf = (double *) B.buffer;
+    for (int j = 0; j < cols; ++j)
+        for (int i = 0; i < rows; ++i)
+            buf[i + j*rows] = (double) rand() / RAND_MAX;
+
+    return B;
+}

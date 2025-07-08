@@ -23,23 +23,6 @@ typedef union {
 
 #endif
 
-typedef struct {
-    matrix *dnl;
-    matrix *dnli;
-    matrix *d;
-    matrix *di;
-    matrix **v;      // array of matrix pointers
-    double *beta;    // array of doubles
-    matrix **r;      // array of matrix pointers
-    matrix **rti;    // array of matrix pointers
-    int v_count;     // number of v matrices
-    int r_count;     // number of r matrices
-    int b_count;     // number of beta values
-    int dnl_count;   // number of dnl/dnli matrices
-    int d_count;     // number of d/di matrices
-    int has_dnl;     // flag indicating if dnl/dnli entries exist
-} scaling;
-
 /*
 - dims['l'] = ml, the dimension of the nonnegative orthant C_0.
     (ml >= 0.)
@@ -60,31 +43,39 @@ typedef struct {
     int s_size;         // size of s array
 } DIMs;
 
-// static inline int is_number(void *ptr) {
-//     if (!ptr) return 0;
-//     number *n = (number *)ptr;
-//     return (n->id == INT || n->id == DOUBLE || n->id == COMPLEX);
-// }
+typedef struct {
+    matrix *dnl;
+    matrix *dnli;
+    matrix *d;
+    matrix *di;
+    matrix **v;      // array of matrix pointers
+    double *beta;    // array of doubles
+    matrix **r;      // array of matrix pointers
+    matrix **rti;    // array of matrix pointers
+    int v_count;     // number of v matrices
+    int r_count;     // number of r matrices
+    int b_count;     // number of beta values
+    int dnl_count;   // number of dnl/dnli matrices
+    int d_count;     // number of d/di matrices
+    int has_dnl;     // flag indicating if dnl/dnli entries exist
+} scaling;
 
-// Helper function to calculate sum of array elements
-static inline int sum_array(int *arr, int len) {
-    int sum = 0;
-    for (int i = 0; i < len; i++) {
-        sum += arr[i];
-    }
-    return sum;
-}
 
-// Helper function to calculate maximum of array elements
-static inline int max_array(int *arr, int len) {
-    int max_val = 0;
-    for (int i = 0; i < len; i++) {
-        if (arr[i] > max_val) {
-            max_val = arr[i];
-        }
-    }
-    return max_val;
-}
+// Context structure for closure behavior
+typedef struct {
+    matrix *G;
+    DIMs *dims;
+    matrix *A;
+    int mnl;
+    int p;
+    int n;
+    int ldK;
+    matrix *K;
+    int *ipiv;
+    matrix *g;
+    matrix *u;
+} KKT_Context;
+
 
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
@@ -127,8 +118,138 @@ static inline int max_array(int *arr, int len) {
 
 #define len(x) (Matrix_Check(x) ? MAT_LGT(x) : SP_LGT(x))
 
-// /* FUNC SUCCESS FLAG */
-// #define SCAL_SUCCESS 0
-// #define GEMM_SUCCESS 0
+
+// static inline int is_number(void *ptr) {
+//     if (!ptr) return 0;
+//     number *n = (number *)ptr;
+//     return (n->id == INT || n->id == DOUBLE || n->id == COMPLEX);
+// }
+
+// Scaling initialization function
+static inline void Scaling_Init(scaling *W) {
+    if (!W) err_no_memory;
+
+    // Initialize all pointers to NULL
+    W->dnl = NULL;
+    W->dnli = NULL;
+    W->d = NULL;
+    W->di = NULL;
+    W->v = NULL;
+    W->beta = NULL;
+    W->r = NULL;
+    W->rti = NULL;
+
+    // Initialize counts and flags
+    W->v_count = 0;
+    W->r_count = 0;
+    W->b_count = 0;
+    W->dnl_count = 0;
+    W->d_count = 0;
+    W->has_dnl = 0;
+}
+
+// Scaling cleanup function
+static inline void Scaling_Free(scaling *W) {
+    if (W) {
+        if (W->dnl) Matrix_Free(W->dnl);
+        if (W->dnli) Matrix_Free(W->dnli);
+        if (W->d) Matrix_Free(W->d);   
+        if (W->di) Matrix_Free(W->di);
+        if (W->v) {
+            for (int i = 0; i < W->v_count; i++) {
+                if (W->v[i]) Matrix_Free(W->v[i]);
+            }
+            free(W->v);
+        }
+        if (W->beta) free(W->beta);
+        if (W->r) {
+            for (int i = 0; i < W->r_count; i++) {
+                if (W->r[i]) Matrix_Free(W->r[i]);
+            }
+            free(W->r);
+        }
+        if (W->rti) {
+            for (int i = 0; i < W->r_count; i++) {
+                if (W->rti[i]) Matrix_Free(W->rti[i]);
+            }
+            free(W->rti);
+        }
+        free(W);
+    }
+}
+
+// Helper function to calculate sum of array elements
+static inline int sum_array(int *arr, int len) {
+    int sum = 0;
+    for (int i = 0; i < len; i++) {
+        sum += arr[i];
+    }
+    return sum;
+}
+
+// Helper function to calculate maximum of array elements
+static inline int max_array(int *arr, int len) {
+    int max_val = 0;
+    for (int i = 0; i < len; i++) {
+        if (arr[i] > max_val) {
+            max_val = arr[i];
+        }
+    }
+    return max_val;
+}
+
+// Function to slice matrix like Python s[i:j] style, only supports dense DOUBLE vector
+static inline matrix* matrix_slice(const matrix* m, int start, int end) {
+    if (!m) {
+        fprintf(stderr, "Error: NULL matrix pointer passed to matrix_slice_range.\n");
+        return NULL;
+    }
+
+    if (m->mat_type != MAT_DENSE || m->id != DOUBLE) {
+        fprintf(stderr, "Error: matrix_slice_range only supports dense matrices with DOUBLE type.\n");
+        return NULL;
+    }
+
+    int total_len = m->nrows * m->ncols;
+
+    if (start < 0 || end > total_len || start > end) {
+        fprintf(stderr, "Error: Invalid slice range [%d:%d], total length is %d.\n", start, end, total_len);
+        return NULL;
+    }
+
+    int len = end - start;
+
+    matrix* result = (matrix*)malloc(sizeof(matrix));
+    if (!result) {
+        fprintf(stderr, "Error: Failed to allocate matrix struct in matrix_slice_range.\n");
+        return NULL;
+    }
+
+    result->mat_type = MAT_DENSE;
+    result->id = DOUBLE;
+    result->nrows = len;
+    result->ncols = 1;
+
+    if (len == 0) {
+        result->buffer = NULL; // Empty slice
+        return result;
+    }
+
+    result->buffer = malloc(sizeof(double) * len);
+    if (!result->buffer) {
+        fprintf(stderr, "Error: Failed to allocate buffer in matrix_slice_range.\n");
+        free(result);
+        return NULL;
+    }
+
+    // Copy data
+    double* dst = (double*)result->buffer;
+    double* src = (double*)m->buffer;
+    for (int i = 0; i < len; ++i)
+        dst[i] = src[start + i];
+
+    return result;
+}
+
 
 #endif

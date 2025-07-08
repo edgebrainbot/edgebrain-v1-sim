@@ -104,22 +104,19 @@ static const char err_mtx_list2matrix[][35] =
     return ret; }
 
 
-// static int convert_mtx(matrix *src, void *dest, int id)
-// {
-//   if (PY_NUMBER((PyObject *)src))
-//     return convert_num[id](dest, src, 1, 0);
+static int convert_mtx(matrix *src, void *dest, int id)
+{
+  if (MAT_ID(src) == id) {
+    memcpy(dest, src->buffer, (size_t)E_SIZE[src->id]*MAT_LGT(src) );
+    return 0;
+  }
 
-//   if (MAT_ID(src) == id) {
-//     memcpy(dest, src->buffer, (size_t)E_SIZE[src->id]*MAT_LGT(src) );
-//     return 0;
-//   }
+  int_t i;
+  for (i=0; i<MAT_LGT(src); ++i)
+    if (convert_num[id]((unsigned char*)dest + i*E_SIZE[id], src, 0, i)) return -1;
 
-//   int_t i;
-//   for (i=0; i<MAT_LGT(src); i++)
-//     if (convert_num[id]((unsigned char*)dest + i*E_SIZE[id], src, 0,i)) return -1;
-
-//   return 0;
-// }
+  return 0;
+}
 
 // void * convert_mtx_alloc(matrix *src, int id)
 // {
@@ -172,22 +169,23 @@ matrix * Matrix_New(int nrows, int ncols, int id)
 /*
   Creates a copy of matrix as a new object. In API.
  */
-// matrix *Matrix_NewFromMatrix(matrix *src, int id)
-// {
-//   matrix *a;
+matrix *Matrix_NewFromMatrix(matrix *src, int id)
+{
+  if (!src) {
+    fprintf(stderr, "Matrix_NewFromMatrix: input matrix is NULL.\n");
+    return NULL;
+  }
 
-//   if (PY_NUMBER((PyObject *)src))
-//     return Matrix_NewFromNumber(1, 1, id, src, 1);
+  matrix *a;
+  if (!(a = Matrix_New(src->nrows, src->ncols, id))) 
+    return NULL;
 
-//   if (!(a = Matrix_New(src->nrows, src->ncols, id))) 
-//     return NULL;
+  if (convert_mtx(src, a->buffer, id)) {
+    ERR_TYPE("illegal type conversion");
+  }
 
-//   if (convert_mtx(src, a->buffer, id)) {
-//     Py_DECREF(a); PY_ERR_TYPE("illegal type conversion");
-//   }
-
-//   return a;
-// }
+  return a;
+}
 
 // /*
 //   Creates a matrix from buffer interface.
@@ -315,23 +313,23 @@ matrix * Matrix_New(int nrows, int ncols, int id)
 //  return a;
 // }
 
-// /*
-//   Generates a matrix with all entries equal.
-//  */
-// matrix *
-// Matrix_NewFromNumber(int nrows, int ncols, int id, void *val, int val_id)
-// {
+/*
+  Generates a matrix with all entries equal.
+ */
+matrix *
+Matrix_NewFromNumber(int nrows, int ncols, int id, void *val, int val_id)
+{
 
-//   int_t i;
-//   matrix *a = Matrix_New(nrows, ncols, id);
-//   if (!a) return NULL;
+  int_t i;
+  matrix *a = Matrix_New(nrows, ncols, id);
+  if (!a) return NULL;
 
-//   number n;
-//   if (convert_num[id](&n, val, val_id, 0)) { Py_DECREF(a); return NULL; }
-//   for (i=0; i<MAT_LGT(a); i++) write_num[id](MAT_BUF(a), i, &n, 0);
+  number n;
+  if (convert_num[id](&n, val, val_id, 0)) { return NULL; }
+  for (i=0; i<MAT_LGT(a); i++) write_num[id](MAT_BUF(a), i, &n, 0);
 
-//   return a;
-// }
+  return a;
+}
 
 // /*
 //   Converts a Python list to a matrix. Part of API
@@ -2012,42 +2010,111 @@ matrix * Matrix_New(int nrows, int ncols, int id)
 //   return (PyObject *)ret;
 // }
 
-// static PyObject * matrix_pow(PyObject *self, PyObject *other)
-// {
-//   if (!PY_NUMBER(other)) PY_ERR_TYPE("exponent must be a number");
 
-//   number val;
-//   int id = MAX(DOUBLE, MAX(MAT_ID(self), get_id(other, 1)));
-//   convert_num[id](&val, other, 1, 0);
-//   matrix *Y = Matrix_NewFromMatrix((matrix *)self, id);
-//   if (!Y) return NULL;
+/**
+ * @brief Core power function for matrix and scalar exponentiation
+ * 
+ * @details
+ * Computes element-wise power operation A^exponent for:
+ * - Dense matrices with numeric exponents
+ * - Handles both real and complex-valued matrices and exponents
+ * - For real values, checks for domain errors (negative base with fractional exponent)
+ * - For complex values, checks for zero base with negative/imaginary exponent
+ *
+ * @param A           Input matrix to raise to power (must be dense matrix)
+ * @param exponent    Scalar exponent (int, float, or complex)
+ * @param A_type      The type of the input (not used here, but could be used
+ *                    for type checking). (0 - matrix/spmatrix, 1 - number)
+ * @param A_id        The ID of the input (not used here, but could be used
+ *                    for type checking). (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ * @param exp_id      Type identifier for exponent (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ *
+ * @return Pointer to new matrix containing result, or NULL on error
+ *         - Returned matrix type matches highest precision of inputs
+ *         - Must be freed with matrix_free()
+ */
 
-//   int i;
-//   for (i=0; i<MAT_LGT(Y); i++) {
-//     if (id == DOUBLE) {
-//       if ((MAT_BUFD(Y)[i] == 0.0 && val.d < 0.0) ||
-//           (MAT_BUFD(Y)[i] < 0.0 && val.d < 1.0 && val.d > 0.0)) {
-//         Py_DECREF(Y);
-//         PY_ERR(PyExc_ValueError, "domain error");
-//       }
+void* base_pow(void* A, void* exponent, int A_type, int A_id, int exp_id)
+{
+  if (exp_id != INT && exp_id != DOUBLE && exp_id != COMPLEX) {
+    ERR_TYPE("exponent must be a number");
+  }
 
+  if (!A) { // NULL
+    ERR("error: NULL input"); return NULL;
+  }
 
-//       MAT_BUFD(Y)[i] = pow(MAT_BUFD(Y)[i], val.d);
-//     } else {
-// #ifndef _MSC_VER
-//       if (MAT_BUFZ(Y)[i] == 0.0 && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
-// #else
-//       if ((creal(MAT_BUFZ(Y)[i]) == 0.0 && cimag(MAT_BUFZ(Y)[i]) == 0.0) && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
-// #endif
-//         Py_DECREF(Y);
-//         PY_ERR(PyExc_ValueError, "domain error");
-//       }
-//       MAT_BUFZ(Y)[i] = cpow(MAT_BUFZ(Y)[i], val.z);
-//     }
-//   }
+  number val;
+  convert_num[MAX(DOUBLE, exp_id)](&val, exponent, 1, 0);  // Get value of exponent
 
-//   return (PyObject *)Y;
-// }
+  int id = MAX(DOUBLE, MAX(A_id, exp_id));
+
+  if (A_type == 1) {
+    number* a = (number*) A;
+    number* res = malloc(sizeof(number));
+    if (!res) {
+      fprintf(stderr, "base_pow: memory allocation failed.\n");
+      return NULL;
+    }
+
+    if (id == INT || id == DOUBLE) {
+      double base = (A_id == INT) ? (double)a->i : a->d;
+      double exponent_val = (exp_id == INT) ? (double)(((number*)exponent)->i) : val.d;
+
+      if (base == 0.0 && exponent_val < 0.0) {
+          fprintf(stderr, "domain error: pow(0, negative)\n");
+          free(res);
+          return NULL;
+      }
+        res->d = pow(base, exponent_val);
+    }
+    else if (id == COMPLEX) {
+      double complex base = (A_id == COMPLEX) ? a->z :
+                            (A_id == DOUBLE)  ? a->d + 0.0*I :
+                                                a->i + 0.0*I;
+      double complex exponent_val = (exp_id == COMPLEX) ? val.z :
+                                    (exp_id == DOUBLE)  ? val.d + 0.0*I :
+                                                          val.i + 0.0*I;
+      if (creal(base) == 0.0 && cimag(base) == 0.0 &&
+          (cimag(exponent_val) != 0.0 || creal(exponent_val) < 0.0)) {
+          fprintf(stderr, "domain error: cpow(0, complex/negative)\n");
+          free(res);
+          return NULL;
+      }
+      res->z = cpow(base, exponent_val);
+    }
+    return res;
+  } else if (Matrix_Check(A)) {
+    matrix *Y = Matrix_NewFromMatrix((matrix *)A, id);
+    if (!Y) return NULL;
+
+    int i;
+    for (i=0; i<MAT_LGT(Y); i++) {
+      if (id == DOUBLE) {
+        if ((MAT_BUFD(Y)[i] == 0.0 && val.d < 0.0) ||
+            (MAT_BUFD(Y)[i] < 0.0 && val.d < 1.0 && val.d > 0.0)) {
+          ERR("domain error");
+        }
+
+        MAT_BUFD(Y)[i] = pow(MAT_BUFD(Y)[i], val.d);
+      } else {
+  #ifndef _MSC_VER
+        if (MAT_BUFZ(Y)[i] == 0.0 && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
+  #else
+        if ((creal(MAT_BUFZ(Y)[i]) == 0.0 && cimag(MAT_BUFZ(Y)[i]) == 0.0) && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
+  #endif
+          ERR("domain error");
+        }
+        MAT_BUFZ(Y)[i] = cpow(MAT_BUFZ(Y)[i], val.z);
+      }
+    }
+
+    return (void *)Y;
+  }
+
+  fprintf(stderr, "base_pow: unsupported A_type=%d\n", A_type);
+  return NULL;
+}
 
 // static int matrix_nonzero(matrix *self)
 // {
@@ -2295,44 +2362,58 @@ matrix * Matrix_New(int nrows, int ncols, int id)
 //   else PY_ERR_TYPE("argument must a be a number or dense matrix");
 // }
 
-// PyObject * matrix_exp(matrix *self, PyObject *args, PyObject *kwrds)
-// {
-//   PyObject *A;
+/**
+ * @brief Core exponential function for numeric types and matrices
+ * 
+ * @details
+ * Computes the exponential function for:
+ * - Scalar numbers (int, float, complex)
+ * - Dense matrices (element-wise operation)
+ * - Handles both real and complex numeric types
+ *
+ * @param A The input number or matrix.
+ * @param A_type The type of the input (not used here, but could be used
+ *               for type checking). (0 - matrix/spmatrix, 1 - number)
+ * @param A_id The ID of the input (not used here, but could be used
+ *             for type checking). (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ *
+ * @return A new number or matrix containing the exponential of the input.
+ */
 
-//   if (!PyArg_ParseTuple(args, "O", &A)) return NULL;
+void* base_exp(void* A, int A_type, int A_id)
+{
+  if (A_type == 1) {  // number
+    number* a = (number*) A;
+    number* res = malloc(sizeof(number));
+    if (!res) err_no_memory;
 
-// #if PY_MAJOR_VERSION >= 3
-//   if (PyLong_Check(A) || PyFloat_Check(A))
-// #else
-//   if (PyInt_Check(A) || PyFloat_Check(A))
-// #endif
-//     return Py_BuildValue("d",exp(PyFloat_AsDouble(A)));
+    if (A_id == INT || A_id == DOUBLE) {
+      res->d = exp(A_id == INT ? (double)a->i : a->d);
+    } else if (A_id == COMPLEX) {
+      res->z = cexp(a->z);
+    } else {
+        ERR("unsupported scalar type");
+    }
+      return res;
+  }
+  else if (Matrix_Check(A)) {  // matrix
+    matrix *ret = Matrix_New(MAT_NROWS(A),MAT_NCOLS(A),
+        (MAT_ID(A) == COMPLEX ? COMPLEX : DOUBLE));
+    if (!ret) return NULL;
 
-//   else if (PyComplex_Check(A)) {
-//     number n;
-//     convert_num[COMPLEX](&n, A, 1, 0);
-//     n.z = cexp(n.z);
-//     return num2PyObject[COMPLEX](&n, 0);
-//   }
+    int i;
+    if (MAT_ID(ret) == DOUBLE)
+      for (i=0; i<MAT_LGT(ret); i++)
+        MAT_BUFD(ret)[i] = exp(MAT_ID(A) == DOUBLE ? MAT_BUFD(A)[i] :
+        MAT_BUFI(A)[i]);
+    else
+      for (i=0; i<MAT_LGT(ret); i++)
+        MAT_BUFZ(ret)[i] = cexp(MAT_BUFZ(A)[i]);
 
-//   else if (Matrix_Check(A)) {
-//     matrix *ret = Matrix_New(MAT_NROWS(A),MAT_NCOLS(A),
-//         (MAT_ID(A) == COMPLEX ? COMPLEX : DOUBLE));
-//     if (!ret) return NULL;
-
-//     int i;
-//     if (MAT_ID(ret) == DOUBLE)
-//       for (i=0; i<MAT_LGT(ret); i++)
-//         MAT_BUFD(ret)[i] = exp(MAT_ID(A) == DOUBLE ? MAT_BUFD(A)[i] :
-//         MAT_BUFI(A)[i]);
-//     else
-//       for (i=0; i<MAT_LGT(ret); i++)
-//         MAT_BUFZ(ret)[i] = cexp(MAT_BUFZ(A)[i]);
-
-//     return (PyObject *)ret;
-//   }
-//   else PY_ERR_TYPE("argument must a be a number or dense matrix");
-// }
+    return (void *)ret;
+  }
+  else ERR_TYPE("argument must a be a number or dense matrix");
+}
 
 
 /**
@@ -2488,3 +2569,4 @@ void* base_sqrt(void* A, int A_type, int A_id)
 //   }
 //   else PY_ERR_TYPE("argument must a be a number or dense matrix");
 // }
+

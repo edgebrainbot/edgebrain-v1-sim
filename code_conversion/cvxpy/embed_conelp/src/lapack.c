@@ -1,6 +1,7 @@
 
 #include "cvxopt.h"
 #include "misc.h"
+#include <time.h>
 
 #ifndef _MSC_VER
 typedef complex double complex_t;
@@ -3276,106 +3277,117 @@ void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA)
 // }
 
 
-// static char doc_trtrs[] =
-//     "Solution of a triangular set of equations with multiple righthand\n"
-//     "sides.\n\n"
-//     "trtrs(A, B, uplo='L', trans='N', diag='N', n=A.size[0],\n"
-//     "      nrhs=B.size[1], ldA=max(1,A.size[0]), ldB=max(1,B.size[0]),\n"
-//     "      offsetA=0, offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "If trans is 'N', solves A*X = B.\n"
-//     "If trans is 'T', solves A^T*X = B.\n"
-//     "If trans is 'C', solves A^H*X = B.\n"
-//     "B is n by nrhs and A is triangular of order n.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "uplo      'L' or 'U'\n\n"
-//     "trans     'N', 'T' or 'C'\n\n"
-//     "diag      'N' or 'U'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
 
-// static PyObject* trtrs(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B;
-//     int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
-// #if PY_MAJOR_VERSION >= 3
-//     int uplo_ = 'L', trans_ = 'N', diag_ = 'N';
-// #endif
-//     char uplo = 'L', trans = 'N', diag = 'N';
-//     char *kwlist[] = {"A", "B", "uplo", "trans", "diag", "n", "nrhs",
-//         "ldA", "ldB", "offsetA", "offsetB", NULL};
+/**
+ * @brief Solves triangular systems with multiple right-hand sides (BLAS TRTRS operation)
+ * 
+ * @details
+ * Solves one of the following triangular systems:
+ * \f[
+ * \begin{cases}
+ * A X = B       & \text{if trans='N'} \\
+ * A^\top X = B  & \text{if trans='T'} \\
+ * A^H X = B     & \text{if trans='C'}
+ * \end{cases}
+ * \f]
+ * where:
+ * - A is an n×n triangular matrix
+ * - B is an n×nrhs matrix of right-hand sides
+ * - X is the n×nrhs solution matrix (overwrites B)
+ *
+ * @param A       Triangular matrix ('d' or 'z' type)
+ * @param B       Right-hand side matrix (input) / solution matrix (output)
+ * @param uplo    Triangle selection:  (default = 'L')
+ *                    - 'L': Use lower triangular part
+ *                    - 'U': Use upper triangular part
+ * @param trans   Transposition operation:  (default = 'N')
+ *                    - 'N': No transpose
+ *                    - 'T': Transpose
+ *                    - 'C': Conjugate transpose
+ * @param diag    Diagonal type:  (default = 'N')
+ *                    - 'N': Non-unit triangular
+ *                    - 'U': Unit triangular
+ * @param n       Order of matrix A (default = -1, which uses A's size)
+ * @param nrhs    Number of right-hand sides (default = -1, which uses B's size)
+ * @param ldA     Leading dimension of A (default = 0, which uses max(1,n))
+ * @param ldB     Leading dimension of B (default = 0, which uses max(1,n))
+ * @param offsetA Matrix offset in A (default = 0, nonnegative)
+ * @param offsetB Matrix offset in B (default = 0, nonnegative)
+ */
+void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
+                int n, int nrhs, int ldA, int ldB, int oA, int oB)
+{
+    struct timespec start, end, end2;
 
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|CCCiiiiii", kwlist,
-//         &A, &B, &uplo_, &trans_, &diag_, &n, &nrhs, &ldA, &ldB, &oA, &oB))
-//         return NULL;
-//     uplo = (char) uplo_;
-//     trans = (char) trans_;
-//     diag = (char) diag_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|ccciiiiii", kwlist,
-//         &A, &B, &uplo, &trans, &diag, &n, &nrhs, &ldA, &ldB, &oA, &oB))
-//         return NULL;
-// #endif
+    // 获取开始时间
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    
+    int info;
 
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
-//     if (diag != 'N' && diag != 'U') err_char("diag", "'N', 'U'");
-//     if (trans != 'N' && trans != 'T' && trans != 'C')
-//         err_char("trans", "'N', 'T', 'C'");
-//     if (n < 0){
-//         n = A->nrows;
-//         if (A->nrows != A->ncols){
-//             PyErr_SetString(PyExc_TypeError, "A must be square");
-//             return NULL;
-//         }
-//     }
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1,n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    // Set default values
+    if (uplo == 0) uplo = 'L';
+    if (trans == 0) trans = 'N';
+    if (diag == 0) diag = 'N';
 
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             if (trans == 'C') trans = 'T';
-//             Py_BEGIN_ALLOW_THREADS
-//             dtrtrs_(&uplo, &trans, &diag, &n, &nrhs, MAT_BUFD(A)+oA,
-//                 &ldA, MAT_BUFD(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
+    if (diag != 'N' && diag != 'U') err_char("diag", "'N', 'U'");
+    if (trans != 'N' && trans != 'T' && trans != 'C')
+        err_char("trans", "'N', 'T', 'C'");
+    if (n < 0){
+        n = A->nrows;
+        if (A->nrows != A->ncols){
+            fprintf(stderr, "Error: A must be square\n");
+            return;
+        }
+    }
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1,n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
 
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             ztrtrs_(&uplo, &trans, &diag, &n, &nrhs, MAT_BUFZ(A)+oA,
-//                 &ldA, MAT_BUFZ(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
+    // 获取结束时间
+    clock_gettime(CLOCK_MONOTONIC, &end);
 
-//         default:
-//             err_invalid_id;
-//     }
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            if (trans == 'C') trans = 'T';
+            dtrtrs_(&uplo, &trans, &diag, &n, &nrhs, MAT_BUFD(A)+oA,
+                &ldA, MAT_BUFD(B)+oB, &ldB, &info);
+            break;
 
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+        case COMPLEX:
+            ztrtrs_(&uplo, &trans, &diag, &n, &nrhs, MAT_BUFZ(A)+oA,
+                &ldA, MAT_BUFZ(B)+oB, &ldB, &info);
+            break;
+
+        default:
+            err_invalid_id;
+    }
+
+
+    // 获取结束时间
+    clock_gettime(CLOCK_MONOTONIC, &end2);
+    // 计算耗时（单位：秒 + 纳秒）
+    double elapsed1 = (end.tv_sec - start.tv_sec)
+                   + (end.tv_nsec - start.tv_nsec) / 1e9;
+    double elapsed2 = (end2.tv_sec - end.tv_sec)
+                   + (end2.tv_nsec - end.tv_nsec) / 1e9;
+
+    // printf("Elapsed time inside trtrs part1: %.6f seconds\n", elapsed1);
+    // printf("Elapsed time inside trtrs part2: %.6f seconds\n", elapsed2);
+
+    if (info) err_lapack(info);
+    else return;
+}
 
 
 // static char doc_trtri[] =
@@ -3679,201 +3691,174 @@ void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA)
 // }
 
 
-// static char doc_geqrf[] =
-//     "QR factorization.\n\n"
-//     "geqrf(A, tau, m=A.size[0], n=A.size[1], ldA=max(1,A.size[0]),\n"
-//     "      offsetA=0)\n\n"
-//     "PURPOSE\n"
-//     "QR factorization of an m by n real or complex matrix A:\n\n"
-//     "A = Q*R = [Q1 Q2] * [R1; 0] if m >= n\n"
-//     "A = Q*R = Q * [R1 R2] if m <= n,\n\n"
-//     "where Q is m by m and orthogonal/unitary and R is m by n with R1\n"
-//     "upper triangular.  On exit, R is stored in the upper triangular\n"
-//     "part of A.  Q is stored as a product of k=min(m,n) elementary\n"
-//     "reflectors.  The parameters of the reflectors are stored in the\n"
-//     "first k entries of tau and in the lower triangular part of the\n"
-//     "first k columns of A.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "tau       'd' or 'z' matrix of length at least min(m,n).  Must\n"
-//     "          have the same type as A.\n\n"
-//     "m         integer.  If negative, the default value is used.\n\n"
-//     "n         integer.  If negative, the default value is used.\n\n"
-//     "ldA       nonnegative integer.  ldA >= max(1,m).  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "offsetA   nonnegative integer";
+/**
+ * @brief QR factorization of a real or complex matrix (BLAS GEQRF operation)
+ * 
+ * @details
+ * Computes the QR factorization of an m×n matrix A:
+ * \f[
+ * A = Q \cdot R = \begin{cases}
+ * \begin{bmatrix} Q_1 & Q_2 \end{bmatrix} \cdot \begin{bmatrix} R_1 \\ 0 \end{bmatrix} & \text{if } m \geq n \\
+ * Q \cdot \begin{bmatrix} R_1 & R_2 \end{bmatrix} & \text{if } m < n
+ * \end{cases}
+ * \f]
+ * where:
+ * - \f$ Q \f$ is an m×m orthogonal/unitary matrix
+ * - \f$ R \f$ is an m×n upper trapezoidal matrix with \f$ R_1 \f$ triangular
+ *
+ * On exit:
+ * - Upper triangular part contains \f$ R \f$
+ * - Lower triangular part of first k=min(m,n) columns contains reflectors
+ * - Vector tau contains reflector coefficients
+ *
+ * @param A        Input matrix to factor ('d' or 'z' type)
+ * @param tau      Reflector coefficients (same type as A, length ≥ min(m,n))
+ * @param m        Rows of matrix A (default = -1, meaning A.size[0])
+ * @param n        Columns of matrix A (default = -1, meaning A.size[1])
+ * @param ldA      Leading dimension of A (default = 0, meaning max(1,m))
+ * @param offsetA  Matrix offset (default = 0)
+ */
+void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA)
+{
+    int oA=offsetA, info, lwork;
+    void *work;
+    number wl;
 
-// static PyObject* geqrf(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *tau;
-//     int m=-1, n=-1, ldA=0, oA=0, info, lwork;
-//     void *work;
-//     number wl;
-//     char *kwlist[] = {"A", "tau", "m", "n", "ldA", "offsetA", NULL};
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(tau)) err_mtrx("tau");
+    if (MAT_ID(A) != MAT_ID(tau)) err_conflicting_ids;
+    if (m < 0) m = A->nrows;
+    if (n < 0) n = A->ncols;
+    if (m == 0 || n == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,m)) err_ld("ldA");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + m > len(A)) err_buf_len("A");
+    if (len(tau) < MIN(m,n)) err_buf_len("tau");
 
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|iiii", kwlist,
-//         &A, &tau, &m, &n, &ldA, &oA))
-//         return NULL;
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            lwork = -1;
+            dgeqrf_(&m, &n, NULL, &ldA, NULL, &wl.d, &lwork, &info);
+            lwork = (int) wl.d;
+            if (!(work = (void *) calloc(lwork, sizeof(double))))
+                err_no_memory;
+            dgeqrf_(&m, &n, MAT_BUFD(A)+oA, &ldA, MAT_BUFD(tau),
+                (double *) work, &lwork, &info);
+            free(work);
+	    break;
 
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(tau)) err_mtrx("tau");
-//     if (MAT_ID(A) != MAT_ID(tau)) err_conflicting_ids;
-//     if (m < 0) m = A->nrows;
-//     if (n < 0) n = A->ncols;
-//     if (m == 0 || n == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,m)) err_ld("ldA");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + m > len(A)) err_buf_len("A");
-//     if (len(tau) < MIN(m,n)) err_buf_len("tau");
+        case COMPLEX:
+            lwork = -1;
+            zgeqrf_(&m, &n, NULL, &ldA, NULL, &wl.z, &lwork, &info);
+            lwork = (int) creal(wl.z);
+            if (!(work = (void *) calloc(lwork, sizeof(complex_t))))
+                return err_no_memory;
+            zgeqrf_(&m, &n, MAT_BUFZ(A)+oA, &ldA, MAT_BUFZ(tau),
+                (complex_t *) work, &lwork, &info);
+            free(work);
+	    break;
 
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             lwork = -1;
-//             Py_BEGIN_ALLOW_THREADS
-//             dgeqrf_(&m, &n, NULL, &ldA, NULL, &wl.d, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             lwork = (int) wl.d;
-//             if (!(work = (void *) calloc(lwork, sizeof(double))))
-//                 return PyErr_NoMemory();
-//             Py_BEGIN_ALLOW_THREADS
-//             dgeqrf_(&m, &n, MAT_BUFD(A)+oA, &ldA, MAT_BUFD(tau),
-//                 (double *) work, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             free(work);
-// 	    break;
+        default:
+	    err_invalid_id;
+    }
 
-//         case COMPLEX:
-//             lwork = -1;
-//             Py_BEGIN_ALLOW_THREADS
-//             zgeqrf_(&m, &n, NULL, &ldA, NULL, &wl.z, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             lwork = (int) creal(wl.z);
-//             if (!(work = (void *) calloc(lwork, sizeof(complex_t))))
-//                 return PyErr_NoMemory();
-//             Py_BEGIN_ALLOW_THREADS
-//             zgeqrf_(&m, &n, MAT_BUFZ(A)+oA, &ldA, MAT_BUFZ(tau),
-//                 (complex_t *) work, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             free(work);
-// 	    break;
-
-//         default:
-// 	    err_invalid_id;
-//     }
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+    if (info) err_lapack(info);
+    else return;
+}
 
 
-// static char doc_ormqr[] =
-//     "Product with a real orthogonal matrix.\n\n"
-//     "ormqr(A, tau, C, side='L', trans='N', m=C.size[0], n=C.size[1],\n"
-//     "      k=len(tau), ldA=max(1,A.size[0]), ldC=max(1,C.size[0]),\n"
-//     "      offsetA=0, offsetC=0)\n\n"
-//     "PURPOSE\n"
-//     "Computes\n"
-//     "C := Q*C   if side = 'L' and trans = 'N'.\n"
-//     "C := Q^T*C if side = 'L' and trans = 'T'.\n"
-//     "C := C*Q   if side = 'R' and trans = 'N'.\n"
-//     "C := C*Q^T if side = 'R' and trans = 'T'.\n"
-//     "C is m by n and Q is a square orthogonal matrix computed by geqrf."
-//     "\n"
-//     "Q is defined as a product of k elementary reflectors, stored as\n"
-//     "the first k columns of A and the first k entries of tau.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' matrix\n\n"
-//     "tau       'd' matrix of length at least k\n\n"
-//     "C         'd' matrix\n\n"
-//     "side      'L' or 'R'\n\n"
-//     "trans     'N' or 'T'\n\n"
-//     "m         integer.  If negative, the default value is used.\n\n"
-//     "n         integer.  If negative, the default value is used.\n\n"
-//     "k         integer.  k <= m if side = 'R' and k <= n if side = 'L'.\n"
-//     "          If negative, the default value is used.\n\n"
-//     "ldA       nonnegative integer.  ldA >= max(1,m) if side = 'L'\n"
-//     "          and ldA >= max(1,n) if side = 'R'.  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "ldC       nonnegative integer.  ldC >= max(1,m).  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
+/**
+ * @brief Product with real orthogonal matrix Q (BLAS ORMQR operation)
+ * 
+ * @details
+ * Multiplies matrix C by orthogonal matrix Q or its transpose:
+ * \f[
+ * \begin{align*}
+ * C &:= Q \cdot C \quad \text{(side='L', trans='N')} \\
+ * C &:= Q^\top \cdot C \quad \text{(side='L', trans='T')} \\
+ * C &:= C \cdot Q \quad \text{(side='R', trans='N')} \\
+ * C &:= C \cdot Q^\top \quad \text{(side='R', trans='T')}
+ * \end{align*}
+ * \f]
+ * 
+ * Matrix Q is defined by elementary reflectors from geqrf():
+ * \f[
+ * Q = H_1 H_2 \cdots H_k
+ * \f]
+ * stored in first k columns of A and vector tau.
+ *
+ * @param[in] A       Matrix containing elementary reflectors ('d' type)
+ * @param[in] tau     Scalar factors of elementary reflectors ('d' type)
+ * @param[in,out] C   Input/output matrix ('d' type)
+ * @param[in] side    Multiplication side: (default = 'L')
+ *                    - 'L': apply Q from Left
+ *                    - 'R': apply Q from Right
+ * @param[in] trans   Transposition flag: (default = 'N')
+ *                    - 'N': use Q
+ *                    - 'T': use Q transpose
+ * @param[in] m       Rows of matrix C (default = -1, meaning C.size[0])
+ * @param[in] n       Columns of matrix C (default = -1, meaning C.size[1])
+ * @param[in] k       Number of elementary reflectors (default = -1, meaning len(tau))
+ *                    - k must be ≤ m if side='L'
+ *                    - k must be ≤ n if side='R'   
+ * @param[in] ldA     Leading dimension of A: (default = 0, meaning max(1,m))
+ *                    - ≥max(1,m) if side='L'
+ *                    - ≥max(1,n) if side='R'
+ * @param[in] ldC     Leading dimension of C (default = 0, meaning max(1,m))
+ * @param[in] offsetA Offset in matrix A (default = 0)
+ * @param[in] offsetC Offset in matrix C (default = 0)
+ */
+void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char trans, 
+                int m, int n, int k, int ldA, int ldC, int offsetA, int offsetC)
+{
+    int info, lwork, oA = offsetA, oC = offsetC;
+    void *work;
+    number wl;
 
-// static PyObject* ormqr(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *tau, *C;
-//     int m=-1, n=-1, k=-1, ldA=0, ldC=0, oA=0, oC=0, info, lwork;
-//     void *work;
-//     number wl;
-// #if PY_MAJOR_VERSION >= 3
-//     int side_ = 'L', trans_ = 'N';
-// #endif
-//     char side = 'L', trans = 'N';
-//     char *kwlist[] = {"A", "tau", "C", "side", "trans", "m", "n", "k",
-//         "ldA", "ldC", "offsetA", "offsetC", NULL};
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(tau)) err_mtrx("tau");
+    if (!Matrix_Check(C)) err_mtrx("C");
+    if (MAT_ID(A) != MAT_ID(tau) || MAT_ID(A) != MAT_ID(C))
+        err_conflicting_ids;
+    if (side != 'L' && side != 'R') err_char("side", "'L', 'R'");
+    if (trans != 'N' && trans != 'T') err_char("trans", "'N', 'T'");
+    if (m < 0) m = C->nrows;
+    if (n < 0) n = C->ncols;
+    if (k < 0) k = len(tau);
+    if (m == 0 || n == 0 || k == 0) return;
+    if (k > ((side == 'L') ? m : n)) err_ld("k");
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < ((side == 'L') ? MAX(1,m) : MAX(1,n))) err_ld("ldA");
+    if (ldC == 0) ldC = MAX(1,C->nrows);
+    if (ldC < MAX(1,m)) err_ld("ldC");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + k*ldA  > len(A)) err_buf_len("A");
+    if (oC < 0) err_nn_int("offsetC");
+    if (oC + (n-1)*ldC + m > len(C)) err_buf_len("C");
+    if (len(tau) < k) err_buf_len("tau");
 
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOO|CCiiiiiii",
-//         kwlist, &A, &tau, &C, &side_, &trans_, &m, &n, &k, &ldA, &ldC,
-//         &oA, &oC)) 
-//         return NULL;
-//     side = (char) side_;
-//     trans = (char) trans_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOO|cciiiiiii",
-//         kwlist, &A, &tau, &C, &side, &trans, &m, &n, &k, &ldA, &ldC,
-//         &oA, &oC)) 
-//         return NULL;
-// #endif
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            lwork = -1;
+            dormqr_(&side, &trans, &m, &n, &k, NULL, &ldA, NULL, NULL,
+                &ldC, &wl.d, &lwork, &info);
+            lwork = (int) wl.d;
+            if (!(work = (void *) calloc(lwork, sizeof(double))))
+                err_no_memory;
+            dormqr_(&side, &trans, &m, &n, &k, MAT_BUFD(A)+oA, &ldA,
+                MAT_BUFD(tau), MAT_BUFD(C)+oC, &ldC, (double *) work,
+                &lwork, &info);
+            free(work);
+	    break;
 
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(tau)) err_mtrx("tau");
-//     if (!Matrix_Check(C)) err_mtrx("C");
-//     if (MAT_ID(A) != MAT_ID(tau) || MAT_ID(A) != MAT_ID(C))
-//         err_conflicting_ids;
-//     if (side != 'L' && side != 'R') err_char("side", "'L', 'R'");
-//     if (trans != 'N' && trans != 'T') err_char("trans", "'N', 'T'");
-//     if (m < 0) m = C->nrows;
-//     if (n < 0) n = C->ncols;
-//     if (k < 0) k = len(tau);
-//     if (m == 0 || n == 0 || k == 0) return Py_BuildValue("");
-//     if (k > ((side == 'L') ? m : n)) err_ld("k");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < ((side == 'L') ? MAX(1,m) : MAX(1,n))) err_ld("ldA");
-//     if (ldC == 0) ldC = MAX(1,C->nrows);
-//     if (ldC < MAX(1,m)) err_ld("ldC");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + k*ldA  > len(A)) err_buf_len("A");
-//     if (oC < 0) err_nn_int("offsetC");
-//     if (oC + (n-1)*ldC + m > len(C)) err_buf_len("C");
-//     if (len(tau) < k) err_buf_len("tau");
+        default:
+	    err_invalid_id;
+    }
 
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             lwork = -1;
-//             Py_BEGIN_ALLOW_THREADS
-//             dormqr_(&side, &trans, &m, &n, &k, NULL, &ldA, NULL, NULL,
-//                 &ldC, &wl.d, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             lwork = (int) wl.d;
-//             if (!(work = (void *) calloc(lwork, sizeof(double))))
-//                 return PyErr_NoMemory();
-//             Py_BEGIN_ALLOW_THREADS
-//             dormqr_(&side, &trans, &m, &n, &k, MAT_BUFD(A)+oA, &ldA,
-//                 MAT_BUFD(tau), MAT_BUFD(C)+oC, &ldC, (double *) work,
-//                 &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             free(work);
-// 	    break;
-
-//         default:
-// 	    err_invalid_id;
-//     }
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+    if (info) err_lapack(info);
+    else return;
+}
 
 
 // static char doc_unmqr[] =

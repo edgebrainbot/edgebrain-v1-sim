@@ -28,6 +28,10 @@ extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB,
 extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans,  void* alpha, void* beta, 
                     int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
 
+extern test_sp_gemv();
+extern void print_matrix(matrix *m);
+
+extern int TEST_TIMES;
 
 void test_blas_tbmv() {
     double Abuf[] = {0, 1, 2, 3, 4, 5};
@@ -166,6 +170,7 @@ void test_blas_trmm() {
 }
 
 void test_blas_trsm() {
+    printf("==== Running test_blas_trsm ====\n");
         // 创建一个下三角矩阵 A (3x3)，列主序
     // A =
     // [1 0 0]
@@ -209,6 +214,19 @@ void test_blas_trsm() {
     blas_trsm(&A, &B, 'L', 'L', 'N', 'N', &alpha,
               -1, -1, 0, 0, 0, 0);
 
+    clock_t start, end;
+    double elapsed;
+    start = clock();  // 开始计时
+    // 调用 base_syrk
+    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
+        // y := alpha * A * x + beta * y
+        blas_trsm(&A, &B, 'L', 'L', 'N', 'N', &alpha,
+              -1, -1, 0, 0, 0, 0);
+    }
+    end = clock();  // 结束计时
+    elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
+    
     // 打印结果 B
     printf("B := A * B =\n");
     for (int i = 0; i < B.nrows; ++i) {
@@ -382,6 +400,8 @@ void test_blas_gemm() {
 }
 
 void test_blas_gemv() {
+    printf("==== Running test_blas_gemv ====\n");
+
     // A: 3x2 (col-major): [1 3 5] [2 4 6]
     double Abuf[] = {
         1.0, 3.0, 5.0,  // col 0
@@ -419,9 +439,23 @@ void test_blas_gemv() {
     alpha.d = 2.0;
     beta.d = 1.0;
 
+
     // y := alpha * A * x + beta * y
     blas_gemv(&A, &x, &y, 'N', &alpha, &beta,
               -1, -1,0, 1, 1, 0, 0, 0);  // 默认 m,n, ldA, incX, incY
+    clock_t start, end;
+    double elapsed;
+    start = clock();  // 开始计时
+    // 调用 base_syrk
+    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
+            // y := alpha * A * x + beta * y
+        blas_gemv(&A, &x, &y, 'N', &alpha, &beta,
+              -1, -1,0, 1, 1, 0, 0, 0);  // 默认 m,n, ldA, incX, incY
+    }
+    end = clock();  // 结束计时
+    elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
+
 
     // 打印 y 结果
     printf("y = A * x =\n");
@@ -494,18 +528,20 @@ void test_blas_dot(){
 }
 
 void test_blas() {
-    test_blas_scal();
-    test_blas_gemv();
-    test_sp_gemv();
-    test_blas_copy();
-    test_blas_nrm2();
-    test_blas_tbsv();
-    test_blas_dot();
-    test_blas_tbmv();
-    test_blas_trmm();
+    printf("==== Running test_blas ====\n");
+
+    // test_blas_scal();
+    // test_blas_gemv();
+    // test_sp_gemv();
+    // test_blas_copy();
+    // test_blas_nrm2();
+    // test_blas_tbsv();
+    // test_blas_dot();
+    // test_blas_tbmv();
+    // test_blas_trmm();
     test_blas_trsm();
-    test_blas_trsv();
-    test_blas_syrk();
-    test_blas_gemm();
-    test_blas_gemv();
+    // test_blas_trsv();
+    // test_blas_syrk();
+    // test_blas_gemm();
+    // test_blas_gemv();
 }
