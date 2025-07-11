@@ -5,6 +5,11 @@
 #include <string.h>
 #include <time.h>
 
+typedef struct {
+    int_t i, j;
+    double val;
+} triplet;
+
 matrix* load_txt_as_matrix(const char* filename) {
     FILE* file = fopen(filename, "r");
     if (!file) {
@@ -108,7 +113,7 @@ void print_matrix(matrix *m)
     printf("Matrix (%dx%d):\n", m->nrows, m->ncols);
     for (int r = 0; r < m->nrows; ++r) {
         for (int c = 0; c < m->ncols; ++c) {
-            printf("%.2f ", buf[c * m->nrows + r]);  // column-major
+            printf("%.8f ", buf[c * m->nrows + r]);  // column-major
         }
         printf("\n");
     }
@@ -160,4 +165,79 @@ matrix fill_random_matrix(int rows, int cols)
             buf[i + j*rows] = (double) rand() / RAND_MAX;
 
     return B;
+}
+
+int compare_triplet(const void *a, const void *b) {
+    triplet *t1 = (triplet *)a;
+    triplet *t2 = (triplet *)b;
+    if (t1->j != t2->j) return (t1->j - t2->j); // sort by column
+    return (t1->i - t2->i);                     // then by row
+}
+
+spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols) 
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        perror("fopen");
+        return NULL;
+    }
+
+    size_t cap = 1024;
+    size_t nnz = 0;
+    triplet *data = malloc(cap * sizeof(triplet));
+    if (!data) return NULL;
+
+    // Step 1: Read i j v triplets
+    int_t i, j;
+    double v;
+    while (fscanf(fp, "%ld %ld %lf", &i, &j, &v) == 3) {
+        if (nnz >= cap) {
+            cap *= 2;
+            data = realloc(data, cap * sizeof(triplet));
+        }
+        data[nnz++] = (triplet){i, j, v};
+    }
+    fclose(fp);
+
+    // Step 2: Sort by column-major
+    qsort(data, nnz, sizeof(triplet), compare_triplet);
+
+    // Step 3: Allocate CCS
+    ccs *A = malloc(sizeof(ccs));
+    A->nrows = nrows;
+    A->ncols = ncols;
+    A->id = DOUBLE; // DOUBLE
+
+    A->values = malloc(nnz * sizeof(double));
+    A->rowind = malloc(nnz * sizeof(int_t));
+    A->colptr = calloc(ncols + 1, sizeof(int_t));
+
+    double *val = (double *)A->values;
+    int_t *rowind = A->rowind;
+    int_t *colptr = A->colptr;
+
+    // Step 4: Fill CCS from sorted triplets
+    int_t col = 0, idx = 0;
+    colptr[0] = 0;
+    for (size_t k = 0; k < nnz; ++k) {
+        while (col < data[k].j) {
+            ++col;
+            colptr[col] = idx;
+        }
+        val[idx] = data[k].val;
+        rowind[idx] = data[k].i;
+        ++idx;
+    }
+    while (col < ncols) {
+        ++col;
+        colptr[col] = idx;
+    }
+
+    // Step 5: Wrap into spmatrix
+    spmatrix *S = malloc(sizeof(spmatrix));
+    S->mat_type = MAT_SPARSE;  // MAT_SPARSE
+    S->obj = A;
+
+    free(data);
+    return S;
 }

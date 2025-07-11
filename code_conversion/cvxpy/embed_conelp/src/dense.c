@@ -167,6 +167,53 @@ matrix * Matrix_New(int nrows, int ncols, int id)
 }
 
 /*
+  Creates an unpopulated matrix filled with given value . In API
+ */
+matrix * Matrix_New_Val(int nrows, int ncols, int id, number val)
+{
+  matrix *a;
+  if ((nrows < 0) || (ncols < 0) || (id < INT) || (id > COMPLEX)) {
+    err_bad_internal_call;
+    return NULL;
+  }
+  else if (ncols > 0 && nrows > (INT_MAX/ncols)) {
+    ERR("number of elements exceeds INT_MAX");
+    return NULL;
+  }
+  else if (!(a = malloc(sizeof(matrix)))) {
+    err_no_memory;
+    return NULL;
+  }
+
+  a->id = id; a->nrows = nrows; a->ncols = ncols; 
+  a->mat_type = MAT_DENSE; a->buffer = NULL;
+
+  if ((a->buffer = malloc(nrows*ncols * E_SIZE[id]))){
+    for (int i = 0; i < nrows*ncols; i++) {
+      switch (id) {
+        case INT:
+          MAT_BUFI(a)[i] = val.i;
+          break;
+        case DOUBLE:
+          MAT_BUFD(a)[i] = val.d;
+          break;
+        case COMPLEX:
+          MAT_BUFZ(a)[i] = val.z;
+          break;
+      }
+    }
+    return a;
+  }
+  else if (nrows*ncols == 0) 
+    return a;
+  else {
+    free(a);
+    err_no_memory;
+  }
+}
+
+
+/*
   Creates a copy of matrix as a new object. In API.
  */
 matrix *Matrix_NewFromMatrix(matrix *src, int id)
@@ -177,8 +224,9 @@ matrix *Matrix_NewFromMatrix(matrix *src, int id)
   }
 
   matrix *a;
-  if (!(a = Matrix_New(src->nrows, src->ncols, id))) 
-    return NULL;
+  if (!(a = Matrix_New(src->nrows, src->ncols, id))) {
+    err_no_memory;
+  }
 
   if (convert_mtx(src, a->buffer, id)) {
     ERR_TYPE("illegal type conversion");
@@ -376,28 +424,28 @@ Matrix_NewFromNumber(int nrows, int ncols, int id, void *val, int val_id)
 //   return L;
 // }
 
-// matrix * dense(spmatrix *self)
-// {
-//   matrix *A;
-//   int_t j, k;
+matrix * dense(spmatrix *sp_mat)
+{
+  matrix *A;
+  int_t j, k;
 
-//   if (!(A = Matrix_New(SP_NROWS(self),SP_NCOLS(self),SP_ID(self))))
-//     return NULL;
+  if (!(A = Matrix_New(SP_NROWS(sp_mat),SP_NCOLS(sp_mat),SP_ID(sp_mat))))
+    return NULL;
 
-//   if (SP_ID(self) == DOUBLE) {
-//     for (j=0; j<SP_NCOLS(self); j++)
-//       for (k=SP_COL(self)[j]; k<SP_COL(self)[j+1]; k++) {
-//         MAT_BUFD(A)[SP_ROW(self)[k] + j*MAT_NROWS(A)] = SP_VALD(self)[k];
-//       }
-//   } else {
-//     for (j=0; j<SP_NCOLS(self); j++)
-//       for (k=SP_COL(self)[j]; k<SP_COL(self)[j+1]; k++) {
-//         MAT_BUFZ(A)[SP_ROW(self)[k] + j*MAT_NROWS(A)] = SP_VALZ(self)[k];
-//       }
-//   }
+  if (SP_ID(sp_mat) == DOUBLE) {
+    for (j=0; j<SP_NCOLS(sp_mat); j++)
+      for (k=SP_COL(sp_mat)[j]; k<SP_COL(sp_mat)[j+1]; k++) {
+        MAT_BUFD(A)[SP_ROW(sp_mat)[k] + j*MAT_NROWS(A)] = SP_VALD(sp_mat)[k];
+      }
+  } else {
+    for (j=0; j<SP_NCOLS(sp_mat); j++)
+      for (k=SP_COL(sp_mat)[j]; k<SP_COL(sp_mat)[j+1]; k++) {
+        MAT_BUFZ(A)[SP_ROW(sp_mat)[k] + j*MAT_NROWS(A)] = SP_VALZ(sp_mat)[k];
+      }
+  }
 
-//   return A;
-// }
+  return A;
+}
 
 // int convert_array(void *dest, void *src, int dest_id, int src_id, int n);
 

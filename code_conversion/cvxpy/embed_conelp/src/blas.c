@@ -427,7 +427,7 @@ double blas_nrm2(matrix *x, int n, int inc, int offset)
 
     // Default parameter handling
     if (n < 0) n = -1;
-    if (ix == 0) ix = 1;
+    if (ix <= 0) ix = 1;
     if (ox < 0) ox = 0;
 
     if (!Matrix_Check(x)) err_mtrx("x");

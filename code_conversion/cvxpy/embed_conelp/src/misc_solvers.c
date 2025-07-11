@@ -24,6 +24,7 @@
 #include "math.h"
 #include "float.h"
 
+
 /* misc_solver prototype */
 extern void dcopy_(int *n, double *x, int *incx, double *y, int *incy);
 extern double dnrm2_(int *n, double *x, int *incx);
@@ -52,8 +53,9 @@ extern void dsyevr_(char *jobz, char *range, char *uplo, int *n, double *A,
     int *m, double *W, double *Z, int *ldZ, int *isuppz, double *work,
     int *lwork, int *iwork, int *liwork, int *info);
 extern void dsyevd_(char *jobz, char *uplo, int *n, double *A, int *ldA,
-    double *W, double *work, int *lwork, int *iwork, int *liwork,
-    int *info);
+    double *W, double *work, int *lwork, int *iwork, int *liwork, int *info);
+extern void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
+                int n, int nrhs, int ldA, int ldB, int oA, int oB);
 
 /* blas library */
 extern void blas_tbsv(matrix *A, matrix *x, char uplo, char trans, char diag, 
@@ -74,13 +76,18 @@ extern void blas_trsm(matrix *A, matrix *B, char side, char uplo, char transA, c
 extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB, 
               void* alpha, void* beta, int m, int n, int k, int ldA, int ldB, 
               int ldC, int offsetA, int offsetB, int offsetC);
-
+extern void blas_syrk(matrix *A, matrix *C, char uplo, char trans, void* alpha, void* beta, 
+              int n, int k, int ldA, int ldC, int offsetA, int offsetC);
+extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans, void* alpha, void* beta, 
+            int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
 
 /* base library */
 extern void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
 extern void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
 extern void* base_pow(void* A, void* exponent, int A_type, int A_id, int exp_id);
 extern void* base_sqrt(void* A, int A_type, int A_id);
+extern void base_gemv(void *A, matrix *x, matrix *y, char trans, void *alpha, void *beta, 
+                    int m, int n, int incx, int incy, int offsetA, int offsetx, int offsety);
 
 extern matrix * Matrix_New(int, int, int);
 
@@ -88,7 +95,16 @@ extern matrix * Matrix_New(int, int, int);
 extern void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix *Vt, int m, 
     int n, int ldA, int ldU, int ldVt, int offsetA, int offsetS, int offsetU, int offsetVt);
 extern void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA);
+extern void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA);
+extern void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char trans, 
+                int m, int n, int k, int ldA, int ldC, int offsetA, int offsetC);
+extern void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, int oA, int oB);
 
+/* sparse library */
+extern ccs * transpose(ccs *A, int conjugate);
+
+/* dense library */
+extern matrix * dense(spmatrix *sp_mat);
 
 /**
  * @brief Compute jnrm2 for a second-order cone vector
@@ -106,7 +122,7 @@ double misc_jnrm2(matrix* x, int n, int offset) {
     if (offset < 0) offset = 0;
     if (n < 0) n = len(x);
     double a = blas_nrm2(x, n-1, 1, offset+1);
-    double x0 = ((double *)(x->buffer))[offset];
+    double x0 = MAT_BUFD(x)[offset];
     double t1 = x0 - a;
     double t2 = x0 + a;
     return sqrt(t1) * sqrt(t2);
@@ -150,7 +166,8 @@ double misc_jnrm2(matrix* x, int n, int offset) {
  * - trans and inverse must be valid flags ('N', 'T', or 'I')
  * - All vectors/matrices must have compatible dimensions
  */
-void misc_scale(matrix *x, scaling *W, char trans, char inverse) {
+void misc_scale(matrix *x, scaling *W, char trans, char inverse) 
+{
     matrix *d, *vk, *rk;
 
     // Set default character values
@@ -772,6 +789,8 @@ void misc_sprod(matrix *x, matrix *y, DIMs *dims, int mnl, char diag)
     int i, j, k, mk, length, maxn, ind = 0, ind2, int0 = 0, int1 = 1, ld;
     double a, *A = NULL, dbl2 = 0.5, dbl0 = 0.0;
 
+    if (mnl < 0) mnl = 0;
+
     ind = mnl;
     if(diag == 0) diag = 'N';
 
@@ -821,7 +840,7 @@ void misc_sprod(matrix *x, matrix *y, DIMs *dims, int mnl, char diag)
     if (diag == 'N'){
         if (!(A = (double *) calloc(maxn * maxn, sizeof(double)))) err_no_memory;
         for (i = 0; i < dims->s_size; ind += mk*mk, ++i){
-            mk = dims->s_size;
+            mk = dims->s[i];
             length = mk * mk;
             dcopy_(&length, MAT_BUFD(x) + ind, &int1, A, &int1);
 
@@ -1121,6 +1140,8 @@ double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl)
     int m = mnl, int1 = 1, i, k, nk, inc, len;
     double a;
 
+    if (m < 0) m = 0; // Ensure m is non-negative
+
     // Add dims->l to m
     m += dims->l;
 
@@ -1195,22 +1216,24 @@ double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl)
  *
  * @see LAPACK dsyevd/dsyevr documentation for eigenvalue computation details
  */
-static double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma)
+double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma)
 {
-    int i, mk, len, maxn, ind = 0, ind2, int1 = 1, ld, Ns = 0, info, lwork,
+    int i, mk, length, maxn, ind = mnl, ind2, int1 = 1, ld, Ns = 0, info, lwork,
         *iwork = NULL, liwork, iwl, m;
     
     double t = -FLT_MAX, dbl0 = 0.0, *work = NULL, wl, *Q = NULL, *w = NULL;
 
+    if (mnl < 0) ind = 0; // Ensure mnl is non-negative
+
     // 1. Handle nonlinear and 'l' part: vector of ones
-    ind += mnl + dims->l;
+    ind += dims->l;
     for (i = 0; i < ind; i++) t = MAX(t, -MAT_BUFD(x)[i]);
 
     // 2. Handle 'q' second-order cone part
     for (i = 0; i < dims->q_size; ++i) {
         mk = dims->q[i];
-        len = mk - 1;
-        t = MAX(t, dnrm2_(&len, MAT_BUFD(x) + ind + 1, &int1) -
+        length = mk - 1;
+        t = MAX(t, dnrm2_(&length, MAT_BUFD(x) + ind + 1, &int1) -
             MAT_BUFD(x)[ind]);
         ind += mk;
     }
@@ -1263,8 +1286,8 @@ static double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma)
                 t = MAX(t, -MAT_BUFD(sigma)[ind2]);
             }
             else {
-                len = mk*mk;
-                dcopy_(&len, MAT_BUFD(x) + ind, &int1, Q, &int1);
+                length = mk*mk;
+                dcopy_(&length, MAT_BUFD(x) + ind, &int1, Q, &int1);
                 ld = MAX(1, mk);
                 dsyevr_("N", "I", "L", &mk, Q, &mk, &dbl0, &dbl0, &int1,
                     &int1, &dbl0, &m, w, NULL, &int1, NULL, work, &lwork,
@@ -1307,7 +1330,6 @@ double misc_snrm2(matrix *x, DIMs *dims, int mnl)
 {
     // Compute the S-dot product of x with itself
     double inner_product = misc_sdot(x, x, dims, mnl);
-
     // Return the square root of the dot product (i.e., the norm)
     return sqrt(inner_product);
 }
@@ -1352,7 +1374,8 @@ double misc_snrm2(matrix *x, DIMs *dims, int mnl)
  * - All diagonal elements must be stored contiguously
  * - For quadratic cones, assumes standard second-order cone structure
  */
-void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl) {
+void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl) 
+{
     
     int ind = mnl + dims->l;
 
@@ -1368,11 +1391,11 @@ void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl) {
         
         // x[ind] = blas.nrm2(y, offset = ind, n = m)**2
         double nrm = blas_nrm2(y, m, 1, ind);
-        ((double *)(x->buffer))[ind] = nrm * nrm;
-        
+        MAT_BUFD(x)[ind] = nrm * nrm;
+
         // blas.scal(2.0*y[ind], x, n = m-1, offset = ind+1)
         // blas_scal(m-1, 2.0 * y[ind], &x[ind+1], 1);
-        double y_val = ((double *)(y->buffer))[ind] * 2.0;
+        double y_val = MAT_BUFD(y)[ind] * 2.0;
         blas_scal(&y_val, x, m - 1, 1, ind + 1);
         ind += m;
     }
@@ -1469,7 +1492,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         int i = 0;
         matrix* res = base_sqrt(tmp, 0, DOUBLE);
         for (; i < mnl; ++i) {
-            ((double *)lmbda->buffer)[i] = ((double *)res->buffer)[i];
+            MAT_BUFD(lmbda)[i] = MAT_BUFD(res)[i];
         }
 
         // Free all
@@ -1509,7 +1532,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
     tmp = base_emul(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
     matrix *res = base_sqrt(tmp, 0, DOUBLE);
     for (int i = 0; i < m; ++i) {
-        ((double *)lmbda->buffer)[mnl + i] = ((double *)res->buffer)[i];
+        MAT_BUFD(lmbda)[mnl + i] = MAT_BUFD(res)[i];
     }
     // Free all
     Matrix_Free(tmp);
@@ -1568,7 +1591,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
 
         double alpha = -1.0/bb;
         blas_scal(&alpha, v, -1, 1, 0);
-        ((double *)v->buffer)[0] *= -1.0;
+        MAT_BUFD(v)[0] *= -1.0;
 
         number alpha_n;
         alpha_n.d = 1.0 / aa;
@@ -1577,8 +1600,8 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         blas_scal(&alpha, v, -1, 1, 0);
 
         // v[k] = 1/sqrt(2*(vk0 + 1)) * ( vk + e ),  e = [1; 0]
-        ((double *)v->buffer)[0] += 1.0;
-        alpha = 1.0 / sqrt(2.0 * ((double *)v->buffer)[0]);
+        MAT_BUFD(v)[0] += 1.0;
+        alpha = 1.0 / sqrt(2.0 * MAT_BUFD(v)[0]);
         blas_scal(&alpha, v, -1, 1, 0);
             
         // To get the scaled variable lambda_k
@@ -1588,9 +1611,9 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         //                  (c + zk0/b)/d * sk1/a + (c + sk0/a)/d * zk1/b ]
         //     lambda_k *= sqrt(a * b)
 
-        ((double *)(lmbda->buffer))[ind] = cc;
-        double saa = ((double *)(s->buffer))[ind] / aa;
-        double zbb = ((double *)(z->buffer))[ind] / bb;
+        MAT_BUFD(lmbda)[ind] = cc;
+        double saa = MAT_BUFD(s)[ind] / aa;
+        double zbb = MAT_BUFD(z)[ind] / bb;
         double dd = 2*cc + saa + zbb;
         double tmp = (zbb+cc) / dd / aa;
         double tmp2 = sqrt(aa * bb);
@@ -1671,7 +1694,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         // r := r * diag(sqrt(lambda_k))
         // rti := rti * diag(1 ./ sqrt(lambda_k))
         for (int i = 0; i < m; ++i) {
-            double a = sqrt(((double *)(lmbda->buffer))[ind + i]);
+            double a = sqrt(MAT_BUFD(lmbda)[ind + i]);
             double tmp_a = 1.0 / a;
             blas_scal(&a, r, m, 1, m*i);
             blas_scal(&tmp_a, rti, m, 1, m*i);
@@ -1733,8 +1756,8 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
     matrix *tmp2 = base_sqrt(z_m, 0, DOUBLE);
 
     for(int i = 0; i < m; ++i) {
-        ((double *)(s->buffer))[i] = ((double *)tmp1->buffer)[i];
-        ((double *)(z->buffer))[i] = ((double *)tmp2->buffer)[i];
+        MAT_BUFD(s)[i] = MAT_BUFD(tmp1)[i];
+        MAT_BUFD(z)[i] = MAT_BUFD(tmp2)[i];
     }
 
     Matrix_Free(tmp1);
@@ -1748,7 +1771,7 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         blas_tbsv(z, W->dnl, 'L', 'N', 'N', mnl, 0, 1, 1, 0, 0);
         matrix *tmp = base_pow(W->dnl, &((double){-1.0}), 0, DOUBLE, DOUBLE);
         for(int i = 0; i < MAT_LGT(W->dnl); ++i) {
-            ((double *)(W->dnl->buffer))[i] = ((double *)tmp->buffer)[i];
+            MAT_BUFD(W->dnl)[i] = MAT_BUFD(tmp)[i];
         }
         Matrix_Free(tmp);
     }
@@ -1756,7 +1779,7 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
     blas_tbsv(z, W->d, 'L', 'N', 'N', ml, 0, 1, 1, mnl, 0);
     matrix *tmp = base_pow(W->d, &((double){-1.0}), 0, DOUBLE, DOUBLE);
     for(int i = 0; i < MAT_LGT(W->d); ++i) {
-        ((double *)(W->d->buffer))[i] = ((double *)tmp->buffer)[i];
+        MAT_BUFD(W->d)[i] = MAT_BUFD(tmp)[i];
     }
     Matrix_Free(tmp);
          
@@ -1843,7 +1866,7 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         double vu = vs.d - vz;
 
         // lambda_k0 = c
-        ((double *)lmbda->buffer)[ind] = cc;
+        MAT_BUFD(lmbda)[ind] = cc;
 
         // wk0 = 2 * vk0 * (vk' * q) - q0 
         double wk0 = 2.0 * v_data[0] * vq - (s_data[ind] + z_data[ind]) / 2.0 / cc;
@@ -1962,81 +1985,211 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
 }
 
 
-static void solve(matrix *x, matrix *y, matrix *z, scaling *W, 
-                  matrix *H, matrix *Df, matrix *A, int mnl, 
-                  int p, int n, int ldK, int *ipiv) 
+// KKT Inner solve function
+void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx) 
 {
-    // Solve the KKT system using the LDL factorization
-    // This function is called by the factor_impl function below
-    // The implementation details are omitted for brevity
-    // ...
+    // Solve
+    //
+    //     [ 0          A'  GG'*W^{-1} ]   [ ux   ]   [ bx        ]
+    //     [ A          0   0          ] * [ uy   ] = [ by        ]
+    //     [ W^{-T}*GG  0   -I         ]   [ W*uz ]   [ W^{-T}*bz ]
+    //
+    // and return ux, uy, W*uz.
+    //
+    // On entry, x, y, z contain bx, by, bz.  On exit, they contain
+    // the solution ux, uy, W*uz.
+    //
+    // If we change variables ux = Q1*v + Q2*w, the system becomes 
+    // 
+    //     [ K11 K12 R ]   [ v  ]   [Q1'*(bx+GG'*W^{-1}*W^{-T}*bz)]
+    //     [ K21 K22 0 ] * [ w  ] = [Q2'*(bx+GG'*W^{-1}*W^{-T}*bz)]
+    //     [ R^T 0   0 ]   [ uy ]   [by                           ]
+    // 
+    //     W*uz = W^{-T} * ( GG*ux - bz ).
+
+    // bzp := W^{-T} * bz in packed storage 
+    misc_scale(z, ctx->W, 'T', 'I'); 
+    misc_pack(z, ctx->bzp, ctx->dims, ctx->mnl, 0, 0);
+
+    // x := [Q1, Q2]' * (x + Gs' * bzp)
+    //    = [Q1, Q2]' * (bx + Gs' * W^{-T} * bz)
+    double beta = 1.0;
+    blas_gemv(ctx->Gs, ctx->bzp, x, 'T', NULL, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
+    lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'T', -1, -1, -1, 0, 0, 0, 0);
+
+    // y := x[:p] 
+    //    = Q1' * (bx + Gs' * W^{-T} * bz)
+    blas_copy(y, ctx->yy, -1, 1, 1, 0, 0);
+    blas_copy(x, y, ctx->p, 1, 1, 0, 0);
+
+    // x[:p] := v = R^{-T} * by 
+    blas_copy(ctx->yy, x, -1, 1, 1, 0, 0);
+    lapack_trtrs(ctx->QA, x, 'U', 'T', 'N', ctx->p, -1, 0, 0, 0, 0);
+
+    // x[p:] := K22^{-1} * (x[p:] - K21*x[:p])
+    //        = K22^{-1} * (Q2' * (bx + Gs' * W^{-T} * bz) - K21*v)
+    double alpha = -1.0;
+    beta = 1.0;
+    blas_gemv(ctx->K, x, x, 'N', &alpha, &beta, ctx->n - ctx->p, ctx->p, 0, 1, 1, ctx->p, 0, ctx->p);
+    lapack_potrs(ctx->K, x, 'L', ctx->n - ctx->p, -1, 0, 0, ctx->p * (ctx->n+1), ctx->p);
+
+    // y := y - [K11, K12] * x
+    //    = Q1' * (bx + Gs' * W^{-T} * bz) - K11*v - K12*w
+    alpha = -1.0;
+    beta = 1.0;
+    blas_gemv(ctx->K, x, y, 'N', &alpha, &beta, ctx->p, ctx->n, 0, 1, 1, 0, 0, 0);
+
+    // y := R^{-1}*y
+    //    = R^{-1} * (Q1' * (bx + Gs' * W^{-T} * bz) - K11*v 
+    //      - K12*w)
+    lapack_trtrs(ctx->QA, y, 'U', 'N', 'N', ctx->p, -1, 0, 0, 0, 0);
+
+    // x := [Q1, Q2] * x
+    lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'N', -1, -1, -1, 0, 0, 0, 0);
+
+    // bzp := Gs * x - bzp.
+    //      = W^{-T} * ( GG*ux - bz ) in packed storage.
+    // Unpack and copy to z.
+    alpha = 1.0;
+    beta = -1.0;
+    blas_gemv(ctx->Gs, x, ctx->bzp, 'N', &alpha, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
+
+    // print_matrix_(ctx->bzp);
+
+    misc_unpack(ctx->bzp, z, ctx->dims, ctx->mnl, 0, 0);
+    
 }
 
+// Inner factor function
+void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx) 
+{
+    // Compute 
+    //
+    //     K = [Q1, Q2]' * (H + GG' * W^{-1} * W^{-T} * GG) * [Q1, Q2]
+    //
+    // and take the Cholesky factorization of the 2,2 block
+    //
+    //     Q_2' * (H + GG^T * W^{-1} * W^{-T} * GG) * Q2.
 
-/* Solution of KKT equations by a dense LDL factorization of the 2x2 system.
- *
- * Returns a function that:
- * 1. Computes the LDL factorization of:
- *
- *        [ H + GG' * W^{-1} * W^{-T} * GG   A' ]
- *        [                                     ]
- *        [ A                                0  ]
- *
- *    given H, Df, W, where GG = [Df; G]
- *
- * 2. Returns a function for solving:
- *
- *        [ H    A'   GG'   ]   [ ux ]   [ bx ]
- *        [ A    0    0     ] * [ uy ] = [ by ]
- *        [ GG   0   -W'*W  ]   [ uz ]   [ bz ]
- *
- * Dimensions:
- * - H is n x n
- * - A is p x n
- * - Df is mnl x n
- * - G is N x n where N = dims['l'] + sum(dims['q']) + sum(k^2 for k in dims['s'])
- */
-// FactorFunc kkt_ldl2(matrix *G, DIMs *dims, matrix *A, int mnl) {
+    // Gs = W^{-T} * GG in packed storage.
+    ctx->W = W;
+
+    if (ctx->mnl) {
+        matrix_slice_assign(ctx->Gs, Df, 0, ctx->mnl, 0, ctx->n);
+    }
+
+    if (Matrix_Check(ctx->G) && !SpMatrix_Check(ctx->G)) {
+        // G is a dense matrix
+        matrix_slice_assign(ctx->Gs, ctx->G, ctx->mnl, ctx->cdim, 0, ctx->n);
+    } else if (SpMatrix_Check(ctx->G) && !Matrix_Check(ctx->G)) {
+        // G is a sparse matrix
+        spmatrix *spG = (spmatrix*)ctx->G;
+        matrix *dense_G = dense(spG);
+        matrix_slice_assign(ctx->Gs, dense_G, ctx->mnl, ctx->cdim, 0, ctx->n);
+        free(dense_G);
+    } else {
+        ERR_TYPE("Invalid matrix type for G.");
+    }
+
+    // matrix_slice_assign(ctx->Gs, ctx->G, ctx->mnl, ctx->cdim, 0, ctx->n);
+    misc_scale(ctx->Gs, W, 'T', 'I');
+    misc_pack2(ctx->Gs, ctx->dims, ctx->mnl);
+
+    // K = [Q1, Q2]' * (H + Gs' * Gs) * [Q1, Q2].
+    blas_syrk(ctx->Gs, ctx->K, 'L', 'T', NULL, NULL, -1, ctx->cdim_pckd, 0, 0, 0, 0);
+    if (H != NULL) {
+        matrix_add(ctx->K, H);
+    }
+    misc_symm(ctx->K, ctx->n, 0);
+    lapack_ormqr(ctx->QA, ctx->tauA, ctx->K, 'L', 'T', -1, -1, -1, 0, 0, 0, 0);
+    lapack_ormqr(ctx->QA, ctx->tauA, ctx->K, 'R', 'N', -1, -1, -1, 0, 0, 0, 0);
+
+    // Cholesky factorization of 2,2 block of K.
+    lapack_potrf(ctx->K, 'L', ctx->n - ctx->p, 0, ctx->p * (ctx->n + 1));
+
+    return;
+}
+
+// Main function
+KKTCholContext* kkt_chol(matrix *G, DIMs *dims, void *A, int mnl) 
+{
+    /*
+    Solution of KKT equations by reduction to a 2 x 2 system, a QR 
+    factorization to eliminate the equality constraints, and a dense 
+    Cholesky factorization of order n-p. 
     
-//     // p, n = A.size
-//     int p = A->nrows;
-//     int n = A->ncols;
+    Computes the QR factorization
     
-//     // ldK = n + p 
-//     int ldK = n + p;
+        A' = [Q1, Q2] * [R; 0]
     
-//     // Allocate context structure
-//     KKT_Context *ctx = (KKT_Context*)malloc(sizeof(KKT_Context));
-//     ctx->G = G;
-//     ctx->dims = dims;
-//     ctx->A = A;
-//     ctx->mnl = mnl;
-//     ctx->p = p;
-//     ctx->n = n;
-//     ctx->ldK = ldK;
+    and returns a function that (1) computes the Cholesky factorization 
     
-//     // K = matrix(0.0, (ldK, ldK))
-//     ctx->K = Matrix_New(ldK, ldK, DOUBLE);
+        Q_2^T * (H + GG^T * W^{-1} * W^{-T} * GG) * Q2 = L * L^T, 
     
-//     // if p: ipiv = matrix(0, (ldK, 1))
-//     if (p) {
-//         ctx->ipiv = (int*)calloc(ldK, sizeof(int));
-//     } else {
-//         ctx->ipiv = NULL;
-//     }
+    given H, Df, W, where GG = [Df; G], and (2) returns a function for 
+    solving 
     
-//     // g = matrix(0.0, (mnl + G.size[0], 1))
-//     ctx->g = Matrix_New(mnl + G->nrows, 1);
+        [ H    A'   GG'    ]   [ ux ]   [ bx ]
+        [ A    0    0      ] * [ uy ] = [ by ].
+        [ GG   0    -W'*W  ]   [ uz ]   [ bz ]
     
-//     // u = matrix(0.0, (ldK, 1))
-//     ctx->u = Matrix_New(ldK, 1);
-    
-//     // Store context pointer to be used by factor function
-//     static KKT_Context *static_ctx = NULL;
-//     static_ctx = ctx;
-    
-//     return factor_impl;
-// }
+    H is n x n,  A is p x n, Df is mnl x n, G is N x n where
+    N = dims['l'] + sum(dims['q']) + sum( k**2 for k in dims['s'] ).
+    */
+
+    // Allocate and initialize context
+    KKTCholContext *ctx = malloc(sizeof(KKTCholContext));
+    if (ctx == NULL) {
+        fprintf(stderr, "Memory allocation failed for KKTCholContext.\n");
+        return NULL;
+    }
+    KKTCholContext_Init(ctx);   // Initialize context structure
+
+    ctx->G = G;
+    ctx->dims = dims;
+    ctx->mnl = mnl;
+
+    if (Matrix_Check(A) && !SpMatrix_Check(A)) {
+        matrix *A_mat = (matrix*)A;
+        ctx->p = A_mat->nrows;  // A is a dense matrix
+        ctx->n = A_mat->ncols;
+        ctx->QA = matrix_transpose(A_mat);
+    } else if (SpMatrix_Check(A) && !Matrix_Check(A)) {
+        // A is a sparse matrix
+        spmatrix *spA = (spmatrix*)A;
+        ctx->p = spA->obj->nrows;
+        ctx->n = spA->obj->ncols;
+
+        spmatrix *spA_trans = spmatrix_trans(spA);
+        ctx->QA = dense(spA_trans);
+        free(spA_trans);
+        
+    } else {
+        free(ctx);
+        ERR_TYPE("Invalid matrix type for A.");
+    }
+
+    ctx->cdim = mnl + dims->l + sum_array(dims->q, dims->q_size) 
+                            + sum_square_array(dims->s, dims->s_size);
+                            
+    ctx->cdim_pckd = mnl + dims->l + sum_array(dims->q, dims->q_size) 
+                            + sum_triangular_array(dims->s, dims->s_size);
+
+    // A' = [Q1, Q2] * [R; 0]  (Q1 is n x p, Q2 is n x n-p).
+    // ctx->QA = matrix_transpose(A);
+
+    ctx->tauA = Matrix_New(ctx->p, 1, DOUBLE);
+    lapack_geqrf(ctx->QA, ctx->tauA, -1, -1, 0, 0);
+
+    ctx->Gs = Matrix_New(ctx->cdim, ctx->n, DOUBLE);
+    ctx->K = Matrix_New(ctx->n, ctx->n, DOUBLE);
+    ctx->bzp = Matrix_New(ctx->cdim_pckd, 1, DOUBLE);
+    ctx->yy = Matrix_New(ctx->p, 1, DOUBLE);
+
+    // Return factory function that captures context
+    return ctx;
+}
+
 
 
 /**
@@ -2231,3 +2384,262 @@ void misc_unpack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int off
     return;
 }
 
+
+/**
+ * @brief Matrix-vector multiplication for structured matrices.
+ *
+ * @details
+ * A is a matrix or spmatrix of size (m, n) where 
+ * 
+ *     N = dims->l + sum(dims->q) + sum( k^2 for k in dims->s ) 
+ *
+ * representing a mapping from R^n to S.  
+ * 
+ * If trans is 'N': 
+ * 
+ *     y := alpha*A*x + beta * y   (trans = 'N').
+ * 
+ * x is a vector of length n.  y is a vector of length N.
+ * 
+ * If trans is 'T':
+ * 
+ *     y := alpha*A'*x + beta * y  (trans = 'T').
+ * 
+ * x is a vector of length N.  y is a vector of length n.
+ * 
+ * The 's' components in S are stored in unpacked 'L' storage.
+ *
+ * @param[in] A         Input matrix or spmatrix
+ * @param[in] x         Input vector
+ * @param[in,out] y     Input/output vector
+ * @param[in] dims      Dimensions structure containing l, q, and s arrays
+ * @param[in] trans     Transposition flag ('N' or 'T') (default = 'N')
+ * @param[in] alpha     Scalar multiplier (default = 1.0)
+ * @param[in] beta      Scalar multiplier (default = 0.0)
+ * @param[in] n         Column dimension of A (default = -1, which means A.size[1])
+ * @param[in] offsetA   Matrix A offset (default = 0)
+ * @param[in] offsetx   Vector x offset (default = 0)
+ * @param[in] offsety   Vector y offset (default = 0)
+ */
+void misc_sgemv(void *A, matrix *x, matrix *y, DIMs *dims, char trans, double alpha, 
+                double beta, int n, int offsetA, int offsetx, int offsety)
+{
+    int m, i;
+    int sum_q = 0, sum_s = 0;
+
+    if (!A || !x || !y || !dims) ERR("Invalid input parameters.\n");
+    if (!is_matrix(A) && !is_spmatrix(A)) ERR("A must be a matrix or spmatrix.\n");
+
+    // Default values
+    if (trans == 0) trans = 'N';
+    
+    // Compute sum of dims->q array
+    for (i = 0; i < dims->q_size; ++i) {
+        sum_q += dims->q[i];
+    }
+    
+    // Compute sum of k^2 for k in dims->s array
+    for (i = 0; i < dims->s_size; ++i) {
+        sum_s += dims->s[i] * dims->s[i];
+    }
+    
+    // Calculate m = dims['l'] + sum(dims['q']) + sum( k**2 for k in dims['s'] )
+    m = dims->l + sum_q + sum_s;
+    
+    // Default value for n if not provided (n = A.size[1])
+    if (n < 0) {
+        if (is_matrix(A)) {
+            n = ((matrix *)A)->ncols;
+        } else if (is_spmatrix(A)) {
+            n = SP_NCOLS(A);
+        }
+    }
+    
+    // If trans is 'T' and alpha is non-zero, call trisc
+    if (trans == 'T' && alpha != 0.0) {
+        misc_trisc(x, dims, offsetx);
+    }
+    
+    // Call base.gemv with the computed parameters
+    base_gemv(A, x, y, trans, &alpha, &beta, m, n, 1, 1, offsetA, offsetx, offsety);
+    
+    // If trans is 'T' and alpha is non-zero, call triusc
+    if (trans == 'T' && alpha != 0.0) {
+        misc_triusc(x, dims, offsetx);
+    }
+}
+
+
+/**
+ * @brief Modifies the input matrix by zeroing its upper triangular 's' components and scaling the strictly lower triangular part.
+ * 
+ * This function processes the matrix `x` by:
+ * 1. Setting the upper triangular part of each 's' block to zero.
+ * 2. Scaling the strictly lower triangular part by 2.
+ * 
+ * @param[in,out] x The matrix to be modified. Must be a valid `matrix` object.
+ * @param[in] dims A `DIMs` structure containing:
+ *   - `l` (linear part size)
+ *   - `q` (array of SOCP cone sizes)
+ *   - `s` (array of SDP cone sizes)
+ * @param[in] offset Starting offset for processing (default = 0 if negative).
+ * 
+ * @note The function modifies `x` in-place.
+ * @warning The input matrix `x` must have sufficient size to accommodate the dimensions specified in `dims`.
+ */
+void misc_trisc(matrix *x, DIMs *dims, int offset)
+{
+    double dbl0 = 0.0, dbl2 = 2.0;
+    int ox = offset, i, k, nk, len, int1 = 1;
+
+    // Default value for offset
+    if (ox < 0) ox = 0;
+
+    // Add the 'l' component to offset
+    ox += dims->l;
+
+    // Add all 'q' components to offset
+    for (i = 0; i < dims->q_size; i++){
+        ox += dims->q[i];
+    }
+
+    for (k = 0; k < dims->s_size; k++){
+        nk = dims->s[k];
+        for (i = 1; i < nk; i++){
+            len = nk - i;
+            dscal_(&len, &dbl0, MAT_BUFD(x) + ox + i*(nk+1) - 1, &nk);
+            dscal_(&len, &dbl2, MAT_BUFD(x) + ox + nk*(i-1) + i, &int1);
+        }
+        ox += nk*nk;
+    }
+    return;
+}
+
+
+/**
+ * @brief Documentation string for the triusc function.
+ * 
+ * Scales the strictly lower triangular part of the 's' components of x by 0.5.
+ * 
+ * @par Usage:
+ * @code
+ * triusc(x, dims, offset = 0)
+ * @endcode
+ * 
+ * @param x The input matrix to be modified.
+ * @param dims A structure containing dimensions (l, q, s).
+ * @param offset Starting index for processing (default = 0).
+ */
+void misc_triusc(matrix *x, DIMs *dims, int offset)
+{
+    double dbl5 = 0.5;
+    int ox = offset, i, k, nk, len, int1 = 1;
+
+    // Default value for offset
+    if (ox < 0) ox = 0;
+
+    // Add the 'l' component to offset
+    ox += dims->l;
+
+    // Add all 'q' components to offset
+    for (i = 0; i < dims->q_size; i++){
+        ox += dims->q[i];
+    }
+
+    for (k = 0; k < dims->s_size; k++){
+        nk = dims->s[k];
+        for (i = 1; i < nk; i++){
+            len = nk - i;
+            dscal_(&len, &dbl5, MAT_BUFD(x) + ox + nk*(i-1) + i, &int1);
+        }
+        ox += nk*nk;
+    }
+    return;
+}
+
+
+/**
+ * The inverse of the product x := (y o\ x) when the 's' components of 
+ * y are diagonal.
+ * 
+ * misc_sinv(x, y, dims, mnl = 0)
+ */
+void misc_sinv(matrix *x, matrix *y, DIMs *dims, int mnl)
+{
+    int i, j, k, mk, len, maxn, ind = mnl, ind2, int0 = 0, int1 = 1;
+    double a, c, d, alpha, *A = NULL, dbl2 = 0.5;
+
+    if (!x || !y || !dims) return;
+
+    if (mnl < 0) mnl = 0;
+
+    /*
+     * For nonlinear and 'l' blocks:
+     *
+     *     yk o\ xk = yk .\ xk
+     */
+
+    ind += dims->l;
+    dtbsv_("L", "N", "N", &ind, &int0, MAT_BUFD(y), &int1, MAT_BUFD(x),
+        &int1);
+
+
+    /*
+     * For 'q' blocks:
+     *
+     *                        [  l0   -l1'               ]
+     *     yk o\ xk = 1/a^2 * [                          ] * xk
+     *                        [ -l1    (a*I + l1*l1')/l0 ]
+     *
+     * where yk = (l0, l1) and a = l0^2 - l1'*l1.
+     */
+
+    for (i = 0; i < dims->q_size; i++){
+        mk = dims->q[i];
+        len = mk - 1;
+        a = dnrm2_(&len, MAT_BUFD(y) + ind + 1, &int1);
+        a = (MAT_BUFD(y)[ind] + a) * (MAT_BUFD(y)[ind] - a);
+        c = MAT_BUFD(x)[ind];
+        d = ddot_(&len, MAT_BUFD(x) + ind + 1, &int1,
+            MAT_BUFD(y) + ind + 1, &int1);
+        MAT_BUFD(x)[ind] = c * MAT_BUFD(y)[ind] - d;
+        alpha = a / MAT_BUFD(y)[ind];
+        dscal_(&len, &alpha, MAT_BUFD(x) + ind + 1, &int1);
+        alpha = d / MAT_BUFD(y)[ind] - c;
+        daxpy_(&len, &alpha, MAT_BUFD(y) + ind + 1, &int1, MAT_BUFD(x) +
+            ind + 1, &int1);
+        alpha = 1.0 / a;
+        dscal_(&mk, &alpha, MAT_BUFD(x) + ind, &int1);
+        ind += mk;
+    }
+
+
+    /*
+     * For the 's' blocks:
+     *
+     *    yk o\ sk = xk ./ gamma
+     *
+     * where  gammaij = .5 * (yk_i + yk_j).
+     */
+
+    for (i = 0, maxn = 0; i < dims->s_size; i++){
+        maxn = MAX(maxn, dims->s[i]);
+    }
+
+    if (!(A = (double *) calloc(maxn, sizeof(double)))) err_no_memory;
+    for (i = 0, ind2 = ind; i < dims->s_size; ind += mk*mk,
+        ind2 += mk, i++){
+        mk = dims->s[i];
+        for (k = 0; k < mk; k++){
+            len = mk - k;
+            dcopy_(&len, MAT_BUFD(y) + ind2 + k, &int1, A, &int1);
+            for (j = 0; j < len; j++) A[j] += MAT_BUFD(y)[ind2 + k];
+            dscal_(&len, &dbl2, A, &int1);
+            dtbsv_("L", "N", "N", &len, &int0, A, &int1, MAT_BUFD(x) + ind
+                + k * (mk+1), &int1);
+        }
+    }
+
+    free(A);
+    return;
+}

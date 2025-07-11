@@ -1494,90 +1494,76 @@ void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA)
 }
 
 
-// static char doc_potrs[] =
-//     "Solves a real symmetric or complex Hermitian positive definite set\n"
-//     "of linear equations, given the Cholesky factorization computed by\n"
-//     "potrf() or posv().\n\n"
-//     "potrs(A, B, uplo='L', n=A.size[0], nrhs=B.size[1],\n"
-//     "      ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0,\n"
-//     "      offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "Solves A*X = B where A is n by n, real symmetric or complex\n"
-//     "Hermitian and positive definite, and B is n by nrhs.\n"
-//     "On entry, A contains the Cholesky factor, as returned by posv() or\n"
-//     "potrf().  On exit B is replaced by the solution X.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "uplo      'L' or 'U'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
+/**
+ * @brief Solves symmetric positive definite linear systems using Cholesky factorization
+ *
+ * Solves the matrix equation A*X = B where:
+ * - A is an n-by-n symmetric (real) or Hermitian (complex) positive definite matrix
+ * - B is an n-by-nrhs right-hand side matrix
+ * - A contains the Cholesky factor from previous potrf() or posv() call
+ *
+ * On exit, B is overwritten with the solution X.
+ *
+ * @param[in] A       Matrix containing Cholesky factor ('d' or 'z' type)
+ * @param[in,out] B   Right-hand side matrix (input), solution matrix (output)
+ * @param[in] uplo    Triangle selection: (default = 'L')
+ *                   - 'L': Use lower triangular factor
+ *                   - 'U': Use upper triangular factor
+ * @param[in] n       Order of matrix A (default = -1)
+ * @param[in] nrhs    Number of right-hand sides (default = -1)
+ * @param[in] ldA     Leading dimension of A (default = 0)
+ * @param[in] ldB     Leading dimension of B (default = 0)
+ * @param[in] offsetA Starting offset in matrix A (default = 0)
+ * @param[in] offsetB Starting offset in matrix B (default = 0)
+ *
+ */
+void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, int oA, int oB)
+{
+    // int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
+    int info;
 
-// static PyObject* potrs(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B;
-//     int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
-// #if PY_MAJOR_VERSION >= 3
-//     int uplo_ = 'L';
-// #endif
-//     char uplo = 'L';
-//     char *kwlist[] = {"A", "B", "uplo", "n", "nrhs", "ldA", "ldB",
-//         "offsetA", "offsetB", NULL};
+    // Default values
+    if (uplo == 0) uplo = 'L';
+    if (n < 0) n = -1;
+    if (nrhs < 0) nrhs = -1;
+    if (ldA < 0) ldA = 0;
+    if (ldB < 0) ldB = 0;
+    if (oA < 0) oA = 0;
+    if (oB < 0) oB = 0;
 
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|Ciiiiii", kwlist,
-//         &A, &B, &uplo_, &n, &nrhs, &ldA, &ldB, &oA, &oB)) return NULL;
-//     uplo = (char) uplo_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|ciiiiii", kwlist,
-//         &A, &B, &uplo, &n, &nrhs, &ldA, &ldB, &oA, &oB)) return NULL;
-// #endif
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
+    if (n < 0) n = A->nrows;
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1,n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
 
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
-//     if (n < 0) n = A->nrows;
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1,n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            dpotrs_(&uplo, &n, &nrhs, MAT_BUFD(A)+oA, &ldA, MAT_BUFD(B)+oB,
+                &ldB, &info);
+            break;
 
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dpotrs_(&uplo, &n, &nrhs, MAT_BUFD(A)+oA, &ldA, MAT_BUFD(B)+oB,
-//                 &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
+        case COMPLEX:
+            zpotrs_(&uplo, &n, &nrhs, MAT_BUFZ(A)+oA, &ldA, MAT_BUFZ(B)+oB,
+                &ldB, &info);
+	    break;
 
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zpotrs_(&uplo, &n, &nrhs, MAT_BUFZ(A)+oA, &ldA, MAT_BUFZ(B)+oB,
-//                 &ldB, &info);
-//             Py_END_ALLOW_THREADS
-// 	    break;
-
-//         default:
-// 	    err_invalid_id;
-//     }
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+        default:
+	    err_invalid_id;
+    }
+    if (info) err_lapack(info);
+    else return;
+}
 
 
 // static char doc_potri[] =

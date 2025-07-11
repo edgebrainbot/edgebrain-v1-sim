@@ -313,9 +313,8 @@ void (*write_num[])(void *, int, void *, int) = {
  * 
  * @see BLAS Level 2 Specification for GEMV
  */
-void base_gemv(void *A, matrix *x, matrix *y, char trans, 
-               void *alpha, void *beta, int m, int n,
-               int incx, int incy, int offsetA, int offsetx, int offsety)
+void base_gemv(void *A, matrix *x, matrix *y, char trans, void *alpha, void *beta, 
+              int m, int n, int incx, int incy, int offsetA, int offsetx, int offsety)
 {
     number a, b;
     

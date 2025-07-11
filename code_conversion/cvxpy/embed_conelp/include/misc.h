@@ -13,7 +13,7 @@
 
 #include "cvxopt.h"
 
-#ifndef NO_ANSI99_COMPLEX
+// #ifndef NO_ANSI99_COMPLEX
 
 typedef union {
     double d;
@@ -21,7 +21,7 @@ typedef union {
     double complex z;
 } number;
 
-#endif
+// #endif
 
 /*
 - dims['l'] = ml, the dimension of the nonnegative orthant C_0.
@@ -60,30 +60,42 @@ typedef struct {
     int has_dnl;     // flag indicating if dnl/dnli entries exist
 } scaling;
 
-
-// Context structure for closure behavior
+// Context structure for closures
 typedef struct {
-    matrix *G;
-    DIMs *dims;
-    matrix *A;
+    void *G;
     int mnl;
-    int p;
-    int n;
-    int ldK;
+    int p, n;
+    int cdim;
+    int cdim_pckd;
+    matrix *QA;
+    matrix *tauA;
+    matrix *Gs;
     matrix *K;
-    int *ipiv;
-    matrix *g;
-    matrix *u;
-} KKT_Context;
+    matrix *bzp;
+    matrix *yy;
+    DIMs *dims;
+    scaling *W;  // Scaling structure
+} KKTCholContext;
 
+/* Function prototypes for matrix operations */
+matrix *Matrix_New(int, int, int);
+matrix *Matrix_NewFromMatrix(matrix *, int);
+matrix *Matrix_NewFromList(void *, int);
+matrix *Matrix_New_Val(int, int, int, number);
+
+spmatrix *SpMatrix_New(int_t, int_t, int_t, int);
+spmatrix *SpMatrix_NewFromSpMatrix(spmatrix *, int);
+spmatrix *SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int);
+
+spmatrix * spmatrix_trans(spmatrix *A);
 
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
 /* Error handling macros */
-#define ERR(s)        (fprintf(stderr, "%s\n", s), abort())
-#define ERR_INT(s)    (fprintf(stderr, "%s\n", s), -1)
-#define ERR_TYPE(s)   (fprintf(stderr, "TypeError: %s\n", s), abort())
+#define ERR(s)                  (fprintf(stderr, "%s\n", s), abort())
+#define ERR_INT(s)              (fprintf(stderr, "%s\n", s), -1)
+#define ERR_TYPE(s)             (fprintf(stderr, "TypeError: %s\n", s), abort())
 
 #define err_mtrx(s)             ERR_TYPE(s " must be a matrix")
 #define err_bool(s)             ERR_TYPE(s " must be true or false")
@@ -118,6 +130,12 @@ typedef struct {
 
 #define len(x) (Matrix_Check(x) ? MAT_LGT(x) : SP_LGT(x))
 
+// Function pointer for converting numbers
+extern void (*write_num[])(void *, int, void *, int);
+
+// Function pointer types
+typedef void (*SolveFunc)(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx);
+typedef void (*FactorFunc)(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx);
 
 // static inline int is_number(void *ptr) {
 //     if (!ptr) return 0;
@@ -178,11 +196,68 @@ static inline void Scaling_Free(scaling *W) {
     }
 }
 
+// Initialize KKTCholContext structure
+static inline void KKTCholContext_Init(KKTCholContext *ctx) {
+    if (!ctx) err_no_memory;
+
+    ctx->G = NULL;
+    ctx->dims = NULL;
+    ctx->mnl = 0;
+    ctx->p = 0;
+    ctx->n = 0;
+    ctx->cdim = 0;
+    ctx->cdim_pckd = 0;
+    ctx->QA = NULL;
+    ctx->tauA = NULL;
+    ctx->Gs = NULL;
+    ctx->K = NULL;
+    ctx->bzp = NULL;
+    ctx->yy = NULL;
+    ctx->W = NULL;  // Initialize scaling structure
+}
+
+static inline void KKTCholContext_Free(KKTCholContext *ctx) {
+    if (ctx) {
+        if (ctx->G) Matrix_Free(ctx->G);
+        if (ctx->dims) {
+            if (ctx->dims->q) free(ctx->dims->q);
+            if (ctx->dims->s) free(ctx->dims->s);
+            free(ctx->dims);
+        }
+        if (ctx->QA) Matrix_Free(ctx->QA);
+        if (ctx->tauA) Matrix_Free(ctx->tauA);
+        if (ctx->Gs) Matrix_Free(ctx->Gs);
+        if (ctx->K) Matrix_Free(ctx->K);
+        if (ctx->bzp) Matrix_Free(ctx->bzp);
+        if (ctx->yy) Matrix_Free(ctx->yy);
+        Scaling_Free(ctx->W);  // Free scaling structure
+    }
+}
+
+
 // Helper function to calculate sum of array elements
 static inline int sum_array(int *arr, int len) {
     int sum = 0;
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; ++i) {
         sum += arr[i];
+    }
+    return sum;
+}
+
+// Helper function to calculate sum of squares of array elements
+static inline int sum_square_array(int *arr, int len) {
+    int sum = 0;
+    for (int i = 0; i < len; ++i) {
+        sum += arr[i] * arr[i];
+    }
+    return sum;
+}
+
+// Helper function to calculate sum of triangular numbers in an array
+static inline int sum_triangular_array(int *arr, int len) {
+    int sum = 0;
+    for (int i = 0; i < len; ++i) {
+        sum += arr[i] * (arr[i] + 1) / 2; // Sum of first n natural numbers
     }
     return sum;
 }
@@ -190,7 +265,7 @@ static inline int sum_array(int *arr, int len) {
 // Helper function to calculate maximum of array elements
 static inline int max_array(int *arr, int len) {
     int max_val = 0;
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; ++i) {
         if (arr[i] > max_val) {
             max_val = arr[i];
         }
@@ -251,5 +326,67 @@ static inline matrix* matrix_slice(const matrix* m, int start, int end) {
     return result;
 }
 
+// Function to transpose a matrix
+static inline matrix* matrix_transpose(matrix *m) {
+
+  if (!m) {
+    fprintf(stderr, "matrix_transpose: input matrix is NULL.\n");
+    return NULL;
+  }
+  matrix *ret = Matrix_New(m->ncols, m->nrows, m->id);
+  if (!ret) {
+    fprintf(stderr, "matrix_transpose: failed to allocate transposed matrix.\n");
+    return NULL;
+  }
+
+  int i, j, cnt = 0;
+  for (i=0; i < ret->nrows; i++)
+    for (j=0; j < ret->ncols; j++)
+      write_num[m->id](ret->buffer, i + j*ret->nrows, m->buffer, cnt++);
+
+  return ret;
+}
+
+// Matrix slice assignment
+static inline void matrix_slice_assign(matrix *dst, const matrix *src,
+                                       int start_row, int end_row,
+                                       int start_col, int end_col) 
+{
+    int nrows = end_row - start_row;
+    int ncols = end_col - start_col;
+
+    if (src->nrows != nrows || src->ncols != ncols) {
+        fprintf(stderr, "Error: source matrix dimensions (%d x %d) do not match target slice size (%d x %d).\n",
+                src->nrows, src->ncols, nrows, ncols);
+        return;
+    }
+
+    for (int j = 0; j < ncols; ++j) {
+        for (int i = 0; i < nrows; ++i) {
+            // Assuming column-major storage: dst[i + (j + start_col) * dst->nrows]
+            ((double*)dst->buffer)[(i + start_row) + (j + start_col) * dst->nrows] =
+                ((double*)src->buffer)[i + j * src->nrows];
+        }
+    }
+}
+
+// Add B into A (in-place), A = A + B
+static inline void matrix_add(matrix *A, const matrix *B) {
+    if (!A || !B) {
+        fprintf(stderr, "Error: NULL pointer passed to matrix_add.\n");
+        return;
+    }
+
+    if (A->nrows != B->nrows || A->ncols != B->ncols) {
+        fprintf(stderr, "Error: matrix_add dimension mismatch (%d x %d vs %d x %d)\n",
+                A->nrows, A->ncols, B->nrows, B->ncols);
+        return;
+    }
+
+    int len = A->nrows * A->ncols;
+    for (int i = 0; i < len; ++i) {
+        ((double *)A->buffer)[i] += ((double *)B->buffer)[i];
+    }
+}
 
 #endif

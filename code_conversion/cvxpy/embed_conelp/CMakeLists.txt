@@ -27,6 +27,7 @@ file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
     src/misc_solvers.c
     src/lapack.c
     src/dense.c
+    src/coneprog.c
 )
 
 # Add the public header include path

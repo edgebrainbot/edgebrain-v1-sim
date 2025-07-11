@@ -24,6 +24,7 @@
 #include "assert.h"
 #include "stddef.h"
 #include "stdbool.h"
+#include "misc.h"
 
 /* ANSI99 complex is disabled during build of CHOLMOD */
 
@@ -67,16 +68,6 @@ typedef struct {
   ccs *obj;
 } spmatrix;
 
-/* Function prototypes for matrix operations */
-matrix *Matrix_New(int, int, int);
-matrix *Matrix_NewFromMatrix(matrix *, int);
-matrix *Matrix_NewFromList(void *, int);
-
-spmatrix *SpMatrix_New(int_t, int_t, int_t, int);
-spmatrix *SpMatrix_NewFromSpMatrix(spmatrix *, int);
-spmatrix *SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int);
-
-
 static inline int is_matrix(void *ptr) {
     if (!ptr) return 0;
     return ((matrix *)ptr)->mat_type == MAT_DENSE;
@@ -116,11 +107,23 @@ static inline void SpMatrix_Free(spmatrix *s) {
 #define MAT_BUF(O)   ((matrix *)O)->buffer
 #define MAT_BUFI(O)  ((int_t *)((matrix *)O)->buffer)
 #define MAT_BUFD(O)  ((double *)((matrix *)O)->buffer)
+
+#define MAT_ELEMI(O, i, j) (((int*)(O)->buffer)[(i) + (j)*(O)->nrows])
+#define MAT_ELEMD(O, i, j) (((double*)(O)->buffer)[(i) + (j)*(O)->nrows])
+
+#define MAT_ATI(m, k) (((int*)(m)->buffer)[(k)])
+#define MAT_ATD(m, k) (((double*)(m)->buffer)[(k)])
+
 #ifndef _MSC_VER
 #define MAT_BUFZ(O)  ((double complex *)((matrix *)O)->buffer)
+#define MAT_ELEMZ(O, i, j) (((double complex*)(O)->buffer)[(i) + (j)*(O)->nrows])
+#define MAT_ATZ(m, k) (((double complex*)(m)->buffer)[(k)])
 #else
 #define MAT_BUFZ(O)  ((_Dcomplex *)((matrix *)O)->buffer)
+#define MAT_ELEMZ(O, i, j) (((_Dcomplex*)(O)->buffer)[(i) + (j)*(O)->nrows])
+#define MAT_ATZ(m, k) (((_Dcomplex*)(m)->buffer)[(k)])
 #endif
+
 #define MAT_NROWS(O) ((matrix *)O)->nrows
 #define MAT_NCOLS(O) ((matrix *)O)->ncols
 #define MAT_LGT(O)   (MAT_NROWS(O)*MAT_NCOLS(O))
