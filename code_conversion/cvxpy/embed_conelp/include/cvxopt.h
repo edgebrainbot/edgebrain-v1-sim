@@ -111,17 +111,12 @@ static inline void SpMatrix_Free(spmatrix *s) {
 #define MAT_ELEMI(O, i, j) (((int*)(O)->buffer)[(i) + (j)*(O)->nrows])
 #define MAT_ELEMD(O, i, j) (((double*)(O)->buffer)[(i) + (j)*(O)->nrows])
 
-#define MAT_ATI(m, k) (((int*)(m)->buffer)[(k)])
-#define MAT_ATD(m, k) (((double*)(m)->buffer)[(k)])
-
 #ifndef _MSC_VER
 #define MAT_BUFZ(O)  ((double complex *)((matrix *)O)->buffer)
 #define MAT_ELEMZ(O, i, j) (((double complex*)(O)->buffer)[(i) + (j)*(O)->nrows])
-#define MAT_ATZ(m, k) (((double complex*)(m)->buffer)[(k)])
 #else
 #define MAT_BUFZ(O)  ((_Dcomplex *)((matrix *)O)->buffer)
 #define MAT_ELEMZ(O, i, j) (((_Dcomplex*)(O)->buffer)[(i) + (j)*(O)->nrows])
-#define MAT_ATZ(m, k) (((_Dcomplex*)(m)->buffer)[(k)])
 #endif
 
 #define MAT_NROWS(O) ((matrix *)O)->nrows

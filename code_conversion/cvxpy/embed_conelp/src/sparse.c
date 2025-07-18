@@ -3019,7 +3019,7 @@ spmatrix * spmatrix_trans(spmatrix *A)
   spmatrix *B = malloc(sizeof(spmatrix));
   if (!B) {
       free_ccs(T);
-      return NULL;
+      err_no_memory;
   }
 
   B->mat_type = MAT_SPARSE;

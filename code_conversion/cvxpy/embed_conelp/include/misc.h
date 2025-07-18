@@ -355,20 +355,34 @@ static inline void matrix_slice_assign(matrix *dst, const matrix *src,
     int nrows = end_row - start_row;
     int ncols = end_col - start_col;
 
+    if (start_row < 0 || end_row > dst->nrows ||
+        start_col < 0 || end_col > dst->ncols ||
+        start_row >= end_row || start_col >= end_col) {
+        fprintf(stderr, "Error: invalid slice range (%d:%d, %d:%d) for dst of size (%d x %d).\n",
+                start_row, end_row, start_col, end_col, dst->nrows, dst->ncols);
+        return;
+    }
+
     if (src->nrows != nrows || src->ncols != ncols) {
         fprintf(stderr, "Error: source matrix dimensions (%d x %d) do not match target slice size (%d x %d).\n",
                 src->nrows, src->ncols, nrows, ncols);
         return;
     }
 
+    if (dst->id != DOUBLE || src->id != DOUBLE) {
+        fprintf(stderr, "Error: Only DOUBLE type supported in matrix_slice_assign.\n");
+        return;
+    }
+
     for (int j = 0; j < ncols; ++j) {
         for (int i = 0; i < nrows; ++i) {
-            // Assuming column-major storage: dst[i + (j + start_col) * dst->nrows]
-            ((double*)dst->buffer)[(i + start_row) + (j + start_col) * dst->nrows] =
-                ((double*)src->buffer)[i + j * src->nrows];
+            int dst_index = (i + start_row) + (j + start_col) * dst->nrows;
+            int src_index = i + j * src->nrows;
+            MAT_BUFD(dst)[dst_index] = MAT_BUFD(src)[src_index];
         }
     }
 }
+
 
 // Add B into A (in-place), A = A + B
 static inline void matrix_add(matrix *A, const matrix *B) {

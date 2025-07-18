@@ -10,13 +10,14 @@
 #include <unistd.h> // 包含 getcwd() 声明
 #include <limits.h> // 定义 PATH_MAX
 
-int TEST_TIMES = 5;
+int TEST_TIMES = 3000;
 
 extern matrix* load_txt_as_matrix(const char* filename);
 extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols);
-extern ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix* b, 
-                     PrimalStart* primalstart, DualStart* dualstart, const char* kktsolver,
-                     Options* custom_options);
+extern ConeLPContext* cvxopt_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                                CVXOPT_Settings* settings);
+extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
+                    CVXOPT_Settings* settings, ConeLPContext* conelp_ctx);
 
 extern void print_matrix(matrix *m);
 const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
@@ -58,21 +59,59 @@ void test_conelp() {
     PrimalStart *primalstart = NULL;
     DualStart *dualstart = NULL;    
 
-    ConeLPResult *result = conelp(c, G_sp, h, &dims, A, b, primalstart, dualstart, "chol", NULL);
+    // ConeLPResult *result = conelp(c, G_sp, h, &dims, A, b, primalstart, dualstart, "chol", NULL);
+
+    ConeLPContext *conelp_ctx = cvxopt_init(c, G_sp, h, A, b, &dims, &cvxopt_settings);
+
+    int status;
+    status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
 
     struct timeval start, end;
     gettimeofday(&start, NULL);
-    result = conelp(c, G_sp, h, &dims, A, b, primalstart, dualstart, "chol", NULL);
+    // for (int i = 0; i < TEST_TIMES; ++i) {
+        // status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
+    // }
+    status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
     gettimeofday(&end, NULL);
 
     double elapsed = (end.tv_sec - start.tv_sec)
                    + (end.tv_usec - start.tv_usec) / 1e6;
-    printf("Elapsed time for conelp: %.6f seconds\n", elapsed);
-    printf("ConeLPResult status: %s\n", result->status);
+    double avg_time = elapsed / 1;
+    printf("Average time per iteration: %.6f seconds\n", avg_time);
+    printf("ConeLPResult status: %s\n", conelp_ctx->result->status);
     // print_matrix(result->s);
     
 }
 
+
+
+void test_matrix_assign() {
+    printf("==== Running test_matrix_assign ====\n");
+    matrix *src = Matrix_New(4, 4, DOUBLE);
+    matrix *dst = Matrix_New(4, 4, DOUBLE);
+
+    // 填充 src 为如下内容（列主序）:
+    // [ 1  5  9 13
+    //   2  6 10 14
+    //   3  7 11 15
+    //   4  8 12 16 ]
+    double *data = (double*)src->buffer;
+    for (int i = 0; i < 16; ++i)
+        data[i] = i + 1;
+
+    printf("Source matrix:\n");
+    print_matrix(src);
+
+    // 执行拷贝：src 整体赋值给 dst 的 (0:4, 0:4)
+    matrix_slice_assign(dst, src, 0, 4, 0, 4);
+
+    printf("\nDestination matrix after assignment:\n");
+    print_matrix(dst);
+
+    Matrix_Free(src);
+    Matrix_Free(dst);
+    return 0;
+}
 
 int main() {
 
@@ -93,6 +132,7 @@ int main() {
     gettimeofday(&start, NULL);
 
     test_all();  // 执行所有测试
+    // test_matrix_assign();  // 测试 matrix_assign
     // test_number_sqrt();  // 测试 number_sqrt
     // test_base_emul();  // 测试 base_emul
     // test_base_ediv();  // 测试 base_ediv
@@ -111,3 +151,5 @@ int main() {
     
     return 0;
 }
+
+

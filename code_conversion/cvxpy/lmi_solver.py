@@ -191,8 +191,8 @@ if __name__ == '__main__':
                     0]])
     roll, pitch, yaw = 0.0, 0.0, -0.000
 
-    # zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16]) * 1.0
-    zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])   # Raw data
+    zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16]) * 1.0
+    # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])   # Raw data
 
     # zz = np.array([0.0073, -0.4821, -0.1257, 0.0309, 0.1311, 0.2719, 0.0342, 0.4687, -0.3929, -0.6300])
 
@@ -204,7 +204,38 @@ if __name__ == '__main__':
     t1 = time.time()
     (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
     t2 = time.time()
-    print(f"consuming time: {t2 - t1}")
+    print(f"consuming time1: {t2 - t1}")
+    
+    # REPEAT = 500  # Test counts
+    # total_time = 0.0
+
+    # for _ in range(REPEAT):
+    #     t1 = time.time()
+    #     (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    #     t2 = time.time()
+    #     total_time += (t2 - t1)
+
+    # avg_time = total_time / REPEAT
+    # print(f"Average time over {REPEAT} runs: {avg_time:.6f} seconds")
+    
+    # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
+    # t1 = time.time()
+    # (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    # t2 = time.time()
+    # print(f"consuming time2: {t2 - t1}")
+    
+    # zz = np.array([0.01, 0.00, -0.01, -0.00, 0.4, 0.03, 0.03, -0.08, -0.08, 0.08])
+    # t1 = time.time()
+    # (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    # t2 = time.time()
+    # print(f"consuming time2: {t2 - t1}")
+    
+    # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624]) 
+    # t1 = time.time()
+    # (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    # t2 = time.time()
+    # print(f"consuming time2: {t2 - t1}")
+    
     # ha_teacher = HATeacher()
     # K = ha_teacher.feedback_law(0, 0, 0)
     # print(K)

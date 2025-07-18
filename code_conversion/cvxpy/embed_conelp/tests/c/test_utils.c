@@ -106,6 +106,28 @@ spmatrix create_test_spmatrix()
     return A;
 }
 
+void print_spmatrix(const spmatrix *sp) {
+    printf("Sparse matrix (%d x %d), printed as dense:\n", sp->obj->nrows, sp->obj->ncols);
+    int m = sp->obj->nrows;
+    int n = sp->obj->ncols;
+    double *dense = calloc(m * n, sizeof(double));
+
+    for (int j = 0; j < n; ++j) {
+        for (int idx = sp->obj->colptr[j]; idx < sp->obj->colptr[j + 1]; ++idx) {
+            int i = sp->obj->rowind[idx];
+            dense[i + j * m] = ((double*)sp->obj->values)[idx];
+        }
+    }
+
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            printf("%8.4f ", dense[i + j * m]);
+        }
+        printf("\n");
+    }
+    free(dense);
+}
+
 
 void print_matrix(matrix *m) 
 {

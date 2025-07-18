@@ -19,10 +19,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "coneprog.h"
 #include "cvxopt.h"
 #include "misc.h"
 #include "math.h"
 #include "float.h"
+#include <unistd.h>
+
 
 
 /* misc_solver prototype */
@@ -304,64 +307,64 @@ void misc_scale(matrix *x, scaling *W, char trans, char inverse)
 }
 
 // Simplified BLAS implementations (basic versions for demonstration)
-void dtbmv(const char *uplo, const char *trans, const char *diag, 
-           int n, int k, const double *a, int lda, double *x, int incx) {
-    // For simplicity, implement element-wise multiplication for k=0 case
-    if (k == 0) {
-        for (int i = 0; i < n; i++) {
-            x[i * incx] *= a[i];
-        }
-    }
-}
+// void dtbmv(const char *uplo, const char *trans, const char *diag, 
+//            int n, int k, const double *a, int lda, double *x, int incx) {
+//     // For simplicity, implement element-wise multiplication for k=0 case
+//     if (k == 0) {
+//         for (int i = 0; i < n; i++) {
+//             x[i * incx] *= a[i];
+//         }
+//     }
+// }
 
-void dscal(int n, double alpha, double *x, int incx) {
-    for (int i = 0; i < n; i++) {
-        x[i * incx] *= alpha;
-    }
-}
+// void dscal(int n, double alpha, double *x, int incx) {
+//     for (int i = 0; i < n; i++) {
+//         x[i * incx] *= alpha;
+//     }
+// }
 
-void dgemv(const char *trans, int m, int n, double alpha, const double *a, 
-           int lda, const double *x, int incx, double beta, double *y, int incy) {
-    // Basic implementation for trans='T' case
-    if (*trans == 'T') {
-        for (int i = 0; i < n; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < m; j++) {
-                sum += a[j * lda + i] * x[j * incx];
-            }
-            y[i * incy] = alpha * sum + beta * y[i * incy];
-        }
-    }
-}
+// void dgemv(const char *trans, int m, int n, double alpha, const double *a, 
+//            int lda, const double *x, int incx, double beta, double *y, int incy) {
+//     // Basic implementation for trans='T' case
+//     if (*trans == 'T') {
+//         for (int i = 0; i < n; i++) {
+//             double sum = 0.0;
+//             for (int j = 0; j < m; j++) {
+//                 sum += a[j * lda + i] * x[j * incx];
+//             }
+//             y[i * incy] = alpha * sum + beta * y[i * incy];
+//         }
+//     }
+// }
 
-void dger(int m, int n, double alpha, const double *x, int incx, 
-          const double *y, int incy, double *a, int lda) {
-    for (int i = 0; i < m; i++) {
-        for (int j = 0; j < n; j++) {
-            a[i * lda + j] += alpha * x[i * incx] * y[j * incy];
-        }
-    }
-}
+// void dger(int m, int n, double alpha, const double *x, int incx, 
+//           const double *y, int incy, double *a, int lda) {
+//     for (int i = 0; i < m; i++) {
+//         for (int j = 0; j < n; j++) {
+//             a[i * lda + j] += alpha * x[i * incx] * y[j * incy];
+//         }
+//     }
+// }
 
-void dcopy(int n, const double *x, int incx, double *y, int incy) {
-    for (int i = 0; i < n; i++) {
-        y[i * incy] = x[i * incx];
-    }
-}
+// void dcopy(int n, const double *x, int incx, double *y, int incy) {
+//     for (int i = 0; i < n; i++) {
+//         y[i * incy] = x[i * incx];
+//     }
+// }
 
-void dtrmm(const char *side, const char *uplo, const char *transa, 
-           const char *diag, int m, int n, double alpha, const double *a, 
-           int lda, double *b, int ldb) {
-    // Simplified implementation - would need full BLAS implementation
-    // This is a placeholder for the triangular matrix multiplication
-}
+// void dtrmm(const char *side, const char *uplo, const char *transa, 
+//            const char *diag, int m, int n, double alpha, const double *a, 
+//            int lda, double *b, int ldb) {
+//     // Simplified implementation - would need full BLAS implementation
+//     // This is a placeholder for the triangular matrix multiplication
+// }
 
-void dsyr2k(const char *uplo, const char *trans, int n, int k, double alpha, 
-            const double *a, int lda, const double *b, int ldb, double beta, 
-            double *c, int ldc) {
-    // Simplified implementation - would need full BLAS implementation
-    // This is a placeholder for the symmetric rank-2k update
-}
+// void dsyr2k(const char *uplo, const char *trans, int n, int k, double alpha, 
+//             const double *a, int lda, const double *b, int ldb, double beta, 
+//             double *c, int ldc) {
+//     // Simplified implementation - would need full BLAS implementation
+//     // This is a placeholder for the symmetric rank-2k update
+// }
 
 
 /**
@@ -1680,9 +1683,23 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
             blas_scal(&alpha, Ls, i, 1, i*m);
         }
         blas_copy(Ls, work, m*m, 1, 1, 0, 0);
+
         blas_trmm(Lz, work, 'L', 'L', 'T', 'N', NULL, m, m, m, m, 0, 0);
+                number temp_n;
+
+        /************这里TM 有问题！！！！！！！！！！！！！！！！！！！！！ */
         lapack_gesvd(work, lmbda, 'O', 'N', NULL, NULL, m, m, m, 0, 0, 0, ind, 0, 0);
-	       
+
+
+	    // temp_n.d = 1.0;
+        // double alpha1 = 1.0, beta1 = 0.0;
+        // matrix *vector_one_n = Matrix_New_Val(max_s*max_s, 1, DOUBLE, temp_n);
+        // matrix *res2 = Matrix_New_Val(max_s*max_s, 1, DOUBLE, temp_n);
+        // blas_gemv(work, vector_one_n, res2, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
+        // print_matrix_(res2);   
+        // printf("ajsdjhgajskdlagusfydhioasugyhijlkgfas\n");
+        // sleep(200);  // 睡眠 2 秒
+
         // r = Lz^{-T} * U 
         blas_copy(work, r, m*m, 1, 1, 0, 0);
         blas_trsm(Lz, r, 'L', 'L', 'T', 'N', NULL, m, m, m, 0, 0, 0);
@@ -2011,11 +2028,18 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     misc_scale(z, ctx->W, 'T', 'I'); 
     misc_pack(z, ctx->bzp, ctx->dims, ctx->mnl, 0, 0);
 
+    // print_matrix_(ctx->bzp);
+
+    // debug_matrix_by_project2vector(ctx->Gs);
+    
+
     // x := [Q1, Q2]' * (x + Gs' * bzp)
     //    = [Q1, Q2]' * (bx + Gs' * W^{-T} * bz)
     double beta = 1.0;
     blas_gemv(ctx->Gs, ctx->bzp, x, 'T', NULL, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
     lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'T', -1, -1, -1, 0, 0, 0, 0);
+
+    // print_matrix_(x);
 
     // y := x[:p] 
     //    = Q1' * (bx + Gs' * W^{-T} * bz)
@@ -2025,6 +2049,9 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     // x[:p] := v = R^{-T} * by 
     blas_copy(ctx->yy, x, -1, 1, 1, 0, 0);
     lapack_trtrs(ctx->QA, x, 'U', 'T', 'N', ctx->p, -1, 0, 0, 0, 0);
+
+    
+    // print_matrix_(x);
 
     // x[p:] := K22^{-1} * (x[p:] - K21*x[:p])
     //        = K22^{-1} * (Q2' * (bx + Gs' * W^{-T} * bz) - K21*v)
@@ -2047,13 +2074,27 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     // x := [Q1, Q2] * x
     lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'N', -1, -1, -1, 0, 0, 0, 0);
 
+    //              到这为止 x 没问题
+    // print_matrix_(x);
+
     // bzp := Gs * x - bzp.
     //      = W^{-T} * ( GG*ux - bz ) in packed storage.
     // Unpack and copy to z.
     alpha = 1.0;
     beta = -1.0;
-    blas_gemv(ctx->Gs, x, ctx->bzp, 'N', &alpha, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
 
+    // print_matrix_(ctx->Gs);
+
+    // number temp;
+    // double beta2 = 0.0;
+    // temp.d = 1.0;
+    // matrix *vector_one = Matrix_New_Val(ctx->n ,1, DOUBLE, temp);
+    // matrix *res = Matrix_New_Val(ctx->cdim, 1, DOUBLE, temp);
+    // blas_gemv(ctx->Gs, vector_one, res, 'N', &alpha, &beta2, -1, -1, 0, 1, 1, 0, 0, 0);
+    // print_matrix_(res);
+
+
+    blas_gemv(ctx->Gs, x, ctx->bzp, 'N', &alpha, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
     // print_matrix_(ctx->bzp);
 
     misc_unpack(ctx->bzp, z, ctx->dims, ctx->mnl, 0, 0);
@@ -2072,8 +2113,10 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
     //     Q_2' * (H + GG^T * W^{-1} * W^{-T} * GG) * Q2.
 
     // Gs = W^{-T} * GG in packed storage.
-    ctx->W = W;
-
+    if (ctx->W == NULL) {
+        ctx->W = W;
+    }
+    
     if (ctx->mnl) {
         matrix_slice_assign(ctx->Gs, Df, 0, ctx->mnl, 0, ctx->n);
     }
@@ -2091,9 +2134,17 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
         ERR_TYPE("Invalid matrix type for G.");
     }
 
-    // matrix_slice_assign(ctx->Gs, ctx->G, ctx->mnl, ctx->cdim, 0, ctx->n);
+    // debug_matrix_by_project2vector(ctx->Gs);
+    // print_matrix_(res);
+
+    // debug_matrix_by_project2vector(W->r[0]);
+
+    // 傻逼W有问题
     misc_scale(ctx->Gs, W, 'T', 'I');
+    // 这里Gs已经有问题了
+
     misc_pack2(ctx->Gs, ctx->dims, ctx->mnl);
+
 
     // K = [Q1, Q2]' * (H + Gs' * Gs) * [Q1, Q2].
     blas_syrk(ctx->Gs, ctx->K, 'L', 'T', NULL, NULL, -1, ctx->cdim_pckd, 0, 0, 0, 0);
@@ -2106,12 +2157,11 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
 
     // Cholesky factorization of 2,2 block of K.
     lapack_potrf(ctx->K, 'L', ctx->n - ctx->p, 0, ctx->p * (ctx->n + 1));
-
     return;
 }
 
 // Main function
-KKTCholContext* kkt_chol(matrix *G, DIMs *dims, void *A, int mnl) 
+KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl) 
 {
     /*
     Solution of KKT equations by reduction to a 2 x 2 system, a QR 
@@ -2139,16 +2189,20 @@ KKTCholContext* kkt_chol(matrix *G, DIMs *dims, void *A, int mnl)
 
     // Allocate and initialize context
     KKTCholContext *ctx = malloc(sizeof(KKTCholContext));
-    if (ctx == NULL) {
-        fprintf(stderr, "Memory allocation failed for KKTCholContext.\n");
-        return NULL;
-    }
+    if (ctx == NULL) err_no_memory;
     KKTCholContext_Init(ctx);   // Initialize context structure
 
     ctx->G = G;
     ctx->dims = dims;
     ctx->mnl = mnl;
 
+    ctx->cdim = mnl + dims->l + sum_array(dims->q, dims->q_size) 
+                            + sum_square_array(dims->s, dims->s_size);
+                            
+    ctx->cdim_pckd = mnl + dims->l + sum_array(dims->q, dims->q_size) 
+                            + sum_triangular_array(dims->s, dims->s_size);
+
+    // A' = [Q1, Q2] * [R; 0]  (Q1 is n x p, Q2 is n x n-p).
     if (Matrix_Check(A) && !SpMatrix_Check(A)) {
         matrix *A_mat = (matrix*)A;
         ctx->p = A_mat->nrows;  // A is a dense matrix
@@ -2162,21 +2216,12 @@ KKTCholContext* kkt_chol(matrix *G, DIMs *dims, void *A, int mnl)
 
         spmatrix *spA_trans = spmatrix_trans(spA);
         ctx->QA = dense(spA_trans);
-        free(spA_trans);
+        SpMatrix_Free(spA_trans);
         
     } else {
         free(ctx);
         ERR_TYPE("Invalid matrix type for A.");
     }
-
-    ctx->cdim = mnl + dims->l + sum_array(dims->q, dims->q_size) 
-                            + sum_square_array(dims->s, dims->s_size);
-                            
-    ctx->cdim_pckd = mnl + dims->l + sum_array(dims->q, dims->q_size) 
-                            + sum_triangular_array(dims->s, dims->s_size);
-
-    // A' = [Q1, Q2] * [R; 0]  (Q1 is n x p, Q2 is n x n-p).
-    // ctx->QA = matrix_transpose(A);
 
     ctx->tauA = Matrix_New(ctx->p, 1, DOUBLE);
     lapack_geqrf(ctx->QA, ctx->tauA, -1, -1, 0, 0);

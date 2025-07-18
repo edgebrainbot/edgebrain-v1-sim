@@ -4,7 +4,14 @@
 #ifndef __CONEPROG__
 #define __CONEPROG__
 
-// Python: options = {}
+#define OPTIMAL 0
+#define PRIMAL_INFEASIBLE 1
+#define DUAL_INFEASIBLE 2
+#define UNKNOWN 3
+
+extern const char* defaultsolvers[];
+extern char msg[256];
+
 typedef struct {
     bool debug;
     double kktreg;
@@ -15,18 +22,24 @@ typedef struct {
     bool show_progress;
     int refinement;
     bool use_correction;
-} Options;
+    int EXPON;
+    double STEP;
+    char kktsolver[10]; // KKT solver name
+} CVXOPT_Settings;
 
-static Options options = {
+static CVXOPT_Settings cvxopt_settings = {
     .debug = false,
     .kktreg = -1.0, // -1 indicates None/unset
     .maxiters = 100,
     .abstol = 1e-7,
     .reltol = 1e-6,
     .feastol = 1e-7,
-    .show_progress = true,
+    .show_progress = false,
     .refinement = -1, // -1 indicates None/unset
-    .use_correction = true
+    .use_correction = true,
+    .EXPON = 3,
+    .STEP = 0.99,
+    .kktsolver = "chol" // Default KKT solver
 };
 
 
@@ -62,6 +75,30 @@ typedef struct {
     int iterations;
 } ConeLPResult;
 
+typedef struct {
+    // matrix *G; // Coefficient matrix for the linear term
+    // matrix *h; // Right-hand side vector
+    // DIMs *dims; // Dimensions of the problem
+    // void *A; // Coefficient matrix for the constraints
+    // matrix *b; // Right-hand side vector for the constraints
+    PrimalStart *primalstart; // Primal start values
+    DualStart *dualstart; // Dual start values
+    
+    int sum_dims_q;     // Sum of q dimensions
+    int sum_dims_s;     // Sum of s dimensions
+
+    int cdim;   // Cone dimension
+    int cdim_pckd; // Packed cone dimension
+    int cdim_diag; // Diagonal cone dimension
+
+    int *indq;     // Index array for 'q' constraints
+    int *inds;     // Index array for 's' constraints
+
+    scaling *dummy_W; // Scaling structure
+
+    ConeLPResult *result; // Result structure
+} ConeLPContext;
+
 
 typedef struct {
     void *env;
@@ -80,7 +117,7 @@ void Af_gemv(matrix *x, matrix *y, void *A, char trans, void* alpha, void* beta)
 void xy_copy(matrix *x, matrix *y);
 
 /************************* Declarations *************************/
-extern KKTCholContext* kkt_chol(matrix *G, DIMs *dims, matrix *A, int mnl);
+extern KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl);
 extern void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx);
 extern void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx);
 
@@ -118,25 +155,14 @@ extern matrix * dense(spmatrix *sp_mat);
 /* sparse library */
 extern ccs * transpose(ccs *A, int conjugate);
 
-// Function pointer types for custom operations
-typedef matrix* (*XNewCopyFunc)(matrix* u);
-typedef double (*XDotFunc)(matrix* u, matrix* v);
-typedef void (*XScalFunc)(double alpha, matrix* u);
-typedef void (*XAxpyFunc)(matrix* u, matrix* v, double alpha);
-typedef matrix* (*YNewCopyFunc)(matrix* u);
-typedef double (*YDotFunc)(matrix* u, matrix* v);
-typedef void (*YScalFunc)(double alpha, matrix* u);
-typedef void (*YAxpyFunc)(matrix* u, matrix* v, double alpha);
-
-// Function pointer for matrix operations
-typedef void (*GFunc)(matrix *, matrix *, void *, DIMs *, char, void *, void *);
-typedef void (*AFunc)(matrix *, matrix *, void *, char, void *, void *);
+extern void debug_matrix_by_project2vector(matrix *m);
 
 // KKT solver function pointer
 typedef void* (*KKTSolverFunc)(void* W);
 
 
-static inline void ConeLPResult_Init(ConeLPResult *result) {
+static inline ConeLPResult *ConeLPResult_Init() {
+    ConeLPResult *result = (ConeLPResult *)malloc(sizeof(ConeLPResult));
     if (!result) err_no_memory;
 
     result->status = NULL;
@@ -155,6 +181,8 @@ static inline void ConeLPResult_Init(ConeLPResult *result) {
     result->residual_as_primal_infeasibility_certificate = 0.0;
     result->residual_as_dual_infeasibility_certificate = 0.0;
     result->iterations = 0;
+
+    return result;
 }
 
 static inline void ConeLPResult_Free(ConeLPResult *result) {

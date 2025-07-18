@@ -12,274 +12,40 @@ static const double const_zero = 0.0;
 char msg[256];
 
 
-ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix* b, 
-                     PrimalStart* primalstart, DualStart* dualstart, const char* kktsolver,
-                     Options* custom_options) 
+int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
+          CVXOPT_Settings* settings, ConeLPContext* conelp_ctx) 
 {   
-    ConeLPResult* result = (ConeLPResult*)malloc(sizeof(ConeLPResult));
-    ConeLPResult_Init(result);
-
-    // sum of the dimensions (q and s)
-    int sum_dims_q = sum_array(dims->q, dims->q_size);
-    int sum_dims_s = sum_array(dims->s, dims->s_size);
-
-    // Constants equivalent to Python imports and constants
-    const int EXPON = 3;
-    const double STEP = 0.99;
-
     // Use custom options if provided, otherwise use global options
-    Options* opts = custom_options ? custom_options : &options;
+    bool DEBUG = settings->debug;
+    double KKTREG = settings->kktreg;
+    double FEASTOL = settings->feastol;
+    double ABSTOL = settings->abstol;
+    double RELTOL = settings->reltol;
+    int MAXITERS = settings->maxiters;
+    bool SHOW_PROGRESS = settings->show_progress;
+    int REFINEMENT = settings->refinement;
+    bool USE_CORRECTION = settings->use_correction;
+    int EXPON = settings->EXPON;
+    double STEP = settings->STEP;
 
-    bool DEBUG = opts->debug;
-
-    double KKTREG = opts->kktreg;
-    if (KKTREG != -1.0) { // -1.0 represents None/unset
-        if (KKTREG < 0.0) {
-            ERR("options['kktreg'] must be a nonnegative scalar");
-        }
-    }
-
-    int MAXITERS = opts->maxiters;
-    if (MAXITERS < 1) {
-        ERR("options['maxiters'] must be a positive integer");
-    }
-
-    double ABSTOL = opts->abstol;
-
-    double RELTOL = opts->reltol;
-
-    if (RELTOL <= 0.0 && ABSTOL <= 0.0) {
-        ERR("at least one of options['reltol'] and options['abstol'] must be positive");
-    }
-
-    double FEASTOL = opts->feastol;
-
-    bool show_progress = opts->show_progress;
-
-    // Default solver selection
-    char* default_kktsolver = NULL;
-    if (kktsolver == NULL) {
-        if (dims && (dims->q_size > 0 || dims->s_size > 0)) {
-            default_kktsolver = "qr";
-        } else {
-            default_kktsolver = "chol2";
-        }
-        kktsolver = default_kktsolver;
-    }
+    PrimalStart* primalstart = conelp_ctx->primalstart;
+    DualStart* dualstart = conelp_ctx->dualstart;
+    ConeLPResult* result = conelp_ctx->result;
     
-    // Check if kktsolver is one of the default string solvers
-    bool is_string_solver = false;
-    if (kktsolver && ((char*)kktsolver)[0] != '\0') { // Assume string if not function pointer
-        for (int i = 0; i < 1; ++i) {
-            if (strcmp((char*)kktsolver, defaultsolvers[i]) == 0) {
-                is_string_solver = true;
-                break;
-            }
-        }
-        if (!is_string_solver) {
-            snprintf(msg, sizeof(msg), "'%s' is not supported for kktsolver", (char*)kktsolver);
-            ERR(msg);
-        }
-    }
+    // sum of the dimensions (q and s)
+    int sum_dims_q = conelp_ctx->sum_dims_q;
+    int sum_dims_s = conelp_ctx->sum_dims_s;
 
-    // Argument error checking depends on level of customization.
-    bool customkkt = !is_string_solver;
-    bool matrixG = Matrix_Check(G) || SpMatrix_Check(G);
-    bool matrixA = Matrix_Check(A) || SpMatrix_Check(A);
-    
-    if ((!matrixG || (!matrixA && A != NULL)) && !customkkt) {
-        ERR("use of function valued G, A requires a user-provided kktsolver");
-    }
-    
-    // bool customx = (xnewcopy != NULL || xdot != NULL || xaxpy != NULL || xscal != NULL);
-    // if (customx && (matrixG || matrixA || !customkkt)) {
-    //     ERR("use of non-vector type for x requires function valued G, A and user-provided kktsolver");
-    // }
-    
-    // bool customy = (ynewcopy != NULL || ydot != NULL || yaxpy != NULL || yscal != NULL);
-    // if (customy && (matrixA || !customkkt)) {
-    //     ERR("use of non-vector type for y requires function valued A and user-provided kktsolver");
-    // }
-    bool customx = false; // Placeholder for custom x handling
-    bool customy = false; // Placeholder for custom y handling
-
-    // Validate c parameter
-    if (!customx && (!Matrix_Check(c) || c->id != DOUBLE || c->ncols != 1)) {
-        ERR_TYPE("'c' must be a 'd' matrix with one column");
-    }
-
-    // Validate h parameter
-    if (!Matrix_Check(h) || h->id != DOUBLE || h->ncols != 1) {
-        ERR_TYPE("'h' must be a 'd' matrix with 1 column");
-    }
-
-    // Set default dims if not provided
-    DIMs default_dims;
-    if (!dims) {
-        default_dims.l = h->nrows;
-        default_dims.q = NULL;
-        default_dims.q_size = 0;
-        default_dims.s = NULL;
-        default_dims.s_size = 0;
-        dims = &default_dims;
-    }
-    
-    // Validate dims structure
-    if (dims->l < 0) {
-        ERR_TYPE("'dims['l']' must be a nonnegative integer");
-    }
-    
-    // Check q dimensions
-    for (int k = 0; k < dims->q_size; k++) {
-        if (dims->q[k] < 1) {
-            ERR_TYPE("'dims['q']' must be a list of positive integers");
-        }
-    }
-    
-    // Check s dimensions
-    for (int k = 0; k < dims->s_size; k++) {
-        if (dims->s[k] < 0) {
-            ERR_TYPE("'dims['s']' must be a list of nonnegative integers");
-        }
-    }
-
-    // Set default refinement
-    int refinement = opts->refinement;
-    if (refinement == -1) { // -1 represents None/unset
-        if (dims->q_size > 0 || dims->s_size > 0) {
-            refinement = 1;
-        } else {
-            refinement = 0;
-        }
-    } else if (refinement < 0) {
-        ERR_TYPE( "options['refinement'] must be a nonnegative integer");
-    }
-
-    // Calculate cone dimensions
-    int cdim = dims->l;
-    int cdim_pckd = dims->l;
-    int cdim_diag = dims->l;
-
-    for (int i = 0; i < dims->q_size; ++i) {
-        cdim += dims->q[i];
-        cdim_pckd += dims->q[i];
-        cdim_diag += dims->q[i];
-    }
-
-    for (int i = 0; i < dims->s_size; ++i) {
-        cdim += dims->s[i] * dims->s[i];
-        cdim_pckd += dims->s[i] * (dims->s[i] + 1) / 2;
-        cdim_diag += dims->s[i];
-    }
-    
-    if (h->nrows != cdim) {
-        snprintf(msg, sizeof(msg), "Error: 'h' must be a 'd' matrix of size (%d,1)", cdim);
-        ERR_TYPE(msg);
-    }
+    // Cone dimensions
+    int cdim = conelp_ctx->cdim;
+    int cdim_pckd = conelp_ctx->cdim_pckd;
+    int cdim_diag = conelp_ctx->cdim_diag;
     
     // Data for kth 'q' constraint are found in rows indq[k]:indq[k+1] of G
-    int *indq = (int*)malloc((dims->q_size + 1) * sizeof(int));
-    indq[0] = dims->l;
-    for (int k = 0; k < dims->q_size; k++) {
-        indq[k + 1] = indq[k] + dims->q[k];
-    }
+    int *indq = conelp_ctx->indq;
     
     // Data for kth 's' constraint are found in rows inds[k]:inds[k+1] of G
-    int *inds = (int*)malloc((dims->s_size + 1) * sizeof(int));
-    inds[0] = indq[dims->q_size];
-    for (int k = 0; k < dims->s_size; k++) {
-        inds[k + 1] = inds[k] + dims->s[k] * dims->s[k];
-    }
-    
-    // Set up G function
-    GFunc Gf;
-    if (matrixG) {
-        if (Matrix_Check(G) && !SpMatrix_Check(G)) {
-            // G is a dense matrix
-            matrix *G_mat = (matrix *)G;
-            if (G_mat->id != DOUBLE || G_mat->nrows != cdim || G_mat->ncols != c->nrows) {
-                snprintf(msg, sizeof(msg), "Error: 'G' must be a 'd' matrix of size (%d, %d)", cdim, c->nrows);
-                ERR_TYPE(msg);
-            }
-        } else if (SpMatrix_Check(G) && !Matrix_Check(G)) {
-            // G is a sparse matrix
-            spmatrix *G_sp = (spmatrix *)G;
-            if (G_sp->obj->id != DOUBLE || G_sp->obj->nrows != cdim || G_sp->obj->ncols != c->nrows) {
-                snprintf(msg, sizeof(msg), "Error: 'G' must be a 'd' matrix of size (%d, %d)", cdim, c->nrows);
-                ERR_TYPE(msg);
-            }
-        }
-        // Create a wrapper for Gf
-        Gf = (GFunc)Gf_gemv;
-    } else {
-        // G is a function
-        Gf = (GFunc)G;
-    }
-    
-    // Set up A function
-    AFunc Af;
-    if (A == NULL) {
-        if (customx || customy) {
-            // Create empty A function
-            ERR("Unsupported operation: use of non-vector type for x requires function valued A");
-        } else {
-            // Create empty sparse matrix
-            A = SpMatrix_New(0, c->nrows, 0, DOUBLE);
-            matrixA = true;
-        }
-    }
-    
-    if (matrixA) {
-        if (Matrix_Check(A) && !SpMatrix_Check(A)) {
-            // A is a dense matrix
-            matrix *A_mat = (matrix *)A;
-            if (A_mat->id != DOUBLE || A_mat->ncols != c->nrows) {
-                snprintf(msg, sizeof(msg), "Error: 'A' must be a 'd' matrix with %d columns", c->nrows);
-                ERR_TYPE(msg);
-            }
-        } else if (SpMatrix_Check(A) && !Matrix_Check(A)) {
-            // A is a sparse matrix
-            spmatrix *A_sp = (spmatrix *)A;
-            if (A_sp->obj->id != DOUBLE  || A_sp->obj->ncols != c->nrows) {
-                snprintf(msg, sizeof(msg), "Error: 'A' must be a 'd' matrix with %d columns", c->nrows);
-                ERR_TYPE(msg);
-            }
-        }
-        Af = (AFunc)Af_gemv;
-    } else {
-        Af = (AFunc)A;
-    }
-    
-    // Validate b
-    if (!customy) {
-        if (b == NULL) {
-            b = Matrix_New(0, 1, DOUBLE); // Create an empty vector
-        }
-        if (!Matrix_Check(b) || b->id != DOUBLE || b->ncols != 1) {
-            snprintf(msg, sizeof(msg), "Error: 'b' must be a 'd' matrix with one column");
-            ERR_TYPE(msg);
-        }
-
-        int A_nrows = 0;
-        if (Matrix_Check(A) && !SpMatrix_Check(A)) {
-            // A is a dense matrix
-            matrix *A_mat = (matrix *)A;
-            A_nrows = A_mat->nrows;
-        } else if (SpMatrix_Check(A) && !Matrix_Check(A)) {
-            // A is a sparse matrix
-            spmatrix *A_sp = (spmatrix *)A;
-            A_nrows = A_sp->obj->nrows;
-        }
-
-        if (matrixA && b->nrows != A_nrows) {
-            snprintf(msg, sizeof(msg), "Error: 'b' must have length %d", A_nrows);
-            ERR_TYPE(msg);
-        }
-    } else {
-        if (b == NULL) {
-            ERR_TYPE("Error: use of non vector type for y requires b");
-        }
-    }
+    int *inds = conelp_ctx->inds;
     
     // kktsolver(W) returns a routine for solving 3x3 block KKT system
     //
@@ -288,17 +54,16 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
     //     [ G   0   -W'       ] [ uz ]   [ bz ]
 
     KKTCholContext *kkt_ctx = NULL;
-    if (is_string_solver) {
-        if (!KKTREG && (b->nrows > c->nrows || b->nrows + cdim_pckd < c->nrows)) {
-            ERR("Error: Rank(A) < p or Rank([G; A]) < n\n");
-        }
-        if (strcmp(kktsolver, "chol") == 0) {
-            kkt_ctx = kkt_chol(G, dims, A, 0);
-        } else {
-            snprintf(msg, sizeof(msg), "Unsupported KKT solver: %s", kktsolver);
-            ERR(msg);
-        }
+    if (!KKTREG && (b->nrows > c->nrows || b->nrows + cdim_pckd < c->nrows)) {
+        ERR("Error: Rank(A) < p or Rank([G; A]) < n\n");
     }
+    if (strcmp(settings->kktsolver, "chol") == 0) {
+        kkt_ctx = kkt_chol(G, dims, A, 0);
+    } else {
+        snprintf(msg, sizeof(msg), "Unsupported KKT solver: %s", settings->kktsolver);
+        ERR(msg);
+    }
+    
 
     matrix *wz3 = Matrix_New(cdim, 1, DOUBLE);
     if (!wz3) {
@@ -351,36 +116,9 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         //     [ A   0   0  ].
         //     [ G   0  -I  ]
 
-        W = malloc(sizeof(scaling));
-        Scaling_Init(W);
-
-        number number_one;
-        number_one.d = 1.0; // Initialize number for value 1.0
-        W->d = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
-        W->di = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
-        W->d_count = dims->l;
-
-        W->v = malloc(dims->q_size * sizeof(matrix*));
-        W->beta = malloc(dims->q_size * sizeof(double));
-        W->v_count = dims->q_size;
-        W->b_count = dims->q_size;
-        for (int i = 0; i < dims->q_size; i++) {
-            W->v[i] = Matrix_New(dims->q[i], 1, DOUBLE);
-            W->beta[i] = 1.0;
-            MAT_BUFD(W->v[i])[0] = 1.0;
-        }
-        
-        W->r = malloc(dims->s_size * sizeof(matrix*));
-        W->rti = malloc(dims->s_size * sizeof(matrix*));
-        W->r_count = dims->s_size;
-        for (int i = 0; i < dims->s_size; i++) {
-            int m = dims->s[i];
-            W->r[i] = Matrix_New(m, m, DOUBLE);
-            W->rti[i] = Matrix_New(m, m, DOUBLE);
-            for (int j = 0; j < m; j++) {
-                MAT_BUFD(W->r[i])[j * m + j] = 1.0;
-                MAT_BUFD(W->rti[i])[j * m + j] = 1.0;
-            }
+        W = conelp_ctx->dummy_W;
+        if (W == NULL) {
+            ERR("Error: Dummy scaling structure is NULL");
         }
         
         // Try to get solver function
@@ -389,6 +127,8 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         //     raise_ValueError("Rank(A) < p or Rank([G; A]) < n");
         // }
     }
+
+    // debug_matrix_by_project2vector(kkt_ctx->Gs);
 
     if (primalstart == NULL) {
 
@@ -418,14 +158,14 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         blas_scal(&alpha, s, -1, 1, 0);
 
     } else {
-        xy_copy(primalstart->x, x);
-        blas_copy(primalstart->s, s, -1, 1, 1, 0, 0);
+        xy_copy(conelp_ctx->primalstart->x, x);
+        blas_copy(conelp_ctx->primalstart->s, s, -1, 1, 1, 0, 0);
     }
 
     // ts = min{ t | s + t*e >= 0 }
 
     double ts = misc_max_step(s, dims, 0, NULL);
-    if (ts >= 0 && primalstart != NULL) {
+    if (ts >= 0 && conelp_ctx->primalstart != NULL) {
         ERR("initial s is not positive");
     }
 
@@ -467,12 +207,22 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
     double nrms = misc_snrm2(s, dims, 0);
     double nrmz = misc_snrm2(z, dims, 0);
 
+    double resx;
+    double resy;
+    double resz;
+
     double pcost;
     double dcost;
-    double relgap;
+    double relgap = -1.0; // Represents None
     double gap;
     double pres;
     double dres;
+
+    double cx;
+    double by;
+    double hz;
+    double rt;
+
     int relgap_valid;
 
     int ind;
@@ -491,13 +241,13 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             relgap = -1.0; // Represents None
         }
 
-        if ((ts <= 0 && tz <= 0 && (gap <= ABSTOL || (relgap >= 0 && relgap <= RELTOL))) && (&KKTREG == NULL)) {
+        if ((ts <= 0 && tz <= 0 && (gap <= ABSTOL || (relgap > 0 && relgap <= RELTOL))) && (&KKTREG == NULL)) {
 
             // The initial points we constructed happen to be feasible and
             // optimal.
 
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
                 misc_symm(s, m, ind);
                 misc_symm(z, m, ind);
@@ -506,37 +256,36 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
             // rx = A'*y + G'*z + c
             matrix *rx = Matrix_NewFromMatrix(c, c->id);
-            alpha = 1.0;
             beta = 1.0;
-            Af(y, rx, A, 'T', &alpha, &beta);
-            Gf(z, rx, G, dims, 'T', &alpha, &beta);
-            double resx = sqrt(blas_dot(rx, rx, -1, 1, 1, 0, 0).d);
+            Af_gemv(y, rx, A, 'T', NULL, &beta);
+            Gf_gemv(z, rx, G, dims, 'T', NULL, &beta);
+            resx = sqrt(blas_dot(rx, rx, -1, 1, 1, 0, 0).d);
 
             // ry = b - A*x
             alpha = -1.0;
             beta = 1.0;
             matrix *ry = Matrix_NewFromMatrix(b, b->id);
-            Af(x, ry, A, 'N', &alpha, &beta);
-            double resy = sqrt(blas_dot(ry, ry, -1, 1, 1, 0, 0).d);
+            Af_gemv(x, ry, A, 'N', &alpha, &beta);
+            resy = sqrt(blas_dot(ry, ry, -1, 1, 1, 0, 0).d);
 
             // rz = s + G*x - h
             matrix *rz = Matrix_New(cdim, 1, DOUBLE);
-            Gf(x, rz, G, dims, 'N', &alpha, &beta);
+            Gf_gemv(x, rz, G, dims, 'N', NULL, NULL);
             number alpha_n;
             alpha_n.d = -1.0;
             blas_axpy(s, rz, NULL, -1, 1, 1, 0, 0);
             blas_axpy(h, rz, &alpha_n, -1, 1, 1, 0, 0);
-            double resz = misc_snrm2(rz, dims, 0);
+            resz = misc_snrm2(rz, dims, 0);
 
             double norm1 = resy / resy0;
             double norm2 = resz / resz0;
             pres  = (norm1 > norm2) ? norm1 : norm2;
             dres = resx / resx0;
-            double cx = blas_dot(c, x, -1, 1, 1, 0, 0).d;
-            double by = blas_dot(b, y, -1, 1, 1, 0, 0).d;
-            double hz = misc_sdot(h, z, dims, 0);
+            cx = blas_dot(c, x, -1, 1, 1, 0, 0).d;
+            by = blas_dot(b, y, -1, 1, 1, 0, 0).d;
+            hz = misc_sdot(h, z, dims, 0);
 
-            if (show_progress) {
+            if (SHOW_PROGRESS) {
                 printf("Optimal solution found.\n");
             }
             
@@ -557,23 +306,22 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             result->residual_as_primal_infeasibility_certificate = 0.0;
             result->residual_as_dual_infeasibility_certificate = 0.0;
             result->iterations = 0;
-
-            return result;
-
+            return OPTIMAL;
         }
+
         double threshold_s = (nrms > 1.0) ? nrms : 1.0;
         if (ts >= -1e-8 * threshold_s) {
             double a = 1.0 + ts;
-            for (int i = 0; i < dims->l; i++) {
+            for (int i = 0; i < dims->l; ++i) {
                 MAT_BUFD(s)[i] += a;
             }
-            for (int i = 0; i < dims->q_size; i++) {
+            for (int i = 0; i < dims->q_size; ++i) {
                 MAT_BUFD(s)[indq[i]] += a;
             }
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
-                for (int j = 0; j < m; j++) {
+                for (int j = 0; j < m; ++j) {
                     MAT_BUFD(s)[ind + j * m + j] += a;
                 }
                 ind += m * m;
@@ -583,16 +331,16 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         double threshold_z = (nrmz > 1.0) ? nrmz : 1.0;
         if (tz >= -1e-8 * threshold_z) {
             double a = 1.0 + tz;
-            for (int i = 0; i < dims->l; i++) {
+            for (int i = 0; i < dims->l; ++i) {
                 MAT_BUFD(z)[i] += a;
             }
-            for (int i = 0; i < dims->q_size; i++) {
+            for (int i = 0; i < dims->q_size; ++i) {
                 MAT_BUFD(z)[indq[i]] += a;
             }
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
-                for (int j = 0; j < m; j++) {
+                for (int j = 0; j < m; ++j) {
                     MAT_BUFD(z)[ind + j * m + j] += a;
                 }
                 ind += m * m;
@@ -604,16 +352,16 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         double threshold_s = (nrms > 1.0) ? nrms : 1.0;
         if (ts >= -1e-8 * threshold_s) {
             double a = 1.0 + ts;
-            for (int i = 0; i < dims->l; i++) {
+            for (int i = 0; i < dims->l; ++i) {
                 MAT_BUFD(s)[i] += a;
             }
-            for (int i = 0; i < dims->q_size; i++) {
+            for (int i = 0; i < dims->q_size; ++i) {
                 MAT_BUFD(s)[indq[i]] += a;
             }
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
-                for (int j = 0; j < m; j++) {
+                for (int j = 0; j < m; ++j) {
                     MAT_BUFD(s)[ind + j * m + j] += a;
                 }
                 ind += m * m;
@@ -625,16 +373,16 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         double threshold_z = (nrmz > 1.0) ? nrmz : 1.0;
         if (tz >= -1e-8 * threshold_z) {
             double a = 1.0 + tz;
-            for (int i = 0; i < dims->l; i++) {
+            for (int i = 0; i < dims->l; ++i) {
                 MAT_BUFD(z)[i] += a;
             }
-            for (int i = 0; i < dims->q_size; i++) {
+            for (int i = 0; i < dims->q_size; ++i) {
                 MAT_BUFD(z)[indq[i]] += a;
             }
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
-                for (int j = 0; j < m; j++) {
+                for (int j = 0; j < m; ++j) {
                     MAT_BUFD(z)[ind + j * m + j] += a;
                 }
                 ind += m * m;
@@ -657,6 +405,8 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
     int pinfres_valid;
     int dinfres_valid;
+
+    int sol_status;
 
     number step;
 
@@ -696,31 +446,30 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         beta = 1.0;
 
         // hrx = -A'*y - G'*z
-        Af(y, hrx, A, 'T', &alpha, NULL);
-        Gf(z, hrx, G, dims, 'T', &alpha, &beta);
+        Af_gemv(y, hrx, A, 'T', &alpha, NULL);
+        Gf_gemv(z, hrx, G, dims, 'T', &alpha, &beta);
         double hresx = sqrt(blas_dot(hrx, hrx, -1, 1, 1, 0, 0).d);
         
         // rx = hrx - c*tau
         // = -A'*y - G'*z - c*tau
         blas_copy(hrx, rx, -1, 1, 1, 0, 0);
-
         number tau_n;
         tau_n.d = -tau;
         blas_axpy(c, rx, &tau_n, -1, 1, 1, 0, 0);
-        double resx = sqrt(blas_dot(rx, rx, -1, 1, 1, 0, 0).d) / tau;
+        resx = sqrt(blas_dot(rx, rx, -1, 1, 1, 0, 0).d) / tau;
         
         // hry = A*x
-        Af(x, hry, A, 'N', NULL, NULL);
+        Af_gemv(x, hry, A, 'N', NULL, NULL);
         double hresy = sqrt(blas_dot(hry, hry, -1, 1, 1, 0, 0).d);
         
         // ry = hry - b*tau
         // = A*x - b*tau
         blas_copy(hry, ry, -1, 1, 1, 0, 0);
         blas_axpy(b, ry, &tau_n, -1, 1, 1, 0, 0);
-        double resy = sqrt(blas_dot(ry, ry, -1, 1, 1, 0, 0).d) / tau;
+        resy = sqrt(blas_dot(ry, ry, -1, 1, 1, 0, 0).d) / tau;
         
         // hrz = s + G*x
-        Gf(x, hrz, G, dims, 'N', NULL, NULL);
+        Gf_gemv(x, hrz, G, dims, 'N', NULL, NULL);
         blas_axpy(s, hrz, NULL, -1, 1, 1, 0, 0);
         double hresz = misc_snrm2(hrz, dims, 0);
         
@@ -731,14 +480,14 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         blas_axpy(hrz, rz, NULL, -1, 1, 1, 0, 0);
         blas_axpy(h, rz, &tau_n, -1, 1, 1, 0, 0);
 
-        double resz = misc_snrm2(rz, dims, 0) / tau;
+        resz = misc_snrm2(rz, dims, 0) / tau;
 
         // rt = kappa + c'*x + b'*y + h'*z
-        double cx = blas_dot(c, x, -1, 1, 1, 0, 0).d;
-        double by = blas_dot(b, y, -1, 1, 1, 0, 0).d;
-        double hz = misc_sdot(h, z, dims, 0);
-        double rt = kappa + cx + by + hz;
-        
+        cx = blas_dot(c, x, -1, 1, 1, 0, 0).d;
+        by = blas_dot(b, y, -1, 1, 1, 0, 0).d;
+        hz = misc_sdot(h, z, dims, 0);
+        rt = kappa + cx + by + hz;
+
         // Statistics for stopping criteria.
         pcost = cx / tau;
         dcost = -(by + hz) / tau;
@@ -750,7 +499,9 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             relgap = gap / dcost;
             relgap_valid = 1;
         }
-        
+
+        // printf("tau: {%.16f}\n", tau);
+        // printf("resz: %.16f\n", resz);
         double term1 = resy / resy0;
         double term2 = resz / resz0;
         pres = term1 > term2 ? term1 : term2;
@@ -768,7 +519,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             dinfres_valid = 1;
         }
         
-        if (show_progress) {
+        if (SHOW_PROGRESS) {
             if (iters == 0) {
                 printf("% 10s% 12s% 10s% 8s% 7s % 5s\n", "pcost", "dcost", "gap", "pres", "dres", "k/t");
             }
@@ -776,12 +527,11 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             //        iters, pcost, dcost, gap, pres, dres, kappa/tau);
             printf("%2d: % .10e % .10e % .6e % .6e % .6e % .6e\n", 
                     iters, pcost, dcost, gap, pres, dres, kappa / tau);
-
         }
         
         if ((pres <= FEASTOL && dres <= FEASTOL && 
              (gap <= ABSTOL || (relgap_valid && relgap <= RELTOL))) || 
-            iters == 11) {
+            iters == 13) {
             
             alpha = 1.0 / tau;
             blas_scal(&alpha, x, -1, 1, 0);
@@ -789,7 +539,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             blas_scal(&alpha, s, -1, 1, 0);
             blas_scal(&alpha, z, -1, 1, 0);
 
-            ind = dims->l + sum_array(dims->q, dims->q_size);
+            ind = dims->l + sum_dims_q;
             
             for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
@@ -802,15 +552,17 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             tz = misc_max_step(z, dims, 0, NULL);
             
             if (iters == MAXITERS) {
-                if (show_progress) {
+                if (SHOW_PROGRESS) {
                     printf("Terminated (maximum number of iterations reached).\n");
                 }
                 result->status = "unknown";
+                sol_status = UNKNOWN;
             } else {
-                if (show_progress) {
+                if (SHOW_PROGRESS) {
                     printf("Optimal solution found.\n");
                 }
                 result->status = "optimal";
+                sol_status = OPTIMAL;
             }
             
             result->x = x;
@@ -828,8 +580,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             result->residual_as_primal_infeasibility_certificate = pinfres_valid ? pinfres : 0.0;
             result->residual_as_dual_infeasibility_certificate = (iters == MAXITERS && dinfres_valid) ? dinfres : 0.0;
             result->iterations = iters;
-
-            return result;
+            return sol_status;
         }
         
         else if (pinfres_valid && pinfres <= FEASTOL) {
@@ -837,7 +588,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             blas_scal(&alpha, y, -1, 1, 0);
             blas_scal(&alpha, z, -1, 1, 0);
 
-            ind = dims->l + sum_array(dims->q, dims->q_size);
+            ind = dims->l + sum_dims_q;
             for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
                 misc_symm(z, m, ind);
@@ -845,7 +596,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             }
             
             tz = misc_max_step(z, dims, 0, NULL);
-            if (show_progress) {
+            if (SHOW_PROGRESS) {
                 printf("Certificate of primal infeasibility found.\n");
             }
             
@@ -865,8 +616,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             result->residual_as_primal_infeasibility_certificate = pinfres;
             result->residual_as_dual_infeasibility_certificate = 0.0;
             result->iterations = iters;
-
-            return result;
+            return PRIMAL_INFEASIBLE;
         }
         
         else if (dinfres_valid && dinfres <= FEASTOL) {
@@ -874,8 +624,8 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             blas_scal(&alpha, x, -1, 1, 0);
             blas_scal(&alpha, s, -1, 1, 0);
             
-            ind = dims->l + sum_array(dims->q, dims->q_size);
-            for (int i = 0; i < dims->s_size; i++) {
+            ind = dims->l + sum_dims_q;
+            for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
                 misc_symm(s, m, ind);
                 ind += m * m;
@@ -883,7 +633,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             
             ts = misc_max_step(s, dims, 0, NULL);
             
-            if (show_progress) {
+            if (SHOW_PROGRESS) {
                 printf("Certificate of dual infeasibility found.\n");
             }
             
@@ -903,8 +653,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             result->residual_as_primal_infeasibility_certificate = 0.0;
             result->residual_as_dual_infeasibility_certificate = dinfres;
             result->iterations = iters;
-
-            return result;
+            return DUAL_INFEASIBLE;
         }
         
         // Compute initial scaling W:
@@ -913,9 +662,26 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         // dg * tau = 1/dg * kappa = lambdag.
         
         if (iters == 0) {
-            kkt_ctx->W = NULL;
-            Scaling_Free(W);
+            // kkt_ctx->W = NULL;
+            // Scaling_Free(W);
+
+            /*  TMD 这里有问题啊 !!!!!!!!!!!!!!!!!!*/
+
+            // 输入 s z lmbda都没问题!!!!!
+            // print_matrix_(s);
+            // print_matrix_(z);
+            // print_matrix_(lmbda);
             W = misc_compute_scaling(s, z, lmbda, dims, 0);
+
+            number temp_n;
+            temp_n.d = 1.0;
+            double alpha1 = 1.0;
+            double beta1 = 0.0;
+            matrix *vector_one_n = Matrix_New_Val(10, 1, DOUBLE, temp_n);
+            matrix *res2 = Matrix_New_Val(10, 1, DOUBLE, temp_n);
+            blas_gemv(W->r[0], vector_one_n, res2, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
+            // print_matrix_(res2);
+            
             // kkt_ctx->W = W;
             
             // dg = sqrt( kappa / tau )
@@ -926,13 +692,13 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             
             dg = sqrt(kappa / tau);
             dgi = sqrt(tau / kappa);
-            MAT_ATD(lmbda, cdim_diag) = sqrt(tau * kappa);
+            MAT_BUFD(lmbda)[cdim_diag] = sqrt(tau * kappa);
         }
         
         // lmbdasq := lmbda o lmbda
         misc_ssqr(lmbdasq, lmbda, dims, 0);
-        MAT_ATD(lmbdasq, cdim_diag) = MAT_ATD(lmbda, cdim_diag) * MAT_ATD(lmbda, cdim_diag);
-        
+        MAT_BUFD(lmbdasq)[cdim_diag] = MAT_BUFD(lmbda)[cdim_diag] * MAT_BUFD(lmbda)[cdim_diag];
+
         // f3(x, y, z) solves
         //
         // [ 0  A'  G'   ] [ ux        ]   [ bx ]
@@ -949,6 +715,17 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         // [-G   0   W'*W  ] [ W^{-1}*z1 ]          [ h ]
 
         // KKTCholContext_Free(kkt_ctx);
+
+        number temp_n;
+        double alpha1 = 1.0;
+        double beta1 = 0.0;
+        temp_n.d = 1.0;
+        matrix *vector_one = Matrix_New_Val(kkt_ctx->n ,1, DOUBLE, temp_n);
+        matrix *res = Matrix_New_Val(kkt_ctx->cdim, 1, DOUBLE, temp_n);
+        blas_gemv(kkt_ctx->Gs, vector_one, res, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
+        // print_matrix_(res);
+
+        /*********************************** 运行完这个后Gs出问题啊 W有问题 ********************************* */
         factor_function(W, NULL, NULL, kkt_ctx);
 
         if (iters == 0) {
@@ -965,6 +742,14 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
         solve_function(x1, y1, z1, kkt_ctx);
 
+        // number temp;
+        // double beta2 = 0.0;
+        // temp.d = 1.0;
+        // matrix *vector_one = Matrix_New_Val(kkt_ctx->n ,1, DOUBLE, temp);
+        // matrix *res = Matrix_New_Val(kkt_ctx->cdim, 1, DOUBLE, temp);
+        // blas_gemv(kkt_ctx->Gs, vector_one, res, 'N', &alpha, &beta2, -1, -1, 0, 1, 1, 0, 0, 0);
+        // print_matrix_(res);
+
         blas_scal(&dgi, x1, -1, 1, 0);
         blas_scal(&dgi, y1, -1, 1, 0);
         blas_scal(&dgi, z1, -1, 1, 0);
@@ -980,7 +765,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         //     blas_scal(&alpha, z, -1, 1, 0);
 
         //     int ind = dims->l + sum_array(dims->q, dims->q_size);               
-        //     for (int i = 0; i < dims->s_size; i++) {
+        //     for (int i = 0; i < dims->s_size; ++i) {
         //         int m = dims->s[i];
         //         misc_symm(s, m, ind);
         //         misc_symm(z, m, ind);
@@ -989,8 +774,8 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             
         //     double ts = misc_max_step(s, dims, 0, NULL);
         //     double tz = misc_max_step(z, dims, 0, NULL);
-            
-        //     if (show_progress) {
+
+        //     if (SHOW_PROGRESS) {
         //         printf("Terminated (singular KKT matrix).\n");
         //     }
             
@@ -1025,7 +810,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         misc_scale(th, W, 'T', 'I');
         
         if (iters == 0) {
-            if (refinement || DEBUG) {
+            if (REFINEMENT || DEBUG) {
                 wx = Matrix_NewFromMatrix(c, c->id);
                 wy = Matrix_NewFromMatrix(b, b->id);
                 wz = Matrix_New(cdim, 1, DOUBLE);
@@ -1033,7 +818,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
                 wtau = Matrix_New(1, 1, DOUBLE);
                 wkappa = Matrix_New(1, 1, DOUBLE);
             }
-            if (refinement) {
+            if (REFINEMENT) {
                 wx2 = Matrix_NewFromMatrix(c, c->id);
                 wy2 = Matrix_NewFromMatrix(b, b->id);
                 wz2 = Matrix_New(cdim, 1, DOUBLE);
@@ -1047,7 +832,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         mu = pow(blas_nrm2(lmbda, -1, 1, 0), 2) / (1 + cdim_diag);
         sigma = 0.0;
 
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 2; ++i) {
             // Solve
             //
             // [ 0         ]   [  0   A'  G'  c ] [ dx        ]
@@ -1068,42 +853,42 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             // dkappa = -lambdasq[-1] if i is 0
             //        = -lambdasq[-1] - dkappaa*dtaua + sigma*mu if i is 1.
 
-            blas_copy(lmbdasq, ds, dims->l + sum_array(dims->q, dims->q_size), 1, 1, 0, 0);
-            ind = dims->l + sum_array(dims->q, dims->q_size);
+            blas_copy(lmbdasq, ds, dims->l + sum_dims_q, 1, 1, 0, 0);
+            ind = dims->l + sum_dims_q;
             ind2 = ind;
             alpha = 0.0;
             blas_scal(&alpha, ds, -1, 1, ind);
             
-            for (int j = 0; j < dims->s_size; j++) {
+            for (int j = 0; j < dims->s_size; ++j) {
                 int m = dims->s[j];
                 blas_copy(lmbdasq, ds, m, 1, m+1, ind2, ind);
                 ind += m * m;
                 ind2 += m;
             }
-            MAT_ATD(dkappa, 0) = MAT_ATD(lmbdasq, cdim_diag);
+            MAT_BUFD(dkappa)[0] = MAT_BUFD(lmbdasq)[cdim_diag];
             
             if (i == 1) {
                 blas_axpy(ws3, ds, NULL, -1, 1, 1, 0, 0);
-                for (int j = 0; j < dims->l; j++) {
-                    MAT_ATD(ds, j) -= sigma * mu;
+                for (int j = 0; j < dims->l; ++j) {
+                    MAT_BUFD(ds)[j] -= sigma * mu;
                 }
                 
                 // Process indq array
-                for (int j = 0; j < dims->q_size; j++) {
-                    MAT_ATD(ds, (int)indq[j]) -= sigma * mu;
+                for (int j = 0; j < dims->q_size; ++j) {
+                    MAT_BUFD(ds)[(int)indq[j]] -= sigma * mu;
                 }
 
-                ind = dims->l + sum_array(dims->q, dims->q_size);
+                ind = dims->l + sum_dims_q;
                 ind2 = ind;
-                for (int j = 0; j < dims->s_size; j++) {
+                for (int j = 0; j < dims->s_size; ++j) {
                     int m = dims->s[j];
                     for (int k = 0; k < m; k++) {
-                        MAT_ATD(ds, ind + k * m + k) -= sigma * mu;
+                        MAT_BUFD(ds)[ind + k * m + k] -= sigma * mu;
                     }
                     ind += m * m;
                 }
 
-                MAT_ATD(dkappa, 0) += wkappa3 - sigma * mu;
+                MAT_BUFD(dkappa)[0] += wkappa3 - sigma * mu;
             }
             
             // (dx, dy, dz, dtau) = (1-sigma)*(rx, ry, rz, rt)
@@ -1114,19 +899,21 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
             blas_scal(&alpha, dy, -1, 1, 0);
             blas_copy(rz, dz, -1, 1, 1, 0, 0);
             blas_scal(&alpha, dz, -1, 1, 0);
-            MAT_ATD(dtau, 0) = (1.0 - sigma) * rt;
+            MAT_BUFD(dtau)[0] = (1.0 - sigma) * rt;
             
             /****************** BUg is here!!!!!!!!!!!!*********************** */
-            f6(dx, dy, dz, dtau, ds, dkappa, refinement, DEBUG, c, b, th, lmbda, cdim_diag,
+            f6(dx, dy, dz, dtau, ds, dkappa, REFINEMENT, DEBUG, c, b, th, lmbda, cdim_diag,
                 dg, dims, W, kkt_ctx, x1, y1, z1, ws3, wz3, h, A, G, wx, wy, wz, ws, wtau, wkappa,
-                wx2, wy2, wz2, ws2, wtau2, wkappa2, dgi, iters
-                );
+                wx2, wy2, wz2, ws2, wtau2, wkappa2, dgi, iters);
+            
+            // print_matrix_(ds);
+            // print_matrix_(dz);
                 
             // Save ds o dz and dkappa * dtau for Mehrotra correction
             if (i == 0) {
                 blas_copy(ds, ws3, -1, 1, 1, 0, 0);
                 misc_sprod(ws3, dz, dims, 0, 'N');
-                wkappa3 = MAT_ATD(dtau, 0) * MAT_ATD(dkappa, 0);
+                wkappa3 = MAT_BUFD(dtau)[0] * MAT_BUFD(dkappa)[0];
             }
             
             // Maximum step to boundary.
@@ -1145,9 +932,9 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
                 ts = misc_max_step(ds, dims, 0, sigs);
                 tz = misc_max_step(dz, dims, 0, sigz);
             }
-            
-            tt = -MAT_ATD(dtau, 0) / MAT_ATD(lmbda, cdim_diag);
-            tk = -MAT_ATD(dkappa, 0) / MAT_ATD(lmbda, cdim_diag);
+
+            tt = -MAT_BUFD(dtau)[0] / MAT_BUFD(lmbda)[cdim_diag];
+            tk = -MAT_BUFD(dkappa)[0] / MAT_BUFD(lmbda)[cdim_diag];
             t = fmax(fmax(fmax(fmax(0.0, ts), tz), tt), tk);
             
             if (t == 0.0) {
@@ -1156,15 +943,16 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
                 if (i == 0) {
                     step.d = fmin(1.0, 1.0 / t);
                 } else {
-                    step.d = fmin(1.0, STEP / t);
+                    step.d = fmin(1.0, settings->STEP / t);
                 }
             }
             
             if (i == 0) {
-                sigma = pow(1.0 - step.d, EXPON);
+                sigma = pow(1.0 - step.d, settings->EXPON);
             }
         }
-        
+        /* 到这里ds dz已经有问题了 */
+     
         // Update x, y.
         blas_axpy(dx, x, &step, -1, 1, 1, 0, 0);
         blas_axpy(dy, y, &step, -1, 1, 1, 0, 0);
@@ -1178,14 +966,14 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         // ds := e + step*ds for 'l' and 'q' blocks.
         // dz := e + step*dz for 'l' and 'q' blocks.
 
-        blas_scal(&step.d, ds, dims->l + sum_array(dims->q, dims->q_size), 1, 0);
-        blas_scal(&step.d, dz, dims->l + sum_array(dims->q, dims->q_size), 1, 0);
+        blas_scal(&step.d, ds, dims->l + sum_dims_q, 1, 0);
+        blas_scal(&step.d, dz, dims->l + sum_dims_q, 1, 0);
         
-        for (int i = 0; i < dims->l; i++) {
+        for (int i = 0; i < dims->l; ++i) {
             MAT_BUFD(ds)[i] += 1.0;
             MAT_BUFD(dz)[i] += 1.0;
         }
-        for (int i = 0; i < dims->q_size; i++) {
+        for (int i = 0; i < dims->q_size; ++i) {
             MAT_BUFD(ds)[indq[i]] += 1.0;
             MAT_BUFD(dz)[indq[i]] += 1.0;
         }
@@ -1202,15 +990,15 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
         misc_scale2(lmbda, ds, dims, 0, 'I');
         misc_scale2(lmbda, dz, dims, 0, 'I');
-        
+
         // sigs := ( e + step*sigs ) ./ lambda for 's' blocks.
         // sigz := ( e + step*sigz ) ./ lambda for 's' blocks.
         blas_scal(&step.d, sigs, -1, 1, 0);
         blas_scal(&step.d, sigz, -1, 1, 0);
 
-        for (int j = 0; j < sum_dims_s; j++) {
-            MAT_ATD(sigs, j) += 1.0;
-            MAT_ATD(sigz, j) += 1.0;
+        for (int j = 0; j < sum_dims_s; ++j) {
+            MAT_BUFD(sigs)[j] += 1.0;
+            MAT_BUFD(sigz)[j] += 1.0;
         }
 
         blas_tbsv(lmbda, sigs, 'L', 'N', 'N', sum_dims_s, 0, 1, 1, dims->l + sum_dims_q, 0);
@@ -1223,9 +1011,9 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
         for (int k = 0; k < dims->s_size; k++) {
             int m = dims->s[k];
-            for (int i = 0; i < m; i++) {
-                double tmp_s = sqrt(MAT_ATD(sigs, ind3 + i));
-                double tmp_z = sqrt(MAT_ATD(sigz, ind3 + i));
+            for (int i = 0; i < m; ++i) {
+                double tmp_s = sqrt(MAT_BUFD(sigs)[ind3 + i]);
+                double tmp_z = sqrt(MAT_BUFD(sigz)[ind3 + i]);
                 blas_scal(&tmp_s, ds, m, 1, ind2 + m * i);
                 blas_scal(&tmp_z, dz, m, 1, ind2 + m * i);
             }
@@ -1246,20 +1034,15 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
         dg *= sqrt(1.0 - step.d*tk) / sqrt(1.0 - step.d*tt);
         dgi = 1.0 / dg;
-        MAT_ATD(lmbda, cdim_diag) *= sqrt(1.0 - step.d*tt) * sqrt(1.0 - step.d*tk);
+        MAT_BUFD(lmbda)[cdim_diag] *= sqrt(1.0 - step.d*tt) * sqrt(1.0 - step.d*tk);
 
         // Unscale s, z, tau, kappa (unscaled variables are used only to
         // compute feasibility residuals).
 
-        // int sum_dims_q = 0;
-        // for (int i = 0; i < dims->q_size; i++) {
-        //     sum_dims_q += dims->q[i];
-        // }
-
         blas_copy(lmbda, s, dims->l + sum_dims_q, 1, 1, 0, 0);
         ind = dims->l + sum_dims_q;
         ind2 = ind;
-        for (int i = 0; i < dims->s_size; i++) {
+        for (int i = 0; i < dims->s_size; ++i) {
             int m = dims->s[i];
             double zero = 0.0;
             blas_scal(&zero, s, m*m, 1, ind2);
@@ -1272,7 +1055,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         blas_copy(lmbda, z, dims->l + sum_dims_q, 1, 1, 0, 0);
         ind = dims->l + sum_dims_q;
         ind2 = ind;
-        for (int i = 0; i < dims->s_size; i++) {
+        for (int i = 0; i < dims->s_size; ++i) {
             int m = dims->s[i];
             alpha = 0.0;
             blas_scal(&alpha, z, -1, 1, ind2);
@@ -1282,8 +1065,11 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
         }
         misc_scale(z, W, 'N', 'I');
 
-        kappa = MAT_ATD(lmbda, cdim_diag) / dgi;
-        tau = MAT_ATD(lmbda, cdim_diag) * dgi;
+        kappa = MAT_BUFD(lmbda)[cdim_diag] / dgi;
+        tau = MAT_BUFD(lmbda)[cdim_diag] * dgi;
+
+        // print_matrix_(lmbda);
+
         double wtf = blas_nrm2(lmbda, lmbda->nrows - 1, 1, 0);
         gap = pow(blas_nrm2(lmbda, lmbda->nrows - 1, 1, 0) / tau, 2.0);
     }
@@ -1292,7 +1078,7 @@ ConeLPResult* conelp(matrix* c, void* G, matrix* h, DIMs* dims, void* A, matrix*
 
 void Gf_gemv(matrix *x, matrix *y, void *G, DIMs *dims, char trans, void* alpha, void* beta) 
 {
-    if (!x || !y || !G)  ERR("Error: Gf requires non-null x, y, and G matrices\n");
+    if (!x || !y || !G)  ERR("Error: Gf_gemv requires non-null x, y, and G matrices\n");
 
     double one_ = 1.0;
     double zero_ = 0.0;
@@ -1308,7 +1094,7 @@ void Gf_gemv(matrix *x, matrix *y, void *G, DIMs *dims, char trans, void* alpha,
 }
 
 void Af_gemv(matrix *x, matrix *y, void *A, char trans, void* alpha, void* beta) {
-    if (!x || !y || !A)  ERR("Error: Af requires non-null x, y, and A matrices\n");
+    if (!x || !y || !A)  ERR("Error: Af_gemv requires non-null x, y, and A matrices\n");
 
     if (alpha == NULL) {
         double one = 1.0;
@@ -1349,7 +1135,7 @@ void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *u
     Gf_gemv(wz3, vx, G, dims, 'T', &alpha, &beta);
 
     number alpha_n;
-    alpha_n.d = -MAT_ATD(utau, 0) / dg;
+    alpha_n.d = -MAT_BUFD(utau)[0] / dg;
     blas_axpy(c, vx, &alpha_n, -1, 1, 1, 0, 0);
 
     alpha = 1.0;
@@ -1365,7 +1151,7 @@ void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *u
     blas_axpy(ws3, vz, NULL, -1, 1, 1, 0, 0);
 
     // vtau := vtau + c'*ux + b'*uy + h'*W^{-1}*uz + dg*ukappa
-    MAT_ATD(vtau, 0) += dg*MAT_ATD(ukappa, 0) + 
+    MAT_BUFD(vtau)[0] += dg*MAT_BUFD(ukappa)[0] + 
         blas_dot(c, ux, -1, 1, 1, 0, 0).d + 
         blas_dot(b, uy, -1, 1, 1, 0, 0).d + 
         misc_sdot(h, wz3, dims, 0);
@@ -1377,7 +1163,7 @@ void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *u
     blas_axpy(ws3, vs, NULL, -1, 1, 1, 0, 0);
 
     // vkappa += vkappa + lmbdag * (utau + ukappa)
-    MAT_ATD(vkappa, 0) += MAT_ATD(lmbda, cdim_diag) * (MAT_ATD(utau, 0) + MAT_ATD(ukappa, 0));
+    MAT_BUFD(vkappa)[0] += MAT_BUFD(lmbda)[cdim_diag] * (MAT_BUFD(utau)[0] + MAT_BUFD(ukappa)[0]);
                
 }
 
@@ -1433,10 +1219,13 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     misc_scale(ws3, W, 'T', 'N');
     blas_axpy(ws3, z, NULL, -1, 1, 1, 0, 0);
     blas_scal(&alpha, z, -1, 1, 0);
-    
 
     // print_matrix_(z);
     // Solve system.
+
+    // print_matrix_(kkt_ctx->Gs);
+
+    /********************* 问题出在z!!!!!!!!!!!!! ************************/
     solve_function(x, y, z, kkt_ctx);
 
     // print_matrix_(z);
@@ -1452,26 +1241,26 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     // -c'*x - b'*y - h'*W^{-1}*z + dg*tau = btau - bkappa/tau.
     
     // kappa[0] := -kappa[0] / lmbd[-1] = -bkappa / lmbdag
-    MAT_ATD(kappa, 0) = -MAT_ATD(kappa, 0) / MAT_ATD(lmbda, cdim_diag);
-    
+    MAT_BUFD(kappa)[0] = -MAT_BUFD(kappa)[0] / MAT_BUFD(lmbda)[cdim_diag];
+
     // tau[0] = tau[0] + kappa[0] / dgi = btau[0] - bkappa / tau
-    MAT_ATD(tau, 0) += MAT_ATD(kappa, 0) / dgi;
+    MAT_BUFD(tau)[0] += MAT_BUFD(kappa)[0] / dgi;
 
     // print_matrix_(z1);
 
-    // double term1 = MAT_ATD(tau, 0);
+    // double term1 = MAT_BUFD(tau)[0];
     // double term2 = blas_dot(c, x, -1, 1, 1, 0, 0).d;
     // double term3 = blas_dot(b, y, -1, 1, 1, 0, 0).d;
 
     // double term4 = misc_sdot(th, z, dims, 0);
     // double term5 = 1.0 + misc_sdot(z1, z1, dims, 0);
 
-    MAT_ATD(tau, 0) = dgi * (MAT_ATD(tau, 0) + 
+    MAT_BUFD(tau)[0] = dgi * (MAT_BUFD(tau)[0] + 
             blas_dot(c, x, -1, 1, 1, 0, 0).d + blas_dot(b, y, -1, 1, 1, 0, 0).d + 
             misc_sdot(th, z, dims, 0)) / (1.0 + misc_sdot(z1, z1, dims, 0));
     
     number alpha_n;
-    alpha_n.d = MAT_ATD(tau, 0);
+    alpha_n.d = MAT_BUFD(tau)[0];
     
     blas_axpy(x1, x, &alpha_n, -1, 1, 1, 0, 0);
     blas_axpy(y1, y, &alpha_n, -1, 1, 1, 0, 0);
@@ -1481,7 +1270,7 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     alpha_n.d = -1.0;
     blas_axpy(z, s, &alpha_n, -1, 1, 1, 0, 0);
 
-    MAT_ATD(kappa, 0) -= MAT_ATD(tau, 0);
+    MAT_BUFD(kappa)[0] -= MAT_BUFD(tau)[0];
 }
 
 
@@ -1497,23 +1286,27 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         xy_copy(x, wx);
         xy_copy(y, wy);
         blas_copy(z, wz, -1, 1, 1, 0, 0);
-        MAT_ATD(wtau, 0) = MAT_ATD(tau, 0);
+        MAT_BUFD(wtau)[0] = MAT_BUFD(tau)[0];
         blas_copy(s, ws, -1, 1, 1, 0, 0);
-        MAT_ATD(wkappa, 0) = MAT_ATD(kappa, 0);
+        MAT_BUFD(wkappa)[0] = MAT_BUFD(kappa)[0];
     }
 
     // print_matrix_(z1);
 
+    // 吊B问题 s不对
+
     f6_no_ir(x, y, z, tau, s, kappa, lmbda, c, b, th, x1, y1, z1, 
             ws3, dims, W, cdim_diag, dgi, kkt_ctx);
+    
+    // print_matrix_(s);
 
-    for (int i = 0; i < refinement; i++) {
+    for (int i = 0; i < refinement; ++i) {
         xy_copy(wx, wx2);
         xy_copy(wy, wy2);
         blas_copy(wz, wz2, -1, 1, 1, 0, 0);
-        MAT_ATD(wtau2, 0) = MAT_ATD(wtau, 0);
+        MAT_BUFD(wtau2)[0] = MAT_BUFD(wtau)[0];
         blas_copy(ws, ws2, -1, 1, 1, 0, 0);
-        MAT_ATD(wkappa2, 0) = MAT_ATD(wkappa, 0);
+        MAT_BUFD(wkappa2)[0] = MAT_BUFD(wkappa)[0];
 
         res(x, y, z, tau, s, kappa, wx2, wy2, wz2, wtau2, ws2, wkappa2, W, dg, lmbda, 
             A, G, dims, cdim_diag, ws3, wz3, c, b, h
@@ -1525,22 +1318,22 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         blas_axpy(wx2, x, NULL, -1, 1, 1, 0, 0);
         blas_axpy(wy2, y, NULL, -1, 1, 1, 0, 0);
         blas_axpy(wz2, z, NULL, -1, 1, 1, 0, 0);
-        MAT_ATD(tau, 0) += MAT_ATD(wtau2, 0);
+        MAT_BUFD(tau)[0] += MAT_BUFD(wtau2)[0];
         blas_axpy(ws2, s, NULL, -1, 1, 1, 0, 0);
-        MAT_ATD(kappa, 0) += MAT_ATD(wkappa2, 0);
+        MAT_BUFD(kappa)[0] += MAT_BUFD(wkappa2)[0];
     }
     
     if (DEBUG) {
         res(x, y, z, tau, s, kappa, wx, wy, wz, wtau, ws, wkappa, W, dg, lmbda,
-            A, G, dims, cdim_diag, ws3, wz3, c, b, h
-        );
+            A, G, dims, cdim_diag, ws3, wz3, c, b, h);
+    
         printf("KKT residuals\n");
         printf("    'x': %e\n", sqrt(blas_dot(wx, wx, -1, 1, 1, 0, 0).d));
         printf("    'y': %e\n", sqrt(blas_dot(wy, wy, -1, 1, 1, 0, 0).d));
         printf("    'z': %e\n", misc_snrm2(wz, dims, 0));
-        printf("    'tau': %e\n", fabs(MAT_ATD(wtau, 0)));
+        printf("    'tau': %e\n", fabs(MAT_BUFD(wtau)[0]));
         printf("    's': %e\n", misc_snrm2(ws, dims, 0));
-        printf("    'kappa': %e\n", fabs(MAT_ATD(wkappa, 0)));
+        printf("    'kappa': %e\n", fabs(MAT_BUFD(wkappa)[0]));
     }
 }
 
