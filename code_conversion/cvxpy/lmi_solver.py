@@ -56,19 +56,7 @@ class LMISolver:
         #                  [-np.sin(yaw), np.cos(yaw), 0],
         #                  [np.cos(yaw) * np.tan(pitch), np.sin(yaw) * np.tan(pitch), 1]])
 
-        # Sampling period
-        T = 1 / 20  # work in 25 to 30
-
-        # System matrices (continuous-time)
-        aA = np.zeros((10, 10))
-        aA[0, 6] = 1
-        aA[1:4, 7:10] = Rzyx
-        aB = np.zeros((10, 6))
-        aB[4:, :] = np.eye(6)
-
-        # System matrices (discrete-time)
-        B = aB * T
-        A = np.eye(10) + T * aA
+ 
 
         alpha = 0.9
         hd = 1e-10
@@ -92,6 +80,20 @@ class LMISolver:
                        [0, 0, 0, c2, 0, 0],
                        [0, 0, 0, 0, c2, 0],
                        [0, 0, 0, 0, 0, c2]])
+
+       # Sampling period
+        T = 1 / 20  # work in 25 to 30
+
+        # System matrices (continuous-time)
+        aA = np.zeros((10, 10))
+        aA[0, 6] = 1
+        aA[1:4, 7:10] = Rzyx
+        aB = np.zeros((10, 6))
+        aB[4:, :] = np.eye(6)
+
+        # System matrices (discrete-time)
+        B = aB * T
+        A = np.eye(10) + T * aA
 
         Z = np.diag(tracking_err)
 
@@ -124,6 +126,9 @@ class LMISolver:
 
             optimal_Q = Q.value
             optimal_R = R.value
+
+            print(f"optimal_Q: {optimal_Q}")
+            print(f"optimal_R: {optimal_R}")
 
             # print(optimal_Q)
             # print(optimal_R)
@@ -160,7 +165,7 @@ class LMISolver:
             res = None
             is_solved = False
 
-        return res, is_solved
+        return res, is_solved, problem._solve_time
 
 
 
@@ -202,21 +207,25 @@ if __name__ == '__main__':
 
     lmisolver = LMISolver()
     t1 = time.time()
-    (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    (F_kp, F_kd), _, _ = lmisolver.patch_lmi(zz)
     t2 = time.time()
     print(f"consuming time1: {t2 - t1}")
     
-    # REPEAT = 500  # Test counts
-    # total_time = 0.0
+    REPEAT = 1  # Test counts
+    solve_time = 0.0
+    total_time = 0.0
 
-    # for _ in range(REPEAT):
-    #     t1 = time.time()
-    #     (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
-    #     t2 = time.time()
-    #     total_time += (t2 - t1)
+    for _ in range(REPEAT):
+        t1 = time.time()
+        (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
+        t2 = time.time()
+        solve_time += elapsed_time
+        total_time += (t2 - t1)
 
-    # avg_time = total_time / REPEAT
-    # print(f"Average time over {REPEAT} runs: {avg_time:.6f} seconds")
+    avg_time = total_time / REPEAT * 1e3
+    avg_solve_time = solve_time / REPEAT * 1e3
+    print(f"Average solution time over {REPEAT} runs: {avg_time:.6f} milliseconds")
+    print(f"Average solve time over {REPEAT} runs: {avg_solve_time:.6f} milliseconds")
     
     # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
     # t1 = time.time()

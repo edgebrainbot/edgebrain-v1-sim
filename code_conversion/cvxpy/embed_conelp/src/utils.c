@@ -339,6 +339,7 @@ ConeLPContext *ConeLPContext_Init(PrimalStart *primalstart, DualStart *dualstart
  */
 void debug_matrix_by_project2vector(matrix *m) 
 {
+    printf("Debugging matrix by projecting onto vector of ones:\n");
     number temp_n;
     double alpha = 1.0;
     double beta = 0.0;
@@ -352,4 +353,32 @@ void debug_matrix_by_project2vector(matrix *m)
     // Free the allocated matrices
     Matrix_Free(vector_one);
     Matrix_Free(res);
+}
+
+void print_matrix_(matrix *m) 
+{
+    double *buf = MAT_BUFD(m);
+    printf("Matrix (%dx%d):\n", m->nrows, m->ncols);
+    for (int r = 0; r < m->nrows; ++r) {
+        for (int c = 0; c < m->ncols; ++c) {
+            printf("%.16f ", buf[c * m->nrows + r]);  // column-major
+        }
+        printf("\n");
+    }
+    printf("End of matrix********************************************\n\n");
+}
+
+
+void print_W(scaling *W) 
+{
+    for(int i = 0; i < W->r_count; ++i) {
+        printf("W[%d]:\n", i);
+        for (int j = 0; j < W->r[i]->nrows; ++j) {
+            for (int k = 0; k < W->r[i]->ncols; ++k) {
+                printf("%.16f ", MAT_ELEMD(W->r[i], j, k));
+            }
+            printf("\n");
+        }
+        printf("End of W[%d] matrix********************************************\n\n", i);
+    }
 }

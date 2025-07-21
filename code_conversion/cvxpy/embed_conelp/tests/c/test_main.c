@@ -10,7 +10,7 @@
 #include <unistd.h> // 包含 getcwd() 声明
 #include <limits.h> // 定义 PATH_MAX
 
-int TEST_TIMES = 3000;
+int TEST_TIMES = 500;
 
 extern matrix* load_txt_as_matrix(const char* filename);
 extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols);
@@ -27,6 +27,14 @@ const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
 // const char mat_c[] = "input_matrix/c.txt";        // For debugging
 // const char mat_h[] = "input_matrix/h.txt";
 // const char spmat_G[] = "input_matrix/G_sp.txt";
+
+// const char mat_c[] = "../tests/c/input_matrix/simplified/c.txt";        // For running
+// const char mat_h[] = "../tests/c/input_matrix/simplified/h.txt";
+// const char spmat_G[] = "../tests/c/input_matrix/simplified/G_sp.txt";
+
+// const char mat_c[] = "input_matrix/simplified/c.txt";        // For debugging
+// const char mat_h[] = "input_matrix/simplified/h.txt";
+// const char spmat_G[] = "input_matrix/simplified/G_sp.txt";
 
 void test_all() {
     // test_base();
@@ -45,6 +53,7 @@ void test_conelp() {
     matrix *c = load_txt_as_matrix(mat_c);
     matrix *h = load_txt_as_matrix(mat_h);
     spmatrix *G_sp = load_spmatrix_from_triplet_file(spmat_G, 973, 136);
+    // spmatrix *G_sp = load_spmatrix_from_triplet_file(spmat_G, 89, 21);
 
     if (!c || !h || !G_sp) {
         fprintf(stderr, "加载矩阵失败\n");
@@ -53,8 +62,11 @@ void test_conelp() {
 
     matrix *b = Matrix_New(0, 1, DOUBLE);
     matrix *A = SpMatrix_New(0, 136, 0, DOUBLE);
+    // matrix *A = SpMatrix_New(0, 21, 0, DOUBLE);
 
     int sbuf[] = { 10, 6, 20, 16, 10, 3, 6, 6 };
+    // int sbuf[] = { 4, 2, 8, 1, 2};
+    // DIMs dims = {.l = 0, .q_size = 0, .s_size = 5, .q = NULL, .s = sbuf};     
     DIMs dims = {.l = 0, .q_size = 0, .s_size = 8, .q = NULL, .s = sbuf};     
     PrimalStart *primalstart = NULL;
     DualStart *dualstart = NULL;    
@@ -66,23 +78,22 @@ void test_conelp() {
     int status;
     status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
 
+    int test_time = 1;
+    // int test_time = TEST_TIMES;
     struct timeval start, end;
     gettimeofday(&start, NULL);
-    // for (int i = 0; i < TEST_TIMES; ++i) {
-        // status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
-    // }
-    status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
+    for (int i = 0; i < test_time; ++i) {
+        status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
+    }
+    // status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
     gettimeofday(&end, NULL);
 
     double elapsed = (end.tv_sec - start.tv_sec)
                    + (end.tv_usec - start.tv_usec) / 1e6;
-    double avg_time = elapsed / 1;
-    printf("Average time per iteration: %.6f seconds\n", avg_time);
+    double avg_time = elapsed / test_time * 1e3;
+    printf("Average time per iteration (Running %d times): %.6f milliseconds\n", test_time, avg_time);
     printf("ConeLPResult status: %s\n", conelp_ctx->result->status);
-    // print_matrix(result->s);
-    
 }
-
 
 
 void test_matrix_assign() {

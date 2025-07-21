@@ -11,9 +11,10 @@ static const double const_one = 1.0;
 static const double const_zero = 0.0;
 char msg[256];
 
+void print_W(scaling *W);
 
 int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-          CVXOPT_Settings* settings, ConeLPContext* conelp_ctx) 
+            CVXOPT_Settings* settings, ConeLPContext* conelp_ctx) 
 {   
     // Use custom options if provided, otherwise use global options
     bool DEBUG = settings->debug;
@@ -63,7 +64,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         snprintf(msg, sizeof(msg), "Unsupported KKT solver: %s", settings->kktsolver);
         ERR(msg);
     }
-    
 
     matrix *wz3 = Matrix_New(cdim, 1, DOUBLE);
     if (!wz3) {
@@ -128,8 +128,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         // }
     }
 
-    // debug_matrix_by_project2vector(kkt_ctx->Gs);
-
     if (primalstart == NULL) {
 
         // minimize    || G * x - h ||^2
@@ -145,8 +143,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         blas_scal(&alpha, x, -1, 1, 0);
         xy_copy(b, dy);
         blas_copy(h, s, -1, 1, 1, 0, 0);
-
-        // print_matrix_(h);
 
         // Try to solve
         solve_function(x, dy, s, kkt_ctx);
@@ -436,13 +432,11 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
     matrix *wtau2 = NULL;
     matrix *wkappa2 = NULL;
 
-    // matrix *wkappa3 = NULL;
-
     gap = misc_sdot(s, z, dims, 0);
 
     for (int iters = 0; iters <= MAXITERS; ++iters) {
         
-        alpha = -1.0;
+        alpha = -1.0; 
         beta = 1.0;
 
         // hrx = -A'*y - G'*z
@@ -498,10 +492,10 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         } else if (dcost > 0.0) {
             relgap = gap / dcost;
             relgap_valid = 1;
+        } else {
+            relgap = -1.0; // Represents None
         }
 
-        // printf("tau: {%.16f}\n", tau);
-        // printf("resz: %.16f\n", resz);
         double term1 = resy / resy0;
         double term2 = resz / resz0;
         pres = term1 > term2 ? term1 : term2;
@@ -531,7 +525,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         
         if ((pres <= FEASTOL && dres <= FEASTOL && 
              (gap <= ABSTOL || (relgap_valid && relgap <= RELTOL))) || 
-            iters == 13) {
+            iters == MAXITERS) {
             
             alpha = 1.0 / tau;
             blas_scal(&alpha, x, -1, 1, 0);
@@ -662,26 +656,8 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         // dg * tau = 1/dg * kappa = lambdag.
         
         if (iters == 0) {
-            // kkt_ctx->W = NULL;
-            // Scaling_Free(W);
-
-            /*  TMD 这里有问题啊 !!!!!!!!!!!!!!!!!!*/
-
-            // 输入 s z lmbda都没问题!!!!!
-            // print_matrix_(s);
-            // print_matrix_(z);
-            // print_matrix_(lmbda);
             W = misc_compute_scaling(s, z, lmbda, dims, 0);
 
-            number temp_n;
-            temp_n.d = 1.0;
-            double alpha1 = 1.0;
-            double beta1 = 0.0;
-            matrix *vector_one_n = Matrix_New_Val(10, 1, DOUBLE, temp_n);
-            matrix *res2 = Matrix_New_Val(10, 1, DOUBLE, temp_n);
-            blas_gemv(W->r[0], vector_one_n, res2, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
-            // print_matrix_(res2);
-            
             // kkt_ctx->W = W;
             
             // dg = sqrt( kappa / tau )
@@ -715,17 +691,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         // [-G   0   W'*W  ] [ W^{-1}*z1 ]          [ h ]
 
         // KKTCholContext_Free(kkt_ctx);
-
-        number temp_n;
-        double alpha1 = 1.0;
-        double beta1 = 0.0;
-        temp_n.d = 1.0;
-        matrix *vector_one = Matrix_New_Val(kkt_ctx->n ,1, DOUBLE, temp_n);
-        matrix *res = Matrix_New_Val(kkt_ctx->cdim, 1, DOUBLE, temp_n);
-        blas_gemv(kkt_ctx->Gs, vector_one, res, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
-        // print_matrix_(res);
-
-        /*********************************** 运行完这个后Gs出问题啊 W有问题 ********************************* */
         factor_function(W, NULL, NULL, kkt_ctx);
 
         if (iters == 0) {
@@ -742,18 +707,9 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
 
         solve_function(x1, y1, z1, kkt_ctx);
 
-        // number temp;
-        // double beta2 = 0.0;
-        // temp.d = 1.0;
-        // matrix *vector_one = Matrix_New_Val(kkt_ctx->n ,1, DOUBLE, temp);
-        // matrix *res = Matrix_New_Val(kkt_ctx->cdim, 1, DOUBLE, temp);
-        // blas_gemv(kkt_ctx->Gs, vector_one, res, 'N', &alpha, &beta2, -1, -1, 0, 1, 1, 0, 0, 0);
-        // print_matrix_(res);
-
         blas_scal(&dgi, x1, -1, 1, 0);
         blas_scal(&dgi, y1, -1, 1, 0);
         blas_scal(&dgi, z1, -1, 1, 0);
-
         
         // if (iters == 0 && primalstart && dualstart) {
         //     ERR("Error: Rank(A) < p or Rank([G; A]) < n");
@@ -828,7 +784,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             }
         }
 
-        // print_matrix_(lmbda);
         mu = pow(blas_nrm2(lmbda, -1, 1, 0), 2) / (1 + cdim_diag);
         sigma = 0.0;
 
@@ -901,13 +856,9 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             blas_scal(&alpha, dz, -1, 1, 0);
             MAT_BUFD(dtau)[0] = (1.0 - sigma) * rt;
             
-            /****************** BUg is here!!!!!!!!!!!!*********************** */
             f6(dx, dy, dz, dtau, ds, dkappa, REFINEMENT, DEBUG, c, b, th, lmbda, cdim_diag,
                 dg, dims, W, kkt_ctx, x1, y1, z1, ws3, wz3, h, A, G, wx, wy, wz, ws, wtau, wkappa,
                 wx2, wy2, wz2, ws2, wtau2, wkappa2, dgi, iters);
-            
-            // print_matrix_(ds);
-            // print_matrix_(dz);
                 
             // Save ds o dz and dkappa * dtau for Mehrotra correction
             if (i == 0) {
@@ -951,7 +902,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
                 sigma = pow(1.0 - step.d, settings->EXPON);
             }
         }
-        /* 到这里ds dz已经有问题了 */
      
         // Update x, y.
         blas_axpy(dx, x, &step, -1, 1, 1, 0, 0);
@@ -1050,6 +1000,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             ind += m;
             ind2 += m*m;
         }
+
         misc_scale(s, W, 'T', 'N');
 
         blas_copy(lmbda, z, dims->l + sum_dims_q, 1, 1, 0, 0);
@@ -1068,9 +1019,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         kappa = MAT_BUFD(lmbda)[cdim_diag] / dgi;
         tau = MAT_BUFD(lmbda)[cdim_diag] * dgi;
 
-        // print_matrix_(lmbda);
-
-        double wtf = blas_nrm2(lmbda, lmbda->nrows - 1, 1, 0);
         gap = pow(blas_nrm2(lmbda, lmbda->nrows - 1, 1, 0) / tau, 2.0);
     }
 
@@ -1175,10 +1123,6 @@ void xy_copy(matrix *x, matrix *y)
 }
 
 
-// void kktsolver(matrix *W, FactorFunc f, KKTCholContext *ctx) {
-//     return f(W, NULL, NULL, ctx);
-// }
-
 // f6_no_ir function definition
 void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, matrix* lmbda, 
               matrix *c, matrix *b, matrix *th, matrix *x1, matrix *y1, matrix *z1, matrix *ws3, 
@@ -1220,15 +1164,7 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     blas_axpy(ws3, z, NULL, -1, 1, 1, 0, 0);
     blas_scal(&alpha, z, -1, 1, 0);
 
-    // print_matrix_(z);
-    // Solve system.
-
-    // print_matrix_(kkt_ctx->Gs);
-
-    /********************* 问题出在z!!!!!!!!!!!!! ************************/
     solve_function(x, y, z, kkt_ctx);
-
-    // print_matrix_(z);
     
     // Combine with solution of
     //
@@ -1245,16 +1181,6 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
 
     // tau[0] = tau[0] + kappa[0] / dgi = btau[0] - bkappa / tau
     MAT_BUFD(tau)[0] += MAT_BUFD(kappa)[0] / dgi;
-
-    // print_matrix_(z1);
-
-    // double term1 = MAT_BUFD(tau)[0];
-    // double term2 = blas_dot(c, x, -1, 1, 1, 0, 0).d;
-    // double term3 = blas_dot(b, y, -1, 1, 1, 0, 0).d;
-
-    // double term4 = misc_sdot(th, z, dims, 0);
-    // double term5 = 1.0 + misc_sdot(z1, z1, dims, 0);
-
     MAT_BUFD(tau)[0] = dgi * (MAT_BUFD(tau)[0] + 
             blas_dot(c, x, -1, 1, 1, 0, 0).d + blas_dot(b, y, -1, 1, 1, 0, 0).d + 
             misc_sdot(th, z, dims, 0)) / (1.0 + misc_sdot(z1, z1, dims, 0));
@@ -1291,14 +1217,8 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         MAT_BUFD(wkappa)[0] = MAT_BUFD(kappa)[0];
     }
 
-    // print_matrix_(z1);
-
-    // 吊B问题 s不对
-
     f6_no_ir(x, y, z, tau, s, kappa, lmbda, c, b, th, x1, y1, z1, 
             ws3, dims, W, cdim_diag, dgi, kkt_ctx);
-    
-    // print_matrix_(s);
 
     for (int i = 0; i < refinement; ++i) {
         xy_copy(wx, wx2);
@@ -1314,7 +1234,7 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
 
         f6_no_ir(wx2, wy2, wz2, wtau2, ws2, wkappa2, lmbda, c, b, th, x1, y1, z1,
              ws3, dims, W, cdim_diag, dgi, kkt_ctx);
-
+        
         blas_axpy(wx2, x, NULL, -1, 1, 1, 0, 0);
         blas_axpy(wy2, y, NULL, -1, 1, 1, 0, 0);
         blas_axpy(wz2, z, NULL, -1, 1, 1, 0, 0);
@@ -1335,18 +1255,4 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         printf("    's': %e\n", misc_snrm2(ws, dims, 0));
         printf("    'kappa': %e\n", fabs(MAT_BUFD(wkappa)[0]));
     }
-}
-
-
-void print_matrix_(matrix *m) 
-{
-    double *buf = MAT_BUFD(m);
-    printf("Matrix (%dx%d):\n", m->nrows, m->ncols);
-    for (int r = 0; r < m->nrows; ++r) {
-        for (int c = 0; c < m->ncols; ++c) {
-            printf("%.16f ", buf[c * m->nrows + r]);  // column-major
-        }
-        printf("\n");
-    }
-    printf("End of matrix********************************************\n\n");
 }

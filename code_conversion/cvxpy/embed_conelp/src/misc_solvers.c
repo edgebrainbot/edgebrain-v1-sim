@@ -26,8 +26,6 @@
 #include "float.h"
 #include <unistd.h>
 
-
-
 /* misc_solver prototype */
 extern void dcopy_(int *n, double *x, int *incx, double *y, int *incy);
 extern double dnrm2_(int *n, double *x, int *incx);
@@ -1492,9 +1490,8 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         W->dnli = base_pow(W->dnl, &exponent, 0, DOUBLE, DOUBLE);
         tmp = base_emul(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
 
-        int i = 0;
         matrix* res = base_sqrt(tmp, 0, DOUBLE);
-        for (; i < mnl; ++i) {
+        for (int i = 0; i < mnl; ++i) {
             MAT_BUFD(lmbda)[i] = MAT_BUFD(res)[i];
         }
 
@@ -1503,7 +1500,6 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         Matrix_Free(res);
         Matrix_Free(s_mnl);
         Matrix_Free(z_mnl);
-
     }
 
     /* For the 'l' block:
@@ -1664,7 +1660,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
     matrix *Lz = Matrix_New(max_s * max_s, 1, DOUBLE);
 
     int ind2 = ind;
-    for (int k = 0; k < dims->s_size; k++) {
+    for (int k = 0; k < dims->s_size; ++k) {
         m = dims->s[k];
         matrix *r = W->r[k];
         matrix *rti = W->rti[k];
@@ -1682,23 +1678,12 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
         for (int i = 0; i < m; i++) {
             blas_scal(&alpha, Ls, i, 1, i*m);
         }
-        blas_copy(Ls, work, m*m, 1, 1, 0, 0);
 
+        blas_copy(Ls, work, m*m, 1, 1, 0, 0);
         blas_trmm(Lz, work, 'L', 'L', 'T', 'N', NULL, m, m, m, m, 0, 0);
                 number temp_n;
 
-        /************这里TM 有问题！！！！！！！！！！！！！！！！！！！！！ */
         lapack_gesvd(work, lmbda, 'O', 'N', NULL, NULL, m, m, m, 0, 0, 0, ind, 0, 0);
-
-
-	    // temp_n.d = 1.0;
-        // double alpha1 = 1.0, beta1 = 0.0;
-        // matrix *vector_one_n = Matrix_New_Val(max_s*max_s, 1, DOUBLE, temp_n);
-        // matrix *res2 = Matrix_New_Val(max_s*max_s, 1, DOUBLE, temp_n);
-        // blas_gemv(work, vector_one_n, res2, 'N', &alpha1, &beta1, -1, -1, 0, 1, 1, 0, 0, 0);
-        // print_matrix_(res2);   
-        // printf("ajsdjhgajskdlagusfydhioasugyhijlkgfas\n");
-        // sleep(200);  // 睡眠 2 秒
 
         // r = Lz^{-T} * U 
         blas_copy(work, r, m*m, 1, 1, 0, 0);
@@ -1974,7 +1959,8 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         blas_copy(work, rti, m*m, 1, 1, 0, 0);
 
         // SVD Lz'*Ls = U * lmbds^+ * V'; store U in sk and V' in zk.
-        blas_gemm(z, s, work, 'T', 'N', NULL, NULL, m, m, m, m, m, m, 0, ind2, 0);
+        // blas_gemm(z, s, work, 'T', 'N', NULL, NULL, m, m, m, m, m, m, 0, ind2, 0); // wo cao ni ma bi
+        blas_gemm(z, s, work, 'T', 'N', NULL, NULL, m, m, m, m, m, m, ind2, ind2, 0);
         lapack_gesvd(work, lmbda, 'A', 'A', s, z, m, m, m, m, m, 0, ind, ind2, ind2);
 
         // r := r*V
@@ -2025,21 +2011,15 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     //     W*uz = W^{-T} * ( GG*ux - bz ).
 
     // bzp := W^{-T} * bz in packed storage 
+
     misc_scale(z, ctx->W, 'T', 'I'); 
-    misc_pack(z, ctx->bzp, ctx->dims, ctx->mnl, 0, 0);
-
-    // print_matrix_(ctx->bzp);
-
-    // debug_matrix_by_project2vector(ctx->Gs);
-    
+    misc_pack(z, ctx->bzp, ctx->dims, ctx->mnl, 0, 0);    
 
     // x := [Q1, Q2]' * (x + Gs' * bzp)
     //    = [Q1, Q2]' * (bx + Gs' * W^{-T} * bz)
     double beta = 1.0;
     blas_gemv(ctx->Gs, ctx->bzp, x, 'T', NULL, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
     lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'T', -1, -1, -1, 0, 0, 0, 0);
-
-    // print_matrix_(x);
 
     // y := x[:p] 
     //    = Q1' * (bx + Gs' * W^{-T} * bz)
@@ -2049,9 +2029,6 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     // x[:p] := v = R^{-T} * by 
     blas_copy(ctx->yy, x, -1, 1, 1, 0, 0);
     lapack_trtrs(ctx->QA, x, 'U', 'T', 'N', ctx->p, -1, 0, 0, 0, 0);
-
-    
-    // print_matrix_(x);
 
     // x[p:] := K22^{-1} * (x[p:] - K21*x[:p])
     //        = K22^{-1} * (Q2' * (bx + Gs' * W^{-T} * bz) - K21*v)
@@ -2074,31 +2051,14 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     // x := [Q1, Q2] * x
     lapack_ormqr(ctx->QA, ctx->tauA, x, 'L', 'N', -1, -1, -1, 0, 0, 0, 0);
 
-    //              到这为止 x 没问题
-    // print_matrix_(x);
-
     // bzp := Gs * x - bzp.
     //      = W^{-T} * ( GG*ux - bz ) in packed storage.
     // Unpack and copy to z.
     alpha = 1.0;
     beta = -1.0;
 
-    // print_matrix_(ctx->Gs);
-
-    // number temp;
-    // double beta2 = 0.0;
-    // temp.d = 1.0;
-    // matrix *vector_one = Matrix_New_Val(ctx->n ,1, DOUBLE, temp);
-    // matrix *res = Matrix_New_Val(ctx->cdim, 1, DOUBLE, temp);
-    // blas_gemv(ctx->Gs, vector_one, res, 'N', &alpha, &beta2, -1, -1, 0, 1, 1, 0, 0, 0);
-    // print_matrix_(res);
-
-
     blas_gemv(ctx->Gs, x, ctx->bzp, 'N', &alpha, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
-    // print_matrix_(ctx->bzp);
-
     misc_unpack(ctx->bzp, z, ctx->dims, ctx->mnl, 0, 0);
-    
 }
 
 // Inner factor function
@@ -2113,10 +2073,11 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
     //     Q_2' * (H + GG^T * W^{-1} * W^{-T} * GG) * Q2.
 
     // Gs = W^{-T} * GG in packed storage.
-    if (ctx->W == NULL) {
-        ctx->W = W;
-    }
-    
+    // if (ctx->W == NULL) {
+    //     ctx->W = W;
+    // }
+    ctx->W = W;
+
     if (ctx->mnl) {
         matrix_slice_assign(ctx->Gs, Df, 0, ctx->mnl, 0, ctx->n);
     }
@@ -2134,20 +2095,12 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
         ERR_TYPE("Invalid matrix type for G.");
     }
 
-    // debug_matrix_by_project2vector(ctx->Gs);
-    // print_matrix_(res);
-
-    // debug_matrix_by_project2vector(W->r[0]);
-
-    // 傻逼W有问题
     misc_scale(ctx->Gs, W, 'T', 'I');
-    // 这里Gs已经有问题了
-
     misc_pack2(ctx->Gs, ctx->dims, ctx->mnl);
-
 
     // K = [Q1, Q2]' * (H + Gs' * Gs) * [Q1, Q2].
     blas_syrk(ctx->Gs, ctx->K, 'L', 'T', NULL, NULL, -1, ctx->cdim_pckd, 0, 0, 0, 0);
+
     if (H != NULL) {
         matrix_add(ctx->K, H);
     }
