@@ -16,15 +16,11 @@
 /***********************************************************************/
 
 /*************   sparse.c   *************/
-// extern PyTypeObject matrix_tp ;
-// extern PyTypeObject matrixiter_tp ;
 extern matrix * Matrix_New(int, int, int) ;
 extern matrix * Matrix_NewFromMatrix(matrix *, int) ;
 // matrix * Matrix_NewFromSequence(PyObject *, int) ;
 // matrix * Matrix_NewFromPyBuffer(PyObject *, int, int *) ;
 
-// extern PyTypeObject spmatrix_tp ;
-// extern PyTypeObject spmatrixiter_tp ;
 extern spmatrix * SpMatrix_New(int_t, int_t, int_t, int ) ;
 extern spmatrix * SpMatrix_NewFromMatrix(matrix *, int) ;
 extern spmatrix * SpMatrix_NewFromSpMatrix(spmatrix *, int) ;

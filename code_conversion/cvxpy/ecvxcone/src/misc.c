@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "coneprog.h"
+#include "solver.h"
 #include "cvxopt.h"
 #include "misc.h"
 #include "math.h"
@@ -1484,7 +1484,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
 
         matrix* tmp = base_ediv(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
         W->dnl = base_sqrt(tmp, 0, DOUBLE);
-        Matrix_Free(tmp);  // Free result of base_ediv 
+        Matrix_Free(tmp);
 
         double exponent = -1.0;
         W->dnli = base_pow(W->dnl, &exponent, 0, DOUBLE, DOUBLE);
@@ -1524,7 +1524,7 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
     matrix *z_mnl_m = matrix_slice(z, mnl, m);
     matrix *tmp = base_ediv(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
     W->d = base_sqrt(tmp, 0, DOUBLE);
-    Matrix_Free(tmp);  // Free result of base_ediv
+    Matrix_Free(tmp);
 
     double exponent = -1.0;
     W->di = base_pow(W->d, &exponent, 0, DOUBLE, DOUBLE);
@@ -1988,8 +1988,232 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
 }
 
 
+void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl) 
+{
+
+    if (W == NULL) ERR("misc_compute_scaling2: W is NULL");
+    
+    // For the nonlinear block:
+    //
+    //     W['dnl'] = sqrt( s[:mnl] ./ z[:mnl] )
+    //     W['dnli'] = sqrt( z[:mnl] ./ s[:mnl] )
+    //     lambda[:mnl] = sqrt( s[:mnl] .* z[:mnl] )
+
+    if (mnl < 0) {
+        mnl = 0;    // Default to 0 if mnl is nonpositive
+    } else {
+        matrix* s_mnl = matrix_slice(s, 0, mnl);
+        matrix* z_mnl = matrix_slice(z, 0, mnl);
+
+        matrix* tmp = base_ediv(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
+        W->dnl = base_sqrt(tmp, 0, DOUBLE);
+        Matrix_Free(tmp);
+
+        double exponent = -1.0;
+        W->dnli = base_pow(W->dnl, &exponent, 0, DOUBLE, DOUBLE);
+        tmp = base_emul(s_mnl, z_mnl, 0, 0, DOUBLE, DOUBLE);
+
+        matrix* res = base_sqrt(tmp, 0, DOUBLE);
+        for (int i = 0; i < mnl; ++i) {
+            MAT_BUFD(lmbda)[i] = MAT_BUFD(res)[i];
+        }
+
+        // Free all
+        Matrix_Free(tmp);
+        Matrix_Free(res);
+        Matrix_Free(s_mnl);
+        Matrix_Free(z_mnl);
+    }
+
+    /* For the 'l' block:
+    *
+    *     W['d'] = sqrt(sk ./ zk)
+    *     W['di'] = sqrt(zk ./ sk)
+    *     lambdak = sqrt(sk .* zk)
+    *
+    * where:
+    * - sk and zk are the first dims['l'] entries of s and z
+    * - lambda_k is stored in the first dims['l'] positions of lmbda
+    */
+             
+    int m = dims->l;
+    matrix *s_mnl_m = matrix_slice(s, mnl, m);
+    matrix *z_mnl_m = matrix_slice(z, mnl, m);
+    matrix *tmp = base_ediv(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
+    W->d = base_sqrt(tmp, 0, DOUBLE);
+    Matrix_Free(tmp);
+
+    double exponent = -1.0;
+    W->di = base_pow(W->d, &exponent, 0, DOUBLE, DOUBLE);
+    tmp = base_emul(s_mnl_m, z_mnl_m, 0, 0, DOUBLE, DOUBLE);
+    matrix *res = base_sqrt(tmp, 0, DOUBLE);
+    for (int i = 0; i < m; ++i) {
+        MAT_BUFD(lmbda)[mnl + i] = MAT_BUFD(res)[i];
+    }
+    // Free all
+    Matrix_Free(tmp);
+    Matrix_Free(res);
+    Matrix_Free(s_mnl_m);
+    Matrix_Free(z_mnl_m);
+
+    /*
+    * For the 'q' blocks, compute lists 'v' and 'beta':
+    *
+    * - The vector v[k] has unit hyperbolic norm:
+    *     sqrt(v[k]' * J * v[k]) = 1, where J = [1, 0; 0, -I]
+    *   
+    * - beta[k] is a positive scalar
+    *
+    * The hyperbolic Householder matrix H = 2*v[k]*v[k]' - J defined by v[k]
+    * satisfies:
+    *
+    *     (beta[k] * H) * zk = (beta[k] * H) \ sk = lambda_k
+    *
+    * where:
+    * - sk = s[indq[k]:indq[k+1]]
+    * - zk = z[indq[k]:indq[k+1]]
+    * - lambda_k is stored in lmbda[indq[k]:indq[k+1]]
+    */
+           
+    int ind = mnl + dims->l;
+    for (int k = 0; k < dims->q_size; ++k) {
+        m = dims->q[k];
+        matrix *v = W->v[k];
+
+        // a = sqrt( sk' * J * sk )  where J = [1, 0; 0, -I]
+        double aa = misc_jnrm2(s, m, ind);
+
+        // b = sqrt( zk' * J * zk )
+        double bb = misc_jnrm2(z, m, ind);
+
+        // beta[k] = ( a / b )**1/2
+        W->beta[k] = sqrt(aa / bb);
+
+        // c = sqrt( (sk/a)' * (zk/b) + 1 ) / sqrt(2)    
+        number tmp_num = blas_dot(s, z, m, 1, 1, ind, ind);
+        double cc = sqrt((tmp_num.d / aa / bb + 1.0) / 2.0);
+
+        // vk = 1/(2*c) * ( (sk/a) + J * (zk/b) )
+        blas_copy(z, v, m, 1, 1, ind, 0);
+
+        double alpha = -1.0/bb;
+        blas_scal(&alpha, v, -1, 1, 0);
+        MAT_BUFD(v)[0] *= -1.0;
+
+        number alpha_n;
+        alpha_n.d = 1.0 / aa;
+        alpha = 1.0 / (2.0 * cc);
+        blas_axpy(s, v, &alpha_n, m, 1, 1, ind, 0);
+        blas_scal(&alpha, v, -1, 1, 0);
+
+        // v[k] = 1/sqrt(2*(vk0 + 1)) * ( vk + e ),  e = [1; 0]
+        MAT_BUFD(v)[0] += 1.0;
+        alpha = 1.0 / sqrt(2.0 * MAT_BUFD(v)[0]);
+        blas_scal(&alpha, v, -1, 1, 0);
+            
+        // To get the scaled variable lambda_k
+        // 
+        //     d =  sk0/a + zk0/b + 2*c
+        //     lambda_k = [ c; 
+        //                  (c + zk0/b)/d * sk1/a + (c + sk0/a)/d * zk1/b ]
+        //     lambda_k *= sqrt(a * b)
+
+        MAT_BUFD(lmbda)[ind] = cc;
+        double saa = MAT_BUFD(s)[ind] / aa;
+        double zbb = MAT_BUFD(z)[ind] / bb;
+        double dd = 2*cc + saa + zbb;
+        double tmp = (zbb+cc) / dd / aa;
+        double tmp2 = sqrt(aa * bb);
+        alpha_n.d = (cc + saa)/dd/bb;
+        blas_copy(s, lmbda, m-1, 1, 1, ind+1, ind+1);
+        blas_scal(&tmp, lmbda, m-1, 1, ind+1);
+        blas_axpy(z, lmbda, &alpha_n, m-1, 1, 1, ind+1, ind+1);
+        blas_scal(&tmp2, lmbda, m, 1, ind);
+
+        ind += m;
+    }
+
+    /* For the 's' blocks: compute two lists 'r' and 'rti':
+    *
+    *     r[k]' * sk^{-1} * r[k] = diag(lambda_k)^{-1}
+    *     r[k]' * zk * r[k] = diag(lambda_k)
+    *
+    * where:
+    * - sk and zk are the entries inds[k] : inds[k+1] of s and z,
+    *   reshaped into symmetric matrices
+    *
+    * rti[k] is the inverse of r[k]', so:
+    *
+    *     rti[k]' * sk * rti[k] = diag(lambda_k)^{-1}
+    *     rti[k]' * zk^{-1} * rti[k] = diag(lambda_k)
+    *
+    * The vectors lambda_k are stored in:
+    *     lmbda[ dims['l'] + sum(dims['q']) : -1 ]
+    */
+    
+    int max_s = max_array(dims->s, dims->s_size);
+    
+    matrix *work = Matrix_New(max_s * max_s, 1, DOUBLE);
+    matrix *Ls = Matrix_New(max_s * max_s, 1, DOUBLE);
+    matrix *Lz = Matrix_New(max_s * max_s, 1, DOUBLE);
+
+    int ind2 = ind;
+    for (int k = 0; k < dims->s_size; ++k) {
+        m = dims->s[k];
+        matrix *r = W->r[k];
+        matrix *rti = W->rti[k];
+
+        // Factor sk = Ls*Ls'; store Ls in ds[inds[k]:inds[k+1]].
+        blas_copy(s, Ls, m*m, 1, 1, ind2, 0);
+        lapack_potrf(Ls, 'L', m, m, 0);
+
+        // Factor zs[k] = Lz*Lz'; store Lz in dz[inds[k]:inds[k+1]].
+        blas_copy(z, Lz, m*m, 1, 1, ind2, 0);
+        lapack_potrf(Lz, 'L', m, m, 0);
+	 
+        // SVD Lz'*Ls = U*diag(lambda_k)*V'.  Keep U in work. 
+        double alpha = 0.0;
+        for (int i = 0; i < m; i++) {
+            blas_scal(&alpha, Ls, i, 1, i*m);
+        }
+
+        blas_copy(Ls, work, m*m, 1, 1, 0, 0);
+        blas_trmm(Lz, work, 'L', 'L', 'T', 'N', NULL, m, m, m, m, 0, 0);
+                number temp_n;
+
+        lapack_gesvd(work, lmbda, 'O', 'N', NULL, NULL, m, m, m, 0, 0, 0, ind, 0, 0);
+
+        // r = Lz^{-T} * U 
+        blas_copy(work, r, m*m, 1, 1, 0, 0);
+        blas_trsm(Lz, r, 'L', 'L', 'T', 'N', NULL, m, m, m, 0, 0, 0);
+
+        // rti = Lz * U 
+        blas_copy(work, rti, m*m, 1, 1, 0, 0);
+        blas_trmm(Lz, rti, 'L', 'L', 'N', 'N', NULL, m, m, m, 0, 0, 0);
+
+        // r := r * diag(sqrt(lambda_k))
+        // rti := rti * diag(1 ./ sqrt(lambda_k))
+        for (int i = 0; i < m; ++i) {
+            double a = sqrt(MAT_BUFD(lmbda)[ind + i]);
+            double tmp_a = 1.0 / a;
+            blas_scal(&a, r, m, 1, m*i);
+            blas_scal(&tmp_a, rti, m, 1, m*i);
+        }
+        ind += m;
+        ind2 += m*m;
+    }
+    
+    // Clean up temporary matrices
+    Matrix_Free(work);
+    Matrix_Free(Ls);
+    Matrix_Free(Lz);
+
+    return W;
+}
+
+
 // KKT Inner solve function
-void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx) 
+void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx, DIMs *dims) 
 {
     // Solve
     //
@@ -2013,7 +2237,7 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     // bzp := W^{-T} * bz in packed storage 
 
     misc_scale(z, ctx->W, 'T', 'I'); 
-    misc_pack(z, ctx->bzp, ctx->dims, ctx->mnl, 0, 0);    
+    misc_pack(z, ctx->bzp, dims, ctx->mnl, 0, 0);    
 
     // x := [Q1, Q2]' * (x + Gs' * bzp)
     //    = [Q1, Q2]' * (bx + Gs' * W^{-T} * bz)
@@ -2058,11 +2282,11 @@ void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx)
     beta = -1.0;
 
     blas_gemv(ctx->Gs, x, ctx->bzp, 'N', &alpha, &beta, ctx->cdim_pckd, -1, 0, 1, 1, 0, 0, 0);
-    misc_unpack(ctx->bzp, z, ctx->dims, ctx->mnl, 0, 0);
+    misc_unpack(ctx->bzp, z, dims, ctx->mnl, 0, 0);
 }
 
 // Inner factor function
-void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx) 
+void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx, DIMs *dims) 
 {
     // Compute 
     //
@@ -2090,13 +2314,13 @@ void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx)
         spmatrix *spG = (spmatrix*)ctx->G;
         matrix *dense_G = dense(spG);
         matrix_slice_assign(ctx->Gs, dense_G, ctx->mnl, ctx->cdim, 0, ctx->n);
-        free(dense_G);
+        Matrix_Free(dense_G);
     } else {
         ERR_TYPE("Invalid matrix type for G.");
     }
 
     misc_scale(ctx->Gs, W, 'T', 'I');
-    misc_pack2(ctx->Gs, ctx->dims, ctx->mnl);
+    misc_pack2(ctx->Gs, dims, ctx->mnl);
 
     // K = [Q1, Q2]' * (H + Gs' * Gs) * [Q1, Q2].
     blas_syrk(ctx->Gs, ctx->K, 'L', 'T', NULL, NULL, -1, ctx->cdim_pckd, 0, 0, 0, 0);
@@ -2146,12 +2370,9 @@ KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl)
     KKTCholContext_Init(ctx);   // Initialize context structure
 
     ctx->G = G;
-    ctx->dims = dims;
     ctx->mnl = mnl;
-
     ctx->cdim = mnl + dims->l + sum_array(dims->q, dims->q_size) 
                             + sum_square_array(dims->s, dims->s_size);
-                            
     ctx->cdim_pckd = mnl + dims->l + sum_array(dims->q, dims->q_size) 
                             + sum_triangular_array(dims->s, dims->s_size);
 
@@ -2311,7 +2532,6 @@ void misc_pack2(matrix *x, DIMs *dims, int mnl)
         }
         iu += n*n;
     }
-
     free(wrk);
     return;
 }

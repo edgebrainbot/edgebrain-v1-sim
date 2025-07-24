@@ -73,7 +73,6 @@ typedef struct {
     matrix *K;
     matrix *bzp;
     matrix *yy;
-    DIMs *dims;
     scaling *W;  // Scaling structure
 } KKTCholContext;
 
@@ -132,10 +131,6 @@ spmatrix * spmatrix_trans(spmatrix *A);
 
 // Function pointer for converting numbers
 extern void (*write_num[])(void *, int, void *, int);
-
-// Function pointer types
-typedef void (*SolveFunc)(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx);
-typedef void (*FactorFunc)(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx);
 
 // static inline int is_number(void *ptr) {
 //     if (!ptr) return 0;
@@ -201,7 +196,6 @@ static inline void KKTCholContext_Init(KKTCholContext *ctx) {
     if (!ctx) err_no_memory;
 
     ctx->G = NULL;
-    ctx->dims = NULL;
     ctx->mnl = 0;
     ctx->p = 0;
     ctx->n = 0;
@@ -218,19 +212,23 @@ static inline void KKTCholContext_Init(KKTCholContext *ctx) {
 
 static inline void KKTCholContext_Free(KKTCholContext *ctx) {
     if (ctx) {
-        if (ctx->G) Matrix_Free(ctx->G);
-        if (ctx->dims) {
-            if (ctx->dims->q) free(ctx->dims->q);
-            if (ctx->dims->s) free(ctx->dims->s);
-            free(ctx->dims);
-        }
+        // if (ctx->G) Matrix_Free(ctx->G);
+        // if (ctx->dims) {
+        //     if (ctx->dims->q) free(ctx->dims->q);
+        //     if (ctx->dims->s) free(ctx->dims->s);
+        //     free(ctx->dims);
+        // }
         if (ctx->QA) Matrix_Free(ctx->QA);
         if (ctx->tauA) Matrix_Free(ctx->tauA);
         if (ctx->Gs) Matrix_Free(ctx->Gs);
         if (ctx->K) Matrix_Free(ctx->K);
         if (ctx->bzp) Matrix_Free(ctx->bzp);
         if (ctx->yy) Matrix_Free(ctx->yy);
-        Scaling_Free(ctx->W);  // Free scaling structure
+        // if (ctx->W) {
+        //     Scaling_Free(ctx->W);  // Free scaling structure
+        // }
+        free(ctx);
+        // Scaling_Free(ctx->W);  // Free scaling structure
     }
 }
 

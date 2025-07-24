@@ -1,8 +1,8 @@
 #include "cvxopt.h"
 #include "misc.h"
 
-#ifndef __CONEPROG__
-#define __CONEPROG__
+#ifndef __SOLVER__
+#define __SOLVER__
 
 #define OPTIMAL 0
 #define PRIMAL_INFEASIBLE 1
@@ -25,16 +25,20 @@ typedef struct {
     int EXPON;
     double STEP;
     char kktsolver[10]; // KKT solver name
-} CVXOPT_Settings;
+} ECVXCONE_Settings;
 
-static CVXOPT_Settings cvxopt_settings = {
+
+static ECVXCONE_Settings ecvxcone_settings = {
     .debug = false,
     .kktreg = -1.0, // -1 indicates None/unset
     .maxiters = 100,
-    .abstol = 1e-7,
-    .reltol = 1e-6,
-    .feastol = 1e-7,
-    .show_progress = true,
+    // .abstol = 1e-7,  // Original default values
+    // .reltol = 1e-6,  // Original default values
+    // .feastol = 1e-7, // Original default values
+    .abstol = 1e-1, // Adjusted for better solving time
+    .reltol = 1e-1, // Adjusted for better solving time
+    .feastol = 1e-1, // Adjusted for better solving time
+    .show_progress = false,
     .refinement = -1, // -1 indicates None/unset
     .use_correction = true,
     .EXPON = 3,
@@ -42,6 +46,14 @@ static CVXOPT_Settings cvxopt_settings = {
     .kktsolver = "chol" // Default KKT solver
 };
 
+
+typedef struct {
+    matrix *c; // Objective function coefficients
+    matrix *b; // Right-hand side vector for the constraints
+    matrix *h; // Right-hand side vector
+    void *G; // Coefficient matrix for the linear term
+    void *A; // Coefficient matrix for the constraints
+} ECVXCONE_Struct;
 
 // Primal start structure
 typedef struct {
@@ -73,7 +85,7 @@ typedef struct {
     double residual_as_primal_infeasibility_certificate;
     double residual_as_dual_infeasibility_certificate;
     int iterations;
-} ConeLPResult;
+} ECVXCONEResult;
 
 typedef struct {
     // matrix *G; // Coefficient matrix for the linear term
@@ -94,21 +106,11 @@ typedef struct {
     int *indq;     // Index array for 'q' constraints
     int *inds;     // Index array for 's' constraints
 
-    scaling *dummy_W; // Scaling structure
+    scaling *W_init; // Scaling structure (identity) for initialization
+    scaling *W_nt; // Scaling structure for iterations
 
-    ConeLPResult *result; // Result structure
-} ConeLPContext;
-
-
-typedef struct {
-    void *env;
-    void (*call)(void *env, matrix *x, matrix *y, matrix *z);
-} SolveClosure;
-
-typedef struct {
-    void *env;
-    SolveClosure (*call)(void *env, scaling *W, matrix *H, matrix *Df);
-} FactorClosure;
+    ECVXCONEResult *result; // Result structure
+} ECVXCONECtx;
 
 
 // Function declarations
@@ -118,8 +120,8 @@ void xy_copy(matrix *x, matrix *y);
 
 /************************* Declarations *************************/
 extern KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl);
-extern void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx);
-extern void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx);
+extern void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx, DIMs *dims);
+extern void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx, DIMs *dims);
 
 /* misc library */
 extern void misc_sgemv(void *A, matrix *x, matrix *y, DIMs *dims, char trans, double alpha, 
@@ -132,6 +134,7 @@ extern double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma);
 extern double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl);
 extern void misc_symm(matrix *x, int n, int offset);
 extern scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
+extern void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
 extern void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z);
 extern void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl);
 extern void misc_sinv(matrix *x, matrix *y, DIMs *dims, int mnl);
@@ -160,9 +163,10 @@ extern void debug_matrix_by_project2vector(matrix *m);
 // KKT solver function pointer
 typedef void* (*KKTSolverFunc)(void* W);
 
+extern void KKTCholContext_Free(KKTCholContext *ctx);
 
-static inline ConeLPResult *ConeLPResult_Init() {
-    ConeLPResult *result = (ConeLPResult *)malloc(sizeof(ConeLPResult));
+static inline ECVXCONEResult *ECVXCONEResult_Init() {
+    ECVXCONEResult *result = (ECVXCONEResult *)malloc(sizeof(ECVXCONEResult));
     if (!result) err_no_memory;
 
     result->status = NULL;
@@ -181,13 +185,12 @@ static inline ConeLPResult *ConeLPResult_Init() {
     result->residual_as_primal_infeasibility_certificate = 0.0;
     result->residual_as_dual_infeasibility_certificate = 0.0;
     result->iterations = 0;
-
     return result;
 }
 
-static inline void ConeLPResult_Free(ConeLPResult *result) {
+static inline void ECVXCONEResult_Free(ECVXCONEResult *result) {
     if (result) {
-        if (result->status) free(result->status);
+        // if (result->status) free(result->status);
         if (result->x) Matrix_Free(result->x);
         if (result->s) Matrix_Free(result->s);
         if (result->y) Matrix_Free(result->y);

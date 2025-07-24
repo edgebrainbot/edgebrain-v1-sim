@@ -5,24 +5,25 @@
 #include <math.h>
 #include "cvxopt.h" 
 #include "misc.h"
-#include "coneprog.h"
+#include "solver.h"
 #include <sys/time.h>
 #include <unistd.h> // 包含 getcwd() 声明
 #include <limits.h> // 定义 PATH_MAX
 
-int TEST_TIMES = 500;
+int TEST_TIMES = 1000;
 
 extern matrix* load_txt_as_matrix(const char* filename);
 extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols);
-extern ConeLPContext* cvxopt_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
-                                CVXOPT_Settings* settings);
+extern ECVXCONECtx* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                                ECVXCONE_Settings* settings);
+extern void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx);
 extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-                    CVXOPT_Settings* settings, ConeLPContext* conelp_ctx);
+                    ECVXCONE_Settings* settings, ECVXCONECtx* ecvxcone_ctx);
 
 extern void print_matrix(matrix *m);
-const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
-const char mat_h[] = "../tests/c/input_matrix/h.txt";
-const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
+// const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
+// const char mat_h[] = "../tests/c/input_matrix/h.txt";
+// const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
 
 // const char mat_c[] = "input_matrix/c.txt";        // For debugging
 // const char mat_h[] = "input_matrix/h.txt";
@@ -35,6 +36,14 @@ const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
 // const char mat_c[] = "input_matrix/simplified/c.txt";        // For debugging
 // const char mat_h[] = "input_matrix/simplified/h.txt";
 // const char spmat_G[] = "input_matrix/simplified/G_sp.txt";
+
+const char mat_c[] = "../tests/c/input_matrix/dpp/c.txt";        // For running
+const char mat_h[] = "../tests/c/input_matrix/dpp/h.txt";
+const char spmat_G[] = "../tests/c/input_matrix/dpp/G_sp.txt";
+
+// const char mat_c[] = "input_matrix/dpp/c.txt";        // For debugging
+// const char mat_h[] = "input_matrix/dpp/h.txt";
+// const char spmat_G[] = "input_matrix/dpp/G_sp.txt";
 
 void test_all() {
     // test_base();
@@ -71,28 +80,43 @@ void test_conelp() {
     PrimalStart *primalstart = NULL;
     DualStart *dualstart = NULL;    
 
-    // ConeLPResult *result = conelp(c, G_sp, h, &dims, A, b, primalstart, dualstart, "chol", NULL);
-
-    ConeLPContext *conelp_ctx = cvxopt_init(c, G_sp, h, A, b, &dims, &cvxopt_settings);
+    ECVXCONECtx *ecvxcone_ctx = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
 
     int status;
-    status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
+    status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
 
-    int test_time = 1;
-    // int test_time = TEST_TIMES;
+    print_matrix_(ecvxcone_ctx->result->x, "Result x");
+    // print_matrix_(ecvxcone_ctx->result->s, "Result s");
+    // print_matrix_(ecvxcone_ctx->result->y, "Result y");
+    // print_matrix_(ecvxcone_ctx->result->z, "Result z");
+    printf("ConeLPResult status: %s\n", ecvxcone_ctx->result->status);
+
+    // int test_time = 1;
+    int test_time = TEST_TIMES;
     struct timeval start, end;
     gettimeofday(&start, NULL);
     for (int i = 0; i < test_time; ++i) {
-        status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
+        status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
+        Matrix_Free(ecvxcone_ctx->result->x);
+        // Matrix_Free(ecvxcone_ctx->result->s);
+        // Matrix_Free(ecvxcone_ctx->result->y);
+        // Matrix_Free(ecvxcone_ctx->result->z);
     }
-    // status = conelp(c, G_sp, h, A, b, &dims, &cvxopt_settings, conelp_ctx);
     gettimeofday(&end, NULL);
 
     double elapsed = (end.tv_sec - start.tv_sec)
                    + (end.tv_usec - start.tv_usec) / 1e6;
     double avg_time = elapsed / test_time * 1e3;
     printf("Average time per iteration (Running %d times): %.6f milliseconds\n", test_time, avg_time);
-    printf("ConeLPResult status: %s\n", conelp_ctx->result->status);
+    printf("ConeLPResult status: %s\n", ecvxcone_ctx->result->status);
+
+    Matrix_Free(c);
+    Matrix_Free(h);
+    Matrix_Free(b);
+    SpMatrix_Free(A);           // 如果你用的是 dense matrix
+    SpMatrix_Free(G_sp);      // 如果 A 是 sparse matrix，这一行换掉 Matrix_Free(A)
+
+    // cvxopt_free(conelp_ctx);
 }
 
 

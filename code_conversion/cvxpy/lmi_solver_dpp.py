@@ -32,7 +32,8 @@ class LMISolver:
                            [0, 0, 0, 0, 0, self.c2]])
 
         # Parameters and variables
-        self.z_param = cp.Parameter(10, name='tracking_err')
+        self.z_param = cp.Parameter((10, 10), PSD=True, name='tracking_err')
+        # self.zz_param = cp.Parameter(10, name='tracking_err_square')
         self.A_param = cp.Parameter((10, 10), name='A')
         self.B_param = cp.Parameter((10, 6), name='B')
 
@@ -40,20 +41,25 @@ class LMISolver:
         self.T = cp.Variable((6, 6), PSD=True)
         self.R = cp.Variable((6, 10))
 
-        Z = cp.diag(self.z_param)
         Q, T, R = self.Q, self.T, self.R
         A, B = self.A_param, self.B_param
+        # Z = cp.diag(self.zz_param)
+
+        # self.z_param = Z @ Z
 
         self.problem = cp.Problem(cp.Minimize(0), [
             cp.bmat([[self.alpha * Q, Q @ A.T + R.T @ B.T],
                      [A @ Q + B @ R, Q / (1 + self.phi)]]) >> 0,
             cp.bmat([[Q, R.T],
                      [R, T]]) >> 0,
-            Q - 10 * Z @ Z >> 0,
+            Q - 10 * self.z_param >> 0,
             np.eye(3) - self.D @ Q @ self.D.T >> 0,
             np.eye(6) - self.C @ T @ self.C.T >> 0,
             T - self.hd * np.eye(6) >> 0,
         ])
+        
+        self.problem.is_dpp()
+        self.problem.is_dcp()
 
     def patch_lmi(self, tracking_err: np.ndarray) -> Tuple[Optional[Tuple[Any, Any]], bool]:
         roll, pitch, yaw = tracking_err[1:4]
@@ -79,7 +85,9 @@ class LMISolver:
         A = np.eye(10) + T_s * aA
         B = T_s * aB
 
-        self.z_param.value = tracking_err
+        self.z_param.value = np.diag(tracking_err) @ np.diag(tracking_err)
+        # self.zz_param.value = tracking_err ** 2
+        
         self.A_param.value = A
         self.B_param.value = B
 
@@ -100,19 +108,29 @@ class LMISolver:
             else:
                 print("LMIs infeasible")
 
-            return (F_kp, F_kd), True
+            res = (F_kp, F_kd)
+            is_solved = True
         else:
             print("Optimization failed.")
-            return None, False
+            res = None
+            is_solved = False
+
+        return res, is_solved, self.problem._solve_time
 
 
 if __name__ == '__main__':
+    # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
+
     zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16])
     lmisolver = LMISolver()
+    
+    (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
+    
     t1 = time.time()
-    (F_kp, F_kd), _ = lmisolver.patch_lmi(zz)
+    (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
     t2 = time.time()
     print(f"F_kp is: {F_kp}\nF_kd is: {F_kd}\nconsuming time: {t2 - t1:.4f}s")
+    print(f"Elapsed time: {elapsed_time:.4f}s")
     
     # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
     # t1 = time.time()

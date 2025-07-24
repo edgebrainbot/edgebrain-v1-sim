@@ -1,7 +1,7 @@
 #include "cvxopt.h"
 #include "misc.h"
 #include "math.h"
-#include "coneprog.h"
+#include "solver.h"
 
 // Python: __all__ = []
 static char* __all__[1] = {NULL}; // Empty list equivalent
@@ -13,8 +13,75 @@ char msg[256];
 
 void print_W(scaling *W);
 
+
+void FreeWorkspaceMatrices1(
+    matrix *dx, matrix *dy, matrix *ds, matrix *dz,
+    matrix *dkappa, matrix *dtau)
+{   
+    // Free all matrices used in the workspace
+    // Primary matrices
+    Matrix_Free(dx);
+    Matrix_Free(dy);
+    Matrix_Free(ds);
+    Matrix_Free(dz);
+    Matrix_Free(dkappa);
+    Matrix_Free(dtau);
+}
+
+void FreeWorkspaceMatrices2(
+    matrix *rx, matrix *hrx,
+    matrix *ry, matrix *hry,
+    matrix *rz, matrix *hrz,
+    matrix *sigs, matrix *sigz,
+    matrix *lmbda, matrix *lmbdasq,
+    matrix *x1, matrix *y1, matrix *z1, matrix *th,
+    matrix *wx, matrix *wy, matrix *wz, matrix *ws, matrix *wtau, matrix *wkappa,
+    matrix *wx2, matrix *wy2, matrix *wz2, matrix *ws2, matrix *wtau2, matrix *wkappa2,
+    matrix *wz3, matrix *ws3)
+{
+    // Free all matrices used in the workspace
+
+    // Primary
+    Matrix_Free(rx);
+    Matrix_Free(hrx);
+    Matrix_Free(ry);
+    Matrix_Free(hry);
+    Matrix_Free(rz);
+    Matrix_Free(hrz);
+    Matrix_Free(sigs);
+    Matrix_Free(sigz);
+    Matrix_Free(lmbda);
+    Matrix_Free(lmbdasq);
+
+    // Optional nullables
+    Matrix_Free(x1);
+    Matrix_Free(y1);
+    Matrix_Free(z1);
+    Matrix_Free(th);
+
+    // First scaling set
+    Matrix_Free(wx);
+    Matrix_Free(wy);
+    Matrix_Free(wz);
+    Matrix_Free(ws);
+    Matrix_Free(wtau);
+    Matrix_Free(wkappa);
+
+    // Second scaling set
+    Matrix_Free(wx2);
+    Matrix_Free(wy2);
+    Matrix_Free(wz2);
+    Matrix_Free(ws2);
+    Matrix_Free(wtau2);
+    Matrix_Free(wkappa2);
+
+    // Additional matrices
+    Matrix_Free(wz3);
+    Matrix_Free(ws3);
+}
+
 int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-            CVXOPT_Settings* settings, ConeLPContext* conelp_ctx) 
+            ECVXCONE_Settings* settings, ECVXCONECtx* ecvxcone_ctx) 
 {   
     // Use custom options if provided, otherwise use global options
     bool DEBUG = settings->debug;
@@ -29,24 +96,24 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
     int EXPON = settings->EXPON;
     double STEP = settings->STEP;
 
-    PrimalStart* primalstart = conelp_ctx->primalstart;
-    DualStart* dualstart = conelp_ctx->dualstart;
-    ConeLPResult* result = conelp_ctx->result;
+    PrimalStart* primalstart = ecvxcone_ctx->primalstart;
+    DualStart* dualstart = ecvxcone_ctx->dualstart;
+    ECVXCONEResult* result = ecvxcone_ctx->result;
     
     // sum of the dimensions (q and s)
-    int sum_dims_q = conelp_ctx->sum_dims_q;
-    int sum_dims_s = conelp_ctx->sum_dims_s;
+    int sum_dims_q = ecvxcone_ctx->sum_dims_q;
+    int sum_dims_s = ecvxcone_ctx->sum_dims_s;
 
     // Cone dimensions
-    int cdim = conelp_ctx->cdim;
-    int cdim_pckd = conelp_ctx->cdim_pckd;
-    int cdim_diag = conelp_ctx->cdim_diag;
+    int cdim = ecvxcone_ctx->cdim;
+    int cdim_pckd = ecvxcone_ctx->cdim_pckd;
+    int cdim_diag = ecvxcone_ctx->cdim_diag;
     
     // Data for kth 'q' constraint are found in rows indq[k]:indq[k+1] of G
-    int *indq = conelp_ctx->indq;
+    int *indq = ecvxcone_ctx->indq;
     
     // Data for kth 's' constraint are found in rows inds[k]:inds[k+1] of G
-    int *inds = conelp_ctx->inds;
+    int *inds = ecvxcone_ctx->inds;
     
     // kktsolver(W) returns a routine for solving 3x3 block KKT system
     //
@@ -64,18 +131,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         snprintf(msg, sizeof(msg), "Unsupported KKT solver: %s", settings->kktsolver);
         ERR(msg);
     }
-
-    matrix *wz3 = Matrix_New(cdim, 1, DOUBLE);
-    if (!wz3) {
-        Matrix_Free(wz3);
-        ERR("Error: Failed to create wz3 matrix\n");
-    }
-
-    matrix *ws3 = Matrix_New(cdim, 1, DOUBLE);
-    if (!ws3) {
-        Matrix_Free(wz3);
-        ERR("Error: Failed to create ws3 matrix\n");
-    }
+    
     double resx0, resy0, resz0;
 
     double norm_c = sqrt(blas_dot(c, c, -1, 1, 1, 0, 0).d);          // dot product c⋅c，
@@ -116,13 +172,13 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         //     [ A   0   0  ].
         //     [ G   0  -I  ]
 
-        W = conelp_ctx->dummy_W;
+        W = ecvxcone_ctx->W_init;
         if (W == NULL) {
             ERR("Error: Dummy scaling structure is NULL");
         }
         
         // Try to get solver function
-        factor_function(W, NULL, NULL, kkt_ctx);
+        factor_function(W, NULL, NULL, kkt_ctx, dims);
         // if (f == NULL) {
         //     raise_ValueError("Rank(A) < p or Rank([G; A]) < n");
         // }
@@ -145,7 +201,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         blas_copy(h, s, -1, 1, 1, 0, 0);
 
         // Try to solve
-        solve_function(x, dy, s, kkt_ctx);
+        solve_function(x, dy, s, kkt_ctx, dims);
         // if (result != 0) {
             // raise_ValueError("Rank(A) < p or Rank([G; A]) < n");
         // }
@@ -154,14 +210,13 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         blas_scal(&alpha, s, -1, 1, 0);
 
     } else {
-        xy_copy(conelp_ctx->primalstart->x, x);
-        blas_copy(conelp_ctx->primalstart->s, s, -1, 1, 1, 0, 0);
+        xy_copy(primalstart->x, x);
+        blas_copy(primalstart->s, s, -1, 1, 1, 0, 0);
     }
 
     // ts = min{ t | s + t*e >= 0 }
-
     double ts = misc_max_step(s, dims, 0, NULL);
-    if (ts >= 0 && conelp_ctx->primalstart != NULL) {
+    if (ts >= 0 && primalstart != NULL) {
         ERR("initial s is not positive");
     }
 
@@ -182,7 +237,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         alpha = 0.0;
         blas_scal(&alpha, y, -1, 1, 0);
         blas_scal(&alpha, z, -1, 1, 0);
-        solve_function(dx, y, z, kkt_ctx);
+        solve_function(dx, y, z, kkt_ctx, dims);
         // if (result != 0) {
             // ERR("Rank(A) < p or Rank([G; A]) < n");
         // }
@@ -239,9 +294,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
 
         if ((ts <= 0 && tz <= 0 && (gap <= ABSTOL || (relgap > 0 && relgap <= RELTOL))) && (&KKTREG == NULL)) {
 
-            // The initial points we constructed happen to be feasible and
-            // optimal.
-
+            // The initial points constructed happen to be feasible and optimal.
             ind = dims->l + sum_dims_q;
             for (int i = 0; i < dims->s_size; ++i) {
                 int m = dims->s[i];
@@ -284,12 +337,24 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             if (SHOW_PROGRESS) {
                 printf("Optimal solution found.\n");
             }
+
+            Matrix_Free(rx);
+            Matrix_Free(ry);
+            Matrix_Free(rz);
             
-            // Return dictionary would be handled by calling function
             result->x = x;
-            result->y = y;
-            result->s = s;
-            result->z = z;
+            if (DEBUG) {
+                result->s = s;
+                result->y = y;
+                result->z = z;
+            } else {
+                result->s = NULL;
+                result->y = NULL;
+                result->z = NULL;
+                Matrix_Free(s);
+                Matrix_Free(y);
+                Matrix_Free(z);
+            }
             result->status = "optimal";
             result->gap = gap;
             result->relative_gap = relgap;
@@ -302,6 +367,13 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             result->residual_as_primal_infeasibility_certificate = 0.0;
             result->residual_as_dual_infeasibility_certificate = 0.0;
             result->iterations = 0;
+
+            // Free the KKT context
+            KKTCholContext_Free(kkt_ctx);
+
+            // Free the workspace matrices
+            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
+
             return OPTIMAL;
         }
 
@@ -401,7 +473,6 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
 
     int pinfres_valid;
     int dinfres_valid;
-
     int sol_status;
 
     number step;
@@ -431,6 +502,9 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
     matrix *ws2 = NULL;
     matrix *wtau2 = NULL;
     matrix *wkappa2 = NULL;
+
+    matrix *wz3 = Matrix_New(cdim, 1, DOUBLE);
+    matrix *ws3 = Matrix_New(cdim, 1, DOUBLE);
 
     gap = misc_sdot(s, z, dims, 0);
 
@@ -558,11 +632,20 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
                 result->status = "optimal";
                 sol_status = OPTIMAL;
             }
-            
+
             result->x = x;
-            result->y = y;
-            result->s = s;
-            result->z = z;
+            if (DEBUG) {
+                result->s = s;
+                result->y = y;
+                result->z = z;
+            } else {
+                result->s = NULL; 
+                result->y = NULL;
+                result->z = NULL;
+                Matrix_Free(s);
+                Matrix_Free(y);
+                Matrix_Free(z);
+            }
             result->gap = gap;
             result->relative_gap = relgap_valid ? relgap : 0.0;
             result->primal_objective = pcost;
@@ -574,6 +657,21 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             result->residual_as_primal_infeasibility_certificate = pinfres_valid ? pinfres : 0.0;
             result->residual_as_dual_infeasibility_certificate = (iters == MAXITERS && dinfres_valid) ? dinfres : 0.0;
             result->iterations = iters;
+
+            if (iters > 0) {
+                Scaling_Free(W);
+            }
+
+            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
+            FreeWorkspaceMatrices2(
+                rx, hrx, ry, hry, rz, hrz,
+                sigs, sigz, lmbda, lmbdasq,
+                x1, y1, z1, th,
+                wx, wy, wz, ws, wtau, wkappa,
+                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
+            );
+
+            KKTCholContext_Free(kkt_ctx);
             return sol_status;
         }
         
@@ -594,10 +692,18 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
                 printf("Certificate of primal infeasibility found.\n");
             }
             
+            if (DEBUG) {
+                result->y = y;
+                result->z = z;
+            } else {
+                result->y = NULL;
+                result->z = NULL;
+                Matrix_Free(y);
+                Matrix_Free(z);
+            }
+
             result->x = NULL;
-            result->y = y;
             result->s = NULL;
-            result->z = z;
             result->status = "primal infeasible";
             result->gap = 0.0;
             result->relative_gap = 0.0;
@@ -610,6 +716,23 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             result->residual_as_primal_infeasibility_certificate = pinfres;
             result->residual_as_dual_infeasibility_certificate = 0.0;
             result->iterations = iters;
+
+            if( iters > 0) {
+                Scaling_Free(W);
+            }
+
+            Matrix_Free(x);
+            Matrix_Free(s);
+            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
+            FreeWorkspaceMatrices2(
+                rx, hrx, ry, hry, rz, hrz,
+                sigs, sigz, lmbda, lmbdasq,
+                x1, y1, z1, th,
+                wx, wy, wz, ws, wtau, wkappa,
+                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
+            );
+
+            KKTCholContext_Free(kkt_ctx);
             return PRIMAL_INFEASIBLE;
         }
         
@@ -630,10 +753,16 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             if (SHOW_PROGRESS) {
                 printf("Certificate of dual infeasibility found.\n");
             }
+
+            if (DEBUG) {
+                result->s = s;
+            } else {
+                result->s = NULL; 
+                Matrix_Free(s);
+            }
             
             result->x = x;
             result->y = NULL;
-            result->s = s;
             result->z = NULL;
             result->status = "dual infeasible";
             result->gap = 0.0;
@@ -647,6 +776,24 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
             result->residual_as_primal_infeasibility_certificate = 0.0;
             result->residual_as_dual_infeasibility_certificate = dinfres;
             result->iterations = iters;
+
+            if (iters > 0) {
+                Scaling_Free(W);
+            }
+            
+            Matrix_Free(y); 
+            Matrix_Free(z);
+
+            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
+            FreeWorkspaceMatrices2(
+                rx, hrx, ry, hry, rz, hrz,
+                sigs, sigz, lmbda, lmbdasq,
+                x1, y1, z1, th,
+                wx, wy, wz, ws, wtau, wkappa,
+                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
+            );
+
+            KKTCholContext_Free(kkt_ctx);
             return DUAL_INFEASIBLE;
         }
         
@@ -657,9 +804,9 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         
         if (iters == 0) {
             W = misc_compute_scaling(s, z, lmbda, dims, 0);
+            // W = ecvxcone_ctx->W_nt;
+            // misc_compute_scaling2(W, s, z, lmbda, dims, 0);
 
-            // kkt_ctx->W = W;
-            
             // dg = sqrt( kappa / tau )
             // dgi = sqrt( tau / kappa )
             // lambda_g = sqrt( tau * kappa )
@@ -690,8 +837,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         // [-A   0   0     ]*[ y1        ] = -dgi * [ b ].
         // [-G   0   W'*W  ] [ W^{-1}*z1 ]          [ h ]
 
-        // KKTCholContext_Free(kkt_ctx);
-        factor_function(W, NULL, NULL, kkt_ctx);
+        factor_function(W, NULL, NULL, kkt_ctx, dims);
 
         if (iters == 0) {
             x1 = Matrix_NewFromMatrix(c, c->id);
@@ -705,7 +851,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         xy_copy(b, y1);
         blas_copy(h, z1, -1, 1, 1, 0, 0);
 
-        solve_function(x1, y1, z1, kkt_ctx);
+        solve_function(x1, y1, z1, kkt_ctx, dims);
 
         blas_scal(&dgi, x1, -1, 1, 0);
         blas_scal(&dgi, y1, -1, 1, 0);
@@ -1164,7 +1310,7 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     blas_axpy(ws3, z, NULL, -1, 1, 1, 0, 0);
     blas_scal(&alpha, z, -1, 1, 0);
 
-    solve_function(x, y, z, kkt_ctx);
+    solve_function(x, y, z, kkt_ctx, dims);
     
     // Combine with solution of
     //
@@ -1256,3 +1402,6 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         printf("    'kappa': %e\n", fabs(MAT_BUFD(wkappa)[0]));
     }
 }
+
+
+

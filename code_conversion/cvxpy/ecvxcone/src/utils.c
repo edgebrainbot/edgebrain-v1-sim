@@ -1,12 +1,11 @@
-#include "coneprog.h"
+#include "solver.h"
 #include "cvxopt.h"
 #include "misc.h"
 
-void validate_cvxopt_settings(DIMs *dims, CVXOPT_Settings *stgs);
+void validate_ecvxcone_settings(DIMs *dims, ECVXCONE_Settings *stgs);
 void validate_problem_data(matrix *c, void *G, matrix *h, void *A, matrix *b, int cdim);
-void validate_cvxopt_settings(DIMs *dims, CVXOPT_Settings *stgs);
 void validate_cone_dimensions(DIMs* dims);
-ConeLPContext *ConeLPContext_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
+ECVXCONECtx *ECVXCONECtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
 
 /**
  * Initialize the ConeLPResult structure.
@@ -14,24 +13,48 @@ ConeLPContext *ConeLPContext_Init(PrimalStart *primalstart, DualStart *dualstart
  *
  * @param result Pointer to the ConeLPResult structure to initialize.
  */
-ConeLPContext* cvxopt_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
-                            CVXOPT_Settings* settings) 
+ECVXCONECtx* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                            ECVXCONE_Settings* settings) 
 {
-    ConeLPContext *conelp_ctx = ConeLPContext_Init(NULL, NULL, dims);
+    ECVXCONECtx *ecvxcone_ctx = ECVXCONECtx_Init(NULL, NULL, dims);
     validate_cone_dimensions(dims); // Validate the cone dimensions
-    validate_cvxopt_settings(dims, settings);    // Validate the settings
-    validate_problem_data(c, G, h, A, b, conelp_ctx->cdim); // Validate the problem data
+    validate_ecvxcone_settings(dims, settings);    // Validate the settings
+    validate_problem_data(c, G, h, A, b, ecvxcone_ctx->cdim); // Validate the problem data
 
-    return conelp_ctx;
+    return ecvxcone_ctx;
+}
+
+void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx) 
+{
+    if (ecvxcone_ctx) {
+        if (ecvxcone_ctx->primalstart) {
+            Matrix_Free(ecvxcone_ctx->primalstart->x);
+            Matrix_Free(ecvxcone_ctx->primalstart->s);
+            free(ecvxcone_ctx->primalstart);
+        }
+        if (ecvxcone_ctx->dualstart) {
+            Matrix_Free(ecvxcone_ctx->dualstart->y);
+            Matrix_Free(ecvxcone_ctx->dualstart->z);
+            free(ecvxcone_ctx->dualstart);
+        }
+        if (ecvxcone_ctx->result) {
+            ECVXCONEResult_Free(ecvxcone_ctx->result);
+        }
+        Scaling_Free(ecvxcone_ctx->W_init);
+        Scaling_Free(ecvxcone_ctx->W_nt);
+        free(ecvxcone_ctx->indq);
+        free(ecvxcone_ctx->inds);
+        free(ecvxcone_ctx);
+    }
 }
 
 /**
- * Validate the settings for CVXOPT.
+ * Validate the settings for ECVXCONE.
  * This function checks if the settings are valid and raises errors if they are not.
  *
- * @param stgs Pointer to the CVXOPT_Settings structure to validate.
+ * @param stgs Pointer to the ECVXCONE_Settings structure to validate.
  */
-void validate_cvxopt_settings(DIMs *dims, CVXOPT_Settings *stgs) 
+void validate_ecvxcone_settings(DIMs *dims, ECVXCONE_Settings *stgs) 
 {
     if (stgs->kktreg != -1.0) { // -1.0 represents None/unset
         if (stgs->kktreg < 0.0) {
@@ -229,25 +252,96 @@ void validate_cone_dimensions(DIMs* dims)
 }
 
 /**
- * Initialize the ConeLPRuntimeContext structure.
- * This function sets up the context with the provided parameters and calculates
- * the necessary dimensions and indices for the cone programming problem.
+ * Initialize the scaling structure with identity matrices.
+ * This function sets up the scaling structure for initialization and iterations.
  *
- * @param ctx Pointer to the ConeLPRuntimeContext to initialize.
- * @param G Coefficient matrix for the linear term.
- * @param h Right-hand side vector.
- * @param dims Dimensions of the problem.
- * @param A Coefficient matrix for the constraints.
- * @param b Right-hand side vector for the constraints.
- * @param primalstart Primal start values.
- * @param dualstart Dual start values.
+ * @param dims Pointer to the DIMs structure containing the dimensions.
+ * @return Pointer to the initialized scaling structure.
  */
-ConeLPContext *ConeLPContext_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
+scaling *init_identity_scaling(DIMs *dims) 
 {
-    ConeLPContext *ctx = (ConeLPContext*)malloc(sizeof(ConeLPContext));
+    scaling *W_init = malloc(sizeof(scaling));
+    Scaling_Init(W_init);
+
+    number number_one;
+    number_one.d = 1.0; // Initialize number for value 1.0
+    W_init->d = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
+    W_init->di = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
+    W_init->d_count = dims->l;
+
+    W_init->v = malloc(dims->q_size * sizeof(matrix*));
+    W_init->beta = malloc(dims->q_size * sizeof(double));
+    W_init->v_count = dims->q_size;
+    W_init->b_count = dims->q_size;
+    for (int i = 0; i < dims->q_size; ++i) {
+        W_init->v[i] = Matrix_New(dims->q[i], 1, DOUBLE);
+        W_init->beta[i] = 1.0;
+        MAT_BUFD(W_init->v[i])[0] = 1.0;
+    }
+
+    W_init->r = malloc(dims->s_size * sizeof(matrix*));
+    W_init->rti = malloc(dims->s_size * sizeof(matrix*));
+    W_init->r_count = dims->s_size;
+    for (int i = 0; i < dims->s_size; ++i) {
+        int m = dims->s[i];
+        W_init->r[i] = Matrix_New(m, m, DOUBLE);
+        W_init->rti[i] = Matrix_New(m, m, DOUBLE);
+        for (int j = 0; j < m; ++j) {
+            MAT_BUFD(W_init->r[i])[j * m + j] = 1.0;
+            MAT_BUFD(W_init->rti[i])[j * m + j] = 1.0;
+        }
+    }
+    return W_init;
+}
+
+/**
+ * Initialize the scaling structure for iterations.
+ * This function sets up the scaling structure for iterations based on the dimensions.
+ *
+ * @param dims Pointer to the DIMs structure containing the dimensions.
+ * @return Pointer to the initialized scaling structure for iterations.
+ */
+scaling *init_nt_scaling(DIMs *dims) 
+{
+    scaling *W_nt = malloc(sizeof(scaling));
+    Scaling_Init(W_nt);
+
+    W_nt->v_count = dims->q_size;
+    W_nt->v = (matrix**)malloc(dims->q_size * sizeof(matrix*));
+    for (int k = 0; k < dims->q_size; ++k) {
+        W_nt->v[k] = Matrix_New(dims->q[k], 1, DOUBLE);
+    }
+
+    W_nt->b_count = dims->q_size;
+    W_nt->beta = (double*)calloc(dims->q_size, sizeof(double));
+
+    W_nt->r_count = dims->s_size;
+    W_nt->r = (matrix**)malloc(dims->s_size * sizeof(matrix*));
+    W_nt->rti = (matrix**)malloc(dims->s_size * sizeof(matrix*));
+
+    for (int k = 0; k < dims->s_size; ++k) {
+        W_nt->r[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
+        W_nt->rti[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
+    }
+
+    return W_nt;
+}
+
+/**
+ * Initialize the ECVXCONE context.
+ * This function sets up the context for the ECVXCONE solver with the provided dimensions and start values.
+ *
+ * @param primalstart Pointer to the PrimalStart structure containing primal start values.
+ * @param dualstart Pointer to the DualStart structure containing dual start values.
+ * @param dims Pointer to the DIMs structure containing the dimensions of the problem.
+ * @return Pointer to the initialized ECVXCONECtx structure.
+ */
+ECVXCONECtx *ECVXCONECtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
+{
+    ECVXCONECtx *ctx = (ECVXCONECtx*)malloc(sizeof(ECVXCONECtx));
     if (!ctx) err_no_memory;
 
-    ConeLPResult *result = ConeLPResult_Init(); 
+    ECVXCONEResult *result = ECVXCONEResult_Init(); 
     if (!result) err_no_memory;
 
     ctx->result = result;
@@ -293,92 +387,13 @@ ConeLPContext *ConeLPContext_Init(PrimalStart *primalstart, DualStart *dualstart
 
     // Initialize scaling structure
     if (primalstart == NULL || dualstart == NULL) {
-        ctx->dummy_W = malloc(sizeof(scaling));
-        Scaling_Init(ctx->dummy_W);
-
-        number number_one;
-        number_one.d = 1.0; // Initialize number for value 1.0
-        ctx->dummy_W->d = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
-        ctx->dummy_W->di = Matrix_New_Val(dims->l, 1, DOUBLE, number_one);
-        ctx->dummy_W->d_count = dims->l;
-
-        ctx->dummy_W->v = malloc(dims->q_size * sizeof(matrix*));
-        ctx->dummy_W->beta = malloc(dims->q_size * sizeof(double));
-        ctx->dummy_W->v_count = dims->q_size;
-        ctx->dummy_W->b_count = dims->q_size;
-        for (int i = 0; i < dims->q_size; ++i) {
-            ctx->dummy_W->v[i] = Matrix_New(dims->q[i], 1, DOUBLE);
-            ctx->dummy_W->beta[i] = 1.0;
-            MAT_BUFD(ctx->dummy_W->v[i])[0] = 1.0;
-        }
-
-        ctx->dummy_W->r = malloc(dims->s_size * sizeof(matrix*));
-        ctx->dummy_W->rti = malloc(dims->s_size * sizeof(matrix*));
-        ctx->dummy_W->r_count = dims->s_size;
-        for (int i = 0; i < dims->s_size; ++i) {
-            int m = dims->s[i];
-            ctx->dummy_W->r[i] = Matrix_New(m, m, DOUBLE);
-            ctx->dummy_W->rti[i] = Matrix_New(m, m, DOUBLE);
-            for (int j = 0; j < m; ++j) {
-                MAT_BUFD(ctx->dummy_W->r[i])[j * m + j] = 1.0;
-                MAT_BUFD(ctx->dummy_W->rti[i])[j * m + j] = 1.0;
-            }
-        }
+        ctx->W_init = init_identity_scaling(dims);
     } else {
-        ctx->dummy_W = NULL; // No dummy scaling structure needed
+        ctx->W_init = NULL; // No dummy scaling structure needed
     }
+
+    // Initialize scaling structure for iterations
+    ctx->W_nt = init_nt_scaling(dims);
 
     return ctx;
-}
-
-/**
- * Debugging function to print a matrix by projecting it onto a vector of ones.
- * This is useful for debugging purposes to visualize the matrix.
- *
- * @param m Pointer to the matrix to debug.
- */
-void debug_matrix_by_project2vector(matrix *m) 
-{
-    printf("Debugging matrix by projecting onto vector of ones:\n");
-    number temp_n;
-    double alpha = 1.0;
-    double beta = 0.0;
-    temp_n.d = 1.0;
-    matrix *vector_one = Matrix_New_Val(m->ncols ,1, DOUBLE, temp_n);
-    matrix *res = Matrix_New_Val(m->nrows, 1, DOUBLE, temp_n);
-    blas_gemv(m, vector_one, res, 'N', &alpha, &beta, -1, -1, 0, 1, 1, 0, 0, 0);
-
-    print_matrix_(res);
-
-    // Free the allocated matrices
-    Matrix_Free(vector_one);
-    Matrix_Free(res);
-}
-
-void print_matrix_(matrix *m) 
-{
-    double *buf = MAT_BUFD(m);
-    printf("Matrix (%dx%d):\n", m->nrows, m->ncols);
-    for (int r = 0; r < m->nrows; ++r) {
-        for (int c = 0; c < m->ncols; ++c) {
-            printf("%.16f ", buf[c * m->nrows + r]);  // column-major
-        }
-        printf("\n");
-    }
-    printf("End of matrix********************************************\n\n");
-}
-
-
-void print_W(scaling *W) 
-{
-    for(int i = 0; i < W->r_count; ++i) {
-        printf("W[%d]:\n", i);
-        for (int j = 0; j < W->r[i]->nrows; ++j) {
-            for (int k = 0; k < W->r[i]->ncols; ++k) {
-                printf("%.16f ", MAT_ELEMD(W->r[i], j, k));
-            }
-            printf("\n");
-        }
-        printf("End of W[%d] matrix********************************************\n\n", i);
-    }
 }

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project name and language
-project(embed_conelp C)
+project(ecvxcone C)
 
 set(CMAKE_C_FLAGS_RELEASE "-O3 -march=native -ffast-math")
 set(CMAKE_BUILD_TYPE Release)
@@ -34,11 +34,12 @@ find_package(LAPACK REQUIRED)
 file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS 
     src/base.c 
     src/blas.c
+    src/debug.c
     src/sparse.c
-    src/misc_solvers.c
+    src/misc.c
     src/lapack.c
     src/dense.c
-    src/coneprog.c
+    src/solver.c
     src/utils.c
 )
 
