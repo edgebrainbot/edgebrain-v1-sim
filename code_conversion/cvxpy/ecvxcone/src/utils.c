@@ -2,10 +2,10 @@
 #include "cvxopt.h"
 #include "misc.h"
 
-void validate_ecvxcone_settings(DIMs *dims, ECVXCONE_Settings *stgs);
+void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs);
 void validate_problem_data(matrix *c, void *G, matrix *h, void *A, matrix *b, int cdim);
 void validate_cone_dimensions(DIMs* dims);
-ECVXCONECtx *ECVXCONECtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
+ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
 
 /**
  * Initialize the ConeLPResult structure.
@@ -13,10 +13,10 @@ ECVXCONECtx *ECVXCONECtx_Init(PrimalStart *primalstart, DualStart *dualstart, DI
  *
  * @param result Pointer to the ConeLPResult structure to initialize.
  */
-ECVXCONECtx* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
-                            ECVXCONE_Settings* settings) 
+ECVXConeContext* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                            ECVXConeSettings* settings) 
 {
-    ECVXCONECtx *ecvxcone_ctx = ECVXCONECtx_Init(NULL, NULL, dims);
+    ECVXConeContext *ecvxcone_ctx = ECVXConeCtx_Init(NULL, NULL, dims);
     validate_cone_dimensions(dims); // Validate the cone dimensions
     validate_ecvxcone_settings(dims, settings);    // Validate the settings
     validate_problem_data(c, G, h, A, b, ecvxcone_ctx->cdim); // Validate the problem data
@@ -24,7 +24,7 @@ ECVXCONECtx* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DI
     return ecvxcone_ctx;
 }
 
-void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx) 
+void ecvxcone_free(ECVXConeContext *ecvxcone_ctx) 
 {
     if (ecvxcone_ctx) {
         if (ecvxcone_ctx->primalstart) {
@@ -38,7 +38,7 @@ void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx)
             free(ecvxcone_ctx->dualstart);
         }
         if (ecvxcone_ctx->result) {
-            ECVXCONEResult_Free(ecvxcone_ctx->result);
+            ECVXConeResult_Free(ecvxcone_ctx->result);
         }
         Scaling_Free(ecvxcone_ctx->W_init);
         Scaling_Free(ecvxcone_ctx->W_nt);
@@ -52,9 +52,9 @@ void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx)
  * Validate the settings for ECVXCONE.
  * This function checks if the settings are valid and raises errors if they are not.
  *
- * @param stgs Pointer to the ECVXCONE_Settings structure to validate.
+ * @param stgs Pointer to the ECVXConeSettings structure to validate.
  */
-void validate_ecvxcone_settings(DIMs *dims, ECVXCONE_Settings *stgs) 
+void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs) 
 {
     if (stgs->kktreg != -1.0) { // -1.0 represents None/unset
         if (stgs->kktreg < 0.0) {
@@ -336,12 +336,12 @@ scaling *init_nt_scaling(DIMs *dims)
  * @param dims Pointer to the DIMs structure containing the dimensions of the problem.
  * @return Pointer to the initialized ECVXCONECtx structure.
  */
-ECVXCONECtx *ECVXCONECtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
+ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
 {
-    ECVXCONECtx *ctx = (ECVXCONECtx*)malloc(sizeof(ECVXCONECtx));
+    ECVXConeContext *ctx = (ECVXConeContext*)malloc(sizeof(ECVXConeContext));
     if (!ctx) err_no_memory;
 
-    ECVXCONEResult *result = ECVXCONEResult_Init(); 
+    ECVXConeResult *result = ECVXConeResult_Init(); 
     if (!result) err_no_memory;
 
     ctx->result = result;

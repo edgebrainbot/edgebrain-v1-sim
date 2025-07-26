@@ -25,10 +25,10 @@ typedef struct {
     int EXPON;
     double STEP;
     char kktsolver[10]; // KKT solver name
-} ECVXCONE_Settings;
+} ECVXConeSettings;
 
 
-static ECVXCONE_Settings ecvxcone_settings = {
+static ECVXConeSettings ecvxcone_settings = {
     .debug = false,
     .kktreg = -1.0, // -1 indicates None/unset
     .maxiters = 100,
@@ -46,14 +46,21 @@ static ECVXCONE_Settings ecvxcone_settings = {
     .kktsolver = "chol" // Default KKT solver
 };
 
-
 typedef struct {
     matrix *c; // Objective function coefficients
     matrix *b; // Right-hand side vector for the constraints
     matrix *h; // Right-hand side vector
-    void *G; // Coefficient matrix for the linear term
-    void *A; // Coefficient matrix for the constraints
-} ECVXCONE_Struct;
+    spmatrix *G; // Coefficient matrix for the linear term
+    spmatrix *A; // Coefficient matrix for the constraints
+} ECVXConeData;
+
+static ECVXConeData ecvxcone_data = {
+    .c = NULL,
+    .b = NULL,
+    .h = NULL,
+    .G = NULL,
+    .A = NULL
+};
 
 // Primal start structure
 typedef struct {
@@ -85,7 +92,7 @@ typedef struct {
     double residual_as_primal_infeasibility_certificate;
     double residual_as_dual_infeasibility_certificate;
     int iterations;
-} ECVXCONEResult;
+} ECVXConeResult;
 
 typedef struct {
     // matrix *G; // Coefficient matrix for the linear term
@@ -109,8 +116,8 @@ typedef struct {
     scaling *W_init; // Scaling structure (identity) for initialization
     scaling *W_nt; // Scaling structure for iterations
 
-    ECVXCONEResult *result; // Result structure
-} ECVXCONECtx;
+    ECVXConeResult *result; // Result structure
+} ECVXConeContext;
 
 
 // Function declarations
@@ -165,8 +172,8 @@ typedef void* (*KKTSolverFunc)(void* W);
 
 extern void KKTCholContext_Free(KKTCholContext *ctx);
 
-static inline ECVXCONEResult *ECVXCONEResult_Init() {
-    ECVXCONEResult *result = (ECVXCONEResult *)malloc(sizeof(ECVXCONEResult));
+static inline ECVXConeResult *ECVXConeResult_Init() {
+    ECVXConeResult *result = (ECVXConeResult *)malloc(sizeof(ECVXConeResult));
     if (!result) err_no_memory;
 
     result->status = NULL;
@@ -188,7 +195,7 @@ static inline ECVXCONEResult *ECVXCONEResult_Init() {
     return result;
 }
 
-static inline void ECVXCONEResult_Free(ECVXCONEResult *result) {
+static inline void ECVXConeResult_Free(ECVXConeResult *result) {
     if (result) {
         // if (result->status) free(result->status);
         if (result->x) Matrix_Free(result->x);

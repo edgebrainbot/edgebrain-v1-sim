@@ -14,11 +14,11 @@ int TEST_TIMES = 1000;
 
 extern matrix* load_txt_as_matrix(const char* filename);
 extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols);
-extern ECVXCONECtx* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
-                                ECVXCONE_Settings* settings);
-extern void ecvxcone_free(ECVXCONECtx *ecvxcone_ctx);
+extern ECVXConeContext* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                                ECVXConeSettings* settings);
+extern void ecvxcone_free(ECVXConeContext *ecvxcone_ctx);
 extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-                    ECVXCONE_Settings* settings, ECVXCONECtx* ecvxcone_ctx);
+                    ECVXConeSettings* settings, ECVXConeContext* ecvxcone_ctx);
 
 extern void print_matrix(matrix *m);
 // const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
@@ -80,7 +80,7 @@ void test_conelp() {
     PrimalStart *primalstart = NULL;
     DualStart *dualstart = NULL;    
 
-    ECVXCONECtx *ecvxcone_ctx = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
+    ECVXConeContext *ecvxcone_ctx = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
 
     int status;
     status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
