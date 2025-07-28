@@ -5,6 +5,7 @@
 void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs);
 void validate_problem_data(matrix *c, void *G, matrix *h, void *A, matrix *b, int cdim);
 void validate_cone_dimensions(DIMs* dims);
+void validate_kktsolver(DIMs* dims, const char* kktsolver);
 ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
 
 /**
@@ -86,7 +87,8 @@ void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs)
 }
 
 /* Validate the KKT solver settings */
-void validate_kktsolver(DIMs* dims, const char* kktsolver) {
+void validate_kktsolver(DIMs* dims, const char* kktsolver) 
+{
 
     // Default solver selection
     char* default_kktsolver = NULL;

@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "cvxopt.h"
+#include "math.h"
 
 // #ifndef NO_ANSI99_COMPLEX
 

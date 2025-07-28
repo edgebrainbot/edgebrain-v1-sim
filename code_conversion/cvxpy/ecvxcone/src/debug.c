@@ -2,6 +2,9 @@
 #include "solver.h"
 #include "misc.h"
 
+extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans, void* alpha, void* beta, 
+            int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
+
 /**
  * Debugging function to print a matrix by projecting it onto a vector of ones.
  * This is useful for debugging purposes to visualize the matrix.

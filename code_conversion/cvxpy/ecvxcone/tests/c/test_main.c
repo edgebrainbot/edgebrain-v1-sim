@@ -21,6 +21,7 @@ extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
                     ECVXConeSettings* settings, ECVXConeContext* ecvxcone_ctx);
 
 extern void print_matrix(matrix *m);
+
 // const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
 // const char mat_h[] = "../tests/c/input_matrix/h.txt";
 // const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
@@ -70,7 +71,7 @@ void test_conelp() {
     }
 
     matrix *b = Matrix_New(0, 1, DOUBLE);
-    matrix *A = SpMatrix_New(0, 136, 0, DOUBLE);
+    void *A = SpMatrix_New(0, 136, 0, DOUBLE);
     // matrix *A = SpMatrix_New(0, 21, 0, DOUBLE);
 
     int sbuf[] = { 10, 6, 20, 16, 10, 3, 6, 6 };
@@ -85,7 +86,7 @@ void test_conelp() {
     int status;
     status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
 
-    print_matrix_(ecvxcone_ctx->result->x, "Result x");
+    // print_matrix_(ecvxcone_ctx->result->x, "Result x");
     // print_matrix_(ecvxcone_ctx->result->s, "Result s");
     // print_matrix_(ecvxcone_ctx->result->y, "Result y");
     // print_matrix_(ecvxcone_ctx->result->z, "Result z");
@@ -145,7 +146,7 @@ void test_matrix_assign() {
 
     Matrix_Free(src);
     Matrix_Free(dst);
-    return 0;
+    return;
 }
 
 int main() {

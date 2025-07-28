@@ -22,7 +22,6 @@
 #include "solver.h"
 #include "cvxopt.h"
 #include "misc.h"
-#include "math.h"
 #include "float.h"
 #include <unistd.h>
 
@@ -1877,7 +1876,7 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         double dd = (v_data[0] * vu - s_data[ind]/2.0 + z_data[ind]/2.0) / (wk0 + 1.0);
 
         // lambda_k1 = 2 * v_k1 * vk' * (-d*q + u/2) - d*q1 + u1/2
-        blas_copy(v_data, lmbda, m-1, 1, 1, 1, ind+1);
+        blas_copy(v, lmbda, m-1, 1, 1, 1, ind+1);
         alpha = 2.0 * (-dd * vq + 0.5 * vu);
         blas_scal(&alpha, lmbda, m-1, 1, ind+1);
 
@@ -1893,16 +1892,16 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         // v := (2*v*v' - J) * q 
         //    = 2 * (v'*q) * v' - (J* st/a + zt/b) / (2*c)
         alpha = 2.0 * vq;
-        blas_scal(&alpha, v_data, -1, 1, 0);
+        blas_scal(&alpha, v, -1, 1, 0);
         v_data[0] -= s_data[ind] / 2.0 / cc;
         alpha_n.d = 0.5 / cc;
-        blas_axpy(s, v_data, &alpha_n, m-1, 1, 1, ind+1, 1);
-        blas_axpy(z, v_data, &alpha_n, m, 1, 1, ind, 0);
+        blas_axpy(s, v, &alpha_n, m-1, 1, 1, ind+1, 1);
+        blas_axpy(z, v, &alpha_n, m, 1, 1, ind, 0);
 
         // v := v^{1/2} = 1/sqrt(2 * (v0 + 1)) * (v + e)
         v_data[0] += 1.0;
         alpha = 1.0 / sqrt(2.0 * v_data[0]);
-        blas_scal(&alpha, v_data, -1, 1, 0);
+        blas_scal(&alpha, v, -1, 1, 0);
 
         // beta[k] *= ( aa / bb )**1/2
         W->beta[k] *= sqrt(aa / bb);
@@ -2207,8 +2206,6 @@ void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs
     Matrix_Free(work);
     Matrix_Free(Ls);
     Matrix_Free(Lz);
-
-    return W;
 }
 
 

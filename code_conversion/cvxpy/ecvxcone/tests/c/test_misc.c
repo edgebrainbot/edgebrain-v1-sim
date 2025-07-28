@@ -82,7 +82,8 @@ void test_computing_scale() {
                    + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
-    printf("Computed scaling.d = %.4f\n", result->d);
+    printf("Computed scaling.d:\n");
+    print_matrix(result->d);
 }
 
 
@@ -125,7 +126,8 @@ void test_updating_scale() {
                    + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
-    printf("Updated scaling.d = %.4f\n", result->d);
+    printf("Updated scaling.d:\n");
+    print_matrix(result->d);
 }
 
 

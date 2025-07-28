@@ -872,7 +872,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
  */
 void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
 {
-  matrix *ret;
+  void *ret;
   if(A_type != 0 && A_type != 1) {
     ERR_TYPE("A must be a matrix/spmatrix or a number");
   }

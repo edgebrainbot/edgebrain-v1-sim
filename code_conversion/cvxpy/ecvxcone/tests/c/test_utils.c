@@ -107,7 +107,7 @@ spmatrix create_test_spmatrix()
 }
 
 void print_spmatrix(const spmatrix *sp) {
-    printf("Sparse matrix (%d x %d), printed as dense:\n", sp->obj->nrows, sp->obj->ncols);
+    printf("Sparse matrix (%ld x %ld), printed as dense:\n", sp->obj->nrows, sp->obj->ncols);
     int m = sp->obj->nrows;
     int n = sp->obj->ncols;
     double *dense = calloc(m * n, sizeof(double));

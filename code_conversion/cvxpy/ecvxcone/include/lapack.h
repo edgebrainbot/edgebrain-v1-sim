@@ -16,7 +16,7 @@ typedef _Dcomplex complex_t;
         fprintf(stderr, "LAPACK error: illegal argument at position %d\n", -(info)); \
     else \
         fprintf(stderr, "LAPACK error: computation failed at leading minor %d (matrix not positive definite?)\n", (info)); \
-    return NULL; \
+    return; \
 } while (0)
 
 /***********************************************************************/

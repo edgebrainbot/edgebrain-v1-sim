@@ -222,7 +222,7 @@ void test_base_sqrt() {
 
     if (!ret) {
         fprintf(stderr, "sqrt failed\n");
-        return 1;
+        return;
     }
 
     // 打印结果

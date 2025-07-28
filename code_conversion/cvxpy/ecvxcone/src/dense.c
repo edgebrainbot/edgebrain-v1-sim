@@ -23,6 +23,7 @@
 
 #include "cvxopt.h"
 #include "misc.h"
+#include "math.h"
 #include <limits.h>
 
 /* prototyping and forward declarations */

@@ -1084,7 +1084,7 @@ void blas_trsv(matrix *A, matrix *x, char uplo, char trans, char diag,
     if (n < 0){
         if (A->nrows != A->ncols){
             ERR("A is not square");
-            return NULL;
+            return;
         }
         n = A->nrows;
     }

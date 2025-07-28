@@ -69,7 +69,7 @@ void test_lapack_potrf() {
     
     if (info != 0) {
         printf("dpotrf failed! info = %d\n", info);
-        return 1;
+        return;
     }
 
     // 打印结果矩阵（只打印 L，填充对称）

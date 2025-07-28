@@ -5942,7 +5942,7 @@ void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix
         err_char("jobvt", "'N', 'A', 'S', 'O'");
     if (jobu == 'O' && jobvt == 'O') {
         ERR("'jobu' and 'jobvt' cannot both be 'O'");
-        return NULL;
+        return;
     }
     if (m < 0) m = A->nrows;
     if (n < 0) n = A->ncols;
