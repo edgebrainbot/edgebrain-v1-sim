@@ -1,3 +1,6 @@
 [submodule "code_conversion/cvxpy/ecvxcone"]
 	path = code_conversion/cvxpy/ecvxcone
 	url = git@github.com:Charlescai123/ecvxcone.git
+[submodule "code_conversion/cvxpy/cvxpygen"]
+	path = code_conversion/cvxpy/cvxpygen
+	url = git@github.com:Charlescai123/cvxpygen.git
