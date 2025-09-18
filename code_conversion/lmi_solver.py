@@ -2,8 +2,8 @@ import logging
 import sys
 import os
 import time
-sys.path.insert(0, os.path.abspath("python"))
-sys.path.insert(0, os.path.abspath("python/cvxopt"))
+# sys.path.insert(0, os.path.abspath("python"))
+# sys.path.insert(0, os.path.abspath("python/cvxopt"))
 
 import asyncio
 import numpy as np
@@ -127,16 +127,13 @@ class LMISolver:
             optimal_Q = Q.value
             optimal_R = R.value
 
-            print(f"optimal_Q: {optimal_Q}")
-            print(f"optimal_R: {optimal_R}")
-
-            # print(optimal_Q)
-            # print(optimal_R)
+            # print(f"optimal_Q: {optimal_Q}")
+            # print(f"optimal_R: {optimal_R}")
 
             P = np.linalg.inv(optimal_Q)
 
             # Compute aF
-            aF = np.round(aB @ optimal_R @ P, 0)
+            aF = np.round(aB @ optimal_R @ P, 4)
             Fb2 = aF[6:10, 0:4]
 
             # Compute F_kp
@@ -146,8 +143,8 @@ class LMISolver:
             # Compute F_kd
             F_kd = -aF[4:10, 4:10]
 
-            # print(f"Solved F_kp is: {F_kp}")
-            # print(f"Solved F_kd is: {F_kd}")
+            print(f"Solved F_kp is: \n{F_kp}")
+            print(f"Solved F_kd is: \n{F_kd}")
 
             # Check if the problem is solved successfully
             if np.all(np.linalg.eigvals(P) > 0):
@@ -211,12 +208,16 @@ if __name__ == '__main__':
     t2 = time.time()
     print(f"consuming time1: {t2 - t1}")
     
-    REPEAT = 1  # Test counts
+    zz[0] = -0.1
+    (F_kp, F_kd), _, _ = lmisolver.patch_lmi(zz)
+
+    REPEAT = 0  # Test counts
     solve_time = 0.0
     total_time = 0.0
 
     for _ in range(REPEAT):
         t1 = time.time()
+        zz = np.array(np.random.uniform(0, 0.1, size=10))
         (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
         t2 = time.time()
         solve_time += elapsed_time
@@ -249,12 +250,6 @@ if __name__ == '__main__':
     # K = ha_teacher.feedback_law(0, 0, 0)
     # print(K)
 
-    # testN = 100
-    # s = time.time()
-    # for i in range(testN):
-    #     F_kp, F_kd = HATeacher.system_patch(0., 0., 0.)
-    # e = time.time()
-    # duration = (e - s) / testN
-    print(f"F_kp is: {F_kp}")
-    print(f"F_kd is: {F_kd}")
+    print(f"F_kp is: \n{F_kp}")
+    print(f"F_kd is: \n{F_kd}")
     # print(f"time: {duration}")

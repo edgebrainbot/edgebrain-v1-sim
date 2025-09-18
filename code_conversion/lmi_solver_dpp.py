@@ -33,7 +33,6 @@ class LMISolver:
 
         # Parameters and variables
         self.z_param = cp.Parameter((10, 10), PSD=True, name='tracking_err')
-        # self.zz_param = cp.Parameter(10, name='tracking_err_square')
         self.A_param = cp.Parameter((10, 10), name='A')
         self.B_param = cp.Parameter((10, 6), name='B')
 
@@ -43,9 +42,6 @@ class LMISolver:
 
         Q, T, R = self.Q, self.T, self.R
         A, B = self.A_param, self.B_param
-        # Z = cp.diag(self.zz_param)
-
-        # self.z_param = Z @ Z
 
         self.problem = cp.Problem(cp.Minimize(0), [
             cp.bmat([[self.alpha * Q, Q @ A.T + R.T @ B.T],
@@ -97,11 +93,14 @@ class LMISolver:
             Q = self.Q.value
             R = self.R.value
             P = np.linalg.inv(Q)
-            aF = np.round(aB @ R @ P, 0)
+            aF = np.round(aB @ R @ P, 4)
             Fb2 = aF[6:10, 0:4]
 
             F_kp = -np.block([[np.zeros((2, 6))], [np.zeros((4, 2)), Fb2]])
             F_kd = -aF[4:10, 4:10]
+
+            print(f"F_kp: {F_kp}")
+            print(f"F_kd: {F_kd}")
 
             if np.all(np.linalg.eigvals(P) > 0):
                 logging.info("LMIs feasible")
@@ -119,18 +118,30 @@ class LMISolver:
 
 
 if __name__ == '__main__':
-    # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
+    zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
 
-    zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16])
+    # zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16])
+    # zz = np.array([0.] * 10)
+
     lmisolver = LMISolver()
     
     (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
     
-    t1 = time.time()
-    (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
-    t2 = time.time()
-    print(f"F_kp is: {F_kp}\nF_kd is: {F_kd}\nconsuming time: {t2 - t1:.4f}s")
-    print(f"Elapsed time: {elapsed_time:.4f}s")
+    REPEAT = 1000  # Test counts
+    solve_time = 0.0
+    total_time = 0.0
+
+    for _ in range(REPEAT):
+        t1 = time.time()
+        (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
+        t2 = time.time()
+        solve_time += elapsed_time
+        total_time += (t2 - t1)
+
+    avg_time = total_time / REPEAT * 1e3
+    avg_solve_time = solve_time / REPEAT * 1e3
+    print(f"Average solution time over {REPEAT} runs: {avg_time:.6f} milliseconds")
+    print(f"Average solve time over {REPEAT} runs: {avg_solve_time:.6f} milliseconds")
     
     # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
     # t1 = time.time()
