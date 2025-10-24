@@ -1,0 +1,9 @@
+<library path="safety_patch_controller">
+    <class name="safety_patch_controller/SafetyPatchController"
+           type="safety_patch_controller::SafetyPatchController"
+           base_class_type="controller_interface::ControllerInterface">
+        <description>
+            Quadruped Controller based on Unitree Guide.
+        </description>
+    </class>
+</library>
