@@ -66,6 +66,7 @@ ament_target_dependencies(lmi_optimizer_lib
 
 # ------------------ Executable ------------------
 add_executable(phy_teacher_node src/phy_teacher_node.cpp)
+target_include_directories(phy_teacher_node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 target_link_libraries(phy_teacher_node lmi_optimizer_lib)
 
 # Ensure RPATH includes relative lib/

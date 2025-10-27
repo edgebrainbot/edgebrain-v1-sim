@@ -55,9 +55,7 @@ class LMISolver:
         #                  [-np.sin(yaw), np.cos(yaw), 0],
         #                  [np.cos(yaw) * np.tan(pitch), np.sin(yaw) * np.tan(pitch), 1]])
 
- 
-
-        alpha = 0.9
+        alpha = 0.75
         hd = 1e-10
         phi = 0.15
 
@@ -81,7 +79,7 @@ class LMISolver:
                        [0, 0, 0, 0, 0, c2]])
 
        # Sampling period
-        T = 1 / 20  # work in 25 to 30
+        T = 1 / 30  # work in 25 to 30
 
         # System matrices (continuous-time)
         aA = np.zeros((10, 10))

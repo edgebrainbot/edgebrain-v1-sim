@@ -9,7 +9,7 @@ def generate_launch_description():
     
     # Config file path
     safety_config_path = os.path.join(
-        get_package_share_directory('edge_phy_teacher'),
+        get_package_share_directory('edge_config'),
         'config', 'safety_set.yaml'
     )
     

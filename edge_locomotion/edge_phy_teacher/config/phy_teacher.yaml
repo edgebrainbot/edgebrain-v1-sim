@@ -1,6 +1,6 @@
 phy_teacher_node:
   ros__parameters:
-    update_rate: 100               # control update rate in Hz
+    update_rate: 30                # lmi optimization update rate in Hz
     set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
     print_process_time: false      # whether to print the process time
     safety_set: 'safety_set.yaml'  # path to the safety set configuration

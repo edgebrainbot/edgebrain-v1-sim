@@ -82,7 +82,7 @@ $$
 
 <!-- Right: Image -->
 
-<img src="./docs/patch.png" height="480" alt="patch">
+<img src="./docs/patch.png" height="300" alt="patch">
 <p align="center"><b>System Phase Behavior with Real-time Patch</b></p>
 
 </td>

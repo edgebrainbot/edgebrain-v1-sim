@@ -35,8 +35,8 @@ private:
     lmi::LMIOptimizer::print_matrix6x6(F_kd, "F_kd");
   }
 
-  lmi_optimizer::Matrix6x6 F_kp;
-  lmi_optimizer::Matrix6x6 F_kd;
+  lmi::Matrix6x6 F_kp;
+  lmi::Matrix6x6 F_kd;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subscription_;
 };
 
