@@ -1,44 +1,53 @@
 import torch
 from typing import Callable, Dict, Generator, Tuple, Optional
 
-from src.drl_student.storage.replay_storage import ReplayStorage
-from src.drl_student.storage.storage import Dataset, Storage, Transition
-from src.physical_design import ENVELOPE_P
-from src.utils.utils import ActionMode, energy_value
+from edge_drl_student.memory.buffers import SoloReplayBuffer
+from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
+from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
+from edge_drl_student.memory.buffers import Transition, TransitionBatch
 
 
-class DualReplayStorage(Storage):
-    def __init__(self, environment_count: int, stu_max_size: int, tea_max_size: int, device: str = "cpu",
-                 stu_initial_size: int = 0, tea_initial_size: int = 0) -> None:
-        self._env_count = environment_count
-        self.stu_max_size = stu_max_size
-        self.tea_max_size = tea_max_size
-        self.stu_initial_size = stu_initial_size
-        self.tea_initial_size = tea_initial_size
+class DualReplayBuffer(BaseBuffer):
+    def __init__(self, 
+                 student_buf_size: int, 
+                 teacher_buf_size: int, 
+                 sampler: Optional[UniformSampler] = None,
+                 obs_dim: int = 12,
+                 action_dim: int = 6,
+                 device: str = "cpu",
+                 ) -> None:
+
+        if sampler is None:
+            sampler = UniformSampler(max(student_buf_size, teacher_buf_size))
+
+        self.student_buf_size = student_buf_size
+        self.teacher_buf_size = teacher_buf_size
         self.device = device
 
         # DRL-Student Buffer
-        self.stu_storage = ReplayStorage(environment_count=environment_count, max_size=stu_max_size,
-                                        initial_size=stu_initial_size, device=device)
+        self.stu_buf = SoloReplayBuffer(buffer_size=self.student_buf_size, 
+                                        obs_dim=obs_dim, 
+                                        action_dim=action_dim,
+                                        sampler=sampler,
+                                        device=self.device)
 
         # PHY-Teacher Buffer
-        self.tea_storage = ReplayStorage(environment_count=environment_count, max_size=tea_max_size,
-                                        initial_size=tea_initial_size, device=device)
+        self.tea_buf = SoloReplayBuffer(buffer_size=self.teacher_buf_size, 
+                                        obs_dim=obs_dim, 
+                                        action_dim=action_dim,
+                                        sampler=sampler,
+                                        device=self.device)
 
         self.last_data_type = None
 
-    @property
-    def initialized(self) -> bool:
-        """Returns whether the storage is initialized."""
-        return self.stu_storage.initialized and self.tea_storage.initialized
 
     @property
-    def stu_transition_count(self) -> int:
-        return self.stu_storage.sample_count
+    def stu_buf_size(self) -> int:
+        return self.stu_buf.size
 
     @property
-    def tea_transition_count(self) -> int:
-        return self.tea_storage.sample_count
+    def tea_buf_size(self) -> int:
+        return self.tea_buf.size
 
     def append(self, dataset: Dataset, action_type=None) -> None:
         """Appends a dataset of transitions to the storage.

@@ -1,6 +1,7 @@
 #ifndef LMI_OPTIMIZER_HPP
 #define LMI_OPTIMIZER_HPP
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <ctime>
 #include <cstdio>
@@ -27,17 +28,17 @@ constexpr double Ts = 1.0 / 20.0;
 
 namespace lmi {
 
-// Matrix typedefs
-using Matrix3x3 = double[3][3];
-using Matrix6x6 = double[6][6];
+using Mat3x3 = Eigen::Matrix<double, 3, 3>;
+using Mat6x6 = Eigen::Matrix<double, 6, 6>;
+using Vec6d  = Eigen::Matrix<double, 6, 1>;
 
 class LMIOptimizer {
 public:
   LMIOptimizer();  // Constructor
   ~LMIOptimizer(); // Destructor
 
-  Matrix6x6 F_kp;
-  Matrix6x6 F_kd;
+  Mat6x6 F_kp;
+  Mat6x6 F_kd;
 
   double tracking_err[10];
   double tracking_err_square[10];
@@ -53,14 +54,9 @@ public:
   void update_Rzyx(double roll, double pitch, double yaw);
 
   // Utility
-  static void print_matrix6x6(const Matrix6x6& mat, const char* name);
-  static void matrix_multiply(Matrix3x3 A, Matrix3x3 B, Matrix3x3 result) {
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j) {
-          result[i][j] = 0;
-          for (int k = 0; k < 3; ++k)
-              result[i][j] += A[i][k] * B[k][j];
-        }
+  static void print_matrix6x6(const Mat6x6& mat, const char* name);
+  static void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
+    result = A * B;
   }
 
 private:
@@ -72,10 +68,10 @@ private:
   matrix* aF_;
   matrix* ipiv_;
 
-  Matrix3x3 Rx_;
-  Matrix3x3 Ry_;
-  Matrix3x3 Rz_;
-  Matrix3x3 Rzyx_;
+  Mat3x3 Rx_;
+  Mat3x3 Ry_;
+  Mat3x3 Rz_;
+  Mat3x3 Rzyx_;
 
   // Initialization helpers
   void lmi_init();                 // Initialize LMI matrices

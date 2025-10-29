@@ -1,6 +1,8 @@
+import os
+from glob import glob
 from setuptools import find_packages, setup
 
-package_name = 'edge_student'
+package_name = 'edge_drl_student'
 
 setup(
     name=package_name,
@@ -10,10 +12,12 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'torch', 'numpy', 'PyYAML'],
     zip_safe=True,
-    maintainer='edgebot',
+    maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
     description='TODO: Package description',
     license='TODO: License declaration',
@@ -24,6 +28,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'drl_student_node = edge_drl_student.drl_student_node:main',
         ],
     },
 )

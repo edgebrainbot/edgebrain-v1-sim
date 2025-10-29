@@ -11,9 +11,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 # ------------------ Dependencies ------------------
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(example_interfaces REQUIRED)
 find_package(BLAS REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(LAPACK REQUIRED)
+find_package(edge_config REQUIRED)
+find_package(edge_msgs REQUIRED)
+find_package(edge_ros_interfaces REQUIRED)
 
 # ------------------ ecvxcone C library ------------------
 set(ecvxcone_headers
@@ -52,7 +55,10 @@ set_target_properties(ecvxcone PROPERTIES
 add_library(lmi_optimizer_lib
   src/lmi_optimizer.cpp
 )
-target_include_directories(lmi_optimizer_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(lmi_optimizer_lib PUBLIC 
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIRS}
+)
 target_link_libraries(lmi_optimizer_lib
   ecvxcone
   ${BLAS_LIBRARIES}
@@ -60,26 +66,29 @@ target_link_libraries(lmi_optimizer_lib
 )
 ament_target_dependencies(lmi_optimizer_lib
   rclcpp
-  example_interfaces
   std_msgs
 )
 
 # ------------------ Executable ------------------
 add_executable(phy_teacher_node src/phy_teacher_node.cpp)
-target_include_directories(phy_teacher_node PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+target_include_directories(phy_teacher_node PUBLIC 
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/
+  ${EIGEN3_INCLUDE_DIRS}
+)
 target_link_libraries(phy_teacher_node lmi_optimizer_lib)
 
 # Ensure RPATH includes relative lib/
 set_target_properties(phy_teacher_node PROPERTIES
   INSTALL_RPATH "$ORIGIN/../lib"
 )
-ament_target_dependencies(phy_teacher_node rclcpp example_interfaces)
+ament_target_dependencies(phy_teacher_node rclcpp edge_msgs edge_ros_interfaces edge_config)
 
 add_executable(mock_publisher test/mock_publisher.cpp)
 ament_target_dependencies( 
   mock_publisher 
   rclcpp 
   std_msgs
+  edge_config
 )
 
 add_executable(control_gain_listener test/control_gain_listener.cpp)

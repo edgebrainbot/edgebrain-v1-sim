@@ -164,21 +164,21 @@ double LMIOptimizer::time_diff(struct timespec start, struct timespec end, int c
 
 /********************************  Rotation Matrices  *******************************/
 void LMIOptimizer::update_Rx(double roll) {
-  Rx_[0][0] = 1; Rx_[0][1] = 0; Rx_[0][2] = 0;
-  Rx_[1][0] = 0; Rx_[1][1] = cos(roll); Rx_[1][2] = -sin(roll);
-  Rx_[2][0] = 0; Rx_[2][1] = sin(roll); Rx_[2][2] = cos(roll);
+  Rx_(0, 0) = 1; Rx_(0, 1) = 0; Rx_(0, 2) = 0;
+  Rx_(1, 0) = 0; Rx_(1, 1) = cos(roll); Rx_(1, 2) = -sin(roll);
+  Rx_(2, 0) = 0; Rx_(2, 1) = sin(roll); Rx_(2, 2) = cos(roll);
 }
 
 void LMIOptimizer::update_Ry(double pitch) {
-  Ry_[0][0] = cos(pitch); Ry_[0][1] = 0; Ry_[0][2] = sin(pitch);
-  Ry_[1][0] = 0; Ry_[1][1] = 1; Ry_[1][2] = 0;
-  Ry_[2][0] = -sin(pitch); Ry_[2][1] = 0; Ry_[2][2] = cos(pitch);
+  Ry_(0, 0) = cos(pitch); Ry_(0, 1) = 0; Ry_(0, 2) = sin(pitch);
+  Ry_(1, 0) = 0; Ry_(1, 1) = 1; Ry_(1, 2) = 0;
+  Ry_(2, 0) = -sin(pitch); Ry_(2, 1) = 0; Ry_(2, 2) = cos(pitch);
 }
 
 void LMIOptimizer::update_Rz(double yaw) {
-  Rz_[0][0] = cos(yaw); Rz_[0][1] = -sin(yaw); Rz_[0][2] = 0;
-  Rz_[1][0] = sin(yaw); Rz_[1][1] = cos(yaw); Rz_[1][2] = 0;
-  Rz_[2][0] = 0; Rz_[2][1] = 0; Rz_[2][2] = 1;
+  Rz_(0, 0) = cos(yaw); Rz_(0, 1) = -sin(yaw); Rz_(0, 2) = 0;
+  Rz_(1, 0) = sin(yaw); Rz_(1, 1) = cos(yaw); Rz_(1, 2) = 0;
+  Rz_(2, 0) = 0; Rz_(2, 1) = 0; Rz_(2, 2) = 1;
 }
 
 void LMIOptimizer::update_Rzyx(double roll, double pitch, double yaw) {
@@ -189,7 +189,7 @@ void LMIOptimizer::update_Rzyx(double roll, double pitch, double yaw) {
   LMIOptimizer::update_Rz(yaw);
 
   // Combine rotations
-  Matrix3x3 temp;
+  Mat3x3 temp;
   matrix_multiply(Rz_, Ry_, temp);
   matrix_multiply(temp, Rx_, Rzyx_);
 }
@@ -198,9 +198,9 @@ void LMIOptimizer::update_Rzyx(double roll, double pitch, double yaw) {
 
 // Function to update the rotation matrices based on tracking error
 void LMIOptimizer::update_Matrix_A(){
-    cpg_update_A(71, Rzyx_[0][0] * Ts);  cpg_update_A(81, Rzyx_[0][1] * Ts);  cpg_update_A(91, Rzyx_[0][2] * Ts);
-    cpg_update_A(72, Rzyx_[1][0] * Ts);  cpg_update_A(82, Rzyx_[1][1] * Ts);  cpg_update_A(92, Rzyx_[1][2] * Ts);
-    cpg_update_A(73, Rzyx_[2][0] * Ts);  cpg_update_A(83, Rzyx_[2][1] * Ts);  cpg_update_A(93, Rzyx_[2][2] * Ts);
+    cpg_update_A(71, Rzyx_(0, 0) * Ts);  cpg_update_A(81, Rzyx_(0, 1) * Ts);  cpg_update_A(91, Rzyx_(0, 2) * Ts);
+    cpg_update_A(72, Rzyx_(1, 0) * Ts);  cpg_update_A(82, Rzyx_(1, 1) * Ts);  cpg_update_A(92, Rzyx_(1, 2) * Ts);
+    cpg_update_A(73, Rzyx_(2, 0) * Ts);  cpg_update_A(83, Rzyx_(2, 1) * Ts);  cpg_update_A(93, Rzyx_(2, 2) * Ts);
 }
 
 void LMIOptimizer::update_Matrix_B(){
@@ -244,14 +244,14 @@ void LMIOptimizer::post_processing() {
     //     [np.zeros((4, 2)), Fb2]])
     for (int i = 6; i < 10; ++i) {
         for (int j = 0; j < 4; ++j) {
-            F_kp[i-4][j+2] = -MAT_ELEMD(aF_, i, j);
+            F_kp(i-4, j+2) = -MAT_ELEMD(aF_, i, j);
         }
     }
 
     // F_kd = -aF[4:10, 4:10]
     for (int i = 4; i < 10; ++i) {
         for (int j = 4; j < 10; ++j) {
-            F_kd[i-4][j-4] = -MAT_ELEMD(aF_, i, j);
+            F_kd(i-4, j-4) = -MAT_ELEMD(aF_, i, j);
         }
     }
 }
@@ -288,12 +288,12 @@ void LMIOptimizer::test_tracking_err() {
   std::copy(data, data + 10, tracking_err);
 }
 
-void LMIOptimizer::print_matrix6x6(const Matrix6x6& mat, const char* name) {
+void LMIOptimizer::print_matrix6x6(const Mat6x6& mat, const char* name) {
   printf("Matrix %s:\n", name);
   for (int i = 0; i < 6; ++i) {
     printf("  [");
     for (int j = 0; j < 6; ++j) {
-      printf("%8.4f%s", mat[i][j], j < 5 ? ", " : "");
+      printf("%8.4f%s", mat(i, j), j < 5 ? ", " : "");
     }
     printf("]\n");
   }

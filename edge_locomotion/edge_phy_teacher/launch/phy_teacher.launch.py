@@ -17,7 +17,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'print_process_time',
-            default_value='false',
+            default_value='true',
             description='Whether to print the process time'
         ),
         Node(

@@ -3,9 +3,11 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "geometry_msgs/msg/accel.hpp"
+#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/action.hpp"
 #include "lmi_optimizer.hpp"
 #include "edge_config/safety_checker.hpp"
+#include "edge_ros_interfaces/msg_conversion.hpp"
 
 namespace edge::phy_teacher {
 
@@ -16,31 +18,34 @@ public:
   ~PhyTeacherNode() override;
 
 private:
-  void errorCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+  void errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg);
   void lmiCallback();
 
   // For phy-teacher logistics
-  std::vector<double> last_error_state_;   // Last received tracking error
-  std::vector<double> patch_center_;      // Center of the safety patch
+  edge::ros_interfaces::Vector12d  last_error_state_;         // last received error state
+  edge::ros_interfaces::Vector12d  patch_center_;             // Center of the safety patch
   bool teacher_active_ = false;            // Whether the teacher is active
-  double chi_ = 0.0;                        // Hyperparameter χ
+  double chi_ = 0.0;                       // Hyperparameter χ
   bool got_msg_ = false;
   bool print_process_time_ = false;
   lmi::LMIOptimizer lmi_optimizer_;
+
+  // For profiling
+  rclcpp::Time start_time_;   
+  rclcpp::Time end_time_;
 
   // Safety-conditions
   double roll_limit_rad_;
   double pitch_limit_rad_;
   double height_limit_;
   bool is_last_safe_ = true;
-  std::shared_ptr<edge::SafetyChecker> safety_checker_;
+  std::shared_ptr<edge::config::SafetyChecker> safety_checker_;
 
-  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_;
-  // rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Accel>::SharedPtr pub_;
+  rclcpp::Subscription<edge_msgs::msg::TrackingError>::SharedPtr sub_;
+  rclcpp::Publisher<edge_msgs::msg::Action>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr lmi_timer_;
 };
 
-}  // namespace edge
+}  // namespace edge::phy_teacher
 
 #endif  // PHY_TEACHER_NODE_HPP

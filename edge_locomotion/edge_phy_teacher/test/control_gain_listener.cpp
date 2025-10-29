@@ -26,8 +26,8 @@ private:
 
     for (int i = 0; i < 6; ++i) {
       for (int j = 0; j < 6; ++j) {
-        F_kp[i][j]  = msg->data[i * 6 + j];
-        F_kd[i][j]  = msg->data[i * 6 + j + 36];
+        F_kp(i, j)  = msg->data[i * 6 + j];
+        F_kd(i, j)  = msg->data[i * 6 + j + 36];
       }
     }
 
@@ -35,8 +35,8 @@ private:
     lmi::LMIOptimizer::print_matrix6x6(F_kd, "F_kd");
   }
 
-  lmi::Matrix6x6 F_kp;
-  lmi::Matrix6x6 F_kd;
+  lmi::Mat6x6 F_kp;
+  lmi::Mat6x6 F_kd;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subscription_;
 };
 

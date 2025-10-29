@@ -13,7 +13,7 @@ public:
   TriggerTestNode() : Node("trigger_test_node", "/edge")
   {
     // ---- Parameters ----
-    this->declare_parameter<double>("publish_rate", 10.0);   // Hz
+    this->declare_parameter<double>("publish_rate", 100.0);   // Hz
     this->declare_parameter<double>("max_roll", 0.17);         // radians
     this->declare_parameter<double>("max_pitch", 0.17);
     this->declare_parameter<double>("max_height", 0.3);       // meters

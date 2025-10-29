@@ -99,6 +99,19 @@ Digital Twin Video (In Rviz):
 
 https://github.com/user-attachments/assets/6d2f6dc1-04ef-45a7-abfa-cc55f1900507
 
+## Features
+
+There're several features that this repository shares:
+
+- Modularity:
+The system is organized into well-defined modules, each responsible for a specific functionality such as data collection, policy learning, safety supervision, and communication. This modular design enables independent development, testing, and replacement of components.
+
+- Scalability:
+The architecture supports scaling across different robot platforms and computational setups, from simulation to real-world deployment on embedded devices. Parallelized data pipelines and asynchronous execution allow efficient scaling with increasing computational resources.
+
+- Interoperability:
+The system interfaces seamlessly with ROS 2, PyTorch, and simulation frameworks (e.g., Isaac Gym / Isaac Sim), facilitating smooth integration with both existing robotics stacks and custom pipelines.
+
 ## 📝 Citation
 
 Please star or cite below papers if you find this repo helpful 🙏

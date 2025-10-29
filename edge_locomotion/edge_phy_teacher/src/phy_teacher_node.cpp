@@ -23,7 +23,7 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
     double roll_deg  = this->get_parameter("roll_limit_deg").as_double();
     double pitch_deg = this->get_parameter("pitch_limit_deg").as_double();
     double height = this->get_parameter("height_limit").as_double();
-    safety_checker_ = std::make_shared<edge::SafetyChecker>(roll_deg, pitch_deg, height);
+    safety_checker_ = std::make_shared<edge::config::SafetyChecker>(roll_deg, pitch_deg, height);
 
     RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_hz);
     RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
@@ -33,11 +33,11 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
       std::bind(&PhyTeacherNode::lmiCallback, this)
     );
 
-    sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>("tracking_error", 10,
+    sub_ = this->create_subscription<edge_msgs::msg::TrackingError>("tracking_error", 10,
       std::bind(&PhyTeacherNode::errorCallback, this, std::placeholders::_1)
     );
 
-    pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("phy_teacher_action", 10);
+    pub_ = this->create_publisher<edge_msgs::msg::Action>("phy_teacher_action", 10);
 
     RCLCPP_INFO(this->get_logger(), "Phy-Teacher Safety Controller Node initialized.");
   }
@@ -45,13 +45,13 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
 PhyTeacherNode::~PhyTeacherNode() {}
 
 // Subscription callback to receive tracking error
-void PhyTeacherNode::errorCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg) {
 
   // Update last error state
-  last_error_state_ = msg->data;
+  last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
 
-  for (int i = 0; i < 10 && i < msg->data.size(); ++i) {
-    lmi_optimizer_.tracking_err[i] = msg->data[i];
+  for (int i = 0; i < 10 && i < msg->tracking_error.size(); ++i) {
+    lmi_optimizer_.tracking_err[i] = msg->tracking_error[i];
   }
   got_msg_ = true;
 }
@@ -60,11 +60,8 @@ void PhyTeacherNode::lmiCallback() {
   // Only proceed if a new message has been received
   if (!got_msg_) return;
 
-  rclcpp::Time start_time;
-  if (print_process_time_)
-    start_time = this->now();
-
-  bool is_current_safe = safety_checker_->checkSafety(last_error_state_);
+  auto err_state_ = edge::ros_interfaces::EigenToVector(last_error_state_);
+  bool is_current_safe = safety_checker_->checkSafety(err_state_);
 
   // If teacher is not active
   if (!teacher_active_) {
@@ -73,19 +70,29 @@ void PhyTeacherNode::lmiCallback() {
       patch_center_ = chi_ * last_error_state_;
       teacher_active_ = true;
 
+      if (print_process_time_)
+        start_time_ = this->now();
+
       // Update lmi optimizer
       lmi_optimizer_.update();
+
+      if (print_process_time_) {
+        end_time_ = this->now();
+        double duration_ms = (end_time_ - start_time_).seconds() * 1000.0;
+        RCLCPP_INFO(this->get_logger(), "LMI optimization completed. Process time: %.3f ms", duration_ms);
+      }
+
       RCLCPP_WARN(this->get_logger(), "⚠️ System is UNSAFE! Phy-Teacher is Activated.");
     }
     // If the system is safe, do nothing
     else {
       RCLCPP_INFO(this->get_logger(), "System is SAFE. Phy-Teacher is Inactive.");
     }
-    // // If teacher is not active, publish zero gains
-    // std_msgs::msg::Float64MultiArray gain_msg;
-    // gain_msg.data.resize(72, 0.0);  // 6x6 F_kp and 6x6 F_kd
-    // pub_->publish(gain_msg);
-  } else {
+  } 
+  // If teacher is active
+  else {
+
+    // Check if system has returned to safe state, deactivate if so
     if (is_current_safe) {
       teacher_active_ = false;
       RCLCPP_INFO(this->get_logger(), "✅ System returned to SAFE state. Phy-Teacher is Deactivated.");
@@ -94,50 +101,38 @@ void PhyTeacherNode::lmiCallback() {
     }
   }
 
+  // Prepare and publish action message
+  edge_msgs::msg::Action teacher_action_msg;
   if (teacher_active_) {
-    // Update LMI optimizer with current tracking error
-    lmi_optimizer_.update();
+    // Compute the action according to the center of the safety patch
+    edge::ros_interfaces::Vector12d error_from_patch = last_error_state_ - patch_center_;
+    auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6);
+    auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6);
+
+    auto result = kp_term + kd_term;
+    teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(result);
   } else {
     // If teacher is not active, set gains to zero
-    for (int i = 0; i < 6; ++i) {
-      for (int j = 0; j < 6; ++j) {
-        lmi_optimizer_.F_kp[i][j] = 0.0;
-        lmi_optimizer_.F_kd[i][j] = 0.0;
-      }
-    }
+    teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(edge::ros_interfaces::Vector6d::Zero());
   }
 
+  pub_->publish(teacher_action_msg);
 
-  geometry_msgs::msg::Accel teacher_action;
-  teacher_action.linear
-
-  // Generate message
-  std_msgs::msg::Float64MultiArray gain_msg;
-  for (int i = 0; i < 6; ++i) {
-    for (int j = 0; j < 6; ++j) {
-      gain_msg.data.push_back(lmi_optimizer_.F_kp[i][j]);
-      gain_msg.data.push_back(lmi_optimizer_.F_kd[i][j]);
-    }
-  }
-
-  // Publish message
-  pub_->publish(gain_msg);
-
-  if (print_process_time_) {
-    rclcpp::Time end_time = this->now();
-    double duration_ms = (end_time - start_time).seconds() * 1000.0;
-    RCLCPP_INFO(this->get_logger(), "Published control gains. Process time: %.3f ms", duration_ms);
-  }
+  // if (print_process_time_) {
+  //   rclcpp::Time end_time = this->now();
+  //   double duration_ms = (end_time - start_time).seconds() * 1000.0;
+  //   RCLCPP_INFO(this->get_logger(), "Published control gains. Process time: %.3f ms", duration_ms);
+  // }
 
   got_msg_ = false;   // Reset flag until next message is received
 }
 
-} // namespace edge
+} // namespace edge::phy_teacher
 
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<edge::PhyTeacherNode>());
+  rclcpp::spin(std::make_shared<edge::phy_teacher::PhyTeacherNode>());
   rclcpp::shutdown();
   return 0;
 }
