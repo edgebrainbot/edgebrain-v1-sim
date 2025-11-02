@@ -75,6 +75,10 @@ class BaseBuffer(ABC):
         """
         Add one transition into the buffer.
         Typically called at every environment step.
+
+        Subclasses may extend arguments, e.g.:
+        - SoloReplayBuffer.add_transition(transition)
+        - DualReplayBuffer.add_transition(transition, action_mode)
         """
         raise NotImplementedError
 

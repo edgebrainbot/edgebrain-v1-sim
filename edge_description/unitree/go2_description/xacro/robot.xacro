@@ -19,7 +19,7 @@
     </xacro:unless>
   </xacro:if>
   <xacro:unless value="$(arg GAZEBO)">
-    <xacro:include filename="$(find go2_description)/xacro/ros2_control.xacro"/>
+    <xacro:include filename="$(find go2_description)/xacro/go2.ros2_control.xacro"/>
   </xacro:unless>
 
 

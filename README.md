@@ -71,8 +71,14 @@ Package Dependency:
 1. Clone this repository:
 
 ```bash
-git clone git@github.com:Charlescai123/edge-learning-go2.git
+git clone -b humble git@github.com:Charlescai123/edge-learning-go2.git
 ```
+
+2. Initialize and update all submodules recursively
+```bash
+git submodule  update --init --recursive
+```
+
 
 ## ⏳ To Do ##
 

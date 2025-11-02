@@ -12,9 +12,9 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
     this->declare_parameter<int>("update_rate", 30);
     this->declare_parameter<bool>("print_process_time", false);
 
-    this->declare_parameter<double>("roll_limit_deg", 30.0);
-    this->declare_parameter<double>("pitch_limit_deg", 30.0);
-    this->declare_parameter<double>("height_limit", 0.1);
+    this->declare_parameter<double>("roll_limit_deg", 0.0);
+    this->declare_parameter<double>("pitch_limit_deg", 0.0);
+    this->declare_parameter<double>("height_limit", 0.05);
 
     int update_rate_hz = this->get_parameter("update_rate").as_int();
     this->get_parameter("print_process_time", print_process_time_);
@@ -53,6 +53,8 @@ void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPt
   for (int i = 0; i < 10 && i < msg->tracking_error.size(); ++i) {
     lmi_optimizer_.tracking_err[i] = msg->tracking_error[i];
   }
+
+  RCLCPP_INFO(this->get_logger(), "Received tracking error message.");
   got_msg_ = true;
 }
 
@@ -106,8 +108,8 @@ void PhyTeacherNode::lmiCallback() {
   if (teacher_active_) {
     // Compute the action according to the center of the safety patch
     edge::ros_interfaces::Vector12d error_from_patch = last_error_state_ - patch_center_;
-    auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6);
-    auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6);
+    auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6) * 3;
+    auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6) * 3;
 
     auto result = kp_term + kd_term;
     teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(result);

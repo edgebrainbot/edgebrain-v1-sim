@@ -55,14 +55,14 @@ class LMISolver:
         #                  [-np.sin(yaw), np.cos(yaw), 0],
         #                  [np.cos(yaw) * np.tan(pitch), np.sin(yaw) * np.tan(pitch), 1]])
 
-        alpha = 0.75
+        alpha = 0.73
         hd = 1e-10
         phi = 0.15
 
         cc = 0.6
         b1 = 1 / 0.8  # yaw
         b2 = 1 / (1.0 * cc)  # height
-        b3 = 1 / 1.5  # velocity
+        b3 = 1 / 1.2  # velocity
         b4 = 1 / 1
 
         D = np.matrix([[b2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -79,7 +79,7 @@ class LMISolver:
                        [0, 0, 0, 0, 0, c2]])
 
        # Sampling period
-        T = 1 / 30  # work in 25 to 30
+        T = 1 / 25  # work in 25 to 30
 
         # System matrices (continuous-time)
         aA = np.zeros((10, 10))
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     zz[0] = -0.1
     (F_kp, F_kd), _, _ = lmisolver.patch_lmi(zz)
 
-    REPEAT = 0  # Test counts
+    REPEAT = 100  # Test counts
     solve_time = 0.0
     total_time = 0.0
 

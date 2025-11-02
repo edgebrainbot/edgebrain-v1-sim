@@ -1,7 +1,7 @@
-#include "edge_config/safety_checker.hpp"
-#include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
 #include <cmath>
+#include <rclcpp/rclcpp.hpp>
+#include "edge_config/safety_checker.hpp"
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 namespace edge::config
 {

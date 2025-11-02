@@ -1,6 +1,20 @@
-[submodule "code_conversion/cvxpy/ecvxcone"]
-	path = code_conversion/cvxpy/ecvxcone
-	url = git@github.com:Charlescai123/ecvxcone.git
-[submodule "code_conversion/cvxpy/cvxpygen"]
-	path = code_conversion/cvxpy/cvxpygen
-	url = git@github.com:Charlescai123/cvxpygen.git
+[submodule "third_party/mujoco"]
+	path = third_party/mujoco
+	url = https://github.com/google-deepmind/mujoco.git
+
+[submodule "third_party/unitree_mujoco"]
+	path = third_party/unitree_mujoco
+	url = https://github.com/unitreerobotics/unitree_mujoco.git
+
+[submodule "third_party/unitree_ros2"]
+	path = third_party/unitree_ros2
+	url = https://github.com/unitreerobotics/unitree_ros2.git
+
+[submodule "third_party/unitree_sdk2"]
+	path = third_party/unitree_sdk2
+	url = https://github.com/unitreerobotics/unitree_sdk2.git
+
+[submodule "edge_hardware/led_safety_monitor/led_safety_monitor/go2_webrtc_connect"]
+	path = edge_hardware/led_safety_monitor/led_safety_monitor/go2_webrtc_connect
+	url = https://github.com/legion1581/unitree_webrtc_connect.git
+

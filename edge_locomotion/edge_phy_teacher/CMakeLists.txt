@@ -89,6 +89,7 @@ ament_target_dependencies(
   rclcpp 
   std_msgs
   edge_config
+  edge_msgs
 )
 
 add_executable(control_gain_listener test/control_gain_listener.cpp)
