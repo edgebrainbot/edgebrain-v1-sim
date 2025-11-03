@@ -1,6 +1,6 @@
 
-#ifndef FOOTENDCTRL_H
-#define FOOTENDCTRL_H
+#ifndef FOOTSTEPPLANNER_HPP
+#define FOOTSTEPPLANNER_HPP
 #include <memory>
 #include "body_balance_controller/utils/math/mathTypes.h"
 
@@ -9,11 +9,11 @@ class Estimator;
 struct CtrlComponent;
 class QuadrupedModel;
 
-class FeetEndCalc {
+class FootstepPlanner {
 public:
-    explicit FeetEndCalc(CtrlComponent &ctrl_component);
+    explicit FootstepPlanner(CtrlComponent &ctrl_component);
 
-    ~FeetEndCalc() = default;
+    ~FootstepPlanner() = default;
 
     Vec3 calcFootPos(int index, Vec2 vxy_goal_global, double d_yaw_global, double phase);
 
@@ -29,4 +29,4 @@ private:
 };
 
 
-#endif //FOOTENDCTRL_H
+#endif //FOOTSTEPPLANNER_HPP

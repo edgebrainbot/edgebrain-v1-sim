@@ -1,9 +1,9 @@
 {
   "name": "Edge Brain Dev",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".."
-  },
+  // "build": {
+  //   "dockerfile": "Dockerfile",
+  //   "context": ".."
+  // },
   "runArgs": [
     "--network=host",
     "--runtime=nvidia",

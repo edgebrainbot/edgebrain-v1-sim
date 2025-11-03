@@ -1,9 +1,9 @@
-#include "body_balance_controller/gait/FeetEndCalc.h"
+#include "body_balance_controller/gait/FootstepPlanner.hpp"
 
 #include <body_balance_controller/control/CtrlComponent.h>
 #include <body_balance_controller/control/Estimator.h>
 
-FeetEndCalc::FeetEndCalc(CtrlComponent &ctrl_component)
+FootstepPlanner::FootstepPlanner(CtrlComponent &ctrl_component)
     : ctrl_component_(ctrl_component),
       robot_model_(ctrl_component.robot_model_),
       estimator_(ctrl_component.estimator_) {
@@ -11,21 +11,21 @@ FeetEndCalc::FeetEndCalc(CtrlComponent &ctrl_component)
     k_y_ = 0.005;
     k_yaw_ = 0.005;
     
-    // 立即初始化，使用理想站立位置（与原版一致）
+    // Calculate foot radius and initial angle
     Vec34 feet_pos_body = robot_model_->feet_pos_normal_stand_;
     for (int i(0); i < 4; ++i) {
         feet_radius_(i) = sqrt(pow(feet_pos_body(0, i), 2) + pow(feet_pos_body(1, i), 2));
         feet_init_angle_(i) = atan2(feet_pos_body(1, i), feet_pos_body(0, i));
     }
     
-    // 直接设置时序参数
+    // Set stance and swing time from wave generator
     t_stance_ = ctrl_component_.wave_generator_->get_t_stance();
     t_swing_ = ctrl_component_.wave_generator_->get_t_swing();
 }
 
 
-
-Vec3 FeetEndCalc::calcFootPos(const int index, Vec2 vxy_goal_global, const double d_yaw_global, const double phase) {
+// For swing foot, calculate the desired foot position in the global frame
+Vec3 FootstepPlanner::calcFootPos(const int index, Vec2 vxy_goal_global, const double d_yaw_global, const double phase) {
     Vec3 body_vel_global = estimator_->getVelocity();
     Vec3 next_step;
 

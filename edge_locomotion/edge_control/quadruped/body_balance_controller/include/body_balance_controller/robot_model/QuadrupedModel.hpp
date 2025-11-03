@@ -215,7 +215,7 @@ private:
     std::vector<std::string> joint_names_;
 
     // Robot parameters
-    Vec3 pcb_; // Center of mass offset
+    Vec3 com_offset_body_; // Center of mass offset in body frame
     Mat3 inertia_tensor_; // Inertia tensor
 
     /**

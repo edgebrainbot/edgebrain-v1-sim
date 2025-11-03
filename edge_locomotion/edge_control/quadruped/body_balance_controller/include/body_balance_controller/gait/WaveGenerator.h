@@ -61,6 +61,6 @@ private:
     VecInt4 switch_status_;
     WaveStatus status_past_;
 
-    rclcpp::Time start_time_;  // 启动时间
-    double accumulated_time_{0.0};  // 累积时间
+    rclcpp::Time start_time_;  // The start time of the wave generator
+    double accumulated_time_{0.0};  // The accumulated time since start_time_
 };

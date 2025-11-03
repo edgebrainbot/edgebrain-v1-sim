@@ -9,7 +9,11 @@ ARG UBUNTU_VERSION=22.04
 # ---------- Base Image ----------
 FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
-LABEL maintainer="yihao.cai@wayne.edu"
+LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
+      version="v0.0.1" \
+      description="Minimal ROS2 Humble + CUDA 12.6 + PyTorch" \
+      license="Apache"
+
 
 # ---------- System Environment ----------
 ARG USERNAME=edgebot
@@ -24,9 +28,10 @@ ENV LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget gnupg2 lsb-release ca-certificates git vim build-essential \
     cmake python3 python3-pip locales iproute2 net-tools bash-completion \
-    software-properties-common nmap lsof \
-    && locale-gen en_US.UTF-8 
-    
+    software-properties-common nmap lsof libglfw3-dev locate liburdfdom-headers-dev \
+    liburdfdom-dev \
+    && locale-gen en_US.UTF-8
+
 # ---------- [2] Add ROS2 Source --------
 # (Use keyring instead of deprecated apt-key)
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
@@ -37,7 +42,8 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
 
 # ---------- [3] Install ROS2 + Build Tools ----------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-desktop \
+    ros-${ROS_DISTRO}-desktop ros-${ROS_DISTRO}-backward-ros ros-${ROS_DISTRO}-common-interfaces \
+    ros-${ROS_DISTRO}-ros2-control ros-${ROS_DISTRO}-ros2-controllers \
     python3-rosdep python3-rosinstall python3-vcstool python3-colcon-common-extensions 
 
 # ---------- [4] Initialize rosdep ----------
@@ -55,6 +61,53 @@ COPY --chown=${USERNAME}:${USERNAME} ./ /home/${USERNAME}/ros2_ws/src/
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     cd /home/${USERNAME}/ros2_ws && colcon build --symlink-install || true
+
+# ---------- Build eigenpy ----------
+RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
+    cd eigenpy && mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    sudo make install
+
+# ---------- Build Coal ----------
+RUN sudo apt update && \
+    sudo apt install -y cmake libeigen3-dev libboost-all-dev python3-dev python3-pip && \
+    git clone --recursive https://github.com/coal-library/coal.git && \
+    cd coal && git checkout devel && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    sudo make install
+
+# ---------- Build hpp-fcl ----------
+RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git && \
+    cd hpp-fcl && git checkout v2.4.5 && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    sudo make install
+
+# ---------- Build pinocchio ----------
+RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
+    cd pinocchio && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_PYTHON_INTERFACE=ON \
+    -DBUILD_WITH_COLLISION_SUPPORT=ON \
+    -DPYTHON_EXECUTABLE=$(which python3) \
+    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    sudo make install
+
+# ---------- Set Paths ----------
+RUN echo 'export PATH=/usr/local/bin:$PATH' >> /etc/bash.bashrc
+RUN echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH' >> /etc/bash.bashrc
+RUN echo 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH' >> /etc/bash.bashrc
+RUN echo 'export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH' >> /etc/bash.bashrc
+RUN echo 'export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH' >> /etc/bash.bashrc
 
 # ---------- [8] Set Environment ----------
 ENV ROS_DISTRO=${ROS_DISTRO}

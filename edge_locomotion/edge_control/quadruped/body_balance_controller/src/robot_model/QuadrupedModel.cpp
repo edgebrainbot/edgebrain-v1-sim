@@ -33,7 +33,7 @@ QuadrupedModel::QuadrupedModel(CtrlInterfaces& ctrl_interfaces,
 
     std::cout << "=== Simplified Kinematic System Initialization Complete ===" << std::endl;
     std::cout << "Mass: " << mass_ << " kg" << std::endl;
-    std::cout << "Center of Mass Offset: [" << pcb_.transpose() << "] m" << std::endl;
+    std::cout << "Center of Mass Offset: [" << com_offset_body_.transpose() << "] m" << std::endl;
     std::cout << "Inertia Tensor Diagonal: [" << inertia_tensor_.diagonal().transpose() << "]" << std::endl;
 }
 
@@ -57,7 +57,7 @@ void QuadrupedModel::initializeFromURDF(const std::string& urdf_path)
         pinocchio::forwardKinematics(model_, data_, q_zero);
 
         // Compute overall center of mass
-        pcb_ = pinocchio::centerOfMass(model_, data_, q_zero);
+        com_offset_body_ = pinocchio::centerOfMass(model_, data_, q_zero);
         // Compute inertia tensor at center of mass using CCRBA algorithm
         const Vec12 v_zero = Vec12::Zero();
         pinocchio::ccrba(model_, data_, q_zero, v_zero);
