@@ -79,6 +79,10 @@ git clone -b humble git@github.com:Charlescai123/edge-learning-go2.git
 git submodule  update --init --recursive
 ```
 
+3. Use docker to build the image:
+```bash
+docker build -t edge-brain:humble -f ./docker/Dockerfile .
+```
 
 ## ⏳ To Do ##
 
