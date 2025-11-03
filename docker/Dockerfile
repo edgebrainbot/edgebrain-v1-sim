@@ -24,12 +24,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
+
+
 # ---------- [1] Basic Tools ----------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget gnupg2 lsb-release ca-certificates git vim build-essential \
     cmake python3 python3-pip locales iproute2 net-tools bash-completion \
     software-properties-common nmap lsof libglfw3-dev locate liburdfdom-headers-dev \
-    liburdfdom-dev \
+    liburdfdom-dev liboctomap-dev \
     && locale-gen en_US.UTF-8
 
 # ---------- [2] Add ROS2 Source --------
@@ -43,8 +45,9 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
 # ---------- [3] Install ROS2 + Build Tools ----------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-desktop ros-${ROS_DISTRO}-backward-ros ros-${ROS_DISTRO}-common-interfaces \
-    ros-${ROS_DISTRO}-ros2-control ros-${ROS_DISTRO}-ros2-controllers \
-    python3-rosdep python3-rosinstall python3-vcstool python3-colcon-common-extensions 
+    ros-${ROS_DISTRO}-ros2-control ros-${ROS_DISTRO}-ros2-controllers ros-humble-octomap \
+    ros-humble-octomap-msgs \
+    python3-rosdep python3-rosinstall python3-vcstool python3-colcon-common-extensions
 
 # ---------- [4] Initialize rosdep ----------
 RUN rosdep init || true && rosdep update
@@ -103,11 +106,13 @@ RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     sudo make install
 
 # ---------- Set Paths ----------
-RUN echo 'export PATH=/usr/local/bin:$PATH' >> /etc/bash.bashrc
-RUN echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH' >> /etc/bash.bashrc
-RUN echo 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH' >> /etc/bash.bashrc
-RUN echo 'export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH' >> /etc/bash.bashrc
-RUN echo 'export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH' >> /etc/bash.bashrc
+RUN echo '########## Add Pinocchio Library ##########' >> .bashrc
+RUN echo 'export PATH=/usr/local/bin:$PATH' >> .bashrc
+RUN echo 'export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH' >> .bashrc
+RUN echo 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH' >> .bashrc
+RUN echo 'export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH' >> .bashrc
+RUN echo 'export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH' >> .bashrc
+RUN echo '###########################################' >> .bashrc
 
 # ---------- [8] Set Environment ----------
 ENV ROS_DISTRO=${ROS_DISTRO}
