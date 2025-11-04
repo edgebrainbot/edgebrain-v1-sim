@@ -17,6 +17,9 @@ struct CtrlInterfaces;
  * 
  */
 
+namespace edge::locomotion
+{
+
 class IBaseLeggedModel
 {
 public:
@@ -64,9 +67,11 @@ public:
 
     // ========== General parameter access interface ==========
     [[nodiscard]] virtual double getRobotMass() const = 0;
-    [[nodiscard]] virtual Vec3 getPcb() const = 0;
+    [[nodiscard]] virtual Vec3 getComOffset() const = 0;
     [[nodiscard]] virtual Mat3 getRobotInertia() const = 0;
 
 protected:
     CtrlInterfaces& ctrl_interfaces_;  /// Control interface reference
 };
+
+} // namespace edge::locomotion

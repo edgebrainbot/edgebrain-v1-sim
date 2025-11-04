@@ -12,6 +12,9 @@
 
 #include "controller_common/CtrlInterfaces.h"
 
+namespace edge::locomotion
+{
+
 Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_component,
                      std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
     : ctrl_interfaces_(ctrl_interfaces),
@@ -367,3 +370,5 @@ Vec34 Estimator::getFeetVelGlobal() const
 {
     return feet_vel_global_kine_;
 }
+
+}  // namespace edge::locomotion

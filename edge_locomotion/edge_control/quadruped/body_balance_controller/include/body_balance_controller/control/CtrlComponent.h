@@ -7,10 +7,10 @@
 
 struct CtrlComponent
 {
-    std::shared_ptr<QuadrupedModel> robot_model_;
-    std::shared_ptr<Estimator> estimator_;
-    std::shared_ptr<BalanceCtrl> balance_ctrl_;
-    std::shared_ptr<WaveGenerator> wave_generator_;
+    std::shared_ptr<edge::locomotion::QuadrupedModel> robot_model_;
+    std::shared_ptr<edge::locomotion::Estimator> estimator_;
+    std::shared_ptr<edge::locomotion::BalanceCtrl> balance_ctrl_;
+    std::shared_ptr<edge::locomotion::WaveGenerator> wave_generator_;
 
     CtrlComponent() = default;
 };

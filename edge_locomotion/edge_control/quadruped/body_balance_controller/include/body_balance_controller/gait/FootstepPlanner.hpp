@@ -9,6 +9,9 @@ class Estimator;
 struct CtrlComponent;
 class QuadrupedModel;
 
+namespace edge::locomotion
+{
+
 class FootstepPlanner {
 public:
     explicit FootstepPlanner(CtrlComponent &ctrl_component);
@@ -28,5 +31,6 @@ private:
     double t_stance_{}, t_swing_{};
 };
 
+} // namespace edge::locomotion
 
 #endif //FOOTSTEPPLANNER_HPP

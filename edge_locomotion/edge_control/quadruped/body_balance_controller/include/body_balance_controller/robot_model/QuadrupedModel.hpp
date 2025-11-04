@@ -16,6 +16,9 @@ struct CtrlInterfaces;
  * - Automatically calculates geometric parameters (link lengths, hip offsets, etc.)
  */
 
+namespace edge::locomotion
+{   
+
 class QuadrupedModel : public IBaseLeggedModel
 {
 public:
@@ -117,7 +120,7 @@ public:
     /**
      * Get robot center of mass offset
      */
-    [[nodiscard]] Vec3 getPcb() const override { return pcb_; }
+    [[nodiscard]] Vec3 getComOffset() const override { return com_offset_body_; }
 
     /**
      * Get robot inertia tensor
@@ -235,3 +238,5 @@ private:
      */
     void computeStandFootPositions(const Vec12& default_stand_joint_positions);
 };
+
+} // namespace edge::locomotion

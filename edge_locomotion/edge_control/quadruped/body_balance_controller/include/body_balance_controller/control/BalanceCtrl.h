@@ -5,6 +5,9 @@
 #include "body_balance_controller/utils/math/mathTypes.h"
 class QuadrupedModel;
 
+
+namespace edge::locomotion
+{
 class BalanceCtrl
 {
 public:
@@ -37,7 +40,7 @@ private:
     Mat6 S_;
     Mat3 Ib_;
     Vec6 bd_;
-    Vec3 g_, pcb_;
+    Vec3 g_, com_offset_;
     Vec12 F_, F_prev_, g0T_;
     double mass_, alpha_, beta_, friction_ratio_;
     Eigen::MatrixXd CE_, CI_;
@@ -45,3 +48,5 @@ private:
     Eigen::Matrix<double, 6, 12> A_;
     Eigen::Matrix<double, 5, 3> friction_mat_;
 };
+
+} // namespace edge::locomotion

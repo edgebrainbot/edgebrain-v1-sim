@@ -36,7 +36,8 @@ public:
     std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
     hardware_interface::return_type prepare_command_mode_switch(
         const std::vector<std::string>& start_interfaces,
-        const std::vector<std::string>& stop_interfaces) override;  
+        const std::vector<std::string>& stop_interfaces
+    ) override;  
 
 private:
     std::vector<double> joint_kp_command_;

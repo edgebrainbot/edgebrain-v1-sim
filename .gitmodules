@@ -4,7 +4,7 @@
 
 [submodule "third_party/unitree_mujoco"]
 	path = third_party/unitree_mujoco
-	url = https://github.com/unitreerobotics/unitree_mujoco.git
+	url = https://github.com/legubiao/unitree_mujoco.git
 
 [submodule "third_party/unitree_ros2"]
 	path = third_party/unitree_ros2

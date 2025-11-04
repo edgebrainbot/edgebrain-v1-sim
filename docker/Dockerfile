@@ -11,8 +11,8 @@ FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
       version="v0.0.1" \
-      description="Minimal ROS2 Humble + CUDA 12.6 + PyTorch" \
-      license="Apache"
+      description="System for ROS2 Humble + CUDA 12.6 + PyTorch" \
+      license="Apache-2.0"
 
 
 # ---------- System Environment ----------
@@ -25,7 +25,6 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
 
-
 # ---------- [1] Basic Tools ----------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget gnupg2 lsb-release ca-certificates git vim build-essential \
@@ -33,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common nmap lsof libglfw3-dev locate liburdfdom-headers-dev \
     liburdfdom-dev liboctomap-dev \
     && locale-gen en_US.UTF-8
+
 
 # ---------- [2] Add ROS2 Source --------
 # (Use keyring instead of deprecated apt-key)
@@ -42,6 +42,7 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
     http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
     | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
+
 # ---------- [3] Install ROS2 + Build Tools ----------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-desktop ros-${ROS_DISTRO}-backward-ros ros-${ROS_DISTRO}-common-interfaces \
@@ -49,21 +50,58 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-octomap-msgs \
     python3-rosdep python3-rosinstall python3-vcstool python3-colcon-common-extensions
 
+
 # ---------- [4] Initialize rosdep ----------
 RUN rosdep init || true && rosdep update
+
 
 # ---------- [5] Create user ----------
 RUN useradd -m ${USERNAME} && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER ${USERNAME}
 WORKDIR /home/${USERNAME}
 
-# ---------- [6] Copy ROS2 Workspace ----------
-COPY --chown=${USERNAME}:${USERNAME} ./ /home/${USERNAME}/ros2_ws/src/
 
-# ---------- [7] Build ROS2 Workspace ----------
+# ---------- [6] Copy ROS2 Workspace ----------
+ARG ROS2_WS_NAME=ros2_ws
+ARG ROS2_WS_PATH=/home/${USERNAME}/${ROS2_WS_NAME}
+COPY --chown=${USERNAME}:${USERNAME} ../ ${ROS2_WS_PATH}/src/
 SHELL ["/bin/bash", "-c"]
-RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    cd /home/${USERNAME}/ros2_ws && colcon build --symlink-install || true
+
+
+# ---------- Build unitree_sdk2 ----------
+RUN cd ${ROS2_WS_PATH}/src/third_party/unitree_sdk2 && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    sudo make install
+
+
+# ---------- Build unitree_ros2 ----------
+RUN sudo apt update && \
+    sudo apt install -y ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    ros-${ROS_DISTRO}-rosidl-generator-dds-idl libyaml-cpp-dev && \
+    cd ${ROS2_WS_PATH}/src/third_party/unitree_ros2/cyclonedds_ws/src && \
+    git clone https://github.com/ros2/rmw_cyclonedds -b ${ROS_DISTRO} && \
+    git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x && \
+    cd .. && colcon build --packages-select cyclonedds && \
+    source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build
+
+
+# ---------- Build mujoco ----------
+RUN cd ${ROS2_WS_PATH}/src/third_party/mujoco && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    sudo make install
+
+
+# ---------- Build unitree_mujoco ----------
+RUN cd ${ROS2_WS_PATH}/src/third_party/unitree_mujoco/simulate && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    sudo make install
+
 
 # ---------- Build eigenpy ----------
 RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
@@ -71,6 +109,7 @@ RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
     cmake .. && \
     make -j$(nproc) && \
     sudo make install
+
 
 # ---------- Build Coal ----------
 RUN sudo apt update && \
@@ -83,6 +122,7 @@ RUN sudo apt update && \
     make -j$(nproc) && \
     sudo make install
 
+
 # ---------- Build hpp-fcl ----------
 RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git && \
     cd hpp-fcl && git checkout v2.4.5 && \
@@ -91,6 +131,7 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && \
     sudo make install
+
 
 # ---------- Build pinocchio ----------
 RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
@@ -105,6 +146,7 @@ RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     make -j$(nproc) && \
     sudo make install
 
+
 # ---------- Set Paths ----------
 RUN echo '########## Add Pinocchio Library ##########' >> .bashrc
 RUN echo 'export PATH=/usr/local/bin:$PATH' >> .bashrc
@@ -114,13 +156,21 @@ RUN echo 'export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH' 
 RUN echo 'export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH' >> .bashrc
 RUN echo '###########################################' >> .bashrc
 
-# ---------- [8] Set Environment ----------
+
+# ---------- [7] Set Environment ----------
 ENV ROS_DISTRO=${ROS_DISTRO}
 ENV ROS_DOMAIN_ID=0
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 ENV PYTHONPATH=/usr/lib/python3/dist-packages:/home/edgebot/ros2_ws/install/lib/python3.10/site-packages
+
+
+# ---------- [8] Build ROS2 Workspace ----------
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    cd ${ROS2_WS_PATH} && colcon build --packages-up-to body_balance_controller --symlink-install || true
+
 
 # ---------- [9] Entrypoint ----------
 COPY ./docker/entrypoint.sh /entrypoint.sh

@@ -19,10 +19,14 @@ namespace rclcpp_lifecycle
     class LifecycleNode;
 }
 
+namespace edge::locomotion
+{
+
 class Estimator
 {
 public:
-    explicit Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_component,
+    explicit Estimator(CtrlInterfaces& ctrl_interfaces, 
+                       CtrlComponent& ctrl_component,
                        std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node);
 
     ~Estimator() = default;
@@ -210,3 +214,5 @@ private:
     std::string odom_frame_id_;
     std::string base_frame_id_;
 };
+
+} // namespace edge::locomotion

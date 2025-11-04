@@ -3,6 +3,9 @@
 #include <body_balance_controller/control/CtrlComponent.h>
 #include <body_balance_controller/control/Estimator.h>
 
+namespace edge::locomotion
+{
+
 FootstepPlanner::FootstepPlanner(CtrlComponent &ctrl_component)
     : ctrl_component_(ctrl_component),
       robot_model_(ctrl_component.robot_model_),
@@ -52,3 +55,5 @@ Vec3 FootstepPlanner::calcFootPos(const int index, Vec2 vxy_goal_global, const d
 
     return foot_pos;
 }
+
+} // namespace edge::locomotion

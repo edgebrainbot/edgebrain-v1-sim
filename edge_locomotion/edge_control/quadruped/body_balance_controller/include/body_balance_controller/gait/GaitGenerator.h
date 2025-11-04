@@ -2,14 +2,15 @@
 
 #include <memory>
 #include "body_balance_controller/utils/math/mathTypes.h"
-
-#include "FeetEndCalc.h"
+#include "body_balance_controller/gait/FootstepPlanner.hpp"
 
 
 class Estimator;
 class WaveGenerator;
 struct CtrlComponent;
 
+namespace edge::locomotion
+{
 class GaitGenerator {
 public:
     explicit GaitGenerator(CtrlComponent &ctrl_component);
@@ -64,7 +65,7 @@ private:
 
     std::shared_ptr<WaveGenerator> &wave_generator_;
     std::shared_ptr<Estimator> &estimator_;
-    FeetEndCalc feet_end_calc_;
+    FootstepPlanner footstep_planner_;
 
     double gait_height_{};
     Vec2 vxy_goal_;
@@ -72,3 +73,5 @@ private:
     Vec34 start_p_, end_p_, ideal_p_, past_p_;
     bool first_run_;
 };
+
+} // namespace edge::locomotion

@@ -2,7 +2,7 @@
 #include "body_balance_controller/body_balance_controller.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-namespace edge::body_balance_controller
+namespace edge::locomotion::body_balance_controller
 {
     using config_type = controller_interface::interface_configuration_type;
 

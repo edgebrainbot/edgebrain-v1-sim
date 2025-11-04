@@ -8,6 +8,8 @@
 // Forward declaration
 enum class FSMStateName;
 
+namespace edge::locomotion {
+
 class WaveGenerator {
 public:
     WaveGenerator(double period, double st_ratio, const Vec4 &bias, const rclcpp::Time& start_time);
@@ -64,3 +66,5 @@ private:
     rclcpp::Time start_time_;  // The start time of the wave generator
     double accumulated_time_{0.0};  // The accumulated time since start_time_
 };
+
+} // namespace edge::locomotion

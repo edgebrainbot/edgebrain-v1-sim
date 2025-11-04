@@ -13,6 +13,9 @@
 #include <pinocchio/algorithm/centroidal.hpp>
 #include <cmath>
 
+namespace edge::locomotion
+{
+
 QuadrupedModel::QuadrupedModel(CtrlInterfaces& ctrl_interfaces,
                                const std::string& urdf_path,
                                const std::vector<std::string>& joint_names,
@@ -156,8 +159,8 @@ void QuadrupedModel::initializeGeometryParameters()
                     link_lengths_[2] = link_lengths_[1];
                 }
 
-                std::cout << "找到第一条腿末端Frame: " << model_.frames[end_frame_id].name
-                    << ", 小腿长度: " << knee_length << std::endl;
+                std::cout << "Find the end effector Frame: " << model_.frames[end_frame_id].name
+                    << ", Calf length: " << knee_length << std::endl;
             }
         }
         catch (const std::exception& e)
@@ -340,15 +343,12 @@ Vec3 QuadrupedModel::calcLegFK(const Vec3& q_leg, int leg_index) const
 
 Mat3 QuadrupedModel::calcLegJacobian(const Vec3& q_leg, int leg_index) const
 {
-    // 基于Unitree原版的解析雅可比矩阵算法
-
-    // 确定侧向符号
+    // Analytical Jacobian based on Unitree formula
     int side_sign = leg_index == 1 || leg_index == 3 ? 1 : -1;
     double l1 = side_sign * link_lengths_[0];
     double l2 = -link_lengths_[1];
     double l3 = -link_lengths_[2];
 
-    // 三角函数
     double s1 = std::sin(q_leg(0)), c1 = std::cos(q_leg(0));
     double s2 = std::sin(q_leg(1)), c2 = std::cos(q_leg(1));
     double s3 = std::sin(q_leg(2)), c3 = std::cos(q_leg(2));
@@ -473,3 +473,5 @@ double QuadrupedModel::q3_ik(double b3z, double b4z, double b) const
     q3 = -(M_PI - q3); //0~180
     return q3;
 }
+
+} // namespace edge::locomotion

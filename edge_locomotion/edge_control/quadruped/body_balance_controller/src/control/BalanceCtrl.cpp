@@ -4,11 +4,13 @@
 #include "body_balance_controller/utils/math/mathTools.h"
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
+namespace edge::locomotion
+{
 
 BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
 
     mass_ = robot->getRobotMass();
-    pcb_ = robot->getPcb();
+    com_offset_ = robot->getComOffset();
     Ib_ = robot->getRobotInertia();
     g_ << 0, 0, -9.81;
 
@@ -53,7 +55,7 @@ void BalanceCtrl::calMatrixA(const Vec34& feet_pos_2_body, const RotMat& rotM) {
     
     for (int i = 0; i < 4; ++i) {
         A_.block(0, 3 * i, 3, 3) = I3();
-        A_.block(3, 3 * i, 3, 3) = skew(Vec3(feet_pos_2_body.col(i)) - rotM * pcb_);
+        A_.block(3, 3 * i, 3, 3) = skew(Vec3(feet_pos_2_body.col(i)) - rotM * com_offset_);
     }
 }
 
@@ -145,3 +147,5 @@ void BalanceCtrl::solveQP() {
         F_[i] = x[i];
     }
 }
+
+}  // namespace edge::locomotion

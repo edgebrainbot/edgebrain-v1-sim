@@ -3,6 +3,9 @@
 
 #include <iostream>
 
+namespace edge::locomotion
+{
+
 WaveGenerator::WaveGenerator(const double period, const double st_ratio, const Vec4& bias,
                              const rclcpp::Time& start_time) : start_time_(start_time)
 {
@@ -35,7 +38,7 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
 
 auto WaveGenerator::update(const rclcpp::Time& time) -> void
 {
-    // 计算累积时间
+    // Accumulate time since start
     accumulated_time_ = (time - start_time_).seconds();
 
     calcWave(phase_, contact_, status_);
@@ -136,3 +139,5 @@ void WaveGenerator::setStatusFromFSM(FSMStateName fsm_state)
         break;
     }
 }
+
+} // namespace edge::locomotion

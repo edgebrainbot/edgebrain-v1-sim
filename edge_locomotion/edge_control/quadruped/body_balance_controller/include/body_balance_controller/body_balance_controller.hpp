@@ -17,7 +17,7 @@
 #include <controller_common/common/mathTypes.h>
 
 
-namespace edge::body_balance_controller
+namespace edge::locomotion::body_balance_controller
 {
     struct FSMStateList
     {
@@ -205,4 +205,4 @@ namespace edge::body_balance_controller
                           0, 0, 0, -0.098, -0.0121, 5.3879).finished() * 5;
         bool gain_update_{false};
     };
-}
+} // namespace edge::locomotion::body_balance_controller

@@ -53,7 +53,7 @@ add_library(${PROJECT_NAME} SHARED
   src/utils/quadProgpp/QuadProg++.cc
 
   src/gait/WaveGenerator.cpp
-  src/gait/FeetEndCalc.cpp
+  src/gait/FootstepPlanner.cpp
   src/gait/GaitGenerator.cpp
 )
 
