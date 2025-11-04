@@ -61,21 +61,22 @@ private:
     };
 
 
-    void initLowCmd();
+    void InitLowCmd();
 
-    void lowStateMessageHandle(const void *messages);
+    void lowStateMessageHandler(const void *messages);
 
-    void highStateMessageHandle(const void *messages);
+    void highStateMessageHandler(const void *messages);
 
-    void remoteWirelessHandle(const void *messages);
+    void remoteWirelessHandler(const void *messages);
 
     unitree_go::msg::dds_::LowCmd_ low_cmd_{}; // default init
     unitree_go::msg::dds_::LowState_ low_state_{}; // default init
     unitree_go::msg::dds_::SportModeState_ high_state_{}; // default init
 
-    std::string network_interface_ = "lo";
     int domain_ = 1;
     bool show_foot_force_ = false;
+    std::string network_interface_ = "lo";
+    std::string logger_name_ = "Go2 Hardware";
 
     /*publisher*/
     unitree::robot::ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> low_cmd_publisher_;
