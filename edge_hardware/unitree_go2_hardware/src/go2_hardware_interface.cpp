@@ -1,5 +1,9 @@
 #include "unitree_go2_hardware/go2_hardware_interface.hpp"
 
+#define TOPIC_LOWCMD "rt/lowcmd"
+#define TOPIC_LOWSTATE "rt/lowstate"
+#define TOPIC_HIGHSTATE "rt/sportmodestate"
+
 namespace edge::go2_hardware_interface
 {
 
@@ -13,43 +17,45 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(const hardware_
     }
     info_ = info;
 
+    // Populate joint_modes map
     for (const auto& joint : info_.joints)
     {
         for (const auto& interface : joint.state_interfaces)
         {
-            joint_interfaces[interface.name].push_back(joint.name);
+            joint_modes[interface.name].push_back(joint.name);
         }
     }
 
-
+    // Network interface parameters
     if (const auto network_interface_param = info.hardware_parameters.find("network_interface"); network_interface_param
         != info.hardware_parameters.end())
     {
         network_interface_ = network_interface_param->second;
     }
+
+    // Domain parameter
     if (const auto domain_param = info.hardware_parameters.find("domain"); domain_param != info.hardware_parameters.
         end())
     {
         domain_ = std::stoi(domain_param->second);
     }
+
+    // Show foot force parameter
     if (const auto show_foot_force_param = info.hardware_parameters.find("show_foot_force"); show_foot_force_param !=
         info.hardware_parameters.end())
     {
         show_foot_force_ = show_foot_force_param->second == "true";
     }
 
+    // Initialize communication channels
     RCLCPP_INFO(rclcpp::get_logger("unitree_hardware"), " network_interface: %s, domain: %d", network_interface_.c_str(), domain_);
-    ChannelFactory::Instance()->Init(domain_, network_interface_);
+    unitree::robot::ChannelFactory::Instance()->Init(domain_, network_interface_);
 
-    low_cmd_publisher_ =
-        std::make_shared<ChannelPublisher<unitree_go::msg::dds_::LowCmd_>>(
-            TOPIC_LOWCMD);
+    low_cmd_publisher_ = std::make_shared<unitree::robot::ChannelPublisher<unitree_go::msg::dds_::LowCmd_>>(TOPIC_LOWCMD);
     low_cmd_publisher_->InitChannel();
 
-    lows_tate_subscriber_ =
-        std::make_shared<ChannelSubscriber<unitree_go::msg::dds_::LowState_>>(
-            TOPIC_LOWSTATE);
-    lows_tate_subscriber_->InitChannel(
+    low_state_subscriber_ = std::make_shared<unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::LowState_>>(TOPIC_LOWSTATE);
+    low_state_subscriber_->InitChannel(
         [this](auto&& PH1)
         {
             lowStateMessageHandle(std::forward<decltype(PH1)>(PH1));

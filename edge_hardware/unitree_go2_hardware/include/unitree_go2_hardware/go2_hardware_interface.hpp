@@ -1,6 +1,7 @@
 #ifndef GO2_HARDWARE_INTERFACE_HPP
 #define GO2_HARDWARE_INTERFACE_HPP
 
+#include "rclcpp.hpp"
 #include "hardware_interface/system_interface.hpp"
 #include <unitree/idl/go2/WirelessController_.hpp>
 #include <unitree/idl/go2/LowState_.hpp>
@@ -53,7 +54,7 @@ private:
     std::vector<double> foot_force_;
     std::vector<double> high_states_;
 
-    std::unordered_map<std::string, std::vector<std::string> > joint_mode = {
+    std::unordered_map<std::string, std::vector<std::string> > joint_modes= {
         {"position", {}},
         {"velocity", {}},
         {"effort", {}}
