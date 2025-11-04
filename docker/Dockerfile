@@ -99,8 +99,7 @@ RUN cd ${ROS2_WS_PATH}/src/third_party/mujoco && \
 RUN cd ${ROS2_WS_PATH}/src/third_party/unitree_mujoco/simulate && \
     mkdir build && cd build && \
     cmake .. && \
-    make -j$(nproc) && \
-    sudo make install
+    make -j$(nproc)
 
 
 # ---------- Build eigenpy ----------

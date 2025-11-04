@@ -28,7 +28,6 @@ public:
 
     // Override necessary functions from HardwareInterface
     hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
-    
     hardware_interface::return_type read(const rclcpp::Time& time, const rclcpp::Duration& period) override;
     hardware_interface::return_type write(const rclcpp::Time& time, const rclcpp::Duration& period) override;
     
