@@ -1,4 +1,4 @@
-#include "crc32.hpp"
+#include "unitree_go2_hardware/crc32.hpp"
 #include "unitree_go2_hardware/go2_hardware_interface.hpp"
 
 #define TOPIC_LOWCMD "rt/lowcmd"
@@ -37,16 +37,16 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
     joint_state_velocity_.resize(num_joints, 0.0);
     joint_state_effort_.resize(num_joints, 0.0);
 
-    imu_states_.resize(10, 0.0); // IMU: orientation (4) + angular velocity (3) + linear acceleration (3)
-    foot_force_.resize(4, 0.0); // foot force for 4 legs
-    high_states_.resize(10, 0.0); // high level states
+    imu_states_.resize(10, 0.0);    // IMU: orientation (4) + angular velocity (3) + linear acceleration (3)
+    foot_force_.resize(4, 0.0);     // foot force for 4 legs
+    odom_states_.resize(6, 0.0);    // odometry states
 
-    // Populate joint_modes map
+    // Populate joint_interface_map
     for (const auto& joint : info_.joints)
     {
         for (const auto& interface : joint.state_interfaces)
         {
-            joint_modes[interface.name].push_back(joint.name);
+            joint_interface_map_[interface.name].push_back(joint.name);
         }
     }
 
@@ -139,28 +139,28 @@ hardware_interface::return_type Go2HardwareInterface::read(
     // joint states
     for (int i = 0; i < info_.joints.size(); ++i)
     {
-        joint_state_position_[i] = low_state_.motor_state()[i].q();
-        joint_state_velocity_[i] = low_state_.motor_state()[i].dq();
-        joint_state_effort_[i] = low_state_.motor_state()[i].tau_est();
+        joint_state_position_[i] = robot_low_state_.motor_state()[i].q();
+        joint_state_velocity_[i] = robot_low_state_.motor_state()[i].dq();
+        joint_state_effort_[i] = robot_low_state_.motor_state()[i].tau_est();
     }
 
     // imu states
-    imu_states_[0] = low_state_.imu_state().quaternion()[0]; // w
-    imu_states_[1] = low_state_.imu_state().quaternion()[1]; // x
-    imu_states_[2] = low_state_.imu_state().quaternion()[2]; // y
-    imu_states_[3] = low_state_.imu_state().quaternion()[3]; // z
-    imu_states_[4] = low_state_.imu_state().gyroscope()[0];
-    imu_states_[5] = low_state_.imu_state().gyroscope()[1];
-    imu_states_[6] = low_state_.imu_state().gyroscope()[2];
-    imu_states_[7] = low_state_.imu_state().accelerometer()[0];
-    imu_states_[8] = low_state_.imu_state().accelerometer()[1];
-    imu_states_[9] = low_state_.imu_state().accelerometer()[2];
+    imu_states_[0] = robot_low_state_.imu_state().quaternion()[0]; // w
+    imu_states_[1] = robot_low_state_.imu_state().quaternion()[1]; // x
+    imu_states_[2] = robot_low_state_.imu_state().quaternion()[2]; // y
+    imu_states_[3] = robot_low_state_.imu_state().quaternion()[3]; // z
+    imu_states_[4] = robot_low_state_.imu_state().gyroscope()[0];
+    imu_states_[5] = robot_low_state_.imu_state().gyroscope()[1];
+    imu_states_[6] = robot_low_state_.imu_state().gyroscope()[2];
+    imu_states_[7] = robot_low_state_.imu_state().accelerometer()[0];
+    imu_states_[8] = robot_low_state_.imu_state().accelerometer()[1];
+    imu_states_[9] = robot_low_state_.imu_state().accelerometer()[2];
 
     // contact states
-    foot_force_[0] = low_state_.foot_force()[0];
-    foot_force_[1] = low_state_.foot_force()[1];
-    foot_force_[2] = low_state_.foot_force()[2];
-    foot_force_[3] = low_state_.foot_force()[3];
+    foot_force_[0] = robot_low_state_.foot_force()[0];
+    foot_force_[1] = robot_low_state_.foot_force()[1];
+    foot_force_[2] = robot_low_state_.foot_force()[2];
+    foot_force_[3] = robot_low_state_.foot_force()[3];
 
     if (show_foot_force_)
     {
@@ -168,13 +168,13 @@ hardware_interface::return_type Go2HardwareInterface::read(
                     foot_force_[0], foot_force_[1], foot_force_[2], foot_force_[3]);
     }
 
-    // high states
-    high_states_[0] = high_state_.position()[0];
-    high_states_[1] = high_state_.position()[1];
-    high_states_[2] = high_state_.position()[2];
-    high_states_[3] = high_state_.velocity()[0];
-    high_states_[4] = high_state_.velocity()[1];
-    high_states_[5] = high_state_.velocity()[2];
+    // odometry states
+    odom_states_[0] = robot_high_state_.position()[0];        // px
+    odom_states_[1] = robot_high_state_.position()[1];        // py
+    odom_states_[2] = robot_high_state_.position()[2];        // pz
+    odom_states_[3] = robot_high_state_.velocity()[0];        // vx
+    odom_states_[4] = robot_high_state_.velocity()[1];        // vy
+    odom_states_[5] = robot_high_state_.velocity()[2];        // vz
 
     // RCLCPP_INFO(get_logger(), "high state: %f %f %f %f %f %f", high_states_[0], high_states_[1], high_states_[2],
     //             high_states_[3], high_states_[4], high_states_[5]);
@@ -194,17 +194,17 @@ hardware_interface::return_type Go2HardwareInterface::write(
     // send motor commands to low-level controller
     for (int i(0); i < 12; ++i)
     {
-        low_cmd_.motor_cmd()[i].mode() = 0x01;
-        low_cmd_.motor_cmd()[i].q() = static_cast<float>(joint_position_command_[i]);
-        low_cmd_.motor_cmd()[i].dq() = static_cast<float>(joint_velocity_command_[i]);
-        low_cmd_.motor_cmd()[i].kp() = static_cast<float>(joint_kp_command_[i]);
-        low_cmd_.motor_cmd()[i].kd() = static_cast<float>(joint_kd_command_[i]);
-        low_cmd_.motor_cmd()[i].tau() = static_cast<float>(joint_torque_command_[i]);
+        robot_low_cmd_.motor_cmd()[i].mode() = 0x01;
+        robot_low_cmd_.motor_cmd()[i].q() = static_cast<float>(joint_position_command_[i]);
+        robot_low_cmd_.motor_cmd()[i].dq() = static_cast<float>(joint_velocity_command_[i]);
+        robot_low_cmd_.motor_cmd()[i].kp() = static_cast<float>(joint_kp_command_[i]);
+        robot_low_cmd_.motor_cmd()[i].kd() = static_cast<float>(joint_kd_command_[i]);
+        robot_low_cmd_.motor_cmd()[i].tau() = static_cast<float>(joint_torque_command_[i]);
     }
 
-    low_cmd_.crc() = crc32_core(reinterpret_cast<uint32_t*>(&low_cmd_),
+    robot_low_cmd_.crc() = crc32_core(reinterpret_cast<uint32_t*>(&robot_low_cmd_),
                                 (sizeof(unitree_go::msg::dds_::LowCmd_) >> 2) - 1);
-    low_cmd_publisher_->Write(low_cmd_);
+    low_cmd_publisher_->Write(robot_low_cmd_);
     return hardware_interface::return_type::OK;
 }
 
@@ -212,33 +212,33 @@ hardware_interface::return_type Go2HardwareInterface::write(
 // From Unitree GO2 SDK Demo
 void Go2HardwareInterface::lowStateMessageHandler(const void* messages)
 {
-    low_state_ = *static_cast<const unitree_go::msg::dds_::LowState_*>(messages);
+    robot_low_state_ = *static_cast<const unitree_go::msg::dds_::LowState_*>(messages);
 }
 
 // From Unitree GO2 SDK Demo
 void Go2HardwareInterface::highStateMessageHandler(const void* messages)
 {
-    high_state_ = *static_cast<const unitree_go::msg::dds_::SportModeState_*>(messages);
+    robot_high_state_ = *static_cast<const unitree_go::msg::dds_::SportModeState_*>(messages);
 }
 
 
 // From Unitree GO2 SDK Demo
 void Go2HardwareInterface::InitLowCmd()
 {
-    low_cmd_.head()[0] = 0xFE;
-    low_cmd_.head()[1] = 0xEF;
-    low_cmd_.level_flag() = 0xFF;
-    low_cmd_.gpio() = 0;
+    robot_low_cmd_.head()[0] = 0xFE;
+    robot_low_cmd_.head()[1] = 0xEF;
+    robot_low_cmd_.level_flag() = 0xFF;
+    robot_low_cmd_.gpio() = 0;
 
     for (int i = 0; i < 20; i++)
     {
         // motor switch to servo (PMSM) mode
-        low_cmd_.motor_cmd()[i].mode() = 0x01; 
-        low_cmd_.motor_cmd()[i].q() = 0;
-        low_cmd_.motor_cmd()[i].kp() = 0;
-        low_cmd_.motor_cmd()[i].dq() = 0;
-        low_cmd_.motor_cmd()[i].kd() = 0;
-        low_cmd_.motor_cmd()[i].tau() = 0;
+        robot_low_cmd_.motor_cmd()[i].mode() = 0x01;
+        robot_low_cmd_.motor_cmd()[i].q() = 0;
+        robot_low_cmd_.motor_cmd()[i].kp() = 0;
+        robot_low_cmd_.motor_cmd()[i].dq() = 0;
+        robot_low_cmd_.motor_cmd()[i].kd() = 0;
+        robot_low_cmd_.motor_cmd()[i].tau() = 0;
     }
 }
 

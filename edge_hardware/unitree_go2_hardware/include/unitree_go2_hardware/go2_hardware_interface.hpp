@@ -1,8 +1,8 @@
 #ifndef GO2_HARDWARE_INTERFACE_HPP
 #define GO2_HARDWARE_INTERFACE_HPP
 
-#include "rclcpp.hpp"
-#include "hardware_interface/system_interface.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <hardware_interface/system_interface.hpp>
 #include <unitree/idl/go2/WirelessController_.hpp>
 #include <unitree/idl/go2/LowState_.hpp>
 #include <unitree/idl/go2/LowCmd_.hpp>
@@ -52,9 +52,9 @@ private:
 
     std::vector<double> imu_states_;
     std::vector<double> foot_force_;
-    std::vector<double> high_states_;
+    std::vector<double> odom_states_;
 
-    std::unordered_map<std::string, std::vector<std::string> > joint_modes= {
+    std::unordered_map<std::string, std::vector<std::string> > joint_interface_map_ = {
         {"position", {}},
         {"velocity", {}},
         {"effort", {}}
@@ -69,14 +69,14 @@ private:
 
     void remoteWirelessHandler(const void *messages);
 
-    unitree_go::msg::dds_::LowCmd_ low_cmd_{}; // default init
-    unitree_go::msg::dds_::LowState_ low_state_{}; // default init
-    unitree_go::msg::dds_::SportModeState_ high_state_{}; // default init
+    unitree_go::msg::dds_::LowCmd_ robot_low_cmd_{}; // default init
+    unitree_go::msg::dds_::LowState_ robot_low_state_{}; // default init
+    unitree_go::msg::dds_::SportModeState_ robot_high_state_{}; // default init
 
     int domain_ = 1;
     bool show_foot_force_ = false;
     std::string network_interface_ = "lo";
-    std::string logger_name_ = "Go2 Hardware";
+    std::string logger_name_ = "Unitree Go2 Hardware";
 
     /*publisher*/
     unitree::robot::ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> low_cmd_publisher_;
