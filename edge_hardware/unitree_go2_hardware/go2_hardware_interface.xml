@@ -1,5 +1,5 @@
 <library path="unitree_go2_hardware">
-  <class name="edge/go2_hardware_interface/Go2HardwareInterface"
+  <class name="unitree_go2_hardware/Go2HardwareInterface"
          type="edge::go2_hardware_interface::Go2HardwareInterface"
          base_class_type="hardware_interface::SystemInterface">
     <description>

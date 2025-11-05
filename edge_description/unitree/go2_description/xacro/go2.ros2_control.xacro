@@ -4,7 +4,7 @@
 	<ros2_control name="UnitreeSystem" type="system">
 
 		<hardware>
-			<plugin>unitree_go2_hardware/edge/Go2HardwareInterface</plugin>
+			<plugin>unitree_go2_hardware/Go2HardwareInterface</plugin>
 			<!-- <param name="domain">0</param> 
 		    <param name="network_interface">eno1</param>
 			<param name="show_foot_force">true</param> -->

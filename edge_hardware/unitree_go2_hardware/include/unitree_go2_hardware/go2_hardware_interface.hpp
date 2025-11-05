@@ -16,16 +16,14 @@ namespace edge::go2_hardware_interface
 class Go2HardwareInterface final : public hardware_interface::SystemInterface
 {
 public:
-    Go2HardwareInterface();
-    ~Go2HardwareInterface();
 
     // Override Node LifecycleNodeInterface methods
     hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State& previous_state) override;
     hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State& previous_state) override;
-    hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
-    hardware_interface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State& previous_state) override;
-    hardware_interface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State& previous_state) override;
-    hardware_interface::CallbackReturn on_error(const rclcpp_lifecycle::State& previous_state) override;
+    // hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
+    // hardware_interface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State& previous_state) override;
+    // hardware_interface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State& previous_state) override;
+    // hardware_interface::CallbackReturn on_error(const rclcpp_lifecycle::State& previous_state) override;
 
     // Override necessary functions from HardwareInterface
     hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
@@ -34,10 +32,10 @@ public:
     
     std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
     std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
-    hardware_interface::return_type prepare_command_mode_switch(
-        const std::vector<std::string>& start_interfaces,
-        const std::vector<std::string>& stop_interfaces
-    ) override;  
+    // hardware_interface::return_type prepare_command_mode_switch(
+    //     const std::vector<std::string>& start_interfaces,
+    //     const std::vector<std::string>& stop_interfaces
+    // ) override;  
 
 private:
     std::vector<double> joint_kp_command_;
