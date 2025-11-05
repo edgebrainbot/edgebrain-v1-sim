@@ -37,7 +37,8 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
     joint_state_velocity_.resize(num_joints, 0.0);
     joint_state_effort_.resize(num_joints, 0.0);
 
-    imu_states_.resize(10, 0.0);    // IMU: orientation (4) + angular velocity (3) + linear acceleration (3)
+    imu_states_.resize(14, 0.0);    // IMU: orientation (4) + angular velocity (3) + linear acceleration (3)
+                                    //      + rpy (3) + temperature (1)
     foot_force_.resize(4, 0.0);     // foot force for 4 legs
     odom_states_.resize(6, 0.0);    // odometry states
 
@@ -238,16 +239,20 @@ hardware_interface::return_type Go2HardwareInterface::read(
     }
 
     // imu states
-    imu_states_[0] = robot_low_state_.imu_state().quaternion()[0]; // w
-    imu_states_[1] = robot_low_state_.imu_state().quaternion()[1]; // x
-    imu_states_[2] = robot_low_state_.imu_state().quaternion()[2]; // y
-    imu_states_[3] = robot_low_state_.imu_state().quaternion()[3]; // z
-    imu_states_[4] = robot_low_state_.imu_state().gyroscope()[0];
-    imu_states_[5] = robot_low_state_.imu_state().gyroscope()[1];
-    imu_states_[6] = robot_low_state_.imu_state().gyroscope()[2];
-    imu_states_[7] = robot_low_state_.imu_state().accelerometer()[0];
-    imu_states_[8] = robot_low_state_.imu_state().accelerometer()[1];
-    imu_states_[9] = robot_low_state_.imu_state().accelerometer()[2];
+    imu_states_[0] = robot_low_state_.imu_state().quaternion()[0];      // w
+    imu_states_[1] = robot_low_state_.imu_state().quaternion()[1];      // x
+    imu_states_[2] = robot_low_state_.imu_state().quaternion()[2];      // y
+    imu_states_[3] = robot_low_state_.imu_state().quaternion()[3];      // z
+    imu_states_[4] = robot_low_state_.imu_state().gyroscope()[0];       // wx
+    imu_states_[5] = robot_low_state_.imu_state().gyroscope()[1];       // wy  
+    imu_states_[6] = robot_low_state_.imu_state().gyroscope()[2];       // wz
+    imu_states_[7] = robot_low_state_.imu_state().accelerometer()[0];   // ax
+    imu_states_[8] = robot_low_state_.imu_state().accelerometer()[1];   // ay
+    imu_states_[9] = robot_low_state_.imu_state().accelerometer()[2];   // az
+    imu_states_[10] = robot_low_state_.imu_state().rpy()[0];            // roll
+    imu_states_[11] = robot_low_state_.imu_state().rpy()[1];            // pitch
+    imu_states_[12] = robot_low_state_.imu_state().rpy()[2];            // yaw
+    imu_states_[13] = robot_low_state_.imu_state().temperature();       // temperature
 
     // contact states
     foot_force_[0] = robot_low_state_.foot_force()[0];

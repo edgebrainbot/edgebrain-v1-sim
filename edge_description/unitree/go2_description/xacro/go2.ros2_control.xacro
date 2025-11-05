@@ -4,7 +4,7 @@
 	<ros2_control name="UnitreeSystem" type="system">
 
 		<hardware>
-			<plugin>hardware_unitree_mujoco/HardwareUnitree</plugin>
+			<plugin>unitree_go2_hardware/edge/Go2HardwareInterface</plugin>
 			<!-- <param name="domain">0</param> 
 		    <param name="network_interface">eno1</param>
 			<param name="show_foot_force">true</param> -->
@@ -165,6 +165,10 @@
 			<state_interface name="linear_acceleration.x"/>
 			<state_interface name="linear_acceleration.y"/>
 			<state_interface name="linear_acceleration.z"/>
+			<state_interface name="roll"/>
+			<state_interface name="pitch"/>
+			<state_interface name="yaw"/>
+			<state_interface name="temperature"/>
 		</sensor>
 
 		<sensor name="foot_force">
