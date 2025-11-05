@@ -13,14 +13,14 @@ from edge_msgs.msg import Experience, TrackingError, Action
 from edge_drl_student.memory.buffers.replay_buffer.solo_replay_buffer import SoloReplayBuffer
 
 class SimplePolicy(nn.Module):
-    def __init__(self, obs_dim=12, act_dim=4):
+    def __init__(self, obs_dim=12, act_dim=6):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(obs_dim, 64),
+            nn.Linear(obs_dim, 128),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(64, act_dim),
+            nn.Linear(128, act_dim),
             nn.Tanh(),
         )
 
@@ -40,15 +40,18 @@ class DRLStudentNode(Node):
         self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-3)
         self.loss_fn = nn.MSELoss()
 
-        self.obs_dim, self.act_dim = 12, 6
+        self.obs_dim = 12
+        self.act_dim = 6
         self.buffer = SoloReplayBuffer(buffer_size=int(1e5), obs_dim=self.obs_dim, action_dim=self.act_dim, device='cpu')
         self.batch_size = 32
         self.last_reload_time = 0.0
+        self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
 
         # ros2 topics
         self.action_pub = self.create_publisher(Action, 'drl_student_action', 10)
         # self.create_subscription(TrackingError, '/tracking_error', self.tracking_error_callback, 10)
         self.create_subscription(Experience, 'transition', self.transition_callback, 10)
+        self.create_subscription(TrackingError, 'tracking_error', self.tracking_error_callback, 10)
 
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
@@ -59,7 +62,14 @@ class DRLStudentNode(Node):
     def action_loop(self):
         
         msg = Action()
-        msg.action = np.array([0.0]*self.act_dim, dtype=np.float64)
+        # msg.action = np.array([0.0]*self.act_dim, dtype=np.float64)
+        
+        msg.action = self.policy(torch.tensor(
+            np.array(self.tracking_error_.tracking_error, dtype=np.float32),
+            dtype=torch.float32
+        )).detach().numpy().astype(np.float64)
+
+        
         self.action_pub.publish(msg)
 
         # self.get_logger().info(f"[Action] Published action (r={msg.action:.3f})")
@@ -73,6 +83,10 @@ class DRLStudentNode(Node):
             done=msg.done
         )
         self.buffer.add_transition(t)
+        
+    def tracking_error_callback(self, msg: TrackingError):
+        self.tracking_error_ = msg
+        self.get_logger().info(f"[TrackingError] Received tracking error: {msg}")
 
     def learn_step(self):
         if len(self.buffer) < self.batch_size:

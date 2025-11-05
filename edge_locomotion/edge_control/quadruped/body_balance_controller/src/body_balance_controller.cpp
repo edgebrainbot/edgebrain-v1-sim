@@ -197,7 +197,7 @@ namespace edge::locomotion::body_balance_controller
         
         try {
             action_sub_ = get_node()->create_subscription<edge_msgs::msg::Action>(
-                "edge/phy_teacher_action", 10,
+                "edge/terminal_action", 10,
                 std::bind(&BodyBalanceController::actionCallback, this, std::placeholders::_1));
 
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(

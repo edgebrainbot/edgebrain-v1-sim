@@ -9,7 +9,7 @@ namespace edge::trigger {
 TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
 : Node("trigger_node", options)
 {
-  RCLCPP_INFO(this->get_logger(), "🧠 TriggerNode initialized.");
+  RCLCPP_INFO(this->get_logger(), "🔘 TriggerNode initialized.");
 
   // --- Declare parameters ---
   this->declare_parameter<double>("update_rate", 50.0);
@@ -21,6 +21,9 @@ TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
   double pitch_deg = this->get_parameter("pitch_limit_deg").as_double();
   double height = this->get_parameter("height_limit").as_double();
   update_rate_hz_ = this->get_parameter("update_rate").as_double();
+
+  RCLCPP_INFO(this->get_logger(), "🔘 Initializing SafetyChecker with roll=%.1f°, pitch=%.1f°, height=%.2f",
+              roll_deg, pitch_deg, height);
 
   safety_checker_ = std::make_shared<edge::config::SafetyChecker>(roll_deg, pitch_deg, height);
 
@@ -47,9 +50,9 @@ TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
   auto period = std::chrono::duration<double>(1.0 / update_rate_hz_);
   timer_ = this->create_wall_timer(period, std::bind(&TriggerNode::updateLoop, this));
 
-  RCLCPP_INFO(this->get_logger(), "✅ Parameters loaded: roll=%.1f°, pitch=%.1f°, height=%.2f",
-              roll_limit_rad_ * 180.0 / M_PI, pitch_limit_rad_ * 180.0 / M_PI,
-              height_limit_);
+  // RCLCPP_INFO(this->get_logger(), "✅ Parameters loaded: roll=%.1f°, pitch=%.1f°, height=%.2f",
+  //             roll_limit_rad_ * 180.0 / M_PI, pitch_limit_rad_ * 180.0 / M_PI,
+  //             height_limit_);
 }
 
 void TriggerNode::studentCallback(const edge_msgs::msg::Action::SharedPtr msg)

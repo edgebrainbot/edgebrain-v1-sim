@@ -1,0 +1,9 @@
+sac:
+  learning_rate_actor: 0.0003
+  learning_rate_critic: 0.0003
+  gamma: 0.99
+  tau: 0.005
+  buffer_size: 100000
+  batch_size: 128
+  noise_std: 0.1
+  device: "cuda"

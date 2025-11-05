@@ -9,11 +9,16 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 # Build library
 add_library(${PROJECT_NAME} SHARED
   src/safety_checker.cpp
 )
+
+add_executable(virtual_safety_indicator_node src/virtual_safety_indicator_node.cpp)
+ament_target_dependencies(virtual_safety_indicator_node rclcpp std_msgs visualization_msgs)
+
 
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -38,6 +43,10 @@ install(DIRECTORY include/
 
 install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(TARGETS virtual_safety_indicator_node
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

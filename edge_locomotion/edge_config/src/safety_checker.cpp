@@ -13,7 +13,7 @@ SafetyChecker::SafetyChecker(double roll_deg, double pitch_deg, double height_m)
   limits_.pitch_limit_rad = pitch_deg * M_PI / 180.0;
   limits_.height_limit_m  = height_m;
 
-  std::cout << "--- ✅ SafetyChecker initialized with ---" << std::endl;
+  std::cout << "--- 🚨 SafetyChecker initialized with ---" << std::endl;
   std::cout << "  roll_limit_deg  = " << roll_deg << "°" << std::endl;
   std::cout << "  pitch_limit_deg = " << pitch_deg << "°" << std::endl;
   std::cout << "  height_limit_m  = " << height_m << " m" << std::endl;

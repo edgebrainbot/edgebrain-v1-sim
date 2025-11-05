@@ -1,4 +1,6 @@
 import os
+
+import yaml
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -13,6 +15,9 @@ def generate_launch_description():
         'config', 'safety_set.yaml'
     )
     
+    if not os.path.exists(safety_config_path):
+        raise FileNotFoundError(f"Config file not found: {safety_config_path}")
+
     # Declare launch arguments
     update_rate_arg = DeclareLaunchArgument(
         'update_rate',
@@ -29,7 +34,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             safety_config_path,
-            {'update_rate': LaunchConfiguration('update_rate')}
+            # {'update_rate': LaunchConfiguration('update_rate')}
         ]
     )
     
