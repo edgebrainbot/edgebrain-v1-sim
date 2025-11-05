@@ -130,6 +130,99 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_activate(
 
 /***************************************************************************************/
 /*******                                                                         *******/
+/*******                export_state_interfaces (for controller)                 *******/
+/*******                                                                         *******/
+/***************************************************************************************/
+std::vector<hardware_interface::StateInterface> Go2HardwareInterface::export_state_interfaces()
+{
+    int idx = 0;
+    std::vector<hardware_interface::StateInterface> state_interfaces;
+
+    // export joint state interfaces
+    for (const auto& joint_name : joint_interface_map_["position"])
+    {
+        state_interfaces.emplace_back(joint_name, "position", &joint_state_position_[idx++]);
+    }
+
+    idx = 0;
+    for (const auto& joint_name : joint_interface_map_["velocity"])
+    {
+        state_interfaces.emplace_back(joint_name, "velocity", &joint_state_velocity_[idx++]);
+    }
+
+    idx = 0;
+    for (const auto& joint_name : joint_interface_map_["effort"])
+    {
+        state_interfaces.emplace_back(joint_name, "effort", &joint_state_effort_[idx++]);
+    }
+
+    // export imu sensor state interface
+    for (uint i = 0; i < info_.sensors[0].state_interfaces.size(); i++)
+    {
+        state_interfaces.emplace_back(
+            info_.sensors[0].name, info_.sensors[0].state_interfaces[i].name, &imu_states_[i]);
+    }
+
+    // export foot force sensor state interface
+    if (info_.sensors.size() > 1)
+    {
+        for (uint i = 0; i < info_.sensors[1].state_interfaces.size(); i++)
+        {
+            state_interfaces.emplace_back(
+                info_.sensors[1].name, info_.sensors[1].state_interfaces[i].name, &foot_force_[i]);
+        }
+    }
+
+    // export odometer state interface
+    if (info_.sensors.size() > 2)
+    {
+        // export high state interface
+        for (uint i = 0; i < info_.sensors[2].state_interfaces.size(); i++)
+        {
+            state_interfaces.emplace_back(
+                info_.sensors[2].name, info_.sensors[2].state_interfaces[i].name, &odom_states_[i]);
+        }
+    }
+
+    return state_interfaces;
+}
+
+
+/***************************************************************************************/
+/*******                                                                         *******/
+/*******                export_command_interfaces (for controller)               *******/
+/*******                                                                         *******/
+/***************************************************************************************/
+std::vector<hardware_interface::CommandInterface> Go2HardwareInterface::export_command_interfaces()
+{
+    int idx = 0;
+    std::vector<hardware_interface::CommandInterface> command_interfaces;
+
+    for (const auto& joint_name : joint_interface_map_["position"])
+    {
+        command_interfaces.emplace_back(joint_name, "position", &joint_position_command_[idx++]);
+    }
+
+    idx = 0;
+    for (const auto& joint_name : joint_interface_map_["velocity"])
+    {
+        command_interfaces.emplace_back(joint_name, "velocity", &joint_velocity_command_[idx++]);
+    }
+
+    idx = 0;
+    for (const auto& joint_name : joint_interface_map_["effort"])
+    {
+        command_interfaces.emplace_back(joint_name, "effort", &joint_torque_command_[idx]);
+        command_interfaces.emplace_back(joint_name, "kp", &joint_kp_command_[idx]);
+        command_interfaces.emplace_back(joint_name, "kd", &joint_kd_command_[idx]);
+        idx++;
+    }
+    return command_interfaces;
+}
+
+
+/***************************************************************************************/
+/*******                                                                         *******/
 /*******                                 read                                    *******/
 /*******                                                                         *******/
 /***************************************************************************************/
