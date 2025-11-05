@@ -314,4 +314,5 @@ namespace edge::locomotion::body_balance_controller
 }
 
 #include "pluginlib/class_list_macros.hpp"
-PLUGINLIB_EXPORT_CLASS(edge::body_balance_controller::BodyBalanceController, controller_interface::ControllerInterface);
+PLUGINLIB_EXPORT_CLASS(edge::locomotion::body_balance_controller::BodyBalanceController, 
+                       controller_interface::ControllerInterface);

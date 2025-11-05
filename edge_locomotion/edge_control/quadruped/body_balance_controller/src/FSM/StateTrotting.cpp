@@ -8,6 +8,8 @@
 #include <body_balance_controller/control/Estimator.h>
 #include <body_balance_controller/gait/WaveGenerator.h>
 
+using namespace edge::locomotion;
+
 StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                              CtrlComponent& ctrl_component,
                              const std::vector<double>& swing_gains,

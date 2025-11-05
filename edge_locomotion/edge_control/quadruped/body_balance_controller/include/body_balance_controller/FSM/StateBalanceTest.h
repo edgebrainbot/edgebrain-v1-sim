@@ -5,11 +5,19 @@
 #include "body_balance_controller/utils/math/mathTypes.h"
 
 
-class WaveGenerator;
-class BalanceCtrl;
-class QuadrupedModel;
-class Estimator;
-struct CtrlComponent;
+// Forward declarations for ROS2 types
+namespace edge::locomotion
+{
+    class WaveGenerator;
+    class BalanceCtrl;
+    class QuadrupedModel;
+    class Estimator;
+    struct CtrlComponent;
+}
+
+struct CtrlInterfaces;
+
+using namespace edge::locomotion;
 
 class StateBalanceTest final : public FSMState {
 public:

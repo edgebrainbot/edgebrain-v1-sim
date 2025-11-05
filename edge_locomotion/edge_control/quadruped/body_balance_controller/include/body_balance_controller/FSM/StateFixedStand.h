@@ -3,7 +3,14 @@
 
 #include <controller_common/FSM/BaseFixedStand.h>
 
-struct CtrlComponent;
+struct CtrlInterfaces;
+
+namespace edge::locomotion
+{
+    struct CtrlComponent;
+}
+
+using namespace edge::locomotion;
 
 class StateFixedStand final : public BaseFixedStand {
 public:

@@ -1,13 +1,14 @@
 #pragma once
 
 #include <memory>
-
 #include "body_balance_controller/utils/math/mathTypes.h"
-class QuadrupedModel;
+#include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
 
 namespace edge::locomotion
 {
+class QuadrupedModel;
+
 class BalanceCtrl
 {
 public:

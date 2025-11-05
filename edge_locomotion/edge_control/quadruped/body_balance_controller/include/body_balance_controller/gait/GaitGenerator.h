@@ -5,12 +5,15 @@
 #include "body_balance_controller/gait/FootstepPlanner.hpp"
 
 
-class Estimator;
-class WaveGenerator;
-struct CtrlComponent;
-
 namespace edge::locomotion
 {
+
+struct CtrlComponent;
+class WaveGenerator;
+class BalanceCtrl;
+class QuadrupedModel;
+class Estimator;
+
 class GaitGenerator {
 public:
     explicit GaitGenerator(CtrlComponent &ctrl_component);

@@ -16,6 +16,14 @@
 #include <controller_common/common/enumClass.h>
 #include <controller_common/common/mathTypes.h>
 
+namespace edge::locomotion
+{
+    struct CtrlComponent;
+    class WaveGenerator;
+    class BalanceCtrl;
+    class QuadrupedModel;
+    class Estimator;
+}
 
 namespace edge::locomotion::body_balance_controller
 {

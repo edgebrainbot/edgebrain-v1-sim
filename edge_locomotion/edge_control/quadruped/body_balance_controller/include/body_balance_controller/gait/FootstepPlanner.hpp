@@ -5,12 +5,12 @@
 #include "body_balance_controller/utils/math/mathTypes.h"
 
 
-class Estimator;
-struct CtrlComponent;
-class QuadrupedModel;
-
 namespace edge::locomotion
 {
+
+class QuadrupedModel;
+class Estimator;
+struct CtrlComponent;
 
 class FootstepPlanner {
 public:

@@ -9,9 +9,6 @@
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
 struct CtrlInterfaces;
-class WaveGenerator;
-class QuadrupedModel;
-struct CtrlComponent;
 
 // Forward declarations for ROS2 types
 namespace rclcpp_lifecycle
@@ -21,6 +18,10 @@ namespace rclcpp_lifecycle
 
 namespace edge::locomotion
 {
+
+class WaveGenerator;
+class QuadrupedModel;
+struct CtrlComponent;
 
 class Estimator
 {

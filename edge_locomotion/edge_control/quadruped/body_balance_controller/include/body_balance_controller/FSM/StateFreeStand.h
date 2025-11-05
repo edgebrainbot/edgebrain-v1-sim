@@ -1,11 +1,18 @@
 
 #ifndef STATEFREESTAND_H
 #define STATEFREESTAND_H
+#include "body_balance_controller/control/CtrlComponent.h"
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
-
 #include "controller_common/FSM/FSMState.h"
 
-struct CtrlComponent;
+struct CtrlInterfaces;
+namespace edge::locomotion
+{
+    struct CtrlComponent;
+    class QuadrupedModel;
+}
+
+using namespace edge::locomotion;
 
 class StateFreeStand final : public FSMState {
 public:

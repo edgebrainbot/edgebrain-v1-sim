@@ -3,19 +3,31 @@
 
 #include "edge_msgs/msg/action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
+#include "controller_common/FSM/FSMState.h"
 #include <geometry_msgs/msg/twist.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-#include "controller_common/FSM/FSMState.h"
-#include "body_balance_controller/control/BalanceCtrl.h"
-#include "body_balance_controller/robot_model/QuadrupedModel.hpp"
-#include "body_balance_controller/gait/GaitGenerator.h"
 #include "body_balance_controller/utils/math/mathTypes.h"
+#include "body_balance_controller/gait/GaitGenerator.h"
 
 // #include "phy_teacher_interfaces/msg/tracking_error.hpp"
 // #include "phy_teacher_interfaces/msg/control_gains.hpp"
 
+// Forward declarations for ROS2 types
+struct CtrlInterfaces;
+
+namespace edge::locomotion
+{
+    struct CtrlComponent;
+    class WaveGenerator;
+    class BalanceCtrl;
+    class QuadrupedModel;
+    class Estimator;
+}
+
+using namespace edge::locomotion;
 
 class StateTrotting final : public FSMState {
+
 public:
     explicit StateTrotting(CtrlInterfaces &ctrl_interfaces,
                            CtrlComponent &ctrl_component,

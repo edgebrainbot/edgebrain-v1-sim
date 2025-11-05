@@ -15,7 +15,7 @@
   <depend>control_input_msgs</depend>
   <depend>pinocchio</depend>
   <depend>go2_description</depend>
-  <depend>hardware_unitree_mujoco</depend>
+  <depend>unitree_go2_hardware</depend>
   <depend>edge_msgs</depend>
   <depend>edge_ros_interfaces</depend>
 

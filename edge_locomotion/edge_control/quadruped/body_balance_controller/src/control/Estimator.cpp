@@ -4,10 +4,10 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include "body_balance_controller/control/Estimator.h"
-
-#include <body_balance_controller/utils/math/mathTools.h>
-#include <body_balance_controller/utils/math/mathTypes.h>
-#include <body_balance_controller/control/CtrlComponent.h>
+#include "body_balance_controller/gait/WaveGenerator.h"
+#include "body_balance_controller/utils/math/mathTools.h"
+#include "body_balance_controller/utils/math/mathTypes.h"
+#include "body_balance_controller/control/CtrlComponent.h"
 #include <pinocchio/spatial/se3.hpp>
 
 #include "controller_common/CtrlInterfaces.h"
