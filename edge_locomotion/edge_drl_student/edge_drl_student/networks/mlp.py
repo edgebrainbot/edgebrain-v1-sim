@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
+from typing import Type, Union
 from base_network import BaseNetwork
 
-class MLPNetwork(BaseNetwork):
+class MLP(BaseNetwork):
     """Standard Multi-Layer Perceptron (MLP) network."""
 
     def __init__(self,
                  input_dim: int,
                  output_dim: int,
-                 hidden_dims: tuple[int] | list[int]  =(256, 256, 256),
-                 activation_fn: type[nn.Module] =nn.ReLU,
-                 output_activation: type[nn.Module] | None =None,
-                 name: str ="mlp"):
+                 hidden_dims: tuple[int] | list[int] = (256, 256, 256),
+                 activation_fn: Union[Type[nn.Module], str, list[str]] = nn.ReLU,
+                 output_activation: Union[Type[nn.Module], str, None] = None,
+                 name: str = "mlp"):
         """ Initialize MLP
 
         Args:
@@ -51,3 +52,40 @@ class MLPNetwork(BaseNetwork):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the MLP."""
         return self.net(x)
+    
+
+    @classmethod
+    def _process_activation_fn(cls, act_fn: Union[Type[nn.Module], str, list[Union[str, Type[nn.Module]]]]
+    ) -> Union[Type[nn.Module], list[Type[nn.Module]]]:
+        """Process activation function(s) for hidden layers. Support multiple input types.
+
+        Args:
+            act_fn: activation function(s). Can be:
+                - a class (e.g. nn.ReLU)
+                - a string (e.g. "relu")
+                - a list of classes or strings
+        Returns:
+            A single nn.Module class or a list of nn.Module classes.
+        """
+        # Case 1: string input
+        if isinstance(act_fn, str):
+            return self._activation_fn(act_fn)
+
+        # Case 2: Single type (nn.Module subclass)
+        elif isinstance(act_fn, type) and issubclass(act_fn, nn.Module):
+            return act_fn
+
+        # Case 3: List input
+        elif isinstance(act_fn, (list, tuple)):
+            result = []
+            for fn in act_fn:
+                if isinstance(fn, str):
+                    result.append(BaseNetwork._activation_from_str(fn))
+                elif isinstance(fn, type) and issubclass(fn, nn.Module):
+                    result.append(fn)
+                else:
+                    raise TypeError(f"Invalid activation type in list: {type(fn)}")
+            return result
+
+        else:
+            raise TypeError(f"Unsupported activation type: {type(act_fn)}")

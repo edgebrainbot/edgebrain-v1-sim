@@ -50,9 +50,6 @@ TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
   auto period = std::chrono::duration<double>(1.0 / update_rate_hz_);
   timer_ = this->create_wall_timer(period, std::bind(&TriggerNode::updateLoop, this));
 
-  // RCLCPP_INFO(this->get_logger(), "✅ Parameters loaded: roll=%.1f°, pitch=%.1f°, height=%.2f",
-  //             roll_limit_rad_ * 180.0 / M_PI, pitch_limit_rad_ * 180.0 / M_PI,
-  //             height_limit_);
 }
 
 void TriggerNode::studentCallback(const edge_msgs::msg::Action::SharedPtr msg)
@@ -93,57 +90,6 @@ void TriggerNode::updateLoop()
   pub_alert_->publish(alert_msg);
 
 }
-
-// -------------------- Safety Check --------------------
-// bool TriggerNode::checkSafety()
-// {
-//   bool is_safe = true;
-//   std::vector<std::string> reasons;
-
-//   double height = last_error_state_[0];    
-//   double roll = last_error_state_[1];
-//   double pitch = last_error_state_[2];
-  
-//   // Check roll
-//   if (std::abs(roll) > roll_limit_rad_) {
-//     is_safe = false;
-//     reasons.push_back("roll = " + std::to_string(roll * 180.0 / M_PI) + "°");
-//   }
-
-//   // Check pitch
-//   if (std::abs(pitch) > pitch_limit_rad_) {
-//     is_safe = false;
-//     reasons.push_back("pitch = " + std::to_string(pitch * 180.0 / M_PI) + "°");
-//   }
-
-//   // Check height
-//   if (std::abs(height) > height_limit_) {
-//     is_safe = false;
-//     reasons.push_back("height = " + std::to_string(height) + "m");
-//   }
-
-//   // Logging
-//   if (!is_safe) {
-//     std::string msg = "⚠️ Current System is UNSAFE! Reasons: ";
-//     for (auto &r : reasons) msg += r + " | ";
-
-//     if (is_last_state_safe_)
-//         msg += "System leaving the learning space! Safety Triggered.";
-//     else
-//         msg += "System still outside the learning space.";
-
-//     RCLCPP_WARN(this->get_logger(), "%s", msg.c_str());
-//   } else {
-//     if (!is_last_state_safe_)
-//       RCLCPP_INFO(this->get_logger(), "✅ System returned to the learning space.");
-//     else
-//       RCLCPP_INFO(this->get_logger(), "✅ System remains within the learning space.");
-//   }
-
-//   is_last_state_safe_ = is_safe;    // update last state
-  
-//   return is_safe;
-// }
 
 }  // namespace edge::trigger
 

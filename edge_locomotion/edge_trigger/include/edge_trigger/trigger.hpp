@@ -34,9 +34,6 @@ private:
   bool is_last_state_safe_;        // last alert state (is safe)
 
   // Safety-conditions
-  // double roll_limit_rad_;
-  // double pitch_limit_rad_;
-  // double height_limit_;
   double update_rate_hz_;
 
   std::shared_ptr<edge::config::SafetyChecker> safety_checker_;

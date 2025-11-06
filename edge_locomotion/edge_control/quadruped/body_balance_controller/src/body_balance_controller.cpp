@@ -25,7 +25,6 @@ namespace edge::locomotion::body_balance_controller
                 }
             }
         }
-
         return conf;
     }
 

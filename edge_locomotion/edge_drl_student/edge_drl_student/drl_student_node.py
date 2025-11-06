@@ -67,7 +67,7 @@ class DRLStudentNode(Node):
         msg.action = self.policy(torch.tensor(
             np.array(self.tracking_error_.tracking_error, dtype=np.float32),
             dtype=torch.float32
-        )).detach().numpy().astype(np.float64)
+        )).detach().numpy().astype(np.float64) * 1.0  # Scale action
 
         
         self.action_pub.publish(msg)

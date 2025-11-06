@@ -12,8 +12,8 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
     this->declare_parameter<int>("update_rate", 30);
     this->declare_parameter<bool>("print_process_time", false);
 
-    this->declare_parameter<double>("roll_limit_deg", 0.0);
-    this->declare_parameter<double>("pitch_limit_deg", 0.0);
+    this->declare_parameter<double>("roll_limit_deg", 2.0);
+    this->declare_parameter<double>("pitch_limit_deg", 2.0);
     this->declare_parameter<double>("height_limit", 0.05);
 
     int update_rate_hz = this->get_parameter("update_rate").as_int();
@@ -47,8 +47,8 @@ PhyTeacherNode::~PhyTeacherNode() {}
 // Subscription callback to receive tracking error
 void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg) {
 
-  // Update last error state
-  last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
+  // Update error state
+  error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
 
   for (int i = 0; i < 10 && i < msg->tracking_error.size(); ++i) {
     lmi_optimizer_.tracking_err[i] = msg->tracking_error[i];
@@ -62,14 +62,14 @@ void PhyTeacherNode::lmiCallback() {
   // Only proceed if a new message has been received
   if (!got_msg_) return;
 
-  auto err_state_ = edge::ros_interfaces::EigenToVector(last_error_state_);
+  auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
   bool is_current_safe = safety_checker_->checkSafety(err_state_);
 
   // If teacher is not active
   if (!teacher_active_) {
     // If system is unsafe, activate teacher and set patch center
     if (!is_current_safe) {
-      patch_center_ = chi_ * last_error_state_;
+      patch_center_ = chi_ * error_state_;
       teacher_active_ = true;
 
       if (print_process_time_)
@@ -107,7 +107,7 @@ void PhyTeacherNode::lmiCallback() {
   edge_msgs::msg::Action teacher_action_msg;
   if (teacher_active_) {
     // Compute the action according to the center of the safety patch
-    edge::ros_interfaces::Vector12d error_from_patch = last_error_state_ - patch_center_;
+    edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
     auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6) * 3;
     auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6) * 3;
 

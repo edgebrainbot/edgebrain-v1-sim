@@ -22,12 +22,13 @@ private:
   void lmiCallback();
 
   // For phy-teacher logistics
-  edge::ros_interfaces::Vector12d  last_error_state_;         // last received error state
-  edge::ros_interfaces::Vector12d  patch_center_;             // Center of the safety patch
-  bool teacher_active_ = false;            // Whether the teacher is active
   double chi_ = 0.0;                       // Hyperparameter χ
   bool got_msg_ = false;
+  bool teacher_active_ = false;            // Whether the teacher is active
   bool print_process_time_ = false;
+  edge::ros_interfaces::Vector12d  error_state_;          // received error state
+  edge::ros_interfaces::Vector12d  patch_center_;         // Center of the safety patch
+
   lmi::LMIOptimizer lmi_optimizer_;
 
   // For profiling

@@ -32,9 +32,9 @@ bool SafetyChecker::checkSafety(const std::vector<double> errorState)
     return false;
   }
 
-  double height = errorState[0];
-  double roll   = errorState[1];
-  double pitch  = errorState[2];
+  double height = errorState[2];
+  double roll   = errorState[3];
+  double pitch  = errorState[4];
 
   is_curr_safe_ = checkSafetySet(height, roll, pitch);
   safetyStatusLogging();

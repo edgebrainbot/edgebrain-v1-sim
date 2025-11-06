@@ -1,4 +1,3 @@
-#include "crc32.hpp"
 #include <iostream>
 #include <iomanip>
 #include <cstring>
@@ -7,6 +6,7 @@
 #include <unitree/idl/go2/LowState_.hpp>
 #include <unitree/idl/go2/LowCmd_.hpp>
 #include <unitree/idl/go2/SportModeState_.hpp>
+#include "unitree_go2_hardware/crc32.hpp"
 
 
 // ============================================================

@@ -47,17 +47,31 @@ ament_target_dependencies(
 
 pluginlib_export_plugin_description_file(hardware_interface go2_hardware_interface.xml)
 
+
+add_executable(test_crc32 test/test_crc32.cpp)
+target_include_directories(test_crc32 PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/
+) 
+target_link_libraries(test_crc32 unitree_sdk2)
+
 install(
   DIRECTORY include/
   DESTINATION include/${PROJECT_NAME}
 )
 
+# ---------------- Installation ----------------
+# Install library
 install(
   TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+
+# Install test executable
+install(TARGETS test_crc32
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 if (BUILD_TESTING)
