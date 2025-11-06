@@ -61,8 +61,7 @@ ros2 launch unitree_go2_hardware visualize.launch.py
 
 ## Misc
 
-Added efficient implementations of the original CRC32 algorithm.  
-To benchmark and compare performance differences, run:
+Added efficient implementations of the original CRC32 algorithm. To benchmark and compare the performance differences, run:
 ```bash
 source ~/ros2_ws/install/setup.bash
 ros2 run unitree_go2_hardware test_crc32
