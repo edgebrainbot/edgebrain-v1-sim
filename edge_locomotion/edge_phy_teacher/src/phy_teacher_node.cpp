@@ -26,6 +26,10 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
     double roll_deg  = this->declare_parameter<double>("roll_limit_deg", 2.0);;
     double pitch_deg = this->declare_parameter<double>("pitch_limit_deg", 2.0);
     double height = this->declare_parameter<double>("height_limit", 0.05);
+    double vx_limit = this->declare_parameter<double>("vx_limit", 0.5);
+    double vy_limit = this->declare_parameter<double>("vy_limit", 0.5);
+    double wz_limit = this->declare_parameter<double>("wz_limit", 0.5);
+
     safety_checker_ = std::make_shared<edge::config::SafetyChecker>(roll_deg, pitch_deg, height);
 
     RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_);

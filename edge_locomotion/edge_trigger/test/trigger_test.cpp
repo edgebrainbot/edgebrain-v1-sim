@@ -84,8 +84,8 @@ private:
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<TriggerTestNode>();
-  rclcpp::spin(node);
+  auto trigger_test_node = std::make_shared<TriggerTestNode>();
+  rclcpp::spin(trigger_test_node);
   rclcpp::shutdown();
   return 0;
 }

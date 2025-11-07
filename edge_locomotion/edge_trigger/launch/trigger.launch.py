@@ -15,30 +15,37 @@ def generate_launch_description():
         'config', 'safety_set.yaml'
     )
     
+    trigger_config_path = os.path.join(
+        get_package_share_directory('edge_trigger'),
+        'config', 'trigger.yaml'
+    )
+    
     if not os.path.exists(safety_config_path):
         raise FileNotFoundError(f"Config file not found: {safety_config_path}")
 
+    if not os.path.exists(trigger_config_path):
+        raise FileNotFoundError(f"Config file not found: {trigger_config_path}")
+
     # Declare launch arguments
-    update_rate_arg = DeclareLaunchArgument(
-        'update_rate',
-        default_value='100.0',
-        description='Frequency (Hz) of the trigger loop'
-    )
+    # update_rate_arg = DeclareLaunchArgument(
+    #     'update_rate',
+    #     default_value='100.0',
+    #     description='Frequency (Hz) of the trigger loop'
+    # )
 
     # Create node
     trigger_node = Node(
         package='edge_trigger',
-        executable='trigger_node',
+        executable='trigger',
         namespace='edge',
         name='trigger',
         output='screen',
         parameters=[
             safety_config_path,
-            {'update_rate': LaunchConfiguration('update_rate')}
+            trigger_config_path
         ]
     )
     
     return LaunchDescription([
-        update_rate_arg,
         trigger_node,
     ])

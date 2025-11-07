@@ -15,10 +15,10 @@
 
 namespace edge::trigger {
 
-class TriggerNode : public rclcpp::Node
+class Trigger : public rclcpp::Node
 {
 public:
-  explicit TriggerNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit Trigger(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
   void studentCallback(const edge_msgs::msg::Action::SharedPtr msg);
@@ -32,6 +32,7 @@ private:
   edge::ros_interfaces::Vector6d   last_student_action_;      // last received student action
   edge::ros_interfaces::Vector6d   last_teacher_action_;      // last received teacher action
   bool is_last_state_safe_;        // last alert state (is safe)
+  bool print_processing_;         // whether to print processing info
 
   // Safety-conditions
   double update_rate_;

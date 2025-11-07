@@ -38,17 +38,6 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     w_yaw_limit_ << -0.5, 0.5;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
-
-    // pub_ = this->create_publisher<phy_teacher_interfaces::msg::TrackingError>("/tracking_err", 10);
-    // sub_gain_ = this->create_subscription<phy_teacher_interfaces::msg::ControlGains>(
-            // "/control_gain", 10,
-            // std::bind(&StateTrotting::controlGainCallback, this, std::placeholders::_1));
-
-    // cmd_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
-    //     "/cmd_vel", 10,
-    //     std::bind(&StateTrotting::cmdVelCallback, this, std::placeholders::_1));
-    // RCLCPP_INFO(this->get_logger(), "[StateTrotting] Listening to /cmd_vel");
-
 }
 
 void StateTrotting::enter()

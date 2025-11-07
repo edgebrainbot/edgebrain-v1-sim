@@ -1,0 +1,4 @@
+trigger:
+  ros__parameters:
+    update_rate: 150.0            # trigger update rate in Hz
+    print_processing: false      # whether to print processing

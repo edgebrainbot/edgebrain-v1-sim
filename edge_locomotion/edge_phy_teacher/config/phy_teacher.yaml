@@ -7,7 +7,7 @@ phy_teacher_node:
 
 
     # teacher_config:
-    chi: 0.0                  # safety scaling factor
+    chi: 0.1                  # safety scaling factor
     tau: 20                   # dwelling time in control update (reserved)
     enable: true              # whether to enable the safety controller
     teaching_to_learn: true   # whether to teach the learning controller

@@ -16,16 +16,16 @@ find_package(edge_msgs REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
 
 # ---- executable node ----
-add_executable(trigger_node
+add_executable(trigger
   src/trigger.cpp
 )
 
-target_include_directories(trigger_node PUBLIC
+target_include_directories(trigger PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(trigger_node
+ament_target_dependencies(trigger
   rclcpp
   sensor_msgs
   geometry_msgs
@@ -58,12 +58,16 @@ ament_target_dependencies(test_trigger
 # Installation
 # ---------------------------------------------------------
 install(TARGETS
-  trigger_node
+  trigger
   test_trigger
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 
