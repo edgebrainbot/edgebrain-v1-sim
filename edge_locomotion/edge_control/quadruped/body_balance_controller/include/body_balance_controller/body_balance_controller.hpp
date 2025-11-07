@@ -40,12 +40,10 @@ namespace edge::locomotion::body_balance_controller
 
     class BodyBalanceController final : public controller_interface::ControllerInterface
     {
-    public:
-        BodyBalanceController() = default;
-
-        controller_interface::InterfaceConfiguration command_interface_configuration() const override;
+    public: 
 
         controller_interface::InterfaceConfiguration state_interface_configuration() const override;
+        controller_interface::InterfaceConfiguration command_interface_configuration() const override;
 
         controller_interface::return_type update(
             const rclcpp::Time& time, const rclcpp::Duration& period) override;
@@ -54,7 +52,7 @@ namespace edge::locomotion::body_balance_controller
 
         controller_interface::CallbackReturn on_configure(
             const rclcpp_lifecycle::State& previous_state) override;
-
+ 
         controller_interface::CallbackReturn on_activate(
             const rclcpp_lifecycle::State& previous_state) override;
 
@@ -118,7 +116,7 @@ namespace edge::locomotion::body_balance_controller
         // Gait parameters
         double gait_height_ = 0.08;
 
-        rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_subscription_;
+        rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
 
         std::unordered_map<
             std::string, std::vector<std::reference_wrapper<hardware_interface::LoanedCommandInterface>>*>
@@ -130,15 +128,16 @@ namespace edge::locomotion::body_balance_controller
             {"kd", &ctrl_interfaces_.joint_kd_command_interface_}
         };
 
-        FSMMode mode_ = FSMMode::NORMAL;
+        std::string topic_ns_;  // Topic namespace
         std::string state_name_;
-        FSMStateName next_state_name_ = FSMStateName::INVALID;
         FSMStateList state_list_;
+        double update_frequency_;
+        FSMMode mode_ = FSMMode::NORMAL;
+        FSMStateName next_state_name_ = FSMStateName::INVALID;
         std::shared_ptr<FSMState> current_state_;
         std::shared_ptr<FSMState> next_state_;
 
         std::chrono::time_point<std::chrono::steady_clock> last_update_time_;
-        double update_frequency_;
 
         std::shared_ptr<FSMState> getNextState(FSMStateName stateName) const;
 
@@ -150,37 +149,36 @@ namespace edge::locomotion::body_balance_controller
             {"velocity", &ctrl_interfaces_.joint_velocity_state_interface_}
         };
 
-
         // For /cmd_vel subscription
         rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_sub_;
         double cmd_vx_ = 0.0;
         double cmd_vy_ = 0.0;
         double cmd_wz_ = 0.0;
 
-        void cmdVelCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
-        {
-            cmd_vx_ = msg->twist.linear.x;
-            cmd_vy_ = msg->twist.linear.y;
-            cmd_wz_ = msg->twist.angular.z;
-            std::cout << "*************************************************************" << std::endl;
-            std::cout << "[StateTrotting] Received /cmd_vel: "
-                    << "vx = " << cmd_vx_ << ", "
-                    << "vy = " << cmd_vy_ << ", "
-                    << "wz = " << cmd_wz_ << std::endl;
-        }
+        // void cmdVelCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
+        // {
+        //     cmd_vx_ = msg->twist.linear.x;
+        //     cmd_vy_ = msg->twist.linear.y;
+        //     cmd_wz_ = msg->twist.angular.z;
+        //     std::cout << "*************************************************************" << std::endl;
+        //     std::cout << "[StateTrotting] Received /cmd_vel: "
+        //             << "vx = " << cmd_vx_ << ", "
+        //             << "vy = " << cmd_vy_ << ", "
+        //             << "wz = " << cmd_wz_ << std::endl;
+        // }
 
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
         rclcpp::Subscription<edge_msgs::msg::Action>::SharedPtr action_sub_;
 
         edge_msgs::msg::Action latest_accel_;
-        void actionCallback(const edge_msgs::msg::Action::SharedPtr msg)
-        {
-            latest_accel_ = *msg;
-            std::cout << "Received new action." << std::endl;
-            for (int i = 0; i < 6; i++) {
-                std::cout << "accel[" << i << "] = " << latest_accel_.action[i] << std::endl;
-            }
-        }
+        // void actionCallback(const edge_msgs::msg::Action::SharedPtr msg)
+        // {
+        //     latest_accel_ = *msg;
+        //     std::cout << "Received new action." << std::endl;
+        //     for (int i = 0; i < 6; i++) {
+        //         std::cout << "accel[" << i << "] = " << latest_accel_.action[i] << std::endl;
+        //     }
+        // }
 
         // rclcpp::Publisher<phy_teacher_interfaces::msg::TrackingError>::SharedPtr pub_;
         // rclcpp::Subscription<phy_teacher_interfaces::msg::ControlGains>::SharedPtr sub_gain_;
