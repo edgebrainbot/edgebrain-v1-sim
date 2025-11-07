@@ -58,7 +58,6 @@ install(
   launch
   mesh
   rviz
-  log
   DESTINATION share/${PROJECT_NAME}
 )
 
