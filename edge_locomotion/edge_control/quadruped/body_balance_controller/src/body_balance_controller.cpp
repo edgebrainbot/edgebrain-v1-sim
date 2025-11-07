@@ -128,7 +128,7 @@ namespace edge::locomotion::body_balance_controller
             // Subscribe to "control input"
             control_input_sub_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(
                 "/control_input", 10, 
-                [this](const control_input_msgs::msg::Inputs::SharedPtr msg)
+                [this](const control_input_msgs::msg::Inputs::SharedPtr msg) -> void
             {
                 // Handle message
                 ctrl_interfaces_.control_inputs_.command = msg->command;
@@ -141,7 +141,7 @@ namespace edge::locomotion::body_balance_controller
             // Subscribe to "cmd_vel"
             cmd_sub_ = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
                 "/cmd_vel", 10,
-                [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg)
+                [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
             {
                 cmd_vx_ = msg->twist.linear.x;
                 cmd_vy_ = msg->twist.linear.y;
@@ -156,7 +156,7 @@ namespace edge::locomotion::body_balance_controller
             // Subscribe to "edge/terminal_action"
             action_sub_ = get_node()->create_subscription<edge_msgs::msg::Action>(
                 topic_ns_ + "/terminal_action", 10,
-                [this](const edge_msgs::msg::Action::SharedPtr msg)
+                [this](const edge_msgs::msg::Action::SharedPtr msg) -> void
             {
                 latest_accel_ = *msg;
                 std::cout << "Received new action from the trigger." << std::endl;
@@ -182,8 +182,8 @@ namespace edge::locomotion::body_balance_controller
     /*******                               on_activate                               *******/
     /*******                                                                         *******/
     /***************************************************************************************/
-    controller_interface::CallbackReturn
-    BodyBalanceController::on_activate(const rclcpp_lifecycle::State& /*previous_state*/)
+    controller_interface::CallbackReturn BodyBalanceController::on_activate(
+        const rclcpp_lifecycle::State& /*previous_state*/)
     {
         // clear out vectors in case of restart
         ctrl_interfaces_.clear();

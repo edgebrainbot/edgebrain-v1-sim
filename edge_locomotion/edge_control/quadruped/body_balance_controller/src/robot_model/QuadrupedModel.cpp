@@ -234,7 +234,7 @@ Vec12 QuadrupedModel::getJointVel(const Vec34& pos, const Vec34& vel, FrameType 
     Vec12 qd;
     for (int i(0); i < 4; ++i)
     {
-        // 直接调用原版的 calcQd 逻辑
+        // Directly call the original calcQd logic
         qd.segment(3 * i, 3) = calcLegQd(pos.col(i), vel.col(i), frame, i);
     }
     return qd;
@@ -256,12 +256,12 @@ Vec3 QuadrupedModel::getFootPos(int leg_id, FrameType frame) const
 
     if (frame == FrameType::BODY)
     {
-        // 髋关节坐标系 + 偏移量 = 机体坐标系
+        // Hip frame + offset = Body frame
         return calcLegFK(q_leg, leg_id) + hip_offsets_[leg_id];
     }
     if (frame == FrameType::HIP)
     {
-        // 直接返回髋关节坐标系位置
+        // Return foot position in hip frame
         return calcLegFK(q_leg, leg_id);
     }
     throw std::runtime_error("The frame of function: getFootPosition can only be BODY or HIP.");
@@ -332,13 +332,13 @@ Vec3 QuadrupedModel::calcLegFK(const Vec3& q_leg, int leg_index) const
     double c23 = c2 * c3 - s2 * s3;
     double s23 = s2 * c3 + c2 * s3;
 
-    // Unitree原版正运动学公式（髋关节坐标系）
+    // Unitree The original forward kinematics formula (hip coordinate system)
     Vec3 p_ee_hip;
     p_ee_hip(0) = l3 * s23 + l2 * s2;
     p_ee_hip(1) = -l3 * s1 * c23 + l1 * c1 - l2 * c2 * s1;
     p_ee_hip(2) = l3 * c1 * c23 + l1 * s1 + l2 * c1 * c2;
 
-    return p_ee_hip; // 返回髋关节坐标系位置，与 calcPEe2H 保持一致
+    return p_ee_hip; // Return foot position in hip frame, keep consistent with original logic
 }
 
 Mat3 QuadrupedModel::calcLegJacobian(const Vec3& q_leg, int leg_index) const
@@ -382,7 +382,7 @@ Vec3 QuadrupedModel::getHipOffset(int leg_index) const
 
 Vec3 QuadrupedModel::calcQ(const Vec3& pEe, FrameType frame, int leg_index) const
 {
-    // 原版逻辑：支持两种坐标系
+    // The original logic: support two coordinate systems
     Vec3 pEe2H;
     if (frame == FrameType::HIP)
         pEe2H = pEe;
@@ -391,7 +391,7 @@ Vec3 QuadrupedModel::calcQ(const Vec3& pEe, FrameType frame, int leg_index) cons
     else
         throw std::runtime_error("Frame type must be HIP or BODY");
 
-    // 直接使用原版的解析逆运动学算法（和unitreeLeg完全一致）
+    // Directly use the original analytical inverse kinematics algorithm (identical to unitreeLeg)
     double q1, q2, q3;
     Vec3 qResult;
     double px, py, pz;
@@ -401,7 +401,7 @@ Vec3 QuadrupedModel::calcQ(const Vec3& pEe, FrameType frame, int leg_index) cons
     py = pEe2H(1);
     pz = pEe2H(2);
 
-    // 确定侧向符号（控制器顺序：FR(0) FL(1) RR(2) RL(3)）
+    // Certify side sign for left/right legs (Order: FR, FL, RR, RL)
     int side_sign = leg_index == 1 || leg_index == 3 ? 1 : -1; // FL,RL为1, FR,RR为-1
 
     b2y = link_lengths_[0] * side_sign;
@@ -411,7 +411,7 @@ Vec3 QuadrupedModel::calcQ(const Vec3& pEe, FrameType frame, int leg_index) cons
     c = sqrt(pow(px, 2) + pow(py, 2) + pow(pz, 2)); // whole length
     b = sqrt(pow(c, 2) - pow(a, 2)); // distance between shoulder and footpoint
 
-    // 使用原版的解析公式
+    // The original inverse kinematics formulas from Unitree
     q1 = q1_ik(py, pz, b2y);
     q3 = q3_ik(b3z, b4z, b);
     q2 = q2_ik(q1, q3, px, py, pz, b3z, b4z);
@@ -425,7 +425,7 @@ Vec3 QuadrupedModel::calcQ(const Vec3& pEe, FrameType frame, int leg_index) cons
 
 Vec3 QuadrupedModel::calcLegQd(const Vec3& pEe, const Vec3& vEe, FrameType frame, int leg_index) const
 {
-    // 原版逻辑：先计算关节角度，再计算关节速度
+    // The original logic: first calculate joint angles, then calculate joint velocities
     Vec3 q = calcQ(pEe, frame, leg_index);
     return calcLegJacobian(q, leg_index).inverse() * vEe;
 }
@@ -441,7 +441,7 @@ void QuadrupedModel::update()
     }
 }
 
-// ========== 原版解析逆运动学辅助函数 ==========
+// ========== The original inverse kinematics auxiliary functions ==========
 
 double QuadrupedModel::q1_ik(double py, double pz, double l1) const
 {
@@ -470,7 +470,7 @@ double QuadrupedModel::q3_ik(double b3z, double b4z, double b) const
     if (temp > 1) temp = 1;
     if (temp < -1) temp = -1;
     q3 = acos(temp);
-    q3 = -(M_PI - q3); //0~180
+    q3 = -(M_PI - q3); // 0 ~ 180
     return q3;
 }
 

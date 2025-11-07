@@ -17,6 +17,8 @@
   <exec_depend>edge_drl_student</exec_depend>
   <exec_depend>edge_phy_teacher</exec_depend>
   <exec_depend>edge_trigger</exec_depend>
+  <exec_depend>edge_config</exec_depend>
+  <exec_depend>body_balance_controller</exec_depend>
   <exec_depend>led_safety_monitor</exec_depend>
 
   <export>

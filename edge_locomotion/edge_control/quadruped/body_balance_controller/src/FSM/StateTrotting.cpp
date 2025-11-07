@@ -212,57 +212,54 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     std::cout << "angle error: " << rotMatToExp(Rd * G2B_RotMat).transpose() << std::endl;
     std::cout << "angular vel error: " << (w_cmd_global_ - estimator_->getGyroGlobal()).transpose() << std::endl;
 
-    Vec6 acc;
+    Vec6 accel;
     Vec6 all_pos_error;
     Vec6 all_vel_error;
     all_pos_error << pos_error_, rotMatToExp(Rd * G2B_RotMat);
     all_vel_error << vel_error_, (w_cmd_global_ - estimator_->getGyroGlobal());
     for (int i = 0; i < 6; i++) {
-        acc(i) = latest_accel_.action[i];
+        accel(i) = latest_accel_.action[i];
     }
-    std::cout << "acc from PHY-Teacher: " << acc.transpose() << std::endl;
+    std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     // acc = kp * all_pos_error + kd * all_vel_error;
 
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
     std::cout << "all pos error: " << all_pos_error.transpose() << std::endl;
     std::cout << "all vel error: " << all_vel_error.transpose() << std::endl;
     // std::cout << "kp: " << kp << std::endl;
-    // std::cout << "kd: " << kd << std::endl; 
-    
-    acc(0) = saturation(acc(0), Vec2(-3, 3));
-    acc(1) = saturation(acc(1), Vec2(-3, 3));
-    acc(2) = saturation(acc(2), Vec2(-5, 5));
-    acc(3) = saturation(acc(3), Vec2(-10, 10));
-    acc(4) = saturation(acc(4), Vec2(-10, 10));
-    acc(5) = saturation(acc(5), Vec2(-20, 20));
+    // std::cout << "kd: " << kd << std::endl;
 
-    std::cout << "acc command: " << acc.transpose() << std::endl;
+    accel(0) = saturation(accel(0), Vec2(-3, 3));
+    accel(1) = saturation(accel(1), Vec2(-3, 3));
+    accel(2) = saturation(accel(2), Vec2(-5, 5));
+    accel(3) = saturation(accel(3), Vec2(-10, 10));
+    accel(4) = saturation(accel(4), Vec2(-10, 10));
+    accel(5) = saturation(accel(5), Vec2(-20, 20));
 
-    // Vec3 dd_pcd = acc.segment(0, 3);
-    // Vec3 d_wbd = acc.segment(3, 3);
-    Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
-    Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
-        Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
+    std::cout << "acc command: " << accel.transpose() << std::endl;
 
-    dd_pcd(0) = saturation(dd_pcd(0), Vec2(-3, 3));
-    dd_pcd(1) = saturation(dd_pcd(1), Vec2(-3, 3));
-    dd_pcd(2) = saturation(dd_pcd(2), Vec2(-5, 5));
+    Vec3 dd_pcd = accel.segment(0, 3);
+    Vec3 d_wbd = accel.segment(3, 3);
+    // Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
+    // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
+        // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
-    d_wbd(0) = saturation(d_wbd(0), Vec2(-40, 40));
-    d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
-    d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
+    // dd_pcd(0) = saturation(dd_pcd(0), Vec2(-3, 3));
+    // dd_pcd(1) = saturation(dd_pcd(1), Vec2(-3, 3));
+    // dd_pcd(2) = saturation(dd_pcd(2), Vec2(-5, 5));
+
+    // d_wbd(0) = saturation(d_wbd(0), Vec2(-40, 40));
+    // d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
+    // d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
 
     std::cout << "dd_pcd: " << dd_pcd.transpose() << std::endl;
     std::cout << "d_wbd: " << d_wbd.transpose() << std::endl;
-
-    dd_pcd = acc.segment(0, 3);
-    d_wbd = acc.segment(3, 3);
 
     std::cout << "actual dd_pcd: " << dd_pcd.transpose() << std::endl;
     std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;
 
     Vec34 force_feet_global =
-        -balance_ctrl_->calF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), wave_generator_->contact_);
+        -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), wave_generator_->contact_);
 
 
     Vec34 pos_feet_global = estimator_->getFeetPos();

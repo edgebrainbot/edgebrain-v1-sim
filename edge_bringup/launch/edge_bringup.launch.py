@@ -1,55 +1,116 @@
+#!/usr/bin/env python3
 import os
-from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import GroupAction
-from launch_ros.actions import Node, PushRosNamespace
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    RegisterEventHandler,
+)
+from launch_ros.actions import Node
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+from launch.event_handlers import OnProcessExit
 
 
 def generate_launch_description():
-    # Config file path
-    safety_config_path = os.path.join(
-        get_package_share_directory('edge_config'),
-        'config', 'safety_set.yaml'
+    # ------------------------
+    # Declare Launch Arguments
+    # ------------------------
+    namespace_arg = DeclareLaunchArgument(
+        "namespace",
+        default_value="edge",
+        description="Global namespace for all nodes"
+    )
+
+    robot_arg = DeclareLaunchArgument(
+        "robot",
+        default_value="go2",
+        description="Robot name (e.g. go2, go1, a1)"
+    )
+
+    namespace = LaunchConfiguration("namespace")
+    robot = LaunchConfiguration("robot")
+
+    # ------------------------
+    # Hardware layer
+    # ------------------------
+    led_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("led_safety_monitor"),
+                "launch",
+                "safety_monitor.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
+    )
+
+    # ------------------------
+    # Locomotion Control Layer
+    # ------------------------
+    
+    # -------- Body Balance Controller --------
+    controller_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("body_balance_controller"),
+                "launch",
+                "mujoco.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
     )
     
-    if not os.path.exists(safety_config_path):
-        raise FileNotFoundError(f"Config file not found: {safety_config_path}")
+    # -------- PHY Teacher --------
+    phy_teacher_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_phy_teacher"),
+                "launch",
+                "phy_teacher.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
+    )
     
-    # === DRL Student Node ===
-    drl_student_node = Node(
-        package='edge_drl_student',
-        executable='drl_student_node',
-        name='drl_student',
-        output='screen',
-        parameters=[],
+    # -------- DRL Student --------
+    drl_student_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_drl_student"),
+                "launch",
+                "drl_student.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
     )
 
-    # === PHY Teacher Node ===
-    phy_teacher_node = Node(
-        package='edge_phy_teacher',
-        executable='phy_teacher_node',
-        name='phy_teacher',
-        output='screen',
-        parameters=[safety_config_path],
-    )
-
-    # === Trigger Node ===
-    trigger_node = Node(
-        package='edge_trigger',
-        executable='trigger_node',
-        name='trigger',
-        output='screen',
-        parameters=[safety_config_path],
-    )
-
-    # === LED Safety Monitor Node ===
-    led_safety_monitor_node = Node(
-        package='led_safety_monitor',
-        executable='safety_monitor_node',
-        name='led_safety_monitor',
-        output='screen',
-        parameters=[],
-        emulate_tty=True,
+    # -------- Trigger --------
+    trigger_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_trigger"),
+                "launch",
+                "trigger.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
     )
 
 
@@ -60,15 +121,34 @@ def generate_launch_description():
         name='virtual_safety_indicator',
         output='screen',
     )
+    
+    # ordered_sequence = [
+    #     led_launch,
+    #     virtual_safety_indicator_node,
+    #     RegisterEventHandler(
+    #         OnProcessExit(
+    #             target_action=led_launch,
+    #             on_exit=[controller_launch],
+    #         )
+    #     ),
+    #     RegisterEventHandler(
+    #         OnProcessExit(
+    #             target_action=controller_launch,
+    #             on_exit=[phy_teacher_launch, drl_student_launch, trigger_launch],
+    #         )
+    #     ),
+    # ]
 
-    # === Return launch description ===
     return LaunchDescription([
-        GroupAction([
-            PushRosNamespace('edge'),
-            drl_student_node,
-            phy_teacher_node,
-            trigger_node,
-            led_safety_monitor_node,
-            virtual_safety_indicator_node,
-        ])
+        # -- Launch Arguments --
+        namespace_arg,
+        robot_arg,
+        
+        # -- Launch Components --
+        led_launch,
+        controller_launch,
+        phy_teacher_launch,
+        drl_student_launch,
+        trigger_launch,
+        virtual_safety_indicator_node,
     ])

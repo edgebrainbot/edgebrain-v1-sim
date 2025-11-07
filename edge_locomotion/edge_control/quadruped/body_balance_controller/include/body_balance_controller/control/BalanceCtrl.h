@@ -17,7 +17,7 @@ public:
     ~BalanceCtrl() = default;
 
     /**
-     * Calculate the desired feet end force
+     * Calculate the Ground Reaction Forces (GRF) for the feet
      * @param ddPcd desired body acceleration
      * @param dWbd desired body angular acceleration
      * @param rot_matrix current body rotation matrix
@@ -25,7 +25,7 @@ public:
      * @param contact feet contact
      * @return
      */
-    Vec34 calF(const Vec3& ddPcd, const Vec3& dWbd, const RotMat& rot_matrix,
+    Vec34 calcGRF(const Vec3& ddPcd, const Vec3& dWbd, const RotMat& rot_matrix,
                const Vec34& feet_pos_2_body, const VecInt4& contact);
 
 private:

@@ -36,7 +36,7 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
                      0, 0, 1;
 }
 
-Vec34 BalanceCtrl::calF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
+Vec34 BalanceCtrl::calcGRF(const Vec3 &ddPcd, const Vec3 &dWbd, const RotMat &rot_matrix,
                         const Vec34 &feet_pos_2_body, const VecInt4 &contact) {
     calMatrixA(feet_pos_2_body, rot_matrix);
     calVectorBd(ddPcd, dWbd, rot_matrix);

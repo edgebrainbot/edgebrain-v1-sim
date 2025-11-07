@@ -90,7 +90,7 @@ void StateBalanceTest::calcTorque()
 
     // calculate foot force
     const Vec34 pos_feet_2_body_global = estimator_->getFeetPos2Body();
-    const Vec34 force_feet_global = -balance_ctrl_->calF(dd_pcd_, d_wbd_, B2G_Rotation,
+    const Vec34 force_feet_global = -balance_ctrl_->calcGRF(dd_pcd_, d_wbd_, B2G_Rotation,
                                                          pos_feet_2_body_global, wave_generator_->contact_);
     const Vec34 force_feet_body = G2B_Rotation * force_feet_global;
 
