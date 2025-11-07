@@ -49,8 +49,8 @@ def generate_launch_description():
         # ),
         Node(
             package='edge_phy_teacher',
-            executable='phy_teacher_node',
-            name='phy_teacher_node',
+            executable='phy_teacher',
+            name='phy_teacher',
             namespace='edge',
             output='screen',
             prefix=PythonExpression([

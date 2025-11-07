@@ -1,5 +1,5 @@
-#ifndef PHY_TEACHER_NODE_HPP
-#define PHY_TEACHER_NODE_HPP
+#ifndef PHY_TEACHER_HPP
+#define PHY_TEACHER_HPP
 
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -11,11 +11,11 @@
 
 namespace edge::phy_teacher {
 
-class PhyTeacherNode : public rclcpp::Node {
+class PhyTeacher : public rclcpp::Node {
 public:
 
-  explicit PhyTeacherNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-  ~PhyTeacherNode() override;
+  explicit PhyTeacher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  ~PhyTeacher() override;
 
 private:
   void errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg);
@@ -55,4 +55,4 @@ private:
 
 }  // namespace edge::phy_teacher
 
-#endif  // PHY_TEACHER_NODE_HPP
+#endif  // PHY_TEACHER_HPP

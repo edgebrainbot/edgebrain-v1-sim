@@ -1,13 +1,13 @@
-// phy_teacher_node.cpp
+// phy_teacher.cpp
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "phy_teacher_node.hpp"
+#include "phy_teacher.hpp"
 
 namespace edge::phy_teacher {
   
-PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
-: Node("phy_teacher_node", options) {
+PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
+: Node("phy_teacher", options) {
 
     // ------------------------------------------------------
     // 1️⃣ Declare ROS parameters with defaults
@@ -48,11 +48,11 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
 
     lmi_timer_ = this->create_wall_timer(
       std::chrono::milliseconds(1000 / update_rate_),
-      std::bind(&PhyTeacherNode::lmiCallback, this)
+      std::bind(&PhyTeacher::lmiCallback, this)
     );
 
     sub_ = this->create_subscription<edge_msgs::msg::TrackingError>("tracking_error", 10,
-      std::bind(&PhyTeacherNode::errorCallback, this, std::placeholders::_1)
+      std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
     pub_ = this->create_publisher<edge_msgs::msg::Action>("phy_teacher_action", 10);
@@ -60,10 +60,10 @@ PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
     RCLCPP_INFO(this->get_logger(), "Phy-Teacher Safety Controller Node initialized.");
   }
 
-PhyTeacherNode::~PhyTeacherNode() {}
+PhyTeacher::~PhyTeacher() {}
 
 // Subscription callback to receive tracking error
-void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg) {
+void PhyTeacher::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg) {
 
   // Update error state
   error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
@@ -76,7 +76,7 @@ void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPt
   got_msg_ = true;
 }
 
-void PhyTeacherNode::lmiCallback() {
+void PhyTeacher::lmiCallback() {
   // Only proceed if a new message has been received
   if (!got_msg_) return;
 
@@ -154,7 +154,7 @@ void PhyTeacherNode::lmiCallback() {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<edge::phy_teacher::PhyTeacherNode>());
+  rclcpp::spin(std::make_shared<edge::phy_teacher::PhyTeacher>());
   rclcpp::shutdown();
   return 0;
 }

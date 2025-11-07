@@ -70,18 +70,18 @@ ament_target_dependencies(lmi_optimizer_lib
 )
 
 # ------------------ Executable ------------------
-add_executable(phy_teacher_node src/phy_teacher_node.cpp)
-target_include_directories(phy_teacher_node PUBLIC 
+add_executable(phy_teacher src/phy_teacher.cpp)
+target_include_directories(phy_teacher PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${EIGEN3_INCLUDE_DIRS}
 )
-target_link_libraries(phy_teacher_node lmi_optimizer_lib)
+target_link_libraries(phy_teacher lmi_optimizer_lib)
 
 # Ensure RPATH includes relative lib/
-set_target_properties(phy_teacher_node PROPERTIES
+set_target_properties(phy_teacher PROPERTIES
   INSTALL_RPATH "$ORIGIN/../lib"
 )
-ament_target_dependencies(phy_teacher_node rclcpp edge_msgs edge_ros_interfaces edge_config)
+ament_target_dependencies(phy_teacher rclcpp edge_msgs edge_ros_interfaces edge_config)
 
 add_executable(mock_publisher test/mock_publisher.cpp)
 ament_target_dependencies( 
@@ -100,7 +100,7 @@ target_include_directories(control_gain_listener PUBLIC include)
 
 # ------------------ Install ------------------
 install(TARGETS
-  phy_teacher_node
+  phy_teacher
   lmi_optimizer_lib
   ecvxcone
   mock_publisher
