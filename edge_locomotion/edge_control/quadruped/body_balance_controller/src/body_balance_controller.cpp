@@ -128,7 +128,7 @@ namespace edge::locomotion::body_balance_controller
 
             // Subscribe to "control input"
             control_input_sub_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(
-                "/control_input", 10, 
+                "/control_input", 100, 
                 [this](const control_input_msgs::msg::Inputs::SharedPtr msg) -> void
             {
                 // Handle message
@@ -141,7 +141,7 @@ namespace edge::locomotion::body_balance_controller
 
             // Subscribe to "cmd_vel"
             cmd_sub_ = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
-                "/cmd_vel", 10,
+                "/cmd_vel", 100,
                 [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
             {
                 cmd_vx_ = msg->twist.linear.x;
@@ -156,7 +156,7 @@ namespace edge::locomotion::body_balance_controller
 
             // Subscribe to "edge/terminal_action"
             action_sub_ = get_node()->create_subscription<edge_msgs::msg::Action>(
-                topic_ns_ + "/terminal_action", 10,
+                topic_ns_ + "/terminal_action", 100,
                 [this](const edge_msgs::msg::Action::SharedPtr msg) -> void
             {
                 latest_accel_ = *msg;
@@ -168,7 +168,7 @@ namespace edge::locomotion::body_balance_controller
 
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
-                topic_ns_ + "/tracking_error", 10);
+                topic_ns_ + "/tracking_error", 100);
 
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_node()->get_logger(), "Failed to create subscription: %s", e.what());

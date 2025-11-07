@@ -221,9 +221,12 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     accel(0) = saturation(accel(0), Vec2(-3, 3));
     accel(1) = saturation(accel(1), Vec2(-3, 3));
     accel(2) = saturation(accel(2), Vec2(-5, 5));
-    accel(3) = saturation(accel(3), Vec2(-10, 10));
-    accel(4) = saturation(accel(4), Vec2(-10, 10));
-    accel(5) = saturation(accel(5), Vec2(-20, 20));
+    // accel(3) = saturation(accel(3), Vec2(-10, 10));  // Wrong limit, should be (-40, 40)
+    // accel(4) = saturation(accel(4), Vec2(-10, 10));  // Wrong limit, should be (-40, 40)
+    // accel(5) = saturation(accel(5), Vec2(-20, 20));  // Wrong limit, should be (-10, 10)
+    accel(3) = saturation(accel(3), Vec2(-40, 40));
+    accel(4) = saturation(accel(4), Vec2(-40, 40));
+    accel(5) = saturation(accel(5), Vec2(-10, 10));
 
     std::cout << "acc command: " << accel.transpose() << std::endl;
 
