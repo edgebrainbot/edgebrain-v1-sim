@@ -21,7 +21,7 @@ def generate_launch_description():
     # Declare launch arguments
     update_rate_arg = DeclareLaunchArgument(
         'update_rate',
-        default_value='50.0',
+        default_value='100.0',
         description='Frequency (Hz) of the trigger loop'
     )
 
@@ -34,11 +34,11 @@ def generate_launch_description():
         output='screen',
         parameters=[
             safety_config_path,
-            # {'update_rate': LaunchConfiguration('update_rate')}
+            {'update_rate': LaunchConfiguration('update_rate')}
         ]
     )
     
     return LaunchDescription([
-        update_rate_arg,  
+        update_rate_arg,
         trigger_node,
     ])

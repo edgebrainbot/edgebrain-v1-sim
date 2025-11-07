@@ -8,28 +8,42 @@ namespace edge::phy_teacher {
   
 PhyTeacherNode::PhyTeacherNode(const rclcpp::NodeOptions & options)
 : Node("phy_teacher_node", options) {
-    // Declare parameter and get update rate
-    this->declare_parameter<int>("update_rate", 30);
-    this->declare_parameter<bool>("print_process_time", false);
 
-    this->declare_parameter<double>("roll_limit_deg", 2.0);
-    this->declare_parameter<double>("pitch_limit_deg", 2.0);
-    this->declare_parameter<double>("height_limit", 0.05);
+    // ------------------------------------------------------
+    // 1️⃣ Declare ROS parameters with defaults
+    // ------------------------------------------------------
+    update_rate_        = this->declare_parameter<int>("update_rate", 200);
+    print_process_time_ = this->declare_parameter<bool>("print_process_time", false);
 
-    int update_rate_hz = this->get_parameter("update_rate").as_int();
-    this->get_parameter("print_process_time", print_process_time_);
+    // Teacher config
+    tau_                 = this->declare_parameter<int>("tau", 20);
+    chi_                 = this->declare_parameter<double>("chi", 0.25);
+    teacher_enable_      = this->declare_parameter<bool>("teacher_enable", true);
+    teaching_to_learn_   = this->declare_parameter<bool>("teaching_to_learn", true);
+    trigger_type_        = this->declare_parameter<std::string>("trigger_type", "event");
 
     // Initialize Safety Checker
-    double roll_deg  = this->get_parameter("roll_limit_deg").as_double();
-    double pitch_deg = this->get_parameter("pitch_limit_deg").as_double();
-    double height = this->get_parameter("height_limit").as_double();
+    double roll_deg  = this->declare_parameter<double>("roll_limit_deg", 2.0);;
+    double pitch_deg = this->declare_parameter<double>("pitch_limit_deg", 2.0);
+    double height = this->declare_parameter<double>("height_limit", 0.05);
     safety_checker_ = std::make_shared<edge::config::SafetyChecker>(roll_deg, pitch_deg, height);
 
-    RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_hz);
+    RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
 
+    // Initialize LMI Optimizer
+    std::vector<double> default_kp_raw = this->declare_parameter<std::vector<double>>("DEFAULT_KP", std::vector<double>(36, 0.0));
+    std::vector<double> default_kd_raw = this->declare_parameter<std::vector<double>>("DEFAULT_KD", std::vector<double>(36, 0.0));
+
+    lmi::Mat6x6 default_kp = edge::ros_interfaces::VectorToEigen<6, 6>(default_kp_raw);
+    lmi::Mat6x6 default_kd = edge::ros_interfaces::VectorToEigen<6, 6>(default_kd_raw);
+    lmi_optimizer_.set_default_kp(default_kp);
+    lmi_optimizer_.set_default_kd(default_kd);
+
+    RCLCPP_INFO(this->get_logger(), "LMI Optimizer initialized.");
+
     lmi_timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(1000 / update_rate_hz),
+      std::chrono::milliseconds(1000 / update_rate_),
       std::bind(&PhyTeacherNode::lmiCallback, this)
     );
 
@@ -51,7 +65,7 @@ void PhyTeacherNode::errorCallback(const edge_msgs::msg::TrackingError::SharedPt
   error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
 
   for (int i = 0; i < 10 && i < msg->tracking_error.size(); ++i) {
-    lmi_optimizer_.tracking_err[i] = msg->tracking_error[i];
+    lmi_optimizer_.tracking_err[i] = msg->tracking_error[i + 2];
   }
 
   RCLCPP_INFO(this->get_logger(), "Received tracking error message.");
@@ -76,7 +90,7 @@ void PhyTeacherNode::lmiCallback() {
         start_time_ = this->now();
 
       // Update lmi optimizer
-      lmi_optimizer_.update();
+      // lmi_optimizer_.update();
 
       if (print_process_time_) {
         end_time_ = this->now();
@@ -108,8 +122,10 @@ void PhyTeacherNode::lmiCallback() {
   if (teacher_active_) {
     // Compute the action according to the center of the safety patch
     edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
-    auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6) * 3;
-    auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6) * 3;
+    // auto kp_term = lmi_optimizer_.F_kp * error_from_patch.head(6) * 100;
+    // auto kd_term = lmi_optimizer_.F_kd * error_from_patch.tail(6) * 100;
+    auto kp_term = lmi_optimizer_.default_F_kp * error_from_patch.head(6);
+    auto kd_term = lmi_optimizer_.default_F_kd * error_from_patch.tail(6);
 
     auto result = kp_term + kd_term;
     teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(result);

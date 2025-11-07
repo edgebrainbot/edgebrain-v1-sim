@@ -92,6 +92,7 @@ namespace edge::locomotion::body_balance_controller
 
             // Gait parameters 
             gait_height_ = auto_declare<double>("gait_height", gait_height_);
+            RCLCPP_INFO(get_node()->get_logger(), "Gait Height: %.3f m", gait_height_);
 
             get_node()->get_parameter("update_rate", ctrl_interfaces_.frequency_);
             RCLCPP_INFO(get_node()->get_logger(), "Controller Manager Update Rate: %d Hz", ctrl_interfaces_.frequency_);
@@ -218,12 +219,10 @@ namespace edge::locomotion::body_balance_controller
         // Create FSM List
         state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
         state_list_.fixedDown = std::make_shared<StateFixedDown>(ctrl_interfaces_, down_pos_, stand_gains_[0], stand_gains_[1]);
-        state_list_.fixedStand = std::make_shared<StateFixedStand>(ctrl_interfaces_, ctrl_component_, stand_pos_,
-                                                                   stand_gains_[0], stand_gains_[1]);
-        state_list_.freeStand = std::make_shared<StateFreeStand>(ctrl_interfaces_, ctrl_component_, stand_gains_[0],
-                                                                 stand_gains_[1]);
+        state_list_.fixedStand = std::make_shared<StateFixedStand>(ctrl_interfaces_, ctrl_component_, stand_pos_, stand_gains_[0], stand_gains_[1]);
+        state_list_.freeStand = std::make_shared<StateFreeStand>(ctrl_interfaces_, ctrl_component_, stand_gains_[0], stand_gains_[1]);
         state_list_.balanceTest = std::make_shared<StateBalanceTest>(ctrl_interfaces_, ctrl_component_, stable_gains_);
-        state_list_.trotting = std::make_shared<StateTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_);
+        state_list_.trotting = std::make_shared<StateTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_, gait_height_);
 
         // Initialize FSM
         current_state_ = state_list_.passive;

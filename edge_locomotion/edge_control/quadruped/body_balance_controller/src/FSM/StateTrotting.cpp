@@ -13,7 +13,8 @@ using namespace edge::locomotion;
 StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                              CtrlComponent& ctrl_component,
                              const std::vector<double>& swing_gains,
-                             const std::vector<double>& stable_gains) 
+                             const std::vector<double>& stable_gains,
+                             double gait_height) 
                              : FSMState(FSMStateName::TROTTING, "trotting",
                                 ctrl_interfaces),
                                 estimator_(ctrl_component.estimator_),
@@ -22,7 +23,8 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                                 wave_generator_(ctrl_component.wave_generator_),
                                 gait_generator_(ctrl_component),
                                 swing_gains_(swing_gains),
-                                stable_gains_(stable_gains)
+                                stable_gains_(stable_gains),
+                                gait_height_(gait_height)
     {
     Kpp = Vec3(70, 70, 70).asDiagonal();
     Kdp = Vec3(20, 20, 20).asDiagonal();
@@ -35,6 +37,7 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     v_y_limit_ << -0.3, 0.3;
     w_yaw_limit_ << -0.5, 0.5;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
+
 
     // pub_ = this->create_publisher<phy_teacher_interfaces::msg::TrackingError>("/tracking_err", 10);
     // sub_gain_ = this->create_subscription<phy_teacher_interfaces::msg::ControlGains>(
@@ -76,10 +79,6 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
 
     getUserCmd(cmd_vx, cmd_vy, cmd_wz);
     calcCmd();
-
-    gait_height_ = 0.1;
-
-    std::cout << "gait height: " << gait_height_ << std::endl;
 
     gait_generator_.setGait(vel_cmd_global_.segment(0, 2), w_cmd_global_(2), gait_height_);
     gait_generator_.generate(pos_feet_global_goal_, vel_feet_global_goal_);
@@ -174,13 +173,17 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
 
+    // Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
+    // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
+        // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
+
     edge::ros_interfaces::Vector12d tracking_error;
     tracking_error[0] = 0.0;
     tracking_error[1] = 0.0;
     tracking_error[2] = pos_error_(2);
-    tracking_error[3] = rotMatToRPY(Rd * G2B_RotMat)(0);
-    tracking_error[4] = rotMatToRPY(Rd * G2B_RotMat)(1);
-    tracking_error[5] = rotMatToRPY(Rd * G2B_RotMat)(2);
+    tracking_error[3] = rotMatToExp(Rd * G2B_RotMat)(0);
+    tracking_error[4] = rotMatToExp(Rd * G2B_RotMat)(1);
+    tracking_error[5] = rotMatToExp(Rd * G2B_RotMat)(2);
     tracking_error[6] = vel_error_(0);
     tracking_error[7] = vel_error_(1);
     tracking_error[8] = vel_error_(2);
@@ -196,36 +199,22 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
 
     auto track_msg = edge::ros_interfaces::EigenToTrackingErrorMsg(tracking_error);
     tracking_error_pub_->publish(track_msg);
-    // phy_teacher_interfaces::msg::TrackingError msg;
-    // std_msgs::msg::Float64MultiArray msg;
-    // for (int i = 0; i < 10; i++) {
-    //     msg.data.push_back(tracking_error[i]);
-    // }
-    // std::cout << std::endl;
-    // pub_->publish(msg);
 
     std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
     std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;
 
-    std::cout << "pos error: " << pos_error_.transpose() << std::endl;
-    std::cout << "vel error: " << vel_error_.transpose() << std::endl;
-    std::cout << "angle error: " << rotMatToExp(Rd * G2B_RotMat).transpose() << std::endl;
-    std::cout << "angular vel error: " << (w_cmd_global_ - estimator_->getGyroGlobal()).transpose() << std::endl;
+    // std::cout << "pos error: " << pos_error_.transpose() << std::endl;
+    // std::cout << "vel error: " << vel_error_.transpose() << std::endl;
+    // std::cout << "angle error: " << rotMatToExp(Rd * G2B_RotMat).transpose() << std::endl;
+    // std::cout << "angular vel error: " << (w_cmd_global_ - estimator_->getGyroGlobal()).transpose() << std::endl;
 
     Vec6 accel;
-    Vec6 all_pos_error;
-    Vec6 all_vel_error;
-    all_pos_error << pos_error_, rotMatToExp(Rd * G2B_RotMat);
-    all_vel_error << vel_error_, (w_cmd_global_ - estimator_->getGyroGlobal());
     for (int i = 0; i < 6; i++) {
         accel(i) = latest_accel_.action[i];
     }
     std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
-    // acc = kp * all_pos_error + kd * all_vel_error;
-
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
-    std::cout << "all pos error: " << all_pos_error.transpose() << std::endl;
-    std::cout << "all vel error: " << all_vel_error.transpose() << std::endl;
+
     // std::cout << "kp: " << kp << std::endl;
     // std::cout << "kd: " << kd << std::endl;
 
@@ -240,9 +229,35 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
 
     Vec3 dd_pcd = accel.segment(0, 3);
     Vec3 d_wbd = accel.segment(3, 3);
+
+    // Vec6 all_pos_error;
+    // Vec6 all_vel_error;
+    // all_pos_error << pos_error_, rotMatToExp(Rd * G2B_RotMat);
+    // all_vel_error << vel_error_, (w_cmd_global_ - estimator_->getGyroGlobal());
+    // std::cout << "all pos error: " << all_pos_error.transpose() << std::endl;
+    // std::cout << "all vel error: " << all_vel_error.transpose() << std::endl;
+    // Eigen::Matrix<double , 6, 6> kp;
+    // Eigen::Matrix<double , 6, 6> kd;
+    // kp << 1, 0, 0, 0, 0, 0,
+    //       0, 1, 0, 0, 0, 0,
+    //       0, 0, 70, 0, 0, 0,
+    //       0, 0, 0, 780, 0, 0,
+    //       0, 0, 0, 0, 780, 0,
+    //       0, 0, 0, 0, 0, 100;
+
+    // kd << 20, 0, 0, 0, 0, 0,
+    //       0, 20, 0, 0, 0, 0,
+    //       0, 0, 20, 0, 0, 0,
+    //       0, 0, 0, 70, 0, 0,
+    //       0, 0, 0, 0, 70, 0,
+    //       0, 0, 0, 0, 0, 70;
+    // auto acc = kp * all_pos_error + kd * all_vel_error;
+    // Vec3 dd_pcd = acc.segment(0, 3);
+    // Vec3 d_wbd = acc.segment(3, 3);
+
     // Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
-        // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
+    //     Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
     // dd_pcd(0) = saturation(dd_pcd(0), Vec2(-3, 3));
     // dd_pcd(1) = saturation(dd_pcd(1), Vec2(-3, 3));
@@ -251,9 +266,6 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     // d_wbd(0) = saturation(d_wbd(0), Vec2(-40, 40));
     // d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
     // d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
-
-    std::cout << "dd_pcd: " << dd_pcd.transpose() << std::endl;
-    std::cout << "d_wbd: " << d_wbd.transpose() << std::endl;
 
     std::cout << "actual dd_pcd: " << dd_pcd.transpose() << std::endl;
     std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;

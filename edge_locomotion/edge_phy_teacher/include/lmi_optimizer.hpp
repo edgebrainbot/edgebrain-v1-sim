@@ -37,8 +37,11 @@ public:
   LMIOptimizer();  // Constructor
   ~LMIOptimizer(); // Destructor
 
-  Mat6x6 F_kp;
-  Mat6x6 F_kd;
+  Mat6x6 F_kp;  // Contains the solved Kp gain matrices
+  Mat6x6 F_kd;  // Contains the solved Kd gain matrices
+
+  Mat6x6 default_F_kp;  // Default Kp gain matrices
+  Mat6x6 default_F_kd;  // Default Kd gain matrices
 
   double tracking_err[10];
   double tracking_err_square[10];
@@ -52,6 +55,10 @@ public:
   void update_Ry(double pitch);
   void update_Rz(double yaw);
   void update_Rzyx(double roll, double pitch, double yaw);
+
+  void set_default_kp(Mat6x6 kp) { default_F_kp = kp; print_matrix6x6(default_F_kp, "Default Kp set to:");
+  }
+  void set_default_kd(Mat6x6 kd) { default_F_kd = kd; print_matrix6x6(default_F_kd, "Default Kd set to:");}
 
   // Utility
   static void print_matrix6x6(const Mat6x6& mat, const char* name);

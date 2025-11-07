@@ -1,55 +1,77 @@
 #pragma once
 /**
  * @file conversions.hpp
- * @brief Helper functions for converting between Eigen vectors, std::vector, and edge_msgs ROS messages.
+ * @brief Unified conversion utilities between Eigen, std::vector, and ROS 2 message types.
  *
- * This header provides lightweight inline conversion utilities
- * between Eigen (for control/learning), std::vector (for general containers),
- * and ROS message types (Action, TrackingError).
+ * This header provides high-performance inline conversions between:
+ *  - Eigen matrices/vectors (for control/optimization)
+ *  - std::vector<double> (for parameters, YAML, serialization)
+ *  - ROS message types (Action, TrackingError)
+ *
+ * The goal is to provide a consistent interface for real-time controllers
+ * and runtime-learning nodes while maintaining header-only efficiency.
  */
 
 #include <Eigen/Dense>
 #include <vector>
+#include <sstream>
+#include <stdexcept>
+#include <algorithm>
+
 #include "edge_msgs/msg/action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 
 namespace edge::ros_interfaces {
 
-// -------------------- Type Aliases --------------------
+// ======================================================
+// ==================== Type Aliases ====================
+// ======================================================
+
 using Vector6d  = Eigen::Matrix<double, 6, 1>;
 using Vector12d = Eigen::Matrix<double, 12, 1>;
+using Mat6x6    = Eigen::Matrix<double, 6, 6>;
 
 // ======================================================
 // =============== Eigen ↔ std::vector ==================
 // ======================================================
 
 /**
- * @brief Convert Eigen vector (fixed-size or dynamic) to std::vector<double>.
+ * @brief Convert any Eigen matrix or vector to a std::vector<double>.
  */
 template <typename Derived>
-inline std::vector<double> EigenToVector(const Eigen::MatrixBase<Derived>& v) {
-  return std::vector<double>(v.derived().data(), v.derived().data() + v.size());
+inline std::vector<double> EigenToVector(const Eigen::MatrixBase<Derived>& m) {
+  return std::vector<double>(m.derived().data(), m.derived().data() + m.size());
 }
 
 /**
- * @brief Convert std::vector<double> to Eigen::VectorXd.
+ * @brief Convert std::vector<double> to Eigen::VectorXd (dynamic size).
  */
-inline Eigen::VectorXd VectorToEigen(const std::vector<double>& vec) {
-  Eigen::VectorXd v(vec.size());
-  for (size_t i = 0; i < vec.size(); ++i)
-    v(i) = vec[i];
-  return v;
+inline Eigen::VectorXd VectorToEigenDynamic(const std::vector<double>& vec) {
+  return Eigen::Map<const Eigen::VectorXd>(vec.data(), vec.size());
 }
 
 /**
- * @brief Convert std::vector<double> to fixed-size Eigen vector (compile-time dimension).
+ * @brief Convert std::vector<double> to fixed-size Eigen matrix or vector.
+ *
+ * Example:
+ * ```cpp
+ * auto v = VectorToEigen<6>(vec);     // 6x1
+ * auto M = VectorToEigen<6,6>(vec);   // 6x6
+ * ```
+ *
+ * @tparam Rows  Number of rows
+ * @tparam Cols  Number of columns (default 1)
+ * @throws std::runtime_error if vec.size() != Rows * Cols
  */
-template <int N>
-inline Eigen::Matrix<double, N, 1> VectorToEigenFixed(const std::vector<double>& vec) {
-  Eigen::Matrix<double, N, 1> v;
-  for (int i = 0; i < N && i < static_cast<int>(vec.size()); ++i)
-    v(i) = vec[i];
-  return v;
+template <int Rows, int Cols = 1>
+inline Eigen::Matrix<double, Rows, Cols> VectorToEigen(const std::vector<double>& vec) {
+  const size_t expected = static_cast<size_t>(Rows * Cols);
+  if (vec.size() != expected) {
+    throw std::runtime_error(
+      "VectorToEigen: size mismatch, expected " + std::to_string(expected) +
+      " elements but got " + std::to_string(vec.size()) + ".");
+  }
+  return Eigen::Map<const Eigen::Matrix<double, Rows, Cols>>(vec.data());
 }
 
 // ======================================================
@@ -57,58 +79,48 @@ inline Eigen::Matrix<double, N, 1> VectorToEigenFixed(const std::vector<double>&
 // ======================================================
 
 /**
- * @brief Convert std::vector<double> to Action message.
+ * @brief Convert std::vector<double> to edge_msgs::msg::Action.
  */
 inline edge_msgs::msg::Action VectorToActionMsg(const std::vector<double>& data) {
   edge_msgs::msg::Action msg;
-  for (size_t i = 0; i < msg.action.size() && i < data.size(); ++i) {
-    msg.action[i] = data[i];
-  }
+  const size_t n = std::min(msg.action.size(), data.size());
+  std::copy_n(data.begin(), n, msg.action.begin());
   return msg;
 }
 
 /**
- * @brief Convert Action message to std::vector<double>.
+ * @brief Convert edge_msgs::msg::Action to std::vector<double>.
  */
 inline std::vector<double> ActionMsgToVector(const edge_msgs::msg::Action& msg) {
-  std::vector<double> vec;
-  for (size_t i = 0; i < msg.action.size(); ++i) {
-    vec.push_back(msg.action[i]);
-  }
-  return vec;
+  return std::vector<double>(msg.action.begin(), msg.action.end());
 }
 
 /**
- * @brief Convert std::vector<double> to TrackingError message.
+ * @brief Convert std::vector<double> to edge_msgs::msg::TrackingError.
  */
 inline edge_msgs::msg::TrackingError VectorToTrackingErrorMsg(const std::vector<double>& data) {
   edge_msgs::msg::TrackingError msg;
-for (size_t i = 0; i < msg.tracking_error.size() && i < data.size(); ++i) {
-    msg.tracking_error[i] = data[i];
-}
+  const size_t n = std::min(msg.tracking_error.size(), data.size());
+  std::copy_n(data.begin(), n, msg.tracking_error.begin());
   return msg;
 }
 
 /**
- * @brief Convert TrackingError message to std::vector<double>.
+ * @brief Convert edge_msgs::msg::TrackingError to std::vector<double>.
  */
 inline std::vector<double> TrackingErrorMsgToVector(const edge_msgs::msg::TrackingError& msg) {
-  std::vector<double> vec;
-  for (size_t i = 0; i < msg.tracking_error.size(); ++i) {
-    vec.push_back(msg.tracking_error[i]);
-  }
-  return vec;
+  return std::vector<double>(msg.tracking_error.begin(), msg.tracking_error.end());
 }
 
 // ======================================================
-// =============== Eigen ↔ ROS msg ======================
+// =============== Eigen ↔ ROS message ==================
 // ======================================================
 
 /**
  * @brief Convert Action message to Eigen 6D vector.
  */
 inline Vector6d ActionMsgToEigen(const edge_msgs::msg::Action& msg) {
-  return VectorToEigenFixed<6>(ActionMsgToVector(msg));
+  return VectorToEigen<6>(ActionMsgToVector(msg));
 }
 
 /**
@@ -122,7 +134,7 @@ inline edge_msgs::msg::Action EigenToActionMsg(const Vector6d& v) {
  * @brief Convert TrackingError message to Eigen 12D vector.
  */
 inline Vector12d TrackingErrorMsgToEigen(const edge_msgs::msg::TrackingError& msg) {
-  return VectorToEigenFixed<12>(TrackingErrorMsgToVector(msg));
+  return VectorToEigen<12>(TrackingErrorMsgToVector(msg));
 }
 
 /**
@@ -130,6 +142,43 @@ inline Vector12d TrackingErrorMsgToEigen(const edge_msgs::msg::TrackingError& ms
  */
 inline edge_msgs::msg::TrackingError EigenToTrackingErrorMsg(const Vector12d& v) {
   return VectorToTrackingErrorMsg(EigenToVector(v));
+}
+
+// ======================================================
+// =============== Utility / Debug Helpers ==============
+// ======================================================
+
+/**
+ * @brief Convert an Eigen matrix to a formatted string (for logging or debugging).
+ */
+template <typename Derived>
+inline std::string EigenToString(const Eigen::MatrixBase<Derived>& mat, int precision = 4) {
+  Eigen::IOFormat fmt(precision, 0, ", ", "\n", "[", "]");
+  std::stringstream ss;
+  ss << mat.format(fmt);
+  return ss.str();
+}
+
+/**
+ * @brief Safe pretty-print wrapper for ROS2 logging (thread-local buffer).
+ * Example:
+ * ```cpp
+ * RCLCPP_INFO(logger, "Kp:\n%s", EigenToCString(Kp).c_str());
+ * ```
+ */
+template <typename Derived>
+inline const char* EigenToCString(const Eigen::MatrixBase<Derived>& mat, int precision = 4) {
+  static thread_local std::string buffer;
+  buffer = EigenToString(mat, precision);
+  return buffer.c_str();
+}
+
+/**
+ * @brief Convert Eigen matrix to YAML-style flat std::vector (for saving to config files).
+ */
+template <typename Derived>
+inline std::vector<double> EigenToYAMLVector(const Eigen::MatrixBase<Derived>& mat) {
+  return EigenToVector(mat);
 }
 
 }  // namespace edge::ros_interfaces

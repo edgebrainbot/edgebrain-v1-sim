@@ -32,7 +32,8 @@ public:
     explicit StateTrotting(CtrlInterfaces &ctrl_interfaces,
                            CtrlComponent &ctrl_component,
                            const std::vector<double>& swing_gains,
-                           const std::vector<double>& stable_gains);
+                           const std::vector<double>& stable_gains,
+                           double gait_height);
 
     void enter() override;
 

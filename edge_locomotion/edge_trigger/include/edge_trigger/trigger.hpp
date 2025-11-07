@@ -34,7 +34,7 @@ private:
   bool is_last_state_safe_;        // last alert state (is safe)
 
   // Safety-conditions
-  double update_rate_hz_;
+  double update_rate_;
 
   std::shared_ptr<edge::config::SafetyChecker> safety_checker_;
 

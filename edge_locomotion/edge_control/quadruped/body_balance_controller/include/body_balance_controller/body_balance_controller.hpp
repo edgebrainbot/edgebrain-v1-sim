@@ -111,7 +111,8 @@ namespace edge::locomotion::body_balance_controller
         std::vector<double> swing_gains_ = {3.0, 2.0};
 
         // stable_gains_[0] = kp, stable_gains_[1] = kd
-        std::vector<double> stable_gains_ = {0.8, 0.8};
+        // std::vector<double> stable_gains_ = {0.8, 0.8};
+        std::vector<double> stable_gains_ = {100, 0.8};
 
         // Gait parameters
         double gait_height_ = 0.08;

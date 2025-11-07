@@ -122,22 +122,6 @@ def generate_launch_description():
         output='screen',
     )
     
-    # ordered_sequence = [
-    #     led_launch,
-    #     virtual_safety_indicator_node,
-    #     RegisterEventHandler(
-    #         OnProcessExit(
-    #             target_action=led_launch,
-    #             on_exit=[controller_launch],
-    #         )
-    #     ),
-    #     RegisterEventHandler(
-    #         OnProcessExit(
-    #             target_action=controller_launch,
-    #             on_exit=[phy_teacher_launch, drl_student_launch, trigger_launch],
-    #         )
-    #     ),
-    # ]
 
     return LaunchDescription([
         # -- Launch Arguments --

@@ -22,7 +22,13 @@ private:
   void lmiCallback();
 
   // For phy-teacher logistics
-  double chi_ = 0.0;                       // Hyperparameter χ
+  int tau_ = 20;                          // Time steps for safety patch
+  double chi_ = 0.25;                       // Hyperparameter χ
+  bool teacher_enable_ = true;              // Whether the teacher is enabled
+  bool teaching_to_learn_ = true;      // Whether to teach to learn
+  std::string trigger_type_ = "event";     // Trigger type: "event" or "periodic"
+
+  int update_rate_;                   // Update rate in Hz
   bool got_msg_ = false;
   bool teacher_active_ = false;            // Whether the teacher is active
   bool print_process_time_ = false;

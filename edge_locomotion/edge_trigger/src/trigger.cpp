@@ -12,16 +12,12 @@ TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(this->get_logger(), "🔘 TriggerNode initialized.");
 
   // --- Declare parameters ---
-  this->declare_parameter<double>("update_rate", 50.0);
-  this->declare_parameter<double>("roll_limit_deg", 30.0);
-  this->declare_parameter<double>("pitch_limit_deg", 30.0);
-  this->declare_parameter<double>("height_limit", 0.1);
+  double roll_deg  = this->declare_parameter<double>("roll_limit_deg", 30.0);
+  double pitch_deg = this->declare_parameter<double>("pitch_limit_deg", 30.0);
+  double height = this->declare_parameter<double>("height_limit", 0.1);
+  update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
 
-  double roll_deg  = this->get_parameter("roll_limit_deg").as_double();
-  double pitch_deg = this->get_parameter("pitch_limit_deg").as_double();
-  double height = this->get_parameter("height_limit").as_double();
-  update_rate_hz_ = this->get_parameter("update_rate").as_double();
-
+  RCLCPP_INFO(this->get_logger(), "🔘 TriggerNode update rate set to %f Hz", update_rate_);
   RCLCPP_INFO(this->get_logger(), "🔘 Initializing SafetyChecker with roll=%.1f°, pitch=%.1f°, height=%.2f",
               roll_deg, pitch_deg, height);
 
@@ -35,19 +31,19 @@ TriggerNode::TriggerNode(const rclcpp::NodeOptions & options)
 
   // Subscribers (state, teacher action, student action)
   sub_error_ = this->create_subscription<edge_msgs::msg::TrackingError>(
-    "tracking_error", 10, std::bind(&TriggerNode::errorCallback, this, _1));
+    "tracking_error", 50, std::bind(&TriggerNode::errorCallback, this, _1));
 
   sub_teacher_ = this->create_subscription<edge_msgs::msg::Action>(
-    "phy_teacher_action", 10, std::bind(&TriggerNode::teacherCallback, this, _1));
+    "phy_teacher_action", 50, std::bind(&TriggerNode::teacherCallback, this, _1));
 
   sub_student_ = this->create_subscription<edge_msgs::msg::Action>(
-    "drl_student_action", 10, std::bind(&TriggerNode::studentCallback, this, _1));
+    "drl_student_action", 50, std::bind(&TriggerNode::studentCallback, this, _1));
 
   // Publishers (for alert and terminal action)
-  pub_alert_ = this->create_publisher<std_msgs::msg::Bool>("is_safe", 10);
-  pub_action_ = this->create_publisher<edge_msgs::msg::Action>("terminal_action", 10);
+  pub_alert_ = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
+  pub_action_ = this->create_publisher<edge_msgs::msg::Action>("terminal_action", 50);
 
-  auto period = std::chrono::duration<double>(1.0 / update_rate_hz_);
+  auto period = std::chrono::duration<double>(1.0 / update_rate_);
   timer_ = this->create_wall_timer(period, std::bind(&TriggerNode::updateLoop, this));
 
 }

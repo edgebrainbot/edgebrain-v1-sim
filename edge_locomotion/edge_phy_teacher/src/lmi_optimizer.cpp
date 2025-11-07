@@ -1,4 +1,6 @@
 // lmi_optimize.cpp
+#include <iostream>
+#include <iomanip>
 #include "lmi_optimizer.hpp"
 
 #ifdef __cplusplus
@@ -108,6 +110,7 @@ ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, in
 }
 
 namespace lmi {
+
 LMIOptimizer::LMIOptimizer() {
   lmi_init();
 }
@@ -289,15 +292,19 @@ void LMIOptimizer::test_tracking_err() {
 }
 
 void LMIOptimizer::print_matrix6x6(const Mat6x6& mat, const char* name) {
-  printf("Matrix %s:\n", name);
+  std::cout << "Matrix " << name << ":" << std::endl;
+
   for (int i = 0; i < 6; ++i) {
-    printf("  [");
+    std::cout << "  [";
     for (int j = 0; j < 6; ++j) {
-      printf("%8.4f%s", mat(i, j), j < 5 ? ", " : "");
+      std::cout << std::setw(8) << std::fixed << std::setprecision(4) << mat(i, j);
+      if (j < 5)
+        std::cout << ", ";
     }
-    printf("]\n");
+    std::cout << "]" << std::endl;
   }
-  printf("\n");
+
+  std::cout << std::endl; 
 }
 
 void LMIOptimizer::benchmark(int iterations, bool verbose, double threshold) {
