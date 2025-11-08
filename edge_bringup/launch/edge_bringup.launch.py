@@ -38,9 +38,9 @@ def generate_launch_description():
     led_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("led_safety_monitor"),
+                FindPackageShare("safety_led_driver"),
                 "launch",
-                "safety_monitor.launch.py"
+                "safety_led_driver.launch.py"
             ])
         ),
         launch_arguments={

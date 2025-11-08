@@ -1,5 +1,5 @@
-#ifndef EDGE_CONFIG_SAFETY_CHECKER_HPP
-#define EDGE_CONFIG_SAFETY_CHECKER_HPP
+#ifndef SAFETY_MONITOR_HPP
+#define SAFETY_MONITOR_HPP
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -17,10 +17,10 @@ struct SafetyLimits
   double height_limit_m;
 };
 
-class SafetyChecker
+class SafetyMonitor
 {
 public:
-  explicit SafetyChecker(double roll_deg, double pitch_deg, double height_m);
+  explicit SafetyMonitor(double roll_deg, double pitch_deg, double height_m);
 
   bool checkSafety(const std::vector<double> errorState);
 
@@ -34,6 +34,6 @@ private:
   std::vector<std::string> violation_reasons_;
 };
 
-}  // namespace edge
+}  // namespace edge::config
 
-#endif  // EDGE_CONFIG_SAFETY_CHECKER_HPP
+#endif  // SAFETY_MONITOR_HPP

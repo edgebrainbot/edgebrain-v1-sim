@@ -14,7 +14,7 @@
 	path = third_party/unitree_sdk2
 	url = https://github.com/unitreerobotics/unitree_sdk2.git
 
-[submodule "edge_hardware/led_safety_monitor/led_safety_monitor/go2_webrtc_connect"]
-	path = edge_hardware/led_safety_monitor/led_safety_monitor/go2_webrtc_connect
+[submodule "edge_hardware/safety_led_driver/safety_led_driver/go2_webrtc_connect"]
+	path = edge_hardware/safety_led_driver/safety_led_driver/go2_webrtc_connect
 	url = https://github.com/legion1581/unitree_webrtc_connect.git
 

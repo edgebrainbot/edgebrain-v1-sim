@@ -30,7 +30,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     double vy_limit = this->declare_parameter<double>("vy_limit", 0.5);
     double wz_limit = this->declare_parameter<double>("wz_limit", 0.5);
 
-    safety_checker_ = std::make_shared<edge::config::SafetyChecker>(roll_deg, pitch_deg, height);
+    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>(roll_deg, pitch_deg, height);
 
     RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
@@ -81,7 +81,7 @@ void PhyTeacher::lmiCallback() {
   if (!got_msg_) return;
 
   auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
-  bool is_current_safe = safety_checker_->checkSafety(err_state_);
+  bool is_current_safe = safety_monitor_->checkSafety(err_state_);
 
   // If teacher is not active
   if (!teacher_active_) {

@@ -5,7 +5,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <std_msgs/msg/bool.hpp>
-#include "edge_config/safety_checker.hpp"
+#include "edge_config/safety_monitor.hpp"
 #include "edge_msgs/msg/action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
@@ -37,7 +37,7 @@ private:
   // Safety-conditions
   double update_rate_;
 
-  std::shared_ptr<edge::config::SafetyChecker> safety_checker_;
+  std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
 
   // ROS Interfaces
   rclcpp::Subscription<edge_msgs::msg::Action>::SharedPtr sub_student_;

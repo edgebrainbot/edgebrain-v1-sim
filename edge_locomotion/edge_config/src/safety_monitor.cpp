@@ -1,19 +1,19 @@
 #include <cmath>
 #include <rclcpp/rclcpp.hpp>
-#include "edge_config/safety_checker.hpp"
+#include "edge_config/safety_monitor.hpp"
 #include <std_msgs/msg/float64_multi_array.hpp>
 
 namespace edge::config
 {
 
-SafetyChecker::SafetyChecker(double roll_deg, double pitch_deg, double height_m)
+SafetyMonitor::SafetyMonitor(double roll_deg, double pitch_deg, double height_m)
 {
   // === Convert to internal limits ===
   limits_.roll_limit_rad  = roll_deg * M_PI / 180.0;
   limits_.pitch_limit_rad = pitch_deg * M_PI / 180.0;
   limits_.height_limit_m  = height_m;
 
-  std::cout << "--- 🚨 SafetyChecker initialized with ---" << std::endl;
+  std::cout << "--- 🚨 SafetyMonitor initialized with ---" << std::endl;
   std::cout << "  roll_limit_deg  = " << roll_deg << "°" << std::endl;
   std::cout << "  pitch_limit_deg = " << pitch_deg << "°" << std::endl;
   std::cout << "  height_limit_m  = " << height_m << " m" << std::endl;
@@ -25,7 +25,7 @@ SafetyChecker::SafetyChecker(double roll_deg, double pitch_deg, double height_m)
 }
 
 // --------------------------------------------------------
-bool SafetyChecker::checkSafety(const std::vector<double> errorState)
+bool SafetyMonitor::checkSafety(const std::vector<double> errorState)
 {
   if (errorState.size() < 3) {
     std::cerr << "Invalid errorState size!" << std::endl;
@@ -46,7 +46,7 @@ bool SafetyChecker::checkSafety(const std::vector<double> errorState)
 }
 
 // --------------------------------------------------------
-bool SafetyChecker::checkSafetySet(double height, double roll, double pitch)
+bool SafetyMonitor::checkSafetySet(double height, double roll, double pitch)
 {
   bool is_safe = true;
 
@@ -69,7 +69,7 @@ bool SafetyChecker::checkSafetySet(double height, double roll, double pitch)
 }
 
 // --------------------------------------------------------
-void SafetyChecker::safetyStatusLogging()
+void SafetyMonitor::safetyStatusLogging()
 {
   // Logging
   if (!is_curr_safe_) {
@@ -90,4 +90,4 @@ void SafetyChecker::safetyStatusLogging()
   }
 }
 
-}  // namespace edge
+}  // namespace edge::config

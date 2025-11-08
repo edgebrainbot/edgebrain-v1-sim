@@ -6,7 +6,7 @@
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_msgs/msg/action.hpp"
 #include "lmi_optimizer.hpp"
-#include "edge_config/safety_checker.hpp"
+#include "edge_config/safety_monitor.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 namespace edge::phy_teacher {
@@ -46,7 +46,7 @@ private:
   double pitch_limit_rad_;
   double height_limit_;
   bool is_last_safe_ = true;
-  std::shared_ptr<edge::config::SafetyChecker> safety_checker_;
+  std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
 
   rclcpp::Subscription<edge_msgs::msg::TrackingError>::SharedPtr sub_;
   rclcpp::Publisher<edge_msgs::msg::Action>::SharedPtr pub_;

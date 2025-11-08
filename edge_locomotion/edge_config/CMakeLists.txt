@@ -13,7 +13,7 @@ find_package(visualization_msgs REQUIRED)
 
 # Build library
 add_library(${PROJECT_NAME} SHARED
-  src/safety_checker.cpp
+  src/safety_monitor.cpp
 )
 
 add_executable(virtual_safety_indicator_node src/virtual_safety_indicator_node.cpp)
