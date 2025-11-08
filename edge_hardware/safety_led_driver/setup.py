@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'led_safety_monitor'
+package_name = 'safety_led_driver'
 
 setup(
     name=package_name,
@@ -10,13 +10,13 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/safety_monitor.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/safety_led_driver.launch.py']),
     ],
     install_requires=['setuptools', 'aiortc'],
     zip_safe=True,
-    maintainer='edgebot',
+    maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
-    description='Safety monitor node with launch support',
+    description='The driver for safety LED light with launch support',
     license='TODO: License declaration',
     extras_require={
         'test': [
@@ -25,7 +25,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'safety_monitor_node = led_safety_monitor.safety_monitor_node:main',
+            'safety_led_driver_node = safety_led_driver.safety_led_driver_node:main',
         ],
     },
 )

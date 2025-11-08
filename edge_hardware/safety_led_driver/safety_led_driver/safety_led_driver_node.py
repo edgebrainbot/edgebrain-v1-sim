@@ -11,11 +11,11 @@ GPIO.setup(PIN_LED, GPIO.OUT)
 def set_led(red_on: bool):
     GPIO.output(PIN_LED, GPIO.HIGH if red_on else GPIO.LOW)
 
-# -------------------- LED Safety Monitor Node --------------------
-class LedSafetyMonitorNode(Node):
+# -------------------- Safety LED Driver Node --------------------
+class SafetyLedDriverNode(Node):
     def __init__(self):
-        super().__init__("led_safety_monitor")
-        self.get_logger().info("🟢 LED Safety Monitor Node started.")
+        super().__init__("safety_led_driver")
+        self.get_logger().info("🟢 Safety LED Driver Node started.")
 
         # Subscribe to safety status topic
         self.sub_safe_ = self.create_subscription(
@@ -43,7 +43,7 @@ class LedSafetyMonitorNode(Node):
 # -------------------- MAIN --------------------
 def main(args=None):
     rclpy.init(args=args)
-    node = LedSafetyMonitorNode()
+    node = SafetyLedDriverNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

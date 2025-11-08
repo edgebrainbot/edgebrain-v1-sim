@@ -15,7 +15,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     update_rate_        = this->declare_parameter<int>("update_rate", 200);
     print_process_time_ = this->declare_parameter<bool>("print_process_time", false);
 
-    // Teacher config
+    // PhyTeacher config
     tau_                 = this->declare_parameter<int>("tau", 20);
     chi_                 = this->declare_parameter<double>("chi", 0.25);
     teacher_enable_      = this->declare_parameter<bool>("teacher_enable", true);

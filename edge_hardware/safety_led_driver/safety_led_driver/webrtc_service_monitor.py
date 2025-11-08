@@ -44,9 +44,9 @@ class WebRTCSafetyMonitor:
 
 
 # -------------------- Node --------------------
-class SafetyMonitorNode(Node):
+class SafetyLEDDriverNode(Node):
     def __init__(self):
-        super().__init__("safety_monitor_node")
+        super().__init__("safety_led_driver")
         self.monitor = WebRTCSafetyMonitor(self.get_logger())
         self.webrtc_ip = self.declare_parameter("webrtc_ip", "192.168.123.161").value
         self.conn = None
@@ -79,7 +79,7 @@ class SafetyMonitorNode(Node):
 # -------------------- MAIN --------------------
 async def main_async():
     rclpy.init()
-    node = SafetyMonitorNode()
+    node = SafetyLEDDriverNode()
     await node.connect_webrtc()
     await node.spin_async()
     node.destroy_node()
