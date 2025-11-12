@@ -13,20 +13,20 @@ class ActorNetwork(MLP):
                  hidden_dims: tuple = (256, 256, 256), 
                  activation_fn: type[nn.Module] = nn.ReLU,
                  output_activation: type[nn.Module] = nn.Tanh,
-                 action_bound: float = 1.0):
+                 name: str = "actor"):
+        
         super().__init__(
             input_dim=obs_dim,
             output_dim=act_dim,
             hidden_dims=hidden_dims,
             activation_fn=nn.ReLU,
             output_activation=nn.Tanh,
-            name="actor"
+            name=name
         )
-        self.act_limit = act_limit
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         """Forward pass through the actor network."""
-        return self.act_limit * super().forward(obs)
+        return super().forward(obs)
     
 
 

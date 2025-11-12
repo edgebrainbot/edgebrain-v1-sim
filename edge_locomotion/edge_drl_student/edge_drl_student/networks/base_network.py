@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
+from typing import Type
 
 class BaseNetwork(nn.Module, ABC):
     """Abstract neural network structure used by all agents."""
@@ -36,7 +37,7 @@ class BaseNetwork(nn.Module, ABC):
             nn.init.constant_(m.bias, 0.01)
             
     @classmethod
-    def _activation_fn(act_fn: str):
+    def _activation_fn(cls, act_fn: str) -> Type[nn.Module]:
         act_fn = act_fn.lower()
         mapping = {
             "elu": nn.ELU,
@@ -51,4 +52,4 @@ class BaseNetwork(nn.Module, ABC):
         }
         if act_fn not in mapping:
             raise ValueError(f"❌ Unknown activation function: {act_fn}")
-        return mapping[act_fn]()
+        return mapping[act_fn]
