@@ -1,3 +1,4 @@
-# TrackingError.msg  [pos_error(3), ori_error(3), vel_error(3), ang_vel_error(3)]
+# TrackingError.msg  
 
-float64[12] tracking_error  
+std_msgs/Header header
+float64[12] tracking_error   # [pos_error(3), ori_error(3), vel_error(3), ang_vel_error(3)]

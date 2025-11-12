@@ -8,7 +8,7 @@ from edge_drl_student.memory.samplers import BaseSampler
 from edge_drl_student.memory.samplers import UniformSampler
 
 @dataclass
-class Transition:
+class TransitionData:
     """Batch-level semantic wrapper for sampled experiences."""
     obs: torch.Tensor       # Observation
     action: torch.Tensor    # Action taken
@@ -21,21 +21,21 @@ class Transition:
 class TransitionBatch:
     """Batched transitions sampled from the replay buffer."""
     obs: torch.Tensor
-    actions: torch.Tensor
-    rewards: torch.Tensor
+    action: torch.Tensor
+    reward: torch.Tensor
     next_obs: torch.Tensor
-    dones: torch.Tensor
-    infos: Optional[List[Any]] = None
+    done: torch.Tensor
+    info: Optional[List[Any]] = None
 
     def to(self, device: str) -> "TransitionBatch":
         """Move all tensors to target device."""
         return TransitionBatch(
             obs=self.obs.to(device),
-            actions=self.actions.to(device),
-            rewards=self.rewards.to(device),
+            action=self.action.to(device),
+            reward=self.reward.to(device),
             next_obs=self.next_obs.to(device),
-            dones=self.dones.to(device),
-            infos=self.infos
+            done=self.done.to(device),
+            info=self.info
         )
 
     def __len__(self):
@@ -82,7 +82,6 @@ class BaseBuffer(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def _get_samples(self, indices: torch.Tensor):
         """
         Given sampled indices, return the corresponding transitions.
@@ -90,6 +89,7 @@ class BaseBuffer(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def sample(self, batch_size: int):
         """
         Sample a batch of transitions using the attached sampler.
@@ -102,7 +102,7 @@ class BaseBuffer(ABC):
         """
         raise NotImplementedError
 
-    def to_transition(self, obs, action, reward, next_obs, done, info=None) -> Transition:
+    def to_transition(self, obs, action, reward, next_obs, done, info=None) -> TransitionData:
         """Convert the tuples to Transition version."""
 
         def to_torch(x):
@@ -110,7 +110,7 @@ class BaseBuffer(ABC):
                 return x.to(device=self.device, dtype=torch.float32)
             return torch.as_tensor(x, device=self.device, dtype=torch.float32)
 
-        return Transition(
+        return TransitionData(
             obs=to_torch(obs),
             action=to_torch(action),
             reward=to_torch(reward),
@@ -124,6 +124,7 @@ class BaseBuffer(ABC):
         self.sampler = sampler
         self.sampler.set_buffer_size(self.buffer_size)
 
+    @property
     def size(self) -> int:
         """Return number of valid transitions currently stored."""
         return self.buffer_size if self.full else self.idx

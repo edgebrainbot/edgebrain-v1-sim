@@ -18,7 +18,8 @@
 #include <stdexcept>
 #include <algorithm>
 
-#include "edge_msgs/msg/action.hpp"
+#include "msg_utils.hpp"
+#include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 
 namespace edge::ros_interfaces {
@@ -79,20 +80,22 @@ inline Eigen::Matrix<double, Rows, Cols> VectorToEigen(const std::vector<double>
 // ======================================================
 
 /**
- * @brief Convert std::vector<double> to edge_msgs::msg::Action.
+ * @brief Convert std::vector<double> to edge_msgs::msg::EdgeAction.
  */
-inline edge_msgs::msg::Action VectorToActionMsg(const std::vector<double>& data) {
-  edge_msgs::msg::Action msg;
-  const size_t n = std::min(msg.action.size(), data.size());
-  std::copy_n(data.begin(), n, msg.action.begin());
+inline edge_msgs::msg::EdgeAction VectorToEdgeActionMsg(const std::vector<double>& data, uint8_t action_mode) {
+  edge_msgs::msg::EdgeAction msg;
+  msg.header.stamp = edge::getCurrentROSTime();
+  const size_t n = std::min(msg.control_action.size(), data.size());
+  std::copy_n(data.begin(), n, msg.control_action.begin());
+  msg.action_mode = action_mode;
   return msg;
 }
 
 /**
- * @brief Convert edge_msgs::msg::Action to std::vector<double>.
+ * @brief Convert edge_msgs::msg::EdgeAction to std::vector<double>.
  */
-inline std::vector<double> ActionMsgToVector(const edge_msgs::msg::Action& msg) {
-  return std::vector<double>(msg.action.begin(), msg.action.end());
+inline std::vector<double> EdgeActionMsgToVector(const edge_msgs::msg::EdgeAction& msg) {
+  return std::vector<double>(msg.control_action.begin(), msg.control_action.end());
 }
 
 /**
@@ -117,17 +120,17 @@ inline std::vector<double> TrackingErrorMsgToVector(const edge_msgs::msg::Tracki
 // ======================================================
 
 /**
- * @brief Convert Action message to Eigen 6D vector.
+ * @brief Convert EdgeAction message to Eigen 6D vector.
  */
-inline Vector6d ActionMsgToEigen(const edge_msgs::msg::Action& msg) {
-  return VectorToEigen<6>(ActionMsgToVector(msg));
+inline Vector6d EdgeActionMsgToEigen(const edge_msgs::msg::EdgeAction& msg) {
+  return VectorToEigen<6>(EdgeActionMsgToVector(msg));
 }
 
 /**
- * @brief Convert Eigen 6D vector to Action message.
+ * @brief Convert Eigen 6D vector to EdgeAction message.
  */
-inline edge_msgs::msg::Action EigenToActionMsg(const Vector6d& v) {
-  return VectorToActionMsg(EigenToVector(v));
+inline edge_msgs::msg::EdgeAction EigenToEdgeActionMsg(const Vector6d& v, uint8_t action_mode) {
+  return VectorToEdgeActionMsg(EigenToVector(v), action_mode);
 }
 
 /**

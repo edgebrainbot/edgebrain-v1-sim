@@ -6,9 +6,11 @@
 #include "FSM/StateBalanceTest.h"
 #include "FSM/StateTrotting.h"
 
-#include "edge_msgs/msg/action.hpp"
+#include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
-#include "geometry_msgs/msg/twist_stamped.hpp"
+#include "edge_msgs/msg/transition.hpp"
+
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <controller_interface/controller_interface.hpp>
 #include <controller_common/FSM/FSMState.h>
 #include <controller_common/FSM/StatePassive.h>
@@ -169,10 +171,11 @@ namespace edge::locomotion::body_balance_controller
         // }
 
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
-        rclcpp::Subscription<edge_msgs::msg::Action>::SharedPtr action_sub_;
+        rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
+        rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
 
-        edge_msgs::msg::Action latest_accel_;
-        // void actionCallback(const edge_msgs::msg::Action::SharedPtr msg)
+        edge_msgs::msg::EdgeAction latest_accel_;
+        // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
         // {
         //     latest_accel_ = *msg;
         //     std::cout << "Received new action." << std::endl;

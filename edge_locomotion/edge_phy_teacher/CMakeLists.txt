@@ -9,13 +9,13 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 # ------------------ Dependencies ------------------
-find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(BLAS REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(LAPACK REQUIRED)
-find_package(edge_config REQUIRED)
+find_package(ament_cmake REQUIRED)
 find_package(edge_msgs REQUIRED)
+find_package(edge_config REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
 
 # ------------------ ecvxcone C library ------------------

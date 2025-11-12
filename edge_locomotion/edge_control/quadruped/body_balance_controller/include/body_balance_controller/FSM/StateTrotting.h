@@ -1,16 +1,14 @@
 #ifndef STATETROTTING_H
 #define STATETROTTING_H
-
-#include "edge_msgs/msg/action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
-#include "controller_common/FSM/FSMState.h"
 #include <geometry_msgs/msg/twist.hpp>
+#include "edge_msgs/msg/edge_action.hpp"
+#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/transition.hpp"
+#include "controller_common/FSM/FSMState.h"
+
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "body_balance_controller/utils/math/mathTypes.h"
 #include "body_balance_controller/gait/GaitGenerator.h"
-
-// #include "phy_teacher_interfaces/msg/tracking_error.hpp"
-// #include "phy_teacher_interfaces/msg/control_gains.hpp"
 
 // Forward declarations for ROS2 types
 struct CtrlInterfaces;
@@ -38,8 +36,9 @@ public:
     void enter() override;
 
     void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
-    void run(const rclcpp::Time &time, const rclcpp::Duration &period, edge_msgs::msg::Action &latest_accel, 
+    void run(const rclcpp::Time &time, const rclcpp::Duration &period, edge_msgs::msg::EdgeAction &latest_accel, 
              rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+             rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz);
 
     void exit() override;
@@ -58,7 +57,8 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
-                 const edge_msgs::msg::Action& latest_accel_);
+                 rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+                 const edge_msgs::msg::EdgeAction& latest_accel_);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -103,6 +103,9 @@ private:
     double kp_w_;
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+
+    Vec12 last_tracking_error_;
+    Vec12 curr_tracking_error_;
 
     // Gain parameters
     std::vector<double> swing_gains_;

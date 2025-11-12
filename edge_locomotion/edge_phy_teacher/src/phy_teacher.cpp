@@ -55,7 +55,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
       std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
-    pub_ = this->create_publisher<edge_msgs::msg::Action>("phy_teacher_action", 10);
+    pub_ = this->create_publisher<edge_msgs::msg::EdgeAction>("phy_teacher_action", 10);
 
     RCLCPP_INFO(this->get_logger(), "Phy-Teacher Safety Controller Node initialized.");
   }
@@ -122,7 +122,7 @@ void PhyTeacher::lmiCallback() {
   }
 
   // Prepare and publish action message
-  edge_msgs::msg::Action teacher_action_msg;
+  edge_msgs::msg::EdgeAction teacher_action_msg;
   if (teacher_active_) {
     // Compute the action according to the center of the safety patch
     edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
@@ -132,10 +132,12 @@ void PhyTeacher::lmiCallback() {
     auto kd_term = lmi_optimizer_.default_F_kd * error_from_patch.tail(6);
 
     auto result = kp_term + kd_term;
-    teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(result);
+    teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(result, 
+                                                                   edge::ToMsg(edge::ActionMode::TEACHER));
   } else {
     // If teacher is not active, set gains to zero
-    teacher_action_msg = edge::ros_interfaces::EigenToActionMsg(edge::ros_interfaces::Vector6d::Zero());
+    teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(edge::ros_interfaces::Vector6d::Zero(),
+                                                                   edge::ToMsg(edge::ActionMode::TEACHER));
   }
 
   pub_->publish(teacher_action_msg);

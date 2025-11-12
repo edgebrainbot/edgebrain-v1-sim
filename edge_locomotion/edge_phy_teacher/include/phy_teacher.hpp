@@ -1,11 +1,11 @@
 #ifndef PHY_TEACHER_HPP
 #define PHY_TEACHER_HPP
 
+#include "lmi_optimizer.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
-#include "edge_msgs/msg/action.hpp"
-#include "lmi_optimizer.hpp"
+#include "edge_msgs/msg/edge_action.hpp"
 #include "edge_config/safety_monitor.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
@@ -49,7 +49,7 @@ private:
   std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
 
   rclcpp::Subscription<edge_msgs::msg::TrackingError>::SharedPtr sub_;
-  rclcpp::Publisher<edge_msgs::msg::Action>::SharedPtr pub_;
+  rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr lmi_timer_;
 };
 

@@ -26,37 +26,37 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
   // Initialize cached variables
   last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(edge_msgs::msg::TrackingError());        // initial state
-  last_student_action_ = edge::ros_interfaces::ActionMsgToEigen(edge_msgs::msg::Action());     // initial action
-  last_teacher_action_ = edge::ros_interfaces::ActionMsgToEigen(edge_msgs::msg::Action());     // initial action
+  last_student_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial action
+  last_teacher_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial action
   is_last_state_safe_ = true;      // initial alert state
 
   // Subscribers (state, teacher action, student action)
   sub_error_ = this->create_subscription<edge_msgs::msg::TrackingError>(
     "tracking_error", 50, std::bind(&Trigger::errorCallback, this, _1));
 
-  sub_teacher_ = this->create_subscription<edge_msgs::msg::Action>(
+  sub_teacher_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
     "phy_teacher_action", 50, std::bind(&Trigger::teacherCallback, this, _1));
 
-  sub_student_ = this->create_subscription<edge_msgs::msg::Action>(
+  sub_student_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
     "drl_student_action", 50, std::bind(&Trigger::studentCallback, this, _1));
 
   // Publishers (for alert and terminal action)
   pub_alert_ = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
-  pub_action_ = this->create_publisher<edge_msgs::msg::Action>("terminal_action", 50);
+  pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>("terminal_action", 50);
 
   auto period = std::chrono::duration<double>(1.0 / update_rate_);
   timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
 
 }
 
-void Trigger::studentCallback(const edge_msgs::msg::Action::SharedPtr msg)
+void Trigger::studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-  last_student_action_ = edge::ros_interfaces::ActionMsgToEigen(*msg);
+  last_student_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
 }
 
-void Trigger::teacherCallback(const edge_msgs::msg::Action::SharedPtr msg)
+void Trigger::teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-  last_teacher_action_ = edge::ros_interfaces::ActionMsgToEigen(*msg);
+  last_teacher_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
 }
 
 void Trigger::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg)
@@ -76,18 +76,20 @@ void Trigger::updateLoop()
   {
     RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_safe ? "true" : "false");
   }
-  
-  edge_msgs::msg::Action action_msg;
+
+  edge_msgs::msg::EdgeAction terminal_action;
   std_msgs::msg::Bool alert_msg;
   alert_msg.data = is_safe;
 
   // Decide which action to publish
   if (is_safe)
-    action_msg = edge::ros_interfaces::EigenToActionMsg(last_student_action_);
+    terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_student_action_, 
+                                                                 edge::ToMsg(edge::ActionMode::STUDENT));
   else
-    action_msg = edge::ros_interfaces::EigenToActionMsg(last_teacher_action_);
+    terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_teacher_action_, 
+                                                                 edge::ToMsg(edge::ActionMode::TEACHER));
 
-  pub_action_->publish(action_msg);
+  pub_action_->publish(terminal_action);
   pub_alert_->publish(alert_msg);
 
 }

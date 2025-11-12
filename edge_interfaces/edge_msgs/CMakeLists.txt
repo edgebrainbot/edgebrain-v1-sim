@@ -6,19 +6,25 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(ament_cmake REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Action.msg"
+  "msg/EdgeAction.msg"
   "msg/TrackingError.msg"
-  "msg/Experience.msg"
+  "msg/Transition.msg"
   DEPENDENCIES std_msgs
 )
 
-ament_export_dependencies(rosidl_default_runtime)
+install(DIRECTORY include/
+  DESTINATION include
+)
 
+ament_export_include_directories(include)
+ament_export_dependencies(rosidl_default_runtime)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

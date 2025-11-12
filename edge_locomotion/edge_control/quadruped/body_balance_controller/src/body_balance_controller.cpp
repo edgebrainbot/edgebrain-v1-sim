@@ -155,20 +155,24 @@ namespace edge::locomotion::body_balance_controller
             });
 
             // Subscribe to "edge/terminal_action"
-            action_sub_ = get_node()->create_subscription<edge_msgs::msg::Action>(
+            action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
                 topic_ns_ + "/terminal_action", 100,
-                [this](const edge_msgs::msg::Action::SharedPtr msg) -> void
+                [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
             {
                 latest_accel_ = *msg;
                 std::cout << "Received new action from the trigger." << std::endl;
                 for (int i = 0; i < 6; i++) {
-                    std::cout << "accel[" << i << "] = " << latest_accel_.action[i] << std::endl;
+                    std::cout << "accel[" << i << "] = " << latest_accel_.control_action[i] << std::endl;
                 }
             });
 
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
+
+            // Publisher for experience
+            transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
+                topic_ns_ + "/transition", 100);
 
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_node()->get_logger(), "Failed to create subscription: %s", e.what());
@@ -248,7 +252,12 @@ namespace edge::locomotion::body_balance_controller
         if (mode_ == FSMMode::NORMAL)
         {
             if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
-                trot->run(time, period, latest_accel_, tracking_error_pub_, cmd_vx_, cmd_vy_, cmd_wz_);
+                trot->run(time, period, latest_accel_, 
+                          tracking_error_pub_, 
+                          transition_pub_, 
+                          cmd_vx_, 
+                          cmd_vy_, 
+                          cmd_wz_);
             } else {
                 current_state_->run(time, period);
             }

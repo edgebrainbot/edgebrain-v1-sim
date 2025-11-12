@@ -1,2 +1,2 @@
-from .base_buffer import BaseBuffer, Transition, TransitionBatch
-from .replay_buffer.solo_replay_buffer import SoloReplayBuffer
+from .base_buffer import BaseBuffer, TransitionData, TransitionBatch
+from .off_policy.solo_replay_buffer import SoloReplayBuffer

@@ -2,7 +2,7 @@ import torch
 from typing import Dict, Generator, Tuple, Optional
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
 from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import Transition, TransitionBatch
+from edge_drl_student.memory.buffers import TransitionData, TransitionBatch
 
 
 class SoloReplayBuffer(BaseBuffer):
@@ -29,7 +29,7 @@ class SoloReplayBuffer(BaseBuffer):
         self.next_obs = torch.zeros((buffer_size, obs_dim), dtype=torch.float32, device=self.device)
         self.dones = torch.zeros((buffer_size, 1), dtype=torch.float32, device=self.device)
 
-    def add_transition(self, t: Transition):
+    def add_transition(self, t: TransitionData):
         """
         Add one transition into the buffer.
         Typically called at every environment step.

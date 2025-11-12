@@ -1,12 +1,24 @@
 import torch
+import numpy as np
 from dataclasses import asdict
 from typing import Callable, Dict, Generator, Tuple, Optional
 
 from edge_drl_student.memory.buffers import SoloReplayBuffer
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
 from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import Transition, TransitionBatch
+from edge_drl_student.memory.buffers import TransitionData, TransitionBatch
 from edge_drl_student.utils.utils import ActionMode, safety_value
+
+ENVELOPE_P = np.array([[100, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0.25, -0, 0, -0, -0, -0, -0, -0, -0],
+                       [0, -0, 0.25, 0, -0, -0, -0, -0, -0, -0],
+                       [0, 0, 0, 0.6944, -0, 0, 0, 0, 0, 0],
+                       [0, -0, -0, -0, 11.1111, -0, -0, -0, -0, -0],
+                       [0, -0, -0, 0, -0, 0.25, -0, -0, -0, -0],
+                       [0, -0, -0, 0, -0, -0, 0.25, -0, -0, -0],
+                       [0, -0, -0, 0, -0, -0, -0, 0.25, -0, -0],
+                       [0, -0, -0, 0, -0, -0, -0, -0, 0.25, -0],
+                       [0, -0, -0, 0, -0, -0, -0, -0, -0, 4]])
 
 class DualReplayBuffer(BaseBuffer):
     def __init__(self, 
@@ -50,23 +62,24 @@ class DualReplayBuffer(BaseBuffer):
     def tea_buf_size(self) -> int:
         return self.tea_buf.size
 
-    def add_transition(self, transition: Transition, action_mode: ActionMode) -> None:
+    def add_transition(self, transition: TransitionData, action_mode: ActionMode) -> None:
         """Appends a dataset of transitions to the storage.
 
         Args:
             dataset (Dataset): The dataset of transitions.
         """
 
-        if torch.any(action_mode == ActionMode.TEACHER):
-            self.tea_buf.add_transition(transition=transition)
+        if action_mode == ActionMode.TEACHER:
+            self.tea_buf.add_transition(t=transition)
             self.last_data_type = ActionMode.TEACHER
 
-        elif torch.any(action_mode == ActionMode.STUDENT):
-            self.stu_buf.add_transition(transition=transition)
+        elif action_mode == ActionMode.STUDENT:
+            self.stu_buf.add_transition(t=transition)
             self.last_data_type = ActionMode.STUDENT
 
         else:
             raise RuntimeError(f"Unrecognized action mode: {action_mode} for this transition.")
+
 
     def sample(self, batch_size: int) -> TransitionBatch:
         """Sample a batch of transitions using the attached sampler.

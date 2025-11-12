@@ -53,8 +53,9 @@ void StateTrotting::enter()
     gait_generator_.restart();
 }
 
-void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::Action& latest_accel_,
+void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::EdgeAction& latest_accel_,
                         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+                        rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz)
 {
     pos_body_ = estimator_->getPosition();
@@ -81,7 +82,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         wave_generator_->status_ = WaveStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_pub_, latest_accel_);
+    calcTau(tracking_error_pub_, transition_pub_, latest_accel_);
     calcQQd();
     calcGain();
 }
@@ -157,7 +158,9 @@ void StateTrotting::calcCmd()
     w_cmd_global_(2) = d_yaw_cmd_;
 }
 
-void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, const edge_msgs::msg::Action& latest_accel_)
+void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+    rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+    const edge_msgs::msg::EdgeAction& latest_accel_)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
@@ -186,6 +189,18 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     }
     std::cout << std::endl;
 
+    edge_msgs::msg::Transition transition;
+    transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
+    transition.action.assign(
+        latest_accel_.control_action.begin(),
+        latest_accel_.control_action.end()
+    );
+    transition.reward = 1.0;
+    transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
+    transition_pub_->publish(transition);
+
+    last_tracking_error_ = tracking_error;
+
     auto track_msg = edge::ros_interfaces::EigenToTrackingErrorMsg(tracking_error);
     tracking_error_pub_->publish(track_msg);
 
@@ -199,7 +214,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
 
     Vec6 accel;
     for (int i = 0; i < 6; i++) {
-        accel(i) = latest_accel_.action[i];
+        accel(i) = latest_accel_.control_action[i];
     }
     std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;

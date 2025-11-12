@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 from typing import Type, Union
-from base_network import BaseNetwork
+from .base_network import BaseNetwork
 
 class MLP(BaseNetwork):
     """Standard Multi-Layer Perceptron (MLP) network."""
