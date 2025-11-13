@@ -1,9 +1,0 @@
-/**:
-  ros__parameters:
-
-    error_roll_deg: 4.0       # allowable roll error in degrees
-    error_pitch_deg: 4.0      # allowable pitch error in degrees
-    error_height: 0.08        # allowable height error in meters
-    error_vx: 0.3             # maximum linear velocity in x (forward) direction in m/s
-    error_vy: 0.3             # maximum linear velocity in y (lateral) direction in m/s
-    error_wz: 0.5             # maximum angular velocity in z (yaw) direction in rad/s

@@ -1,70 +1,138 @@
 #include <cmath>
-#include <rclcpp/rclcpp.hpp>
+#include <iostream>
 #include "edge_config/safety_monitor.hpp"
-#include <std_msgs/msg/float64_multi_array.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <iomanip>
+#include <algorithm>
+
+// ANSI colors
+static const std::string CYAN  = "\033[36m";
+static const std::string YELLOW = "\033[33m";
+static const std::string GREEN = "\033[32m";
+static const std::string RESET = "\033[0m";
+
+
+static constexpr bool USE_COLOR = true;
+
+static std::string color(const std::string& s, const std::string& c) {
+  return USE_COLOR ? (c + s + RESET) : s;
+}
+
+// Helper: print centered text inside a width
+static std::string center(const std::string& text, size_t width) {
+  if (text.size() >= width) return text;
+  size_t total = width - text.size();
+  size_t left  = total / 2;
+  size_t right = total - left;
+  return std::string(left, ' ') + text + std::string(right, ' ');
+}
 
 namespace edge::config
 {
 
-SafetyMonitor::SafetyMonitor(double roll_deg, double pitch_deg, double height_m)
+SafetyMonitor::SafetyMonitor(const std::string& yaml_path)
 {
-  // === Convert to internal limits ===
-  limits_.roll_limit_rad  = roll_deg * M_PI / 180.0;
-  limits_.pitch_limit_rad = pitch_deg * M_PI / 180.0;
-  limits_.height_limit_m  = height_m;
-
-  std::cout << "--- 🚨 SafetyMonitor initialized with ---" << std::endl;
-  std::cout << "  roll_limit_deg  = " << roll_deg << "°" << std::endl;
-  std::cout << "  pitch_limit_deg = " << pitch_deg << "°" << std::endl;
-  std::cout << "  height_limit_m  = " << height_m << " m" << std::endl;
-
-  std::cout << "-----------------------------------------" << std::endl;
-  std::cout << "  roll_limit_rad  = " << limits_.roll_limit_rad << " rad" << std::endl;
-  std::cout << "  pitch_limit_rad = " << limits_.pitch_limit_rad << " rad" << std::endl;
-  std::cout << "  height_limit_m  = " << limits_.height_limit_m << " m" << std::endl;
+  std::string final_path = parseYamlPath(yaml_path);
+  loadFromYaml(final_path);
+  printLoadedRules();
 }
 
-// --------------------------------------------------------
-bool SafetyMonitor::checkSafety(const std::vector<double> errorState)
+/**
+ * Determine the YAML path to use
+ */
+std::string SafetyMonitor::parseYamlPath(const std::string& user_path)
 {
-  if (errorState.size() < 3) {
-    std::cerr << "Invalid errorState size!" << std::endl;
-    return false;
+  if (!user_path.empty()) {
+      return user_path; // user override
   }
 
-  double height = errorState[2];
-  double roll   = errorState[3];
-  double pitch  = errorState[4];
-
-  is_curr_safe_ = checkSafetySet(height, roll, pitch);
-  safetyStatusLogging();
-
-  is_last_safe_ = is_curr_safe_;
-  violation_reasons_.clear();
-
-  return is_curr_safe_;
+  // default YAML path
+  std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_config");
+  return pkg_share + "/config/safety_rules.yaml";
 }
 
-// --------------------------------------------------------
-bool SafetyMonitor::checkSafetySet(double height, double roll, double pitch)
+/**
+ * Load safety rules from YAML file
+ */
+void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
 {
+  YAML::Node root = YAML::LoadFile(yaml_path);
+
+  if (!root["safety_rules"]) {
+      throw std::runtime_error("YAML missing 'safety_rules' section");
+  }
+
+  YAML::Node rules_node = root["safety_rules"];
+  rules_.clear();
+
+  for (auto it = rules_node.begin(); it != rules_node.end(); ++it) {
+    std::string name = it->first.as<std::string>();
+    YAML::Node node = it->second;
+
+    int index        = node["index"].as<int>();
+    double raw_limit = node["limit"].as<double>();
+    std::string unit = node["unit"].as<std::string>();
+
+    double converted_limit = convertLimit(raw_limit, unit);
+
+    rules_.push_back({
+      name,
+      index,
+      converted_limit,
+      unit
+    });
+  }
+}
+
+/**
+ * Convert the user-provided limit to internal value (always SI)
+ */
+double SafetyMonitor::convertLimit(double raw, const std::string& unit)
+{
+  if (unit == "deg") {
+      return raw * M_PI / 180.0; // convert to rad
+  }
+  if (unit == "rad") {
+      return raw;
+  }
+  if (unit == "m") {
+      return raw;
+  }
+  if (unit == "m/s") {
+      return raw;
+  }
+  if (unit == "rad/s") {
+      return raw;
+  }
+  std::cerr << "⚠️ Unknown unit: " << unit << " (treat as raw SI)" << std::endl;
+  return raw; 
+}
+
+bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState)
+{
+  if (errorState.size() < 12) {
+      throw std::runtime_error("ErrorState too small in evaluateSafety()");
+  }
+
+  violation_reasons_.clear();
   bool is_safe = true;
 
-  if (std::abs(roll) > limits_.roll_limit_rad) {
-    is_safe = false;
-    violation_reasons_.push_back("roll = " + std::to_string(roll * 180.0 / M_PI) + "°");
+  for (const auto& r : rules_) {
+    double v = errorState[r.index];
+    if (std::abs(v) > r.limit) {
+      is_safe = false;
+
+      violation_reasons_.push_back(
+        r.name + ": " + std::to_string(v) + " > " + 
+        std::to_string(r.limit) + " (" + r.unit + ")"
+      );
+    }
   }
 
-  if (std::abs(pitch) > limits_.pitch_limit_rad) {
-    is_safe = false;
-    violation_reasons_.push_back("pitch = " + std::to_string(pitch * 180.0 / M_PI) + "°");
-  }
+  is_last_safe_ = is_curr_safe_;
+  is_curr_safe_ = is_safe;
 
-  if (std::abs(height) > limits_.height_limit_m) {
-    is_safe = false;
-    violation_reasons_.push_back("height = " + std::to_string(height) + "m");
-  }
-
+  safetyStatusLogging();
   return is_safe;
 }
 
@@ -83,11 +151,97 @@ void SafetyMonitor::safetyStatusLogging()
 
     std::cerr << msg << std::endl;
   } else {
-    if (!is_last_safe_)
+    if (!is_last_safe_) {
       std::cout << "✅ System returned to the learning space." << std::endl;
-    else
+    } else {
       std::cout << "✅ System remains within the learning space." << std::endl;
+    }
   }
 }
+
+
+/**
+ * Print loaded safety rules in a formatted table
+ */
+void SafetyMonitor::printLoadedRules() const
+{
+  const int NAME_W  = 10;
+  const int IDX_W   = 6;
+  const int LIMIT_W = 14;
+  const int UNIT_W  = 8;
+
+  int total_w = NAME_W + IDX_W + LIMIT_W + UNIT_W + 9;
+
+  auto line = [&]() {
+    std::cout << "  " << std::string(total_w, '-') << "\n";
+  };
+
+  // ------------------------------------------------------------
+  // Unified formatter factory
+  // makeFormatter(width).text(str)
+  // makeFormatter(width).number(double)
+  // ------------------------------------------------------------
+  struct Formatter {
+    int width;
+
+    std::string text(const std::string &s) const {
+      int pad = width - (int)s.size();
+      if (pad <= 0) return s;
+      int left = pad / 2;
+      int right = pad - left;
+      return std::string(left, ' ') + s + std::string(right, ' ');
+    }
+
+    std::string number(double v, int precision = 6) const {
+      std::ostringstream ss;
+      ss << std::fixed << std::setprecision(precision) << v;
+      return text(ss.str());
+    }
+  };
+
+  auto makeFormatter = [&](int w) { return Formatter{w}; };
+
+  auto FName  = makeFormatter(NAME_W);
+  auto FIdx   = makeFormatter(IDX_W);
+  auto FLimit = makeFormatter(LIMIT_W);
+  auto FUnit  = makeFormatter(UNIT_W);
+
+  // ------------------------------------------------------------
+  // Title
+  // ------------------------------------------------------------
+  std::string title = "----------  🚨 Safety Rules Loaded  ----------";
+  int pad = (total_w - (int)title.size()) / 2;
+  std::cout << "\n  " << C_TITLE
+            << std::string(pad, ' ') << title
+            << C_RESET << "\n";
+
+  // ------------------------------------------------------------
+  // Header
+  // ------------------------------------------------------------
+  std::cout << "  "
+            << C_HEADER << FName.text("Name")  << C_RESET << " | "
+            << C_HEADER << FIdx.text("Idx")    << C_RESET << " | "
+            << C_HEADER << FLimit.text("Limit")<< C_RESET << " | "
+            << C_HEADER << FUnit.text("Unit")  << C_RESET
+            << "\n";
+
+  line();
+
+  // ------------------------------------------------------------
+  // Rows
+  // ------------------------------------------------------------
+  for (const auto& r : rules_) {
+    std::cout << "  "
+              << FName.text(r.name) << " | "
+              << FIdx.text(std::to_string(r.index)) << " | "
+              << C_VALUE << FLimit.number(r.limit) << C_RESET << " | "
+              << C_UNIT  << FUnit.text(r.unit)     << C_RESET
+              << "\n";
+  }
+
+  line();
+}
+
+
 
 }  // namespace edge::config

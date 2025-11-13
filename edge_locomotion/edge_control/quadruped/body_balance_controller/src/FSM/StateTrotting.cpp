@@ -189,12 +189,6 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     }
     std::cout << std::endl;
 
-    // edge_msgs::msg::Transition transition;
-    // transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
-    // transition.action = last_edge_action_;
-    // transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
-    // transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
-    // transition_pub_->publish(transition);
     pubTransitionTopic(transition_pub, tracking_error);
 
     // update last action and tracking error

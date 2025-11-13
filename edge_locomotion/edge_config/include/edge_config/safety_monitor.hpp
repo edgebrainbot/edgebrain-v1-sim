@@ -1,39 +1,47 @@
-#ifndef SAFETY_MONITOR_HPP
-#define SAFETY_MONITOR_HPP
+#pragma once
 
-#include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
-#include <unordered_map>
-#include <vector>
 #include <string>
+#include <vector>
+#include <unordered_map>
+#include <yaml-cpp/yaml.h>
+
+/*******   ANSI colors for printing   *******/ 
+#define C_RESET   "\033[0m"
+#define C_TITLE   "\033[1;36m"   // Cyan
+#define C_HEADER  "\033[1;37m"   // White bold
+#define C_VALUE   "\033[0;33m"   // Yellow
+#define C_UNIT    "\033[0;32m"   // Green
+
 
 namespace edge::config
 {
 
-struct SafetyLimits
-{
-  double roll_limit_rad;
-  double pitch_limit_rad;
-  double height_limit_m;
+struct SafetyRule {
+    std::string name;   // rule name (yaml key)
+    int index;          // errorState index
+    double limit;       // limit after unit conversion
+    std::string unit;   // unit used in logging
 };
 
 class SafetyMonitor
 {
 public:
-  explicit SafetyMonitor(double roll_deg, double pitch_deg, double height_m);
+    explicit SafetyMonitor(const std::string& yaml_path="");
 
-  bool checkSafety(const std::vector<double> errorState);
+    bool evaluateSafety(const std::vector<double>& errorState);
 
 private:
-  bool checkSafetySet(double height, double roll, double pitch);
-  void safetyStatusLogging();
+    std::vector<SafetyRule> rules_;
+    bool is_curr_safe_ = true;
+    bool is_last_safe_ = true;
+    std::vector<std::string> violation_reasons_;
 
-  SafetyLimits limits_;
-  bool is_curr_safe_{true};
-  bool is_last_safe_{true};
-  std::vector<std::string> violation_reasons_;
+    void loadFromYaml(const std::string& yaml_path);
+    std::string parseYamlPath(const std::string& user_path);
+    void safetyStatusLogging();
+
+    double convertLimit(double raw, const std::string& unit);
+    void printLoadedRules() const;
 };
 
 }  // namespace edge::config
-
-#endif  // SAFETY_MONITOR_HPP

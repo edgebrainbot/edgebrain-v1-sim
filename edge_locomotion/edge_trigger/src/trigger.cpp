@@ -10,19 +10,14 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
   RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
-
-  // --- Declare parameters ---
-  double roll_deg  = this->declare_parameter<double>("roll_limit_deg", 30.0);
-  double pitch_deg = this->declare_parameter<double>("pitch_limit_deg", 30.0);
-  double height = this->declare_parameter<double>("height_limit", 0.1);
+  
   update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
   print_processing_ = this->declare_parameter<bool>("print_processing", false);
 
   RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
-  RCLCPP_INFO(this->get_logger(), "🔘 Initializing SafetyMonitor with roll=%.1f°, pitch=%.1f°, height=%.2f",
-              roll_deg, pitch_deg, height);
 
-  safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>(roll_deg, pitch_deg, height);
+  // Initialize Safety Monitor
+  safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
 
   // Initialize cached variables
   last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(edge_msgs::msg::TrackingError());        // initial state
@@ -70,7 +65,7 @@ void Trigger::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg)
 void Trigger::updateLoop()
 {
   std::vector<double> v(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-  bool is_safe = safety_monitor_->checkSafety(v);
+  bool is_safe = safety_monitor_->evaluateSafety(v);
 
   if (print_processing_)
   {

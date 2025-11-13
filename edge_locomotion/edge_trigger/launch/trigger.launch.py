@@ -10,19 +10,11 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     
     # Config file path
-    safety_config_path = os.path.join(
-        get_package_share_directory('edge_config'),
-        'config', 'safety_set.yaml'
-    )
-    
     trigger_config_path = os.path.join(
         get_package_share_directory('edge_trigger'),
         'config', 'trigger.yaml'
     )
     
-    if not os.path.exists(safety_config_path):
-        raise FileNotFoundError(f"Config file not found: {safety_config_path}")
-
     if not os.path.exists(trigger_config_path):
         raise FileNotFoundError(f"Config file not found: {trigger_config_path}")
 
@@ -41,7 +33,6 @@ def generate_launch_description():
         name='trigger',
         output='screen',
         parameters=[
-            safety_config_path,
             trigger_config_path
         ]
     )

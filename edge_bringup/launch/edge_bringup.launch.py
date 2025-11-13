@@ -113,7 +113,6 @@ def generate_launch_description():
         }.items()
     )
 
-
     # === Virtual Safety Indicator Node ===
     virtual_safety_indicator_node = Node(
         package='edge_config',
@@ -121,7 +120,6 @@ def generate_launch_description():
         name='virtual_safety_indicator',
         output='screen',
     )
-    
 
     return LaunchDescription([
         # -- Launch Arguments --

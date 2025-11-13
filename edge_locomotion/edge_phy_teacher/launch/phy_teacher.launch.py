@@ -20,13 +20,6 @@ def generate_launch_description():
         'config',
         'phy_teacher.yaml'
     )
-    
-    # safety set config path
-    safety_set_config_path = os.path.join(
-        get_package_share_directory('edge_config'),
-        'config',
-        'safety_set.yaml'
-    )
 
     if not os.path.exists(phy_teacher_config_path):
         raise FileNotFoundError(f"❌ Config file not found: {phy_teacher_config_path}")
@@ -61,7 +54,6 @@ def generate_launch_description():
             parameters=[
                 default_config_path,
                 phy_teacher_config_path,
-                safety_set_config_path,
                 # {'update_rate': LaunchConfiguration('update_rate')},
                 # {'print_process_time': LaunchConfiguration('print_process_time')}
             ],

@@ -22,15 +22,8 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     teaching_to_learn_   = this->declare_parameter<bool>("teaching_to_learn", true);
     trigger_type_        = this->declare_parameter<std::string>("trigger_type", "event");
 
-    // Initialize Safety Checker
-    double roll_deg  = this->declare_parameter<double>("roll_limit_deg", 2.0);;
-    double pitch_deg = this->declare_parameter<double>("pitch_limit_deg", 2.0);
-    double height = this->declare_parameter<double>("height_limit", 0.05);
-    double vx_limit = this->declare_parameter<double>("vx_limit", 0.5);
-    double vy_limit = this->declare_parameter<double>("vy_limit", 0.5);
-    double wz_limit = this->declare_parameter<double>("wz_limit", 0.5);
-
-    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>(roll_deg, pitch_deg, height);
+    // Initialize Safety Monitor
+    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
 
     RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
@@ -81,7 +74,7 @@ void PhyTeacher::lmiCallback() {
   if (!got_msg_) return;
 
   auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
-  bool is_current_safe = safety_monitor_->checkSafety(err_state_);
+  bool is_current_safe = safety_monitor_->evaluateSafety(err_state_);
 
   // If teacher is not active
   if (!teacher_active_) {
