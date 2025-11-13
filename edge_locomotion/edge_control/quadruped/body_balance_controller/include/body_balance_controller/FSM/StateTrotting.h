@@ -1,9 +1,11 @@
 #ifndef STATETROTTING_H
 #define STATETROTTING_H
+#include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_msgs/msg/transition.hpp"
+#include "edge_ros_interfaces/msg_conversion.hpp"
 #include "controller_common/FSM/FSMState.h"
 #include "edge_config/reward_composer.hpp"
 
@@ -77,6 +79,9 @@ private:
      */
     bool checkStepOrNot();
 
+    void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+                            edge::ros_interfaces::Vector12d& tracking_error);
+
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
@@ -107,6 +112,9 @@ private:
 
     Vec12 last_tracking_error_;
     Vec12 curr_tracking_error_;
+
+    std::vector<double> last_edge_action_;
+    Vec6 curr_edge_action_;
 
     // Gain parameters
     std::vector<double> swing_gains_;

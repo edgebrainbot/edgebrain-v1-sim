@@ -159,7 +159,7 @@ void StateTrotting::calcCmd()
 }
 
 void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
-    rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+    rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
     const edge_msgs::msg::EdgeAction& latest_accel_)
 {
     pos_error_ = pcd_ - pos_body_;
@@ -189,17 +189,20 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     }
     std::cout << std::endl;
 
-    edge_msgs::msg::Transition transition;
-    transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
-    transition.action.assign(
+    // edge_msgs::msg::Transition transition;
+    // transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
+    // transition.action = last_edge_action_;
+    // transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
+    // transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
+    // transition_pub_->publish(transition);
+    pubTransitionTopic(transition_pub, tracking_error);
+
+    // update last action and tracking error
+    last_edge_action_.assign(
         latest_accel_.control_action.begin(),
         latest_accel_.control_action.end()
     );
-    transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
-    transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
-    transition_pub_->publish(transition);
-
-    last_tracking_error_ = tracking_error;
+    last_tracking_error_ = tracking_error;   
 
     auto track_msg = edge::ros_interfaces::EigenToTrackingErrorMsg(tracking_error);
     tracking_error_pub_->publish(track_msg);
@@ -362,4 +365,17 @@ bool StateTrotting::checkStepOrNot()
         return true;
     }
     return false;
+}
+
+// Publish transition topic
+void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+                                       edge::ros_interfaces::Vector12d& tracking_error)
+{
+    edge_msgs::msg::Transition transition;
+    transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
+    transition.action = last_edge_action_;
+    transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
+    transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
+    transition_pub->publish(transition);
+    std::cout << "Published to transition topic." << std::endl;
 }

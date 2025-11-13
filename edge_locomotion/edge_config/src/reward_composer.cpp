@@ -9,7 +9,7 @@ RewardComposer::RewardComposer(const std::string& yaml_path)
 
     if (yaml_path.empty()) {
         std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_config");
-        final_path = pkg_share + "/config/reward.yaml";
+        final_path = pkg_share + "/config/env_reward.yaml";
 
         std::cout << "[RewardComposer] Using default reward file: " 
                   << final_path << "\n";
