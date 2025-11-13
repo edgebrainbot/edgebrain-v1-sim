@@ -1,0 +1,22 @@
+reward:
+  # upright: 0.02
+  # contact_consistency: 0.008
+  # foot_slipping: 0.032
+  # foot_clearance: 0.008
+  # out_of_bound_action: 0.01
+  # knee_contact: 5
+  # stepping_freq: 0.008
+  # com_distance_to_goal_squared: 0.016
+  # jerky_action: -1
+  # alive: 10
+  fall_down: 10000
+  body_contact: 100
+  energy_consumption: 0.05
+  lin_vel_tracking: 5
+  ang_vel_tracking: 5
+  orientation_tracking: 80
+  height_tracking: 50
+  lyapunov: 100
+  # distance_to_wp: 50
+  # reach_wp: 100
+  # reach_goal: 500

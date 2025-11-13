@@ -24,6 +24,7 @@ set(CONTROLLER_DEPENDENCIES
     geometry_msgs
     edge_msgs
     edge_ros_interfaces
+    edge_config
     # phy_teacher_interfaces
 )
 

@@ -56,19 +56,31 @@ class BaseBuffer(ABC):
 
     def __init__(self, 
                  buffer_size: int, 
+                 prefill_size: int,
                  sampler: Optional[BaseSampler] = None, 
                  device: Optional[str] = 'cpu'):
         """
         Args:
             buffer_size (int): Maximum number of transitions the buffer can store.
+            prefill_size (int): Number of transitions to prefill before sampling.
             sampler (Optional[BaseSampler]): A sampler used to fetch indices (default: UniformSampler).
             device (Optional[str]): The device to store the buffer on (default: 'cpu').
         """
+        
+        assert buffer_size > 0, "Buffer size must be positive."
+        assert prefill_size >= 0, "Prefill size must be non-negative."
+        assert prefill_size <= buffer_size, "Prefill size cannot exceed buffer size."    
+        
+        self._idx = 0
+        self._full = False
+        self._history_count = 0
         self.buffer_size = buffer_size
-        self.idx = 0
-        self.full = False
-        self.sampler: BaseSampler = sampler or UniformSampler(buffer_size)
+        self.prefill_size = prefill_size
         self.device = device
+        
+        self.sampler: BaseSampler = sampler or UniformSampler(buffer_size)
+        if hasattr(self.sampler, "set_buffer_size"):
+            self.sampler.set_buffer_size(buffer_size)
 
     @abstractmethod
     def add_transition(self, *args, **kwargs):
@@ -118,6 +130,10 @@ class BaseBuffer(ABC):
             done=to_torch(done),
             info=to_torch(info) if info is not None else None,
         )
+        
+    def extend(self, t_batch: TransitionBatch):
+        """Add multiple transitions into the buffer."""
+        raise NotImplementedError("extend() not implemented in BaseBuffer.")
 
     def set_sampler(self, sampler: BaseSampler):
         """Replace the sampler dynamically (e.g., switch to prioritized)."""
@@ -127,16 +143,52 @@ class BaseBuffer(ABC):
     @property
     def size(self) -> int:
         """Return number of valid transitions currently stored."""
-        return self.buffer_size if self.full else self.idx
+        return self.buffer_size if self._full else self._idx
 
+    @property
     def capacity(self) -> int:
         """Return maximum buffer capacity."""
         return self.buffer_size
 
-    def reset(self):
-        """Reset write pointer."""
-        self.idx = 0
-        self.full = False
+    @property
+    def is_ready(self) -> bool:
+        """
+        Whether buffer has enough transitions for sampling.
+        Returns True when size >= prefill_size.
+        """
+        return self.size >= self.prefill_size
+    
+    @property
+    def is_prefilled(self) -> bool:
+        """Deprecated: use is_ready instead."""
+        import warnings
+        warnings.warn(
+            "is_prefilled is deprecated, use is_ready",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.is_ready
+    
+    @property
+    def history_count(self) -> int:
+        """Total number of transitions ever written into the buffer (including overwrites)."""
+        return self._history_count
 
-    def __len__(self):
-        return self.size()
+    def reset(self):
+        """Reset write pointer but DO NOT clear existing data."""
+        self._idx = 0
+        self._full = False
+        self._history_count = 0
+        
+    def clear(self):
+        """
+        Clear stored tensor data for replay buffers that define them.
+        """
+        for attr in ("obs", "actions", "rewards", "next_obs", "dones"):
+            if hasattr(self, attr):
+                getattr(self, attr).zero_()
+        self.reset()
+        
+
+    def __len__(self) -> int:
+        return self.size

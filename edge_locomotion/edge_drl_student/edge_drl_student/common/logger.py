@@ -1,103 +1,152 @@
-from numpy.core.numeric import Infinity
-from ..common.settings import COLLISION_OBSTACLE, COLLISION_WALL, TUMBLE, SUCCESS, TIMEOUT, RESULTS_NUM
-import time
 import os
+import time
+import statistics
+from collections import deque
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Logger:
-    def __init__(self, name="", log_dir="./logs"):
-        self.test_entry = 0
-        self.test_outcome = [0] * RESULTS_NUM
-        self.test_distance = []
-        self.test_duration = []
-        self.test_swerving = []
-        self.is_training = training
+    """
+    Lightweight RL logger inspired by rsl_rl OnPolicyRunner.log(),
+    but simplified and adapted for off-policy training loops.
 
-        self.session = session
-        self.hyperparameters = hyperparameters
-        self.model_config = model_config
-        self.stage = stage
-        self.algorithm = algorithm
+    Features:
+    - TensorBoard logging
+    - Pretty console printout
+    - reward buffer, episode length buffer
+    - loss metrics logging
+    - performance statistics (FPS, iteration time)
+    """
 
-        self.highest_reward = -Infinity
-        self.best_episode_reward = 0
-        self.highest_success = 0
-        self.best_episode_success = 0
+    def __init__(self, log_dir: str, flush_secs=10, device="cpu"):
+        self.log_dir = log_dir
+        os.makedirs(log_dir, exist_ok=True)
 
-        datetime = time.strftime("%Y%m%d-%H%M%S")
-        self.file_comparison = self.init_comparison_file(datetime, machine_dir, stage, hyperparameters, algorithm, session, load_episode)
-        if self.is_training:
-            self.file_log = self.init_training_log(datetime, session_dir, stage, model_config)
-        else:
-            self.file_log = self.init_testing_log(datetime, session_dir, stage, load_episode)
+        self.writer = SummaryWriter(log_dir=log_dir, flush_secs=flush_secs)
+        self.device = device
 
-    def update_test_results(self, step, outcome, distance_traveled, episode_duration, swerving_sum):
-        self.test_entry += 1
-        self.test_outcome[outcome] += 1
-        if outcome == SUCCESS:
-            self.test_distance.append(distance_traveled)
-            self.test_duration.append(episode_duration)
-            self.test_swerving.append(swerving_sum/step)
-        success_count = self.test_outcome[SUCCESS]
+        # counters
+        self.total_time = 0.0
+        self.total_env_steps = 0
+        self.current_iteration = 0
 
-        self.file_log.write(f"{self.test_entry}, {outcome}, {step}, {episode_duration}, {distance_traveled}, {self.test_outcome[SUCCESS]}/{self.test_outcome[COLLISION_WALL]}/{self.test_outcome[COLLISION_OBSTACLE]}/{self.test_outcome[TIMEOUT]}/{self.test_outcome[TUMBLE]}\n")
-        if self.test_entry > 0 and self.test_entry % 100 == 0:
-            self.update_comparison_file(self.test_entry, self.test_outcome[SUCCESS] / (self.test_entry / 100), 0)
-            self.file_log.write(f"Successes: {self.test_outcome[SUCCESS]} ({self.test_outcome[SUCCESS]/self.test_entry:.2%}), "
-            f"collision (wall): {self.test_outcome[COLLISION_WALL]} ({self.test_outcome[COLLISION_WALL]/self.test_entry:.2%}), "
-            f"collision (obs): {self.test_outcome[COLLISION_OBSTACLE]} ({self.test_outcome[COLLISION_OBSTACLE]/self.test_entry:.2%}), "
-            f"timeouts: {self.test_outcome[TIMEOUT]}, ({self.test_outcome[TIMEOUT]/self.test_entry:.2%}), "
-            f"tumbles: {self.test_outcome[TUMBLE]}, ({self.test_outcome[TUMBLE]/self.test_entry:.2%}), ")
-            if success_count > 0:
-                self.file_log.write(f"distance: {sum(self.test_distance)/success_count:.3f}, "
-                                    f"swerving: {sum(self.test_swerving)/success_count:.3f}, "
-                                    f"duration: {sum(self.test_duration)/success_count:.3f}\n")
-        if self.test_entry > 0:
-            print(f"Successes: {self.test_outcome[SUCCESS]} ({self.test_outcome[SUCCESS]/self.test_entry:.2%}), "
-            f"collision (wall): {self.test_outcome[COLLISION_WALL]} ({self.test_outcome[COLLISION_WALL]/self.test_entry:.2%}), "
-            f"collision (obs): {self.test_outcome[COLLISION_OBSTACLE]} ({self.test_outcome[COLLISION_OBSTACLE]/self.test_entry:.2%}), "
-            f"timeouts: {self.test_outcome[TIMEOUT]}, ({self.test_outcome[TIMEOUT]/self.test_entry:.2%}), "
-            f"tumbles: {self.test_outcome[TUMBLE]}, ({self.test_outcome[TUMBLE]/self.test_entry:.2%}), ")
-            if success_count > 0:
-                print(f"distance: {sum(self.test_distance)/success_count:.3f}, "
-                      f"swerving: {sum(self.test_swerving)/success_count:.3f}, "
-                      f"duration: {sum(self.test_duration)/success_count:.3f}")
+        # episode statistics
+        self.rewbuffer = deque(maxlen=100)
+        self.lenbuffer = deque(maxlen=100)
 
+        print(f"[EdgeDLLogger] Logging to: {self.log_dir}")
 
-    def init_training_log(self, datetime, path, stage, model_config):
-        file_log = open(os.path.join(path, "_train_stage" + stage + "_" + datetime + '.txt'), 'w+')
-        file_log.write("episode, reward, success, duration, steps, total_steps, memory length, avg_critic_loss, avg_actor_loss\n")
-        with open(os.path.join(path, '_model_configuration_' + datetime + '.txt'), 'w+') as file_model_config:
-            file_model_config.write(model_config + '\n')
-        return file_log
+    # ------------------------------------------------------------------ #
+    # Logging API
+    # ------------------------------------------------------------------ #
 
-    def init_testing_log(self, datetime, path, stage, load_episode):
-        file_log = open(os.path.join(path, "_test_stage" + stage + "_eps" + str(load_episode) + "_" + datetime + '.txt'), 'w+')
-        file_log.write(f"episode, outcome, step, episode_duration, distance, s/cw/co/t\n")
-        return file_log
+    def add_episode_info(self, reward, length):
+        """Add completed episode stats."""
+        self.rewbuffer.append(float(reward))
+        self.lenbuffer.append(float(length))
 
-    def init_comparison_file(self, datetime, path, stage, hyperparameters, algorithm, session, episode):
-        prefix = "_training" if self.is_training else "_testing"
-        with open(os.path.join(path, "__" + algorithm + prefix + "_comparison.txt"), 'a+') as file_comparison:
-            file_comparison.write(datetime + ', ' + session + ', ' + str(episode) + ', ' + stage + ', ' + hyperparameters + '\n')
-        return file_comparison
+    def log_losses(self, loss_dict: dict, step: int):
+        """Log loss scalars."""
+        for key, value in loss_dict.items():
+            self.writer.add_scalar(f"Loss/{key}", value, step)
 
-    def update_comparison_file(self, episode, success_count, average_reward=0):
-        if average_reward > self.highest_reward and episode != 1:
-            self.highest_reward = average_reward
-            self.best_episode_reward = episode
-        if success_count > self.highest_success and episode != 1:
-            self.highest_success = success_count
-            self.best_episode_success = episode
-        datetime = time.strftime("%Y%m%d-%H%M%S")
-        with open(self.file_comparison.name, 'a+') as file_comparison:
-            file_comparison.seek(0)
-            lines = file_comparison.readlines()
-            file_comparison.seek(0)
-            file_comparison.truncate()
-            file_comparison.writelines(lines[:-1])
-            file_comparison.write(datetime + ', ' + self.session + ', ' + self.stage + ', ' + self.hyperparameters)
-            if self.is_training:
-                file_comparison.write(', results, ' + str(episode) + ', ' + str(self.best_episode_success) + ': ' + str(self.highest_success) + '%, ' + str(self.best_episode_reward) + ': ' + str(self.highest_reward) + '\n')
-            else:
-                file_comparison.write(', results, ' + str(episode) + ', ' + str(self.best_episode_success) + ', ' + str(self.highest_success) + '%\n')
+    def log_train_metrics(self, step: int):
+        """Log reward & episode length."""
+        if len(self.rewbuffer) > 0:
+            self.writer.add_scalar("Train/mean_reward", statistics.mean(self.rewbuffer), step)
+            self.writer.add_scalar("Train/mean_episode_length", statistics.mean(self.lenbuffer), step)
+
+    def log_policy_stats(self, noise_std: float, step: int):
+        """Log policy noise/entropy/etc."""
+        self.writer.add_scalar("Policy/noise_std", noise_std, step)
+
+    def log_performance(self, fps: float, step: int, collection_time: float, learn_time: float):
+        """Log speed and timing info."""
+        self.writer.add_scalar("Perf/fps", fps, step)
+        self.writer.add_scalar("Perf/collection_time", collection_time, step)
+        self.writer.add_scalar("Perf/learn_time", learn_time, step)
+
+    # ------------------------------------------------------------------ #
+    # Pretty Print like rsl_rl
+    # ------------------------------------------------------------------ #
+
+    def print_summary(
+        self,
+        it: int,
+        total_iterations: int,
+        fps: float,
+        loss_dict: dict,
+        noise_std: float,
+        collection_time: float,
+        learn_time: float
+    ):
+        pad = 32
+        width = 70
+        s = f" Learning iteration {it}/{total_iterations} "
+
+        msg = (
+            f"\n{'#' * width}\n"
+            f"{s.center(width)}\n\n"
+            f"{'Computation:':>{pad}} {fps:.0f} steps/s "
+            f"(collection {collection_time:.3f}s, learn {learn_time:.3f}s)\n"
+            f"{'Policy noise std:':>{pad}} {noise_std:.3f}\n"
+        )
+
+        for key, val in loss_dict.items():
+            msg += f"{('Loss ' + key + ':'):>{pad}} {val:.4f}\n"
+
+        if len(self.rewbuffer) > 0:
+            msg += f"{'Mean reward:':>{pad}} {statistics.mean(self.rewbuffer):.2f}\n"
+            msg += f"{'Mean episode length:':>{pad}} {statistics.mean(self.lenbuffer):.2f}\n"
+
+        msg += (
+            f"{'-' * width}\n"
+            f"{'Total env steps:':>{pad}} {self.total_env_steps}\n"
+            f"{'Total time:':>{pad}} {time.strftime('%H:%M:%S', time.gmtime(self.total_time))}\n"
+        )
+
+        print(msg)
+
+    # ------------------------------------------------------------------ #
+    # Main entry called by training loop
+    # ------------------------------------------------------------------ #
+
+    def log_iteration(
+        self,
+        *,
+        it: int,
+        total_iterations: int,
+        loss_dict: dict,
+        noise_std: float,
+        env_steps_this_iter: int,
+        collection_time: float,
+        learn_time: float
+    ):
+        """Main logging entry point (similar to rsl_rl runner.log)."""
+
+        # update counters
+        self.current_iteration = it
+        self.total_env_steps += env_steps_this_iter
+        iter_time = collection_time + learn_time
+        self.total_time += iter_time
+        fps = env_steps_this_iter / iter_time
+
+        # Write to TF summary
+        self.log_losses(loss_dict, it)
+        self.log_train_metrics(it)
+        self.log_policy_stats(noise_std, it)
+        self.log_performance(fps, it, collection_time, learn_time)
+
+        # Print to console
+        self.print_summary(
+            it=it,
+            total_iterations=total_iterations,
+            fps=fps,
+            loss_dict=loss_dict,
+            noise_std=noise_std,
+            collection_time=collection_time,
+            learn_time=learn_time,
+        )
+
+    def close(self):
+        self.writer.close()

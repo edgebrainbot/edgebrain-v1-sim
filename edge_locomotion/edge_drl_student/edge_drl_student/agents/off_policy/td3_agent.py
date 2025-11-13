@@ -64,7 +64,7 @@ class TD3Agent(OffPolicyAgent):
         
         self.to(device)
         
-        print(f"[DDPG] initialized on {device} (γ={gamma}, τ={tau})")
+        
         self.print_model_summary()
 
     def to(self, device: str = None):
@@ -116,9 +116,8 @@ class TD3Agent(OffPolicyAgent):
             self.actor_optimizer.step()
 
             # ==== 5. Soft update ====
-            soft_update(self.target_actor, self.actor, self.tau)
-            soft_update(self.target_critic1, self.critic1, self.tau)
-            soft_update(self.target_critic2, self.critic2, self.tau)
+            self._soft_update(self.target_critic1, self.critic1, self.tau)
+            self._soft_update(self.target_critic2, self.critic2, self.tau)
 
         
         
@@ -182,11 +181,13 @@ class TD3Agent(OffPolicyAgent):
             warnings.warn(f"⚠️ Failed to load models: {e}")
             
     def print_model_summary(self):
-        print("\n ================ Actor Network ================ ")
+        print(f"[TD3] initialized on {self.device} (γ={self.gamma}, τ={self.tau})")
+        
+        print("\n ================ Actor Network ================ \n")
         print(self.actor)
         print(f"Total params: {sum(p.numel() for p in self.actor.parameters() if p.requires_grad):,}")
 
-        print("\n ================ Critic Network ================ ")
+        print("\n ================ Critic Network ================ \n")
         print(self.critic)
         print(f"Total params: {sum(p.numel() for p in self.critic.parameters() if p.requires_grad):,}")
 
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     )
     
     replay_buffer = SoloReplayBuffer(buffer_size=10000, obs_dim=obs_dim, action_dim=act_dim, device=device)
-    ddpg_agent = DDPGAgent(obs_dim=obs_dim,
+    td3_agent = TD3Agent(obs_dim=obs_dim,
                            act_dim=act_dim,
                            replay_buffer=replay_buffer,
                            action_bound=action_bound,
@@ -209,5 +210,5 @@ if __name__ == "__main__":
     
 
     sample_obs = torch.randn(4, obs_dim, device=device)
-    actions = ddpg_agent.act(sample_obs)
-    print("Sample Actions from DDPG Agent:", actions)
+    actions = td3_agent.act(sample_obs)
+    print("Sample Actions from TD3 Agent:", actions)

@@ -23,7 +23,9 @@ ENVELOPE_P = np.array([[100, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 class DualReplayBuffer(BaseBuffer):
     def __init__(self, 
                  student_buf_size: int, 
+                 student_prefill_size: int,
                  teacher_buf_size: int, 
+                 teacher_prefill_size: int,
                  sampler: Optional[UniformSampler] = None,
                  obs_dim: int = 12,
                  action_dim: int = 6,
@@ -39,6 +41,7 @@ class DualReplayBuffer(BaseBuffer):
 
         # Self-learning DRL-Student
         self.stu_buf = SoloReplayBuffer(buffer_size=self.student_buf_size, 
+                                        prefill_size=student_prefill_size,
                                         obs_dim=obs_dim, 
                                         action_dim=action_dim,
                                         sampler=sampler,
@@ -46,6 +49,7 @@ class DualReplayBuffer(BaseBuffer):
 
         # Teaching-to-learn PHY-Teacher
         self.tea_buf = SoloReplayBuffer(buffer_size=self.teacher_buf_size, 
+                                        prefill_size=teacher_prefill_size,
                                         obs_dim=obs_dim, 
                                         action_dim=action_dim,
                                         sampler=sampler,

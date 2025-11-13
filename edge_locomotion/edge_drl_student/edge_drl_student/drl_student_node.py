@@ -42,15 +42,12 @@ class DRLStudentNode(Node):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        # Initialize policy network and optimizer
-        self.policy = SimplePolicy().to(self.device)
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=1e-3)
-        self.loss_fn = nn.MSELoss()
-
         self.obs_dim = 12
         self.act_dim = 6
         self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
+                                       student_prefill_size=int(1e4),
                                        teacher_buf_size=int(1e5), 
+                                       teacher_prefill_size=int(1e4),
                                        obs_dim=self.obs_dim, 
                                        action_dim=self.act_dim, 
                                        device=self.device)
@@ -68,13 +65,12 @@ class DRLStudentNode(Node):
 
         # ros2 topics
         self.action_pub = self.create_publisher(EdgeAction, 'drl_student_action', 10)
-        # self.create_subscription(TrackingError, '/tracking_error', self.tracking_error_callback, 10)
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
         self.create_subscription(TrackingError, 'tracking_error', self.tracking_error_callback, 10)
 
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
-        # self.learn_timer = self.create_timer(1.0, self.learn_step)    # Learning weights updates
+        self.learn_timer = self.create_timer(1.0, self.learn_step)    # Learning weights updates
 
         self.get_logger().info("✅ DRLStudentNode initialized")
 
@@ -102,28 +98,22 @@ class DRLStudentNode(Node):
             done=msg.done
         )
         self.buffer.add_transition(t, action_mode=ActionMode.TEACHER)
-        if self.buffer.stu_buf_size >= self.batch_size:
-            self.agent.update(batch_size=self.batch_size)
         
     def tracking_error_callback(self, msg: TrackingError):
         self.tracking_error_ = msg
         self.get_logger().info(f"[TrackingError] Received tracking error: {msg}")
 
     def learn_step(self):
-        if len(self.buffer) < self.batch_size:
+
+        if not self.buffer.stu_buf.is_ready:
+            self.get_logger().info(f"[Learner] Buffer not ready for learning. Current size: {self.buffer.stu_buf_size}, required prefill size: {self.buffer.stu_buf.prefill_size}.")
+            return
+        
+        if not self.buffer.tea_buf.is_ready:
+            self.get_logger().info(f"[Learner] Buffer not ready for learning. Current size: {self.buffer.tea_buf_size}, required prefill size: {self.buffer.tea_buf.prefill_size}.")
             return
 
-        batch = random.sample(self.buffer, self.batch_size)
-        obs_batch = torch.tensor(np.stack([b[0] for b in batch]), dtype=torch.float32)
-        act_batch = torch.tensor(np.stack([b[1] for b in batch]), dtype=torch.float32)
-        target = -torch.norm(act_batch, dim=1, keepdim=True)
-
-        pred = self.policy(obs_batch)
-        loss = self.loss_fn(pred.mean(dim=1, keepdim=True).detach().clone(), target)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.agent.update(self.batch_size)
 
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         torch.save(self.policy.state_dict(), MODEL_PATH)

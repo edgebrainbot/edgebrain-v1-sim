@@ -69,7 +69,7 @@ class DDPGAgent(OffPolicyAgent):
         
         self.to(device)
         
-        print(f"[DDPG] initialized on {device} (γ={gamma}, τ={tau})")
+        # Print model summary
         self.print_model_summary()
 
     def to(self, device: str = None):
@@ -178,11 +178,12 @@ class DDPGAgent(OffPolicyAgent):
             warnings.warn(f"⚠️ Failed to load models: {e}")
             
     def print_model_summary(self):
-        print("\n ================ Actor Network ================ ")
+        print(f"[DDPG] initialized on {self.device} (γ={self.gamma}, τ={self.tau})")
+        print("\n ================ Actor Network ================ \n")
         print(self.actor)
         print(f"Total params: {sum(p.numel() for p in self.actor.parameters() if p.requires_grad):,}")
 
-        print("\n ================ Critic Network ================ ")
+        print("\n ================ Critic Network ================ \n")
         print(self.critic)
         print(f"Total params: {sum(p.numel() for p in self.critic.parameters() if p.requires_grad):,}")
 

@@ -5,6 +5,7 @@
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_msgs/msg/transition.hpp"
 #include "controller_common/FSM/FSMState.h"
+#include "edge_config/reward_composer.hpp"
 
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "body_balance_controller/utils/math/mathTypes.h"
@@ -124,6 +125,8 @@ private:
     //     }
     //     gain_update_ = true;
     // }
+
+    RewardComposer reward_composer_{""};
 
     Mat6 latest_kp_;
     Mat6 latest_kd_;

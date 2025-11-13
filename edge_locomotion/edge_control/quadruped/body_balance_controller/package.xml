@@ -9,6 +9,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>edge_config</depend>
   <depend>edge_msgs</depend>
   <depend>edge_ros_interfaces</depend>
   <depend>controller_interface</depend>
