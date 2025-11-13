@@ -8,6 +8,7 @@ from edge_drl_student.networks.actor_critic import ActorCritic, ActorNetwork, Cr
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.common.normalizer import BaseNormalizer, MinMaxNormalizer, EmpiricalNormalizer
+from edge_drl_student.common.noise import Noise, OUNoise, GaussianNoise
 from typing import Union
 
 class DDPGAgent(OffPolicyAgent):
@@ -26,6 +27,7 @@ class DDPGAgent(OffPolicyAgent):
                  critic_lr=3e-4,
                  gamma=0.99,
                  tau=0.005,
+                 noise: Noise = None,
                  model_load_path: str = None,
                  model_save_path: str = None,
                  device="cpu"):
@@ -55,6 +57,9 @@ class DDPGAgent(OffPolicyAgent):
         else:
             self.critic_normalizer = critic_normalizer
             
+        # Noise process
+        self.noise = noise if noise is not None else OUNoise(size=act_dim, device=device)
+            
         # The paths for saving/loading models
         self.load_path = model_load_path
         self.save_path = model_save_path
@@ -79,13 +84,17 @@ class DDPGAgent(OffPolicyAgent):
         with torch.no_grad():
             action = self.actor(obs)
         if explore:
-            action += noise_scale * torch.randn_like(action)
+            action += noise_scale * self.noise(action.shape)
         action_clipped = torch.clamp(action, -1.0, 1.0)
+        
+        # Return denormalized action
         return self.actor_normalizer.denormalize(action_clipped)
 
-    def update(self, batch_size: int = 64):
-        batch = self.replay_buffer.sample(batch_size)
-        obs, act, rew, next_obs, done = batch.obs, batch.actions, batch.rewards, batch.next_obs, batch.dones
+    def update(self, batch_size):
+        """DDPG update step."""
+        
+        t_batch = self.replay_buffer.sample(batch_size)
+        obs, act, rew, next_obs, done = t_batch.obs, t_batch.action, t_batch.reward, t_batch.next_obs, t_batch.done
 
         with torch.no_grad():
             target_act = self.target_actor(next_obs)
