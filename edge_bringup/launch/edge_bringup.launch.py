@@ -113,6 +113,21 @@ def generate_launch_description():
         }.items()
     )
 
+    # --------- Navigation Module ---------
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("vehicle_simulator"),
+                "launch",
+                "system_simulation_with_route_planner.launch.py"
+            ])
+        ),
+        # launch_arguments={
+        #     "namespace": namespace,
+        #     "robot": robot
+        # }.items()
+    )
+
     # === Virtual Safety Indicator Node ===
     virtual_safety_indicator_node = Node(
         package='edge_config',
@@ -133,4 +148,6 @@ def generate_launch_description():
         # drl_student_launch,
         trigger_launch,
         virtual_safety_indicator_node,
+        
+        navigation_launch,
     ])

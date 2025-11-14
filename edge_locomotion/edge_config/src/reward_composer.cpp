@@ -122,10 +122,9 @@ double RewardComposer::upright(double gz) {
     return gz;
 }
 
-double RewardComposer::lyapunov(
-    const Eigen::VectorXd& err_prev,
-    const Eigen::VectorXd& err_next
-) {
+double RewardComposer::lyapunov(const Eigen::VectorXd& err_prev,
+                                const Eigen::VectorXd& err_next) 
+{
     Eigen::VectorXd sp = err_prev.tail(10);
     Eigen::VectorXd sn = err_next.tail(10);
 
