@@ -45,8 +45,7 @@ def generate_launch_description():
             FindPackageShare("local_planner"),
             "launch",
             "local_planner.launch.py"
-        ])
-        ),
+        ])),
         launch_arguments={
         "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
         "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
@@ -65,8 +64,7 @@ def generate_launch_description():
             FindPackageShare("terrain_analysis"),
             "launch",
             "terrain_analysis.launch.py"
-        ])
-        )
+        ]))
     )
 
     # -----------------------------
@@ -78,8 +76,7 @@ def generate_launch_description():
             FindPackageShare("terrain_analysis_ext"),
             "launch",
             "terrain_analysis_ext.launch.py"
-        ])
-        ),
+        ])),
         launch_arguments={
         "checkTerrainConn": LaunchConfiguration("checkTerrainConn")
         }.items()
@@ -94,8 +91,7 @@ def generate_launch_description():
             FindPackageShare("vehicle_simulator"),
             "launch",
             "vehicle_simulator.launch.py"
-        ])
-        ),
+        ])),
         launch_arguments={
         "vehicleHeight": LaunchConfiguration("vehicleHeight"),
         "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
@@ -116,8 +112,7 @@ def generate_launch_description():
             FindPackageShare("sensor_scan_generation"),
             "launch",
             "sensor_scan_generation.launch.py"
-        ])
-        )
+        ]))
     )
 
     # -----------------------------
@@ -129,8 +124,7 @@ def generate_launch_description():
             FindPackageShare("visualization_tools"),
             "launch",
             "visualization_tools.launch.py"
-        ])
-        ),
+        ])),
         launch_arguments={
         "world_name": LaunchConfiguration("world_name")
         }.items()

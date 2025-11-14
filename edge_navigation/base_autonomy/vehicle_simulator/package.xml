@@ -19,6 +19,13 @@
   <depend>pcl_conversions</depend>
   <depend>ros_tcp_endpoint</depend>
   <depend>cv_bridge</depend>
+  <depend>local_planner</depend>
+  <depend>terrain_analysis</depend>
+  <depend>terrain_analysis_ext</depend>
+  <depend>sensor_scan_generation</depend>
+  <depend>visualization_tools</depend>
+  <depend>far_planner</depend>
+
   
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
