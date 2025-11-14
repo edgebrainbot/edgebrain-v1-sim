@@ -61,10 +61,10 @@ class SoloReplayBuffer(BaseBuffer):
         """
         return TransitionBatch(
             obs=self.obs[indices],
-            actions=self.actions[indices],
-            rewards=self.rewards[indices],
+            action=self.actions[indices],
+            reward=self.rewards[indices],
             next_obs=self.next_obs[indices],
-            dones=self.dones[indices]
+            done=self.dones[indices]
         )
     
     def sample(self, batch_size: int) -> TransitionBatch:
