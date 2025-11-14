@@ -174,7 +174,7 @@ namespace edge::locomotion::body_balance_controller
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
 
-        edge_msgs::msg::EdgeAction latest_accel_;
+        edge_msgs::msg::EdgeAction latest_edge_action_;
         // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
         // {
         //     latest_accel_ = *msg;

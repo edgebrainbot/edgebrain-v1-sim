@@ -111,7 +111,6 @@ namespace edge::locomotion::body_balance_controller
             fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
             return controller_interface::CallbackReturn::ERROR;
         }
-
         return CallbackReturn::SUCCESS;
     }
 
@@ -159,11 +158,12 @@ namespace edge::locomotion::body_balance_controller
                 topic_ns_ + "/terminal_action", 100,
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
             {
-                latest_accel_ = *msg;
+                latest_edge_action_ = *msg;
                 std::cout << "Received new action from the trigger." << std::endl;
                 for (int i = 0; i < 6; i++) {
-                    std::cout << "accel[" << i << "] = " << latest_accel_.control_action[i] << std::endl;
+                    std::cout << "accel[" << i << "] = " << latest_edge_action_.control_action[i] << std::endl;
                 }
+                std::cout << "latest_edge_action mode: " << edge::ToString(edge::ActionMode(latest_edge_action_.action_mode)) << std::endl;
             });
 
             // Publisher for tracking error
@@ -252,7 +252,7 @@ namespace edge::locomotion::body_balance_controller
         if (mode_ == FSMMode::NORMAL)
         {
             if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
-                trot->run(time, period, latest_accel_, 
+                trot->run(time, period, latest_edge_action_, 
                           tracking_error_pub_, 
                           transition_pub_, 
                           cmd_vx_, 

@@ -105,11 +105,11 @@ class DualReplayBuffer(BaseBuffer):
 
         L = batch_size
         if self.last_data_type == ActionMode.STUDENT:
-            stu_idx = self.stu_buf.idx - 1
+            stu_idx = self.stu_buf.pointer - 1
             boundary_state = self.stu_buf.obs[stu_idx]
 
         elif self.last_data_type == ActionMode.TEACHER:
-            tea_idx = self.tea_buf.idx - 1
+            tea_idx = self.tea_buf.pointer - 1
             boundary_state = self.tea_buf.obs[tea_idx]
         else:
             raise RuntimeError(f"Unknown action type pointer: {self.last_data_type}")

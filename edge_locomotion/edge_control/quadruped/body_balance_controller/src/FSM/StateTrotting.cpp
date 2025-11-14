@@ -1,5 +1,5 @@
 
-#include "edge_msgs/msg/action.hpp"
+#include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "body_balance_controller/FSM/StateTrotting.h"
@@ -37,6 +37,12 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     v_y_limit_ << -0.3, 0.3;
     w_yaw_limit_ << -0.5, 0.5;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
+
+    // Initialize last tracking error and action
+    last_tracking_error_.setZero();
+    last_edge_action_.setZero();
+    curr_tracking_error_.setZero();
+    curr_edge_action_.setZero();
 
 }
 
@@ -169,36 +175,21 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
         // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
-    edge::ros_interfaces::Vector12d tracking_error;
-    tracking_error[0] = 0.0;
-    tracking_error[1] = 0.0;
-    tracking_error[2] = pos_error_(2);
-    tracking_error[3] = rotMatToExp(Rd * G2B_RotMat)(0);
-    tracking_error[4] = rotMatToExp(Rd * G2B_RotMat)(1);
-    tracking_error[5] = rotMatToExp(Rd * G2B_RotMat)(2);
-    tracking_error[6] = vel_error_(0);
-    tracking_error[7] = vel_error_(1);
-    tracking_error[8] = vel_error_(2);
-    tracking_error[9] = (w_cmd_global_ - estimator_->getGyroGlobal())(0);
-    tracking_error[10] = (w_cmd_global_ - estimator_->getGyroGlobal())(1);
-    tracking_error[11] = (w_cmd_global_ - estimator_->getGyroGlobal())(2);
-
+    Vector12d tracking_error = computeTrackingError();
     std::cout << "tracking error: ";
     for (int i = 0; i < 12; i++) {
         std::cout << tracking_error[i] << " ";
     }
     std::cout << std::endl;
 
-    pubTransitionTopic(transition_pub, tracking_error);
+    // Publish transition topic
+    pubTransitionTopic(transition_pub, tracking_error, latest_accel_.action_mode);
 
     // update last action and tracking error
-    last_edge_action_.assign(
-        latest_accel_.control_action.begin(),
-        latest_accel_.control_action.end()
-    );
+    last_edge_action_ = EdgeActionMsgToEigen(latest_accel_);
     last_tracking_error_ = tracking_error;   
 
-    auto track_msg = edge::ros_interfaces::EigenToTrackingErrorMsg(tracking_error);
+    auto track_msg = EigenToTrackingErrorMsg(tracking_error);
     tracking_error_pub_->publish(track_msg);
 
     std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
@@ -215,9 +206,6 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     }
     std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
-
-    // std::cout << "kp: " << kp << std::endl;
-    // std::cout << "kd: " << kd << std::endl;
 
     accel(0) = saturation(accel(0), Vec2(-3, 3));
     accel(1) = saturation(accel(1), Vec2(-3, 3));
@@ -363,13 +351,39 @@ bool StateTrotting::checkStepOrNot()
 
 // Publish transition topic
 void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                                       edge::ros_interfaces::Vector12d& tracking_error)
+                                       Vector12d& tracking_error, uint8_t action_mode)
 {
     edge_msgs::msg::Transition transition;
-    transition.obs = edge::ros_interfaces::EigenToVector(last_tracking_error_);
-    transition.action = last_edge_action_;
+    transition.obs = EigenToVector(last_tracking_error_);
+    transition.action = EigenToVector(last_edge_action_);
     transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
-    transition.next_obs = edge::ros_interfaces::EigenToVector(tracking_error);
+    transition.next_obs = EigenToVector(tracking_error);
+    transition.done = false;
+    transition.action_mode = action_mode;
     transition_pub->publish(transition);
     std::cout << "Published to transition topic." << std::endl;
+}
+
+
+Vector12d StateTrotting::computeTrackingError() const
+{
+    Vector12d tracking_error = Vector12d::Zero();
+
+    // Pre-compute values
+    Eigen::Vector3d ori_err = rotMatToExp(Rd * G2B_RotMat);     
+    Eigen::Vector3d gyro_err = w_cmd_global_ - estimator_->getGyroGlobal(); 
+
+    // Position error
+    tracking_error[2] = pos_error_(2);
+
+    // Orientation error
+    tracking_error.segment<3>(3) = ori_err;
+
+    // Linear velocity error
+    tracking_error.segment<3>(6) = vel_error_;
+
+    // Angular velocity error
+    tracking_error.segment<3>(9) = gyro_err;
+
+    return tracking_error;
 }

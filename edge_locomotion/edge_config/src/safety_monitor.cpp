@@ -242,6 +242,4 @@ void SafetyMonitor::printLoadedRules() const
   line();
 }
 
-
-
 }  // namespace edge::config

@@ -26,6 +26,7 @@ namespace edge::locomotion
 }
 
 using namespace edge::locomotion;
+using namespace edge::ros_interfaces;
 
 class StateTrotting final : public FSMState {
 
@@ -80,7 +81,7 @@ private:
     bool checkStepOrNot();
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                            edge::ros_interfaces::Vector12d& tracking_error);
+                            Vector12d& tracking_error, uint8_t action_mode);
 
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
@@ -113,7 +114,7 @@ private:
     Vec12 last_tracking_error_;
     Vec12 curr_tracking_error_;
 
-    std::vector<double> last_edge_action_;
+    Vec6 last_edge_action_;
     Vec6 curr_edge_action_;
 
     // Gain parameters
@@ -133,6 +134,8 @@ private:
     //     }
     //     gain_update_ = true;
     // }
+
+    Vector12d computeTrackingError() const;
 
     RewardComposer reward_composer_{""};
 

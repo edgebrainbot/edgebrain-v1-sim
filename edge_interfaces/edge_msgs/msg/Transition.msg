@@ -6,3 +6,4 @@ float64[] action
 float64 reward
 float64[] next_obs
 bool done
+uint8 action_mode           # 0=STUDENT, 1=TEACHER

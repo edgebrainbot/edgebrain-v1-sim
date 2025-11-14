@@ -141,6 +141,11 @@ class BaseBuffer(ABC):
         self.sampler.set_buffer_size(self.buffer_size)
 
     @property
+    def pointer(self) -> int:
+        """Current circular write pointer."""
+        return self._idx
+
+    @property
     def size(self) -> int:
         """Return number of valid transitions currently stored."""
         return self.buffer_size if self._full else self._idx
