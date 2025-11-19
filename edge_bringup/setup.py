@@ -1,6 +1,8 @@
+import glob
 from setuptools import find_packages, setup
 
 package_name = 'edge_bringup'
+launch_files = glob.glob('launch/*.launch.py')
 
 setup(
     name=package_name,
@@ -10,7 +12,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/edge_bringup.launch.py']),
+        ('share/' + package_name + '/launch', launch_files),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

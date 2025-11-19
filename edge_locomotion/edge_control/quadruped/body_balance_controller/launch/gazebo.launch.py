@@ -24,7 +24,7 @@ def launch_setup(context, *args, **kwargs):
         print(f"Available packages can be checked with: ros2 pkg list | grep {robot_name}")
         raise e
 
-    xacro_file = os.path.join(pkg_path, 'xacro', 'ros2_control', 'robot.xacro')
+    xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
     
     if not os.path.exists(xacro_file):
         print(f"Error: Could not find robot description file: {xacro_file}")
@@ -81,10 +81,10 @@ def launch_setup(context, *args, **kwargs):
                    "--controller-manager", "/controller_manager"],
     )
 
-    basic_quadruped_controller = Node(
+    body_balance_controller = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["basic_quadruped_controller", "--controller-manager", "/controller_manager"],
+        arguments=["body_balance_controller", "--controller-manager", "/controller_manager"],
         parameters=[{'use_sim_time': True}],
     )
 
@@ -113,7 +113,7 @@ def launch_setup(context, *args, **kwargs):
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,
-                on_exit=[ basic_quadruped_controller],
+                on_exit=[ body_balance_controller],
             )
         ),
     ]
@@ -128,7 +128,7 @@ def generate_launch_description():
 
     height = DeclareLaunchArgument(
         'height',
-        default_value='0.5',
+        default_value='0.3',
         description='Init height in simulation'
     )
 

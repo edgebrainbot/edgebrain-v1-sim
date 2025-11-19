@@ -140,16 +140,16 @@
     </joint>
 
     <sensor name="imu_sensor">
-      <state_interface name="orientation.x"/>
-      <state_interface name="orientation.y"/>
-      <state_interface name="orientation.z"/>
-      <state_interface name="orientation.w"/>
-      <state_interface name="angular_velocity.x"/>
-      <state_interface name="angular_velocity.y"/>
-      <state_interface name="angular_velocity.z"/>
-      <state_interface name="linear_acceleration.x"/>
-      <state_interface name="linear_acceleration.y"/>
-      <state_interface name="linear_acceleration.z"/>
+        <state_interface name="orientation.w"/>
+        <state_interface name="orientation.x"/>
+        <state_interface name="orientation.y"/>
+        <state_interface name="orientation.z"/>
+        <state_interface name="angular_velocity.x"/>
+        <state_interface name="angular_velocity.y"/>
+        <state_interface name="angular_velocity.z"/>
+        <state_interface name="linear_acceleration.x"/>
+        <state_interface name="linear_acceleration.y"/>
+        <state_interface name="linear_acceleration.z"/>
     </sensor>
 
     <sensor name="foot_force">
@@ -158,6 +158,15 @@
       <state_interface name="RR_foot_force"/>
       <state_interface name="RL_foot_force"/>
     </sensor>
+
+    <!-- <sensor name="odometer">
+        <state_interface name="position.x"/>
+        <state_interface name="position.y"/>
+        <state_interface name="position.z"/>
+        <state_interface name="velocity.x"/>
+        <state_interface name="velocity.y"/>
+        <state_interface name="velocity.z"/>
+    </sensor> -->
 
   </ros2_control>
 

@@ -128,13 +128,63 @@ class DualReplayBuffer(BaseBuffer):
         stu_dict = asdict(stu_batch) if stu_batch is not None else None
         tea_dict = asdict(tea_batch) if tea_batch is not None else None
 
-        # Merge two batches
-        merged_dict = {
-            k: torch.cat(
-                [b[k] for b in [stu_dict, tea_dict] if b is not None and b[k] is not None],
-                dim=0
-            )
-            for k in (stu_dict.keys() if stu_dict is not None else tea_dict.keys())
-        }
+        print(f"stu_batch_size: {stu_batch_size}, tea_batch_size: {tea_batch_size}")
+        # print(f"stu_batch: {stu_batch}, tea_batch: {tea_batch}")
+        # print(f"stu_dict: {stu_dict}, tea_dict: {tea_dict}")
+
+        # Merge two batches safely
+        merged_dict = {}
+        keys = stu_dict.keys() if stu_dict is not None else tea_dict.keys()
+        
+        for k in keys:
+            # Get non-None values
+            vals = [b[k] for b in (stu_dict, tea_dict) if b is not None and b[k] is not None]
+
+            # Case 1: Both batches have None for this key, e.g., info
+            if len(vals) == 0:
+                merged_dict[k] = None
+                continue
+
+            # Case 2: If not a Tensor (e.g., info has a value)
+            if not isinstance(vals[0], torch.Tensor):
+                merged_dict[k] = vals[0]
+                continue
+
+            # Case 3: Tensor → concat
+            merged_dict[k] = torch.cat(vals, dim=0)
 
         return TransitionBatch(**merged_dict)
+
+
+if __name__ == "__main__":
+    # ======================================================
+    # 1. create buffer
+    # ======================================================
+    dual_buf = DualReplayBuffer(
+        student_buf_size=10,
+        student_prefill_size=3,
+        teacher_buf_size=10,
+        teacher_prefill_size=3,
+        obs_dim=12,
+        action_dim=6,
+        device="cuda:0"
+    )
+
+    # ======================================================
+    # 2. write in transition
+    # ======================================================
+    for i in range(24):
+        t = TransitionData(
+            obs=torch.tensor([i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11], dtype=torch.float32),
+            action=torch.tensor([i * 0.1, i * 0.2, i * 0.3, i * 0.4, i * 0.5, i * 0.6], dtype=torch.float32),
+            reward=torch.tensor([i * 1.0], dtype=torch.float32),
+            next_obs=torch.tensor([i+0.1, i+1.1, i+2.1, i+3.1, i+4.1, i+5.1, i+6.1, i+7.1, i+8.1, i+9.1, i+10.1, i+11.1], dtype=torch.float32),
+            done=torch.tensor([i % 2 == 0], dtype=torch.float32)
+        )
+        dual_buf.add_transition(t, action_mode=ActionMode.STUDENT if i % 2 == 0 else ActionMode.TEACHER)
+        
+    print(f"Student Buffer Size: {dual_buf.stu_buf_size}")
+    print(f"Teacher Buffer Size: {dual_buf.tea_buf_size}")
+    
+    sampled_batch = dual_buf.sample(batch_size=5)
+    print(f"Sampled Batch: {sampled_batch}")

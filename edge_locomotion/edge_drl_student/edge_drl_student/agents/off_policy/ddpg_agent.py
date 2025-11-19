@@ -84,13 +84,13 @@ class DDPGAgent(OffPolicyAgent):
         with torch.no_grad():
             action = self.actor(obs)
         if explore:
-            action += noise_scale * self.noise(action.shape)
+            action = action + noise_scale * self.noise(action.shape)
         action_clipped = torch.clamp(action, -1.0, 1.0)
         
         # Return denormalized action
         return self.actor_normalizer.denormalize(action_clipped)
 
-    def update(self, batch_size):
+    def update(self, batch_size) -> tuple[torch.Tensor, torch.Tensor]:
         """DDPG update step."""
         
         t_batch = self.replay_buffer.sample(batch_size)
@@ -98,24 +98,32 @@ class DDPGAgent(OffPolicyAgent):
 
         with torch.no_grad():
             target_act = self.target_actor(next_obs)
-            target_q = self.target_critic(next_obs, target_act)
+            target_q = self.target_critic(self._critic_input(next_obs, target_act))
             target_val = rew + self.gamma * (1 - done) * target_q
 
-        q = self.critic(obs, act)
+        q = self.critic(self._critic_input(obs, act))
         critic_loss = ((q - target_val) ** 2).mean()
 
-        actor_loss = -self.critic(obs, self.actor(obs)).mean()
+        # actor_loss = -self.critic(self._critic_input(obs, self.actor(obs))).mean()
 
+        # Critic network update
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
+        # Actor network update
+        actor_actions = self.actor(obs)
+        q_values = self.critic(self._critic_input(obs, actor_actions))
+        actor_loss = -q_values.mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
 
         self._soft_update(self.target_critic, self.critic, self.tau)
         self._soft_update(self.target_actor, self.actor, self.tau)
+        
+        print(f"[DDPG Update] Actor Loss: {actor_loss.item():.4f}, Critic Loss: {critic_loss.item():.4f}")
+        return actor_loss, critic_loss
         
         
     def save_models(self, path: str):
@@ -187,8 +195,14 @@ class DDPGAgent(OffPolicyAgent):
         print(self.critic)
         print(f"Total params: {sum(p.numel() for p in self.critic.parameters() if p.requires_grad):,}")
 
+
+    def _critic_input(self, obs, act) -> torch.Tensor:
+        """Prepare critic input by concatenating observation and action."""
+        return torch.cat((obs, act), dim=-1)
         
 if __name__ == "__main__":
+    torch.autograd.set_detect_anomaly(True)
+    
     obs_dim = 12
     act_dim = 6
     device = "cuda:0"
@@ -197,14 +211,31 @@ if __name__ == "__main__":
         torch.tensor([ 10.,  10.,  10.,  20.,  20.,  20.], device=device)
     )
     
-    replay_buffer = SoloReplayBuffer(buffer_size=10000, obs_dim=obs_dim, action_dim=act_dim, device=device)
-    ddpg_agent = DDPGAgent(obs_dim=obs_dim,
+    replay_buffer = SoloReplayBuffer(buffer_size=10000, 
+                                     prefill_size=1000,
+                                     obs_dim=obs_dim,
+                                     action_dim=act_dim, 
+                                     device=device)
+    
+    ddpg_agent = DDPGAgent(obs_dim=obs_dim,s
                            act_dim=act_dim,
                            replay_buffer=replay_buffer,
                            action_bound=action_bound,
                            device=device)
-    
+    for _ in range(1500):
+        transition = TransitionBatch(
+            obs=torch.randn(1, obs_dim, device=device),
+            action=torch.randn(1, act_dim, device=device),
+            reward=torch.randn(1, 1, device=device),
+            next_obs=torch.randn(1, obs_dim, device=device),
+            done=torch.zeros(1, 1, device=device)
+        )
+        replay_buffer.add_transition(transition)    
 
     sample_obs = torch.randn(4, obs_dim, device=device)
     actions = ddpg_agent.act(sample_obs)
+    
+    actor_loss, critic_loss = ddpg_agent.update(batch_size=64)
+    
     print("Sample Actions from DDPG Agent:", actions)
+    print(f"Actor Loss: {actor_loss.item():.4f}, Critic Loss: {critic_loss.item():.4f}")

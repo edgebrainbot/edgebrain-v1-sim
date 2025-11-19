@@ -16,9 +16,10 @@ from edge_msgs.msg import Transition, TrackingError, EdgeAction
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
+from ament_index_python.packages import get_package_prefix
 
-
-MODEL_PATH = "/home/edgebot/models/policy.pt"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(current_dir, "models", "drl_student")
 
 
 class DRLStudentNode(Node):
@@ -88,12 +89,16 @@ class DRLStudentNode(Node):
         # Add transition to the self-learning buffer
         if action_mode == ActionMode.STUDENT:
             self.buffer.add_transition(t, action_mode=ActionMode.STUDENT)
-            print(f"[Transition] Added transition to student buffer. Current size: {self.buffer.stu_buf_size}")
+            
+            if not self.buffer.stu_buf.is_ready:
+                print(f"[Transition] Added transition to student buffer. Current size: {self.buffer.stu_buf_size}")
             
         # Add transition to the teaching-to-learn buffer
         elif action_mode == ActionMode.TEACHER:
             self.buffer.add_transition(t, action_mode=ActionMode.TEACHER)
-            print(f"[Transition] Added transition to teacher buffer. Current size: {self.buffer.tea_buf_size}")
+            
+            if not self.buffer.tea_buf.is_ready:
+                print(f"[Transition] Added transition to teacher buffer. Current size: {self.buffer.tea_buf_size}")
         
     def tracking_error_callback(self, msg: TrackingError):
         self.tracking_error_ = msg
@@ -102,31 +107,25 @@ class DRLStudentNode(Node):
     def learn_step(self):
 
         if not self.buffer.stu_buf.is_ready:
-            self.get_logger().info(f"[Learner] Buffer not ready for learning. Current size: {self.buffer.stu_buf_size}, required prefill size: {self.buffer.stu_buf.prefill_size}.")
+            self.get_logger().info(f"Student Buffer not ready for learning. Current size: {self.buffer.stu_buf_size}, required prefill size: {self.buffer.stu_buf.prefill_size}.")
             return
         
         if not self.buffer.tea_buf.is_ready:
-            self.get_logger().info(f"[Learner] Buffer not ready for learning. Current size: {self.buffer.tea_buf_size}, required prefill size: {self.buffer.tea_buf.prefill_size}.")
+            self.get_logger().info(f"Teacher Buffer not ready for learning. Current size: {self.buffer.tea_buf_size}, required prefill size: {self.buffer.tea_buf.prefill_size}.")
             return
 
-        self.agent.update(self.batch_size)
+        actor_loss, critic_loss = self.agent.update(self.batch_size)
 
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        torch.save(self.policy.state_dict(), MODEL_PATH)
-        self.get_logger().info(f"[Learner] Updated policy (loss={loss.item():.4f})")
-
-    def maybe_reload_model(self):
-        if time.time() - self.last_reload_time > 5.0 and os.path.exists(MODEL_PATH):
-            state_dict = torch.load(MODEL_PATH, map_location='cpu')
-            self.policy.load_state_dict(state_dict)
-            self.get_logger().info("Reloaded policy parameters 🔄")
-            self.last_reload_time = time.time()
+        self.agent.save_models(MODEL_PATH)
+        self.get_logger().info(f"[Learner] Updated policy (actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})")
 
 
 # ==========================================================
 # 🔹 Main
 # ==========================================================
 def main(args=None):
+    print(f"Model path: {MODEL_PATH}")
     rclpy.init(args=args)
     node = DRLStudentNode()
     try:

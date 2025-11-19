@@ -149,5 +149,5 @@ def generate_launch_description():
         trigger_launch,
         virtual_safety_indicator_node,
         
-        navigation_launch,
+        # navigation_launch,
     ])

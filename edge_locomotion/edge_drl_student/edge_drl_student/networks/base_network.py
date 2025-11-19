@@ -33,8 +33,9 @@ class BaseNetwork(nn.Module, ABC):
     @staticmethod
     def init_weights(m):
         if isinstance(m, nn.Linear):
-            nn.init.xavier_uniform_(m.weight)
-            nn.init.constant_(m.bias, 0.01)
+            with torch.no_grad():
+                nn.init.xavier_uniform_(m.weight)
+                m.bias.fill_(0.01)   
             
     @classmethod
     def _activation_fn(cls, act_fn: str) -> Type[nn.Module]:

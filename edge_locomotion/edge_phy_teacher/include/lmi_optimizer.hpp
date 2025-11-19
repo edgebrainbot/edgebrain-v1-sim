@@ -8,14 +8,14 @@
 
 #ifdef __cplusplus
 extern "C" {
-  #include "ecvxcone/base.h"
-  #include "ecvxcone/blas.h"
-  #include "ecvxcone/misc.h"
-  #include "ecvxcone/solver.h"
-  #include "ecvxcone/lapack.h"
-  #include "ecvxcone/cvxopt.h"
-  #include "ecvxcone/cpg_solve.h"
-  #include "ecvxcone/cpg_workspace.h"
+    #include "ecvxcone/base.h"
+    #include "ecvxcone/blas.h"
+    #include "ecvxcone/misc.h"
+    #include "ecvxcone/solver.h"
+    #include "ecvxcone/lapack.h"
+    #include "ecvxcone/cvxopt.h"
+    #include "ecvxcone/cpg_solve.h"
+    #include "ecvxcone/cpg_workspace.h"
 }
 #endif
 
@@ -34,62 +34,62 @@ using Vec6d  = Eigen::Matrix<double, 6, 1>;
 
 class LMIOptimizer {
 public:
-  LMIOptimizer();  // Constructor
-  ~LMIOptimizer(); // Destructor
+    LMIOptimizer();  // Constructor
+    ~LMIOptimizer(); // Destructor
 
-  Mat6x6 F_kp;  // Contains the solved Kp gain matrices
-  Mat6x6 F_kd;  // Contains the solved Kd gain matrices
+    Mat6x6 F_kp;  // Contains the solved Kp gain matrices
+    Mat6x6 F_kd;  // Contains the solved Kd gain matrices
 
-  Mat6x6 default_F_kp;  // Default Kp gain matrices
-  Mat6x6 default_F_kd;  // Default Kd gain matrices
+    Mat6x6 default_F_kp;  // Default Kp gain matrices
+    Mat6x6 default_F_kd;  // Default Kd gain matrices
 
-  double tracking_err[10];
-  double tracking_err_square[10];
+    double tracking_err[10];
+    double tracking_err_square[10];
 
-  void update();             // Update matrices and call solver
-  void test_and_print();     // Test inputs and print results
-  void benchmark(int iterations = 1000, bool verbose = false, double threshold = 0.1);
-  
-  // Rotation matrices
-  void update_Rx(double roll);
-  void update_Ry(double pitch);
-  void update_Rz(double yaw);
-  void update_Rzyx(double roll, double pitch, double yaw);
+    void update();             // Update matrices and call solver
+    void test_and_print();     // Test inputs and print results
+    void benchmark(int iterations = 1000, bool verbose = false, double threshold = 0.1);
+    
+    // Rotation matrices
+    void update_Rx(double roll);
+    void update_Ry(double pitch);
+    void update_Rz(double yaw);
+    void update_Rzyx(double roll, double pitch, double yaw);
 
-  void set_default_kp(Mat6x6 kp) { default_F_kp = kp; print_matrix6x6(default_F_kp, "Default Kp set to:");
-  }
-  void set_default_kd(Mat6x6 kd) { default_F_kd = kd; print_matrix6x6(default_F_kd, "Default Kd set to:");}
+    void set_default_kp(Mat6x6 kp) { default_F_kp = kp; print_matrix6x6(default_F_kp, "Default Kp set to:");
+    }
+    void set_default_kd(Mat6x6 kd) { default_F_kd = kd; print_matrix6x6(default_F_kd, "Default Kd set to:");}
 
-  // Utility
-  static void print_matrix6x6(const Mat6x6& mat, const char* name);
-  static void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
-    result = A * B;
-  }
+    // Utility
+    static void print_matrix6x6(const Mat6x6& mat, const char* name);
+    static void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
+        result = A * B;
+    }
 
 private:
-  // matrix objects
-  matrix* P_mat_;
-  matrix* Q_mat_;
-  matrix* R_mat_;
-  matrix* aB_;
-  matrix* aF_;
-  matrix* ipiv_;
+    // matrix objects
+    matrix* P_mat_;
+    matrix* Q_mat_;
+    matrix* R_mat_;
+    matrix* aB_;
+    matrix* aF_;
+    matrix* ipiv_;
 
-  Mat3x3 Rx_;
-  Mat3x3 Ry_;
-  Mat3x3 Rz_;
-  Mat3x3 Rzyx_;
+    Mat3x3 Rx_;
+    Mat3x3 Ry_;
+    Mat3x3 Rz_;
+    Mat3x3 Rzyx_;
 
-  // Initialization helpers
-  void lmi_init();                 // Initialize LMI matrices
-  void test_tracking_err();       // Set up tracking error for testing
-  double time_diff(timespec start, timespec end, int count);
+    // Initialization helpers
+    void lmi_init();                 // Initialize LMI matrices
+    void test_tracking_err();       // Set up tracking error for testing
+    double time_diff(timespec start, timespec end, int count);
 
-  // Matrix operations
-  void update_Matrix_A();
-  void update_Matrix_B();
-  void update_TrackingErrorSquare();
-  void post_processing();
+    // Matrix operations
+    void update_Matrix_A();
+    void update_Matrix_B();
+    void update_TrackingErrorSquare();
+    void post_processing();
 
 };
 
