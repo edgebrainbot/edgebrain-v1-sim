@@ -217,7 +217,7 @@ if __name__ == "__main__":
                                      action_dim=act_dim, 
                                      device=device)
     
-    ddpg_agent = DDPGAgent(obs_dim=obs_dim,s
+    ddpg_agent = DDPGAgent(obs_dim=obs_dim,
                            act_dim=act_dim,
                            replay_buffer=replay_buffer,
                            action_bound=action_bound,

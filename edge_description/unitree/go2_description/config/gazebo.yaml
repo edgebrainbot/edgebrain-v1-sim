@@ -26,6 +26,9 @@ body_balance_controller:
   ros__parameters:
     topic_namespace: "edge"
 
+    imu_name: "imu_sensor"
+    base_name: "base"
+
     gait_height: 0.06
     update_rate: 300  # Hz
     robot_name: "go2"
@@ -68,7 +71,7 @@ body_balance_controller:
       - velocity
       - effort
 
-    feet_names:
+    feet_names:      
       - FR_foot
       - FL_foot
       - RR_foot

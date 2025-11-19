@@ -159,14 +159,14 @@
       <state_interface name="RL_foot_force"/>
     </sensor>
 
-    <!-- <sensor name="odometer">
+    <sensor name="odometer">
         <state_interface name="position.x"/>
         <state_interface name="position.y"/>
         <state_interface name="position.z"/>
         <state_interface name="velocity.x"/>
         <state_interface name="velocity.y"/>
         <state_interface name="velocity.z"/>
-    </sensor> -->
+    </sensor>
 
   </ros2_control>
 
@@ -177,7 +177,8 @@
     <plugin filename="gz-sim-imu-system"
             name="gz::sim::systems::Imu">
     </plugin>
-    <plugin filename="gz-sim-forcetorque-system" name="gz::sim::systems::ForceTorque"/>
+    <!-- <plugin filename="gz-sim-forcetorque-system" name="gz::sim::systems::ForceTorque"/> -->
+    <plugin filename="ignition-gazebo-forcetorque-system" name="ignition::gazebo::systems::ForceTorque"/>
   </gazebo>
 
   <gazebo reference="trunk">

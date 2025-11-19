@@ -33,7 +33,7 @@ class DRLStudentNode(Node):
         self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
                                        student_prefill_size=int(1e3),
                                        teacher_buf_size=int(1e5), 
-                                       teacher_prefill_size=int(1e3),
+                                       teacher_prefill_size=int(1),
                                        obs_dim=self.obs_dim, 
                                        action_dim=self.act_dim, 
                                        device=self.device)

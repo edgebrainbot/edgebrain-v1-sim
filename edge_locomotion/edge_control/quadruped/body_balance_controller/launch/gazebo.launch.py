@@ -128,7 +128,7 @@ def generate_launch_description():
 
     height = DeclareLaunchArgument(
         'height',
-        default_value='0.3',
+        default_value='0.5',
         description='Init height in simulation'
     )
 
