@@ -174,11 +174,13 @@
     <plugin filename="gz_quadruped_hardware-system" name="gz_quadruped_hardware::GazeboSimQuadrupedPlugin">
       <parameters>$(find go2_description)/config/gazebo.yaml</parameters>
     </plugin>
-    <plugin filename="gz-sim-imu-system"
-            name="gz::sim::systems::Imu">
-    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
     <!-- <plugin filename="gz-sim-forcetorque-system" name="gz::sim::systems::ForceTorque"/> -->
     <plugin filename="ignition-gazebo-forcetorque-system" name="ignition::gazebo::systems::ForceTorque"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
   </gazebo>
 
   <gazebo reference="trunk">
@@ -259,7 +261,7 @@
   <xacro:foot_force_sensor name="FR" suffix="foot_fixed"/>
   <xacro:foot_force_sensor name="RR" suffix="foot_fixed"/>
 
-  <xacro:arg name="EXTERNAL_SENSORS" default="false"/>
+  <xacro:arg name="EXTERNAL_SENSORS" default="true"/>
   <xacro:if value="$(arg EXTERNAL_SENSORS)">
     <xacro:include filename="$(find gz_quadruped_playground)/models/D435/model.xacro"/>
 
@@ -295,9 +297,12 @@
         <visualize>true</visualize>
         <topic>camera/image</topic>
       </sensor>
+      
     </gazebo>
+
     <gazebo reference="lidar">
       <sensor name='L1_lidar' type='gpu_lidar'>
+        <pose relative_to="lidar">0 0 0 0 0 0</pose>
         <topic>scan</topic>
         <update_rate>10</update_rate>
         <gz_frame_id>lidar</gz_frame_id>
@@ -309,12 +314,12 @@
               <min_angle>1.396263</min_angle>
               <max_angle>4.8869</max_angle>
             </horizontal>
-            <vertical>
+            <!-- <vertical>
               <samples>16</samples>
               <resolution>1</resolution>
-              <min_angle>-0.261799</min_angle>
-              <max_angle>0.261799</max_angle>
-            </vertical>
+              <min_angle>-0.0261799</min_angle>
+              <max_angle>0.0261799</max_angle>
+            </vertical> -->
           </scan>
           <range>
             <min>0.05</min>
@@ -322,6 +327,13 @@
             <resolution>0.01</resolution>
           </range>
         </lidar>
+
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+
         <always_on>true</always_on>
         <visualize>true</visualize>
       </sensor>

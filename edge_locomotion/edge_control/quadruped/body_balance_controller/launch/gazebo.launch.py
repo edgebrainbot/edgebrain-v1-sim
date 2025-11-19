@@ -93,7 +93,12 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
-            arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+            arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+                        '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
+                        '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+                        '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+                        '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+                       ],
             output='screen'
         ),
         IncludeLaunchDescription(

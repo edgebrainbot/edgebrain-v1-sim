@@ -133,7 +133,7 @@
 
   <joint name="lidar_joint" type="fixed">
     <origin
-        xyz="0.28945 0 -0.046825" rpy="0 2.8782 0"/>
+        xyz="0.28945 0 -0.046825" rpy="0 0 3.1415"/>
     <parent link="trunk"/>
     <child link="lidar"/>
     <axis xyz="0 0 0"/>

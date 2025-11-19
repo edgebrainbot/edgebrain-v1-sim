@@ -421,6 +421,8 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.y = maxSpeed / 2.0 * joyManualLeft;
           cmd_vel.twist.angular.z = maxYawRate * PI / 180.0 * joyManualYaw;
         }
+        std::cout << "Cmd Vel from path follower: " << std::endl;
+        std::cout << cmd_vel.twist.linear.x << " " << cmd_vel.twist.linear.y << " " << cmd_vel.twist.angular.z << std::endl;
 
         pubSpeed->publish(cmd_vel);
 

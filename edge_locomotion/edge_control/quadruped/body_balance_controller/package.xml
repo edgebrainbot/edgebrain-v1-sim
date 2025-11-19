@@ -20,6 +20,7 @@
   <depend>go2_description</depend>
   <depend>unitree_go2_hardware</depend>
   <depend>gz_quadruped_hardware</depend>
+  <depend>gz_quadruped_playground</depend>
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
