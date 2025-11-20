@@ -45,12 +45,28 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{'use_sim_time': True}]
     )
 
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
+                                    'launch',
+                                    'gz_sim.launch.py'])]),
+            launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])],
+            
+            # launch_arguments={
+            #     'gz_args': PathJoinSubstitution([
+            #     FindPackageShare(package_description),
+            #     'worlds',
+            #     'sensor_tutorials.sdf'
+            # ])}.items()
+    )
+
     gz_spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
         output='screen',
         arguments=['-topic', 'robot_description', '-name',
                    robot_name, '-allow_renaming', 'true', '-z', init_height],
+        parameters=[{'use_sim_time': True}],
     )
 
     robot_state_publisher = Node(
@@ -62,7 +78,8 @@ def launch_setup(context, *args, **kwargs):
                 'publish_frequency': 20.0,
                 'use_tf_static': True,
                 'robot_description': robot_description,
-                'ignore_timestamp': True
+                'ignore_timestamp': True,
+                'use_sim_time': True,
             }
         ],
     )
@@ -72,6 +89,7 @@ def launch_setup(context, *args, **kwargs):
         executable="spawner",
         arguments=["joint_state_broadcaster",
                    "--controller-manager", "/controller_manager"],
+        parameters=[{'use_sim_time': True}],
     )
 
     imu_sensor_broadcaster = Node(
@@ -79,6 +97,7 @@ def launch_setup(context, *args, **kwargs):
         executable="spawner",
         arguments=["imu_sensor_broadcaster",
                    "--controller-manager", "/controller_manager"],
+        parameters=[{'use_sim_time': True}],
     )
 
     body_balance_controller = Node(
@@ -101,12 +120,7 @@ def launch_setup(context, *args, **kwargs):
                        ],
             output='screen'
         ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
-                                       'launch',
-                                       'gz_sim.launch.py'])]),
-            launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])]),
+        gazebo,
         robot_state_publisher,
         gz_spawn_entity,
         RegisterEventHandler(
@@ -115,10 +129,12 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[imu_sensor_broadcaster, joint_state_publisher],
             )
         ),
+        # imu_sensor_broadcaster, 
+        # joint_state_publisher,
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,
-                on_exit=[ body_balance_controller],
+                on_exit=[body_balance_controller],
             )
         ),
     ]
