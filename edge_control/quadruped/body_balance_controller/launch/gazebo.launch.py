@@ -116,6 +116,14 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{'use_sim_time': True}],
     )
 
+    tf_to_map_node = Node(
+        package='lidar_to_map',
+        executable='lidar_to_map',
+        name='lidar_to_map_node',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+    )
+
     return [
         rviz,
         Node(
@@ -128,9 +136,9 @@ def launch_setup(context, *args, **kwargs):
                         '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
                         '/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                        ],
-            remappings=[
-                ('/scan/points', '/registered_scan')
-            ],
+            # remappings=[
+            #     ('/scan/points', '/registered_scan')
+            # ],
             output='screen'
         ),
 
@@ -150,6 +158,7 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[body_balance_controller],
             )
         ),
+        # tf_to_map_node
     ]
 
 

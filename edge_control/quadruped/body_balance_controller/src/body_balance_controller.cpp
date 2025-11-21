@@ -69,6 +69,10 @@ namespace edge::locomotion
             // Topic namespace
             topic_ns_ = auto_declare<std::string>("topic_namespace", "edge");
 
+            // Base name
+            // odom_frame_id_ = auto_declare<std::string>("odom_frame_id", "odom");
+            // base_frame_id_ = auto_declare<std::string>("base_frame_id", "base_link");
+
             // Joint names and interface types
             joint_names_ = auto_declare<std::vector<std::string>>("joints", joint_names_);
             state_interface_types_ = auto_declare<std::vector<std::string>>("state_interfaces", state_interface_types_);
