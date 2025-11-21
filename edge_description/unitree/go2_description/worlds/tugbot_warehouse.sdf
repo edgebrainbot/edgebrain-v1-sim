@@ -198,7 +198,6 @@
     </include>
 
     <!-- Carts -->
-
     <include>
       <uri>
         https://fuel.ignitionrobotics.org/1.0/MovAi/models/cart_model_2

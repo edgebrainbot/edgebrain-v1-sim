@@ -17,6 +17,14 @@ def launch_setup(context, *args, **kwargs):
     
     package_description = f"{robot_name}_description"
     
+    model_resource_path = "/home/edgebot/ros2_ws/install/go2_description/share/go2_description/models"
+
+    os.environ["IGN_GAZEBO_RESOURCE_PATH"] = \
+        os.environ.get("IGN_GAZEBO_RESOURCE_PATH", "") + ":" + model_resource_path
+
+    os.environ["GZ_SIM_RESOURCE_PATH"] = \
+        os.environ.get("GZ_SIM_RESOURCE_PATH", "") + ":" + model_resource_path
+    
     try:
         pkg_path = os.path.join(get_package_share_directory(package_description))
     except Exception as e:
@@ -50,23 +58,23 @@ def launch_setup(context, *args, **kwargs):
             [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
                                     'launch',
                                     'gz_sim.launch.py'])]),
-            launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])],
+            # launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])],
             # launch_arguments={
             #     'gz_args': PathJoinSubstitution([
             #     FindPackageShare(package_description),
             #     'worlds',
             #     'tugbot_warehouse.sdf'
             # ])}.items()
-            # launch_arguments=[
-            #     ('gz_args', [
-            #         '-r -v 4 ',
-            #         PathJoinSubstitution([
-            #             FindPackageShare(package_description),
-            #             'worlds',
-            #             'living_room.sdf'
-            #         ])
-            #     ])
-            # ],
+            launch_arguments=[
+                ('gz_args', [
+                    '-r -v 4 ',
+                    PathJoinSubstitution([
+                        FindPackageShare(package_description),
+                        'worlds',
+                        'test.world'
+                    ])
+                ])
+            ],
     )
 
     gz_spawn_entity = Node(

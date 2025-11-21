@@ -14,7 +14,7 @@ class LidarToMap(Node):
     def __init__(self):
         super().__init__("lidar_to_legodom")
 
-        # target = leg_odom 你可以换成 map
+        # target = leg_odom wsseewsss
         self.target_frame = "leg_odom"
 
         self.tf_buffer = tf2_ros.Buffer()
