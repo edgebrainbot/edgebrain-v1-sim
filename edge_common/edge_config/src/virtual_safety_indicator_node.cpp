@@ -17,7 +17,7 @@ public:
             std::bind(&VirtualSafetyIndicatorNode::stateCallback, this, std::placeholders::_1));
 
         // Initialize marker
-        marker_.header.frame_id = "base";
+        marker_.header.frame_id = "base_link";
         marker_.ns = "virtual_indicator";
         marker_.id = 0;
         marker_.type = visualization_msgs::msg::Marker::SPHERE;

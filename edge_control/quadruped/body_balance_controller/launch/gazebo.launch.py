@@ -51,13 +51,22 @@ def launch_setup(context, *args, **kwargs):
                                     'launch',
                                     'gz_sim.launch.py'])]),
             launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])],
-            
             # launch_arguments={
             #     'gz_args': PathJoinSubstitution([
             #     FindPackageShare(package_description),
             #     'worlds',
-            #     'sensor_tutorials.sdf'
+            #     'tugbot_warehouse.sdf'
             # ])}.items()
+            # launch_arguments=[
+            #     ('gz_args', [
+            #         '-r -v 4 ',
+            #         PathJoinSubstitution([
+            #             FindPackageShare(package_description),
+            #             'worlds',
+            #             'living_room.sdf'
+            #         ])
+            #     ])
+            # ],
     )
 
     gz_spawn_entity = Node(
@@ -117,9 +126,14 @@ def launch_setup(context, *args, **kwargs):
                         '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                         '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
                         '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+                        '/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                        ],
+            remappings=[
+                ('/scan/points', '/registered_scan')
+            ],
             output='screen'
         ),
+
         gazebo,
         robot_state_publisher,
         gz_spawn_entity,
@@ -129,8 +143,7 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[imu_sensor_broadcaster, joint_state_publisher],
             )
         ),
-        # imu_sensor_broadcaster, 
-        # joint_state_publisher,
+
         RegisterEventHandler(
             event_handler=OnProcessExit(
                 target_action=joint_state_publisher,

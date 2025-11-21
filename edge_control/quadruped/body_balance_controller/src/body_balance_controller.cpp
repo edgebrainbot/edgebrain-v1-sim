@@ -1,8 +1,7 @@
-
 #include "body_balance_controller/body_balance_controller.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-namespace edge::locomotion::body_balance_controller
+namespace edge::locomotion
 {
     using config_type = controller_interface::interface_configuration_type;
 
@@ -391,5 +390,4 @@ namespace edge::locomotion::body_balance_controller
 }
 
 #include "pluginlib/class_list_macros.hpp"
-PLUGINLIB_EXPORT_CLASS(edge::locomotion::body_balance_controller::BodyBalanceController, 
-                       controller_interface::ControllerInterface);
+PLUGINLIB_EXPORT_CLASS(edge::locomotion::BodyBalanceController, controller_interface::ControllerInterface);

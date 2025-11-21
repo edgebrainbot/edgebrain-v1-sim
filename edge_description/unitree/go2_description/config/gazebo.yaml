@@ -27,7 +27,7 @@ body_balance_controller:
     topic_namespace: "edge"
 
     imu_name: "imu_sensor"
-    base_name: "base"
+    base_name: "base_link"
 
     gait_height: 0.06
     update_rate: 300  # Hz

@@ -27,7 +27,7 @@ namespace edge::locomotion
     class Estimator;
 }
 
-namespace edge::locomotion::body_balance_controller
+namespace edge::locomotion
 {
     struct FSMStateList
     {

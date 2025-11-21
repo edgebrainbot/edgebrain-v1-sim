@@ -156,7 +156,7 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
 
     // Initialize ROS2 components
     odom_frame_id_ = "leg_odom";
-    base_frame_id_ = "base";
+    base_frame_id_ = "base_link";
 
     // Create odometry publisher
     odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
@@ -189,12 +189,10 @@ void Estimator::update()
     phase_ = wave_generator_->phase_;
     contact_ = wave_generator_->contact_;
 
-        
     feet_h_.setZero();
     Q = QInit_;
     R = RInit_;
 
-    // 转换Vec34格式到vector格式
     Vec34 foot_positions_matrix = robot_model_->getFeetPosInBodyFrame();
     Vec34 foot_velocities_matrix = robot_model_->getFeetVelInBodyFrame();
 
@@ -236,32 +234,32 @@ void Estimator::update()
     // Update the measurement value
     y_ << feet_pos_body_, feet_vel_body_, feet_h_;
 
-    // ========== 完整的卡尔曼滤波器观测融合步骤 ==========
+    // ========== The Kalman Filter (Stepwise calculation) ==========
 
-    // 1. 预测协方差
+    // 1. Predict covariance
     Ppriori = A * P * A.transpose() + Q;
 
-    // 2. 创新协方差
+    // 2. Compute innovation covariance
     S = R + C * Ppriori * C.transpose();
 
-    // 3. LU分解求解
+    // 3. LU Decomposition for S
     Slu = S.lu();
 
-    // 4. 计算观测残差
+    // 4. Compute innovation
     Sy = Slu.solve(y_ - y_hat_);
 
-    // 5. 计算卡尔曼增益相关矩阵
+    // 5. Calculate intermediate matrices
     Sc = Slu.solve(C);
     SR = Slu.solve(R);
     STC = S.transpose().lu().solve(C);
 
-    // 6. 计算IKC矩阵
+    // 6. Compute Kalman Gain related matrix
     IKC = I18 - Ppriori * C.transpose() * Sc;
 
-    // 7. 状态更新（观测融合）
+    // 7. Update state estimate
     x_hat_ += Ppriori * C.transpose() * Sy;
 
-    // 8. 协方差更新（参考原版实现）
+    // 8. Update covariance estimate
     P = IKC * Ppriori * IKC.transpose() +
         Ppriori * C.transpose() * SR * STC * Ppriori.transpose();
 

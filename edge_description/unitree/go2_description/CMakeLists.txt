@@ -4,7 +4,7 @@ project(go2_description)
 find_package(ament_cmake REQUIRED)
 
 install(
-		DIRECTORY meshes xacro launch config urdf worlds
+		DIRECTORY meshes models xacro launch config urdf worlds
 		DESTINATION share/${PROJECT_NAME}/
 )
 

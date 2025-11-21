@@ -134,6 +134,9 @@ def generate_launch_description():
         executable='virtual_safety_indicator_node',
         name='virtual_safety_indicator',
         output='screen',
+        parameters=[{
+            'use_sim_time': True,
+        }]
     )
 
     return LaunchDescription([
