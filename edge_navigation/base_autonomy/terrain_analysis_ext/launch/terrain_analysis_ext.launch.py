@@ -41,7 +41,11 @@ def generate_launch_description():
             "terrainUnderVehicle": -0.75,
             "ceilingFilteringThre": 2.0,
             "localTerrainMapRadius": 4.0,
-        }]
+            "use_sim_time": True,
+        }],
+        remappings=[
+            ("/state_estimation", "/odom"),
+        ],
     )
 
     # -----------------------------

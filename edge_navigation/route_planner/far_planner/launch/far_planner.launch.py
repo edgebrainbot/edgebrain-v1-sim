@@ -10,7 +10,7 @@ import launch_ros
 
 def generate_launch_description():
     return LaunchDescription([
-        SetParameter(name='use_sim_time', value='false'),
+        # SetParameter(name='use_sim_time', value='false'),
         DeclareLaunchArgument('config', default_value='default'),
 
         Node(
@@ -24,10 +24,12 @@ def generate_launch_description():
                 get_package_share_directory('far_planner'), 
                 '/config/', 
                 LaunchConfiguration('config'), 
-                '.yaml"'])
+                '.yaml"']),
+                {'use_sim_time': True}
             ],
             remappings=[
-                ('/odom_world', '/state_estimation'),
+                # ('/odom_world', '/state_estimation'),
+                ('/odom_world', '/odom'),
                 ('/terrain_cloud', '/terrain_map_ext'),
                 ('/scan_cloud', '/terrain_map'),
                 ('/terrain_local_cloud', '/registered_scan')
@@ -46,6 +48,8 @@ def generate_launch_description():
                 LaunchConfiguration('config'), 
                 '.rviz"'])
             ],
+            parameters=[{'use_sim_time': True}],
+            output='screen',
             respawn=False,
         ),
 

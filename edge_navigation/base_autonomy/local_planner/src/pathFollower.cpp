@@ -41,6 +41,7 @@
 using namespace std;
 
 const double PI = 3.1415926;
+
 double sensorOffsetX = 0;
 double sensorOffsetY = 0;
 int pubSkipNum = 1;
@@ -53,8 +54,7 @@ double maxYawRate = 45.0;
 double maxSpeed = 1.0;
 double maxAccel = 1.0;
 double switchTimeThre = 1.0;
-// double dirDiffThre = 0.1;
-double dirDiffThre = 1.5;  // 90 degrees
+double dirDiffThre = 0.1;
 double omniDirDiffThre = 1.5;
 double noRotSpeed = 10.0;
 double stopDisThre = 0.2;
@@ -71,14 +71,13 @@ double stopTime = 5.0;
 bool noRotAtStop = false;
 bool noRotAtGoal = true;
 bool manualMode = false;
-bool autonomyMode = false;
+bool autonomyMode = true;
 double autonomySpeed = 1.0;
 double joyToSpeedDelay = 2.0;
 double goalCloseDis = 1.0;
 bool is_real_robot = false;
 
-// float joySpeed = 0;
-float joySpeed = 1;
+float joySpeed = 0;
 float joySpeedRaw = 0;
 float joyYaw = 0;
 float joyManualFwd = 0;
@@ -101,8 +100,7 @@ float vehiclePitchRec = 0;
 float vehicleYawRec = 0;
 
 float vehicleYawRate = 0;
-// float vehicleSpeed = 0;
-float vehicleSpeed = 0.5;
+float vehicleSpeed = 0;
 
 double odomTime = 0;
 double joyTime = 0;
@@ -111,7 +109,7 @@ double stopInitTime = false;
 int pathPointID = 0;
 bool pathInit = false;
 bool navFwd = true;
-double switchTime = 6260;
+double switchTime = 0;
 
 nav_msgs::msg::Path path;
 rclcpp::Node::SharedPtr nh;
@@ -129,6 +127,11 @@ void odomHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odomIn)
   vehicleRoll = roll;
   vehiclePitch = pitch;
   vehicleYaw = yaw;
+
+  std::cout << "odom roll: " << roll * 180.0 / PI << ", pitch: " << pitch * 180.0 / PI << ", yaw: " << yaw * 180.0 / PI << std::endl;
+  std::cout << "odom position x: " << odomIn->pose.pose.position.x << ", y: " << odomIn->pose.pose.position.y << ", z: " << odomIn->pose.pose.position.z << std::endl;
+  std::cout << "sensor offset x: " << sensorOffsetX << ", y: " << sensorOffsetY << std::endl;
+
   vehicleX = odomIn->pose.pose.position.x - cos(yaw) * sensorOffsetX + sin(yaw) * sensorOffsetY;
   vehicleY = odomIn->pose.pose.position.y - sin(yaw) * sensorOffsetX - cos(yaw) * sensorOffsetY;
   vehicleZ = odomIn->pose.pose.position.z;
@@ -147,7 +150,7 @@ void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
   int pathSize = pathIn->poses.size();
   path.poses.resize(pathSize);
   for (int i = 0; i < pathSize; i++) {
-    path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
+    path.poses[i].pose.position.x = -pathIn->poses[i].pose.position.x;
     path.poses[i].pose.position.y = pathIn->poses[i].pose.position.y;
     path.poses[i].pose.position.z = pathIn->poses[i].pose.position.z;
   }
@@ -297,13 +300,11 @@ int main(int argc, char** argv)
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
   geometry_msgs::msg::TwistStamped cmd_vel;
-  cmd_vel.header.frame_id = "vehicle";
+//   cmd_vel.header.frame_id = "vehicle";
+  cmd_vel.header.frame_id = "base_link";
 
   if (autonomyMode) {
     joySpeed = autonomySpeed / maxSpeed;
-    // std::cout << "*****************************************************************************" << std::endl;
-    // std::cout << "Initial autonomy mode ON, joySpeed set to " << joySpeed << std::endl;
-    // std::cout << "vehicleSpeed inside: " << vehicleSpeed << std::endl;
 
     if (joySpeed < 0) joySpeed = 0;
     else if (joySpeed > 1.0) joySpeed = 1.0;
@@ -311,23 +312,10 @@ int main(int argc, char** argv)
 
   rclcpp::Rate rate(100);
   bool status = rclcpp::ok();
-  std::cout << "*****************************************************************************" << std::endl;
-  std::cout << "vehicleSpeed init: " << vehicleSpeed << std::endl;
-  int cnt = 0;
-
-
   while (status) {
     rclcpp::spin_some(nh);
-    std::cout << "----------------------------------------------------------------------------------" << std::endl;
-    std::cout << "vehicleSpeed at loop start: " << vehicleSpeed << std::endl;
-    // pathInit = true;
-    // std::cout << "pathInit: " << pathInit << std::endl;
 
     if (pathInit) {
-      std::cout << "Loop count: " << cnt << std::endl;
-      cnt++;
-      std::cout << "*****************************************************************************" << std::endl;
-      std::cout << "Following path..." << std::endl;
       float vehicleXRel = cos(vehicleYawRec) * (vehicleX - vehicleXRec) 
                         + sin(vehicleYawRec) * (vehicleY - vehicleYRec);
       float vehicleYRel = -sin(vehicleYawRec) * (vehicleX - vehicleXRec) 
@@ -339,10 +327,6 @@ int main(int argc, char** argv)
       float endDis = sqrt(endDisX * endDisX + endDisY * endDisY);
 
       float disX, disY, dis;
-
-      std::cout << "*****************************************************************************" << std::endl;
-      std::cout << "pathInit is true" << std::endl;
-
       while (pathPointID < pathSize - 1) {
         disX = path.poses[pathPointID].pose.position.x - vehicleXRel;
         disY = path.poses[pathPointID].pose.position.y - vehicleYRel;
@@ -377,28 +361,17 @@ int main(int argc, char** argv)
       }
 
       float joySpeed2 = maxSpeed * joySpeed;
-      
-      std::cout << "joySpeed2 first time: " << joySpeed2 << std::endl;
       if (!navFwd) {
         dirDiff += PI;
         if (dirDiff > PI) dirDiff -= 2 * PI;
         joySpeed2 *= -1;
       }
 
-      std::cout << "joySpeed2 second time: " << joySpeed2 << std::endl;
-
       if (fabs(vehicleSpeed) < 2.0 * maxAccel / 100.0) vehicleYawRate = -stopYawRateGain * dirDiff;
       else vehicleYawRate = -yawRateGain * dirDiff;
+
       if (vehicleYawRate > maxYawRate * PI / 180.0) vehicleYawRate = maxYawRate * PI / 180.0;
       else if (vehicleYawRate < -maxYawRate * PI / 180.0) vehicleYawRate = -maxYawRate * PI / 180.0;
-
-
-    //   double vehicleYawRate = -(vehicleSpeed * tan(vehicleYaw - vehicleYawRec)) / 0.6;  // vehiclelenght = 0.6
-      std::cout << "vehicleYawRate (from joy and dirDiff): " << vehicleYawRate << std::endl;
-    //   std::cout << "vehicleYawRate_test (from vehicleSpeed and dirDiff): " << vehicleYawRate_test << std::endl;
-
-
-      std::cout << "joySpeed2 before stop/goal check: " << joySpeed2 << std::endl;
 
       if (joySpeed2 == 0 && !autonomyMode) {
         vehicleYawRate = maxYawRate * joyYaw * PI / 180.0;
@@ -406,111 +379,62 @@ int main(int argc, char** argv)
         vehicleYawRate = 0;
       }
 
-      std::cout << "joySpeed2 before adjustment: " << joySpeed2 << std::endl;
-
       if (pathSize <= 1) {
         joySpeed2 = 0;
       } else if (endDis / slowDwnDisThre < joySpeed) {
         joySpeed2 *= endDis / slowDwnDisThre;
       }
-      std::cout << "joySpeed2: " << joySpeed2 << std::endl;
+
       float joySpeed3 = joySpeed2;
       if (odomTime < slowInitTime + slowTime1 && slowInitTime > 0) joySpeed3 *= slowRate1;
       else if (odomTime < slowInitTime + slowTime1 + slowTime2 && slowInitTime > 0) joySpeed3 *= slowRate2;
 
-      std::cout << "*****************************************************************************" << std::endl;
-      std::cout << "Following path..." << std::endl;
-      std::cout << "The vehicle speed before adjustment: " << vehicleSpeed << std::endl;
-      std::cout << "joySpeed3: " << joySpeed3 << std::endl;
-      std::cout << "maxAccel / 100.0: " << maxAccel / 100.0 << std::endl;
-      
-      bool condition1 = (fabs(dirDiff) < dirDiffThre);
-      bool condition2 = (dis < goalCloseDis && fabs(dirDiff) < omniDirDiffThre);
-      bool condition3 = (dis > stopDisThre);
-
-      std::cout << "Condition1 (fabs(dirDiff) < dirDiffThre): " << condition1 << std::endl;
-      std::cout << "Condition2 (dis < goalCloseDis && fabs(dirDiff) < omniDirDiffThre): " << condition2 << std::endl;
-      std::cout << "Condition3 (dis > stopDisThre): " << condition3 << std::endl;
-
-    //   if ((fabs(dirDiff) < dirDiffThre || (dis < goalCloseDis && fabs(dirDiff) < omniDirDiffThre))  && dis > stopDisThre) {
-
-    //     if (vehicleSpeed < joySpeed3) vehicleSpeed += maxAccel / 100.0;
-    //     else if (vehicleSpeed > joySpeed3) vehicleSpeed -= maxAccel / 100.0;
-    //   } else {
-    //     std::cout << "#####################################################" << std::endl;
-    //     std::cout << "Slowing down due to large direction difference..." << std::endl;
-    //     if (vehicleSpeed > 0) vehicleSpeed -= maxAccel / 100.0;
-    //     else if (vehicleSpeed < 0) vehicleSpeed += maxAccel / 100.0;
-    //   }
-
-    //   if (dis < 0.1) vehicleSpeed -= maxAccel / 100.0;
+      if ((fabs(dirDiff) < dirDiffThre || (dis < goalCloseDis && fabs(dirDiff) < omniDirDiffThre))  && dis > stopDisThre) {
+        if (vehicleSpeed < joySpeed3) vehicleSpeed += maxAccel / 100.0;
+        else if (vehicleSpeed > joySpeed3) vehicleSpeed -= maxAccel / 100.0;
+      } else {
+        if (vehicleSpeed > 0) vehicleSpeed -= maxAccel / 100.0;
+        else if (vehicleSpeed < 0) vehicleSpeed += maxAccel / 100.0;
+      }
 
       if (fabs(vehicleSpeed) > noRotSpeed) vehicleYawRate = 0;
 
       if (odomTime < stopInitTime + stopTime && stopInitTime > 0) {
-        // std::cout << "*****************************************************************************" << std::endl;
-        // std::cout << "Stopping due to inclination..." << std::endl;
         vehicleSpeed = 0;
         vehicleYawRate = 0;
       }
-
-      if ((safetyStop & 1) > 0 && vehicleSpeed > 0) {
-        vehicleSpeed = 0;
-      } 
-      if ((safetyStop & 2) > 0 && vehicleSpeed < 0) {
-        vehicleSpeed = 0;
-      } 
+      std::cout << "***********************************************" << std::endl;
+      std::cout << "pathPointID: " << pathPointID << std::endl;
+      std::cout << "endDis: " << endDis << std::endl;
+      std::cout << "dis: " << dis << std::endl;
+      std::cout << "dirDiff: " << dirDiff << std::endl;
+      std::cout << "vehicleSpeed: " << vehicleSpeed << std::endl;
+      std::cout << "safetyStop: " << safetyStop << std::endl;
+      if ((safetyStop & 1) > 0 && vehicleSpeed > 0) vehicleSpeed = 0;
+      if ((safetyStop & 2) > 0 && vehicleSpeed < 0) vehicleSpeed = 0;
       if ((safetyStop & 4) > 0 && vehicleYawRate > 0) vehicleYawRate = 0;
       if ((safetyStop & 8) > 0 && vehicleYawRate < 0) vehicleYawRate = 0;
       //if ((safetyStop & 1) > 0 || (safetyStop & 2) > 0) vehicleYawRate = 0; //No rotation at forward/backward stop
 
       pubSkipCount--;
       if (pubSkipCount < 0) {
-
-        std::cout << "Path Follower Info: " << std::endl;
-        std::cout << "Vehicle Pos Rec: " << vehicleXRec << " " << vehicleYRec << " " << vehicleZRec << std::endl;
-        std::cout << "Vehicle Yaw Rec: " << vehicleYawRec * 180.0 / PI << std::endl;
-        std::cout << "Target Point ID: " << pathPointID << " / " << pathSize << std::endl;
-        std::cout << "Target Point Pos: " << path.poses[pathPointID].pose.position.x << " " << path.poses[pathPointID].pose.position.y << std::endl;
-        std::cout << "Distance to Target Point: " << dis << std::endl;
-        std::cout << "Distance to Path End: " << endDis << std::endl;
-
         cmd_vel.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
-
         if (fabs(vehicleSpeed) <= maxAccel / 100.0) {
-
-          std::cout << "debug 1" << std::endl;
-          std::cout << "vehicleSpeed: " << vehicleSpeed << std::endl;
-
           cmd_vel.twist.linear.x = 0;
           cmd_vel.twist.linear.y = 0;
-            // cmd_vel.twist.linear.x = cos(dirDiff);
-            // cmd_vel.twist.linear.y = -sin(dirDiff);
         } else {
-          std::cout << "debug 2" << std::endl;
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
         }
         cmd_vel.twist.angular.z = vehicleYawRate;
         
         if (manualMode) {
-          std::cout << "debug 3" << std::endl;
           cmd_vel.twist.linear.x = maxSpeed * joyManualFwd;
           cmd_vel.twist.linear.y = maxSpeed / 2.0 * joyManualLeft;
           cmd_vel.twist.angular.z = maxYawRate * PI / 180.0 * joyManualYaw;
         }
-        std::cout << "Cmd Vel from path follower: " << std::endl;
-        std::cout << cmd_vel.twist.linear.x << " " << cmd_vel.twist.linear.y << " " << cmd_vel.twist.angular.z << std::endl;
 
         pubSpeed->publish(cmd_vel);
-
-        std::cout << "*****************************************************************************" << std::endl;
-        std::cout << "vehicleSpeed in while: " << vehicleSpeed << std::endl;
-        std::cout << "cnt is: " << cnt << std::endl;
-        // if (cnt > 50){
-        //     std::this_thread::sleep_for(std::chrono::seconds(2000));
-        // }
-            
 
         pubSkipCount = pubSkipNum;
 

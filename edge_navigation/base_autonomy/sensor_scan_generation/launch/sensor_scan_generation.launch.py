@@ -9,7 +9,10 @@ def generate_launch_description():
         package="sensor_scan_generation",
         executable="sensorScanGeneration",
         name="sensorScanGeneration",
-        output="screen"
+        output="screen",
+        remappings=[
+            ("/state_estimation", "/odom"),
+        ],
     )
 
     return LaunchDescription([

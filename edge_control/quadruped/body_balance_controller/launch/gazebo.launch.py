@@ -75,7 +75,7 @@ def launch_setup(context, *args, **kwargs):
                         'worlds',
                         'test.world'
                     ])
-                ])
+                ]),
             ],
     )
 
@@ -143,7 +143,7 @@ def launch_setup(context, *args, **kwargs):
 
 
     return [
-        rviz,
+        # rviz,
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
@@ -157,6 +157,7 @@ def launch_setup(context, *args, **kwargs):
             # remappings=[
             #     ('/scan/points', '/registered_scan')
             # ],
+            parameters=[{'use_sim_time': True}],
             output='screen'
         ),
 
@@ -176,6 +177,14 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[body_balance_controller],
             )
         ),
+        
+        RegisterEventHandler(
+            event_handler=OnProcessExit(
+                target_action=body_balance_controller,
+                on_exit=[rviz],
+            )
+        ),
+        
         tf_to_map_node,
         tf_static
     ]

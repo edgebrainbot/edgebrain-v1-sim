@@ -17,7 +17,7 @@ def generate_launch_description():
         DeclareLaunchArgument("cameraOffsetZ", default_value="0.0"),
         DeclareLaunchArgument("twoWayDrive", default_value="false"),
         DeclareLaunchArgument("maxSpeed", default_value="1.0"),
-        DeclareLaunchArgument("autonomyMode", default_value="false"),
+        DeclareLaunchArgument("autonomyMode", default_value="true"),
         DeclareLaunchArgument("autonomySpeed", default_value="1.0"),
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
         DeclareLaunchArgument("goalCloseDis", default_value="0.4"),
@@ -76,7 +76,11 @@ def generate_launch_description():
             "goalClearRange": 0.5,
             "goalX": LaunchConfiguration("goalX"),
             "goalY": LaunchConfiguration("goalY"),
+            'use_sim_time': True,
         }],
+        remappings=[
+            ("/state_estimation", "/odom"),
+        ],
     )
 
     # -----------------------------
@@ -120,7 +124,11 @@ def generate_launch_description():
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
             "is_real_robot": LaunchConfiguration("is_real_robot"),
+            'use_sim_time': True,
         }],
+        remappings=[
+            ("/state_estimation", "/odom"),
+        ],
     )
 
     # -----------------------------
@@ -138,7 +146,8 @@ def generate_launch_description():
             "0",                                    # z
             "0", "0", "0",                          # rpy
             "sensor", "vehicle"
-        ]
+        ],
+        parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------
@@ -152,7 +161,8 @@ def generate_launch_description():
             "0", "0", LaunchConfiguration("cameraOffsetZ"),
             "-1.5707963", "0", "-1.5707963",
             "sensor", "camera"
-        ]
+        ],
+        parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------

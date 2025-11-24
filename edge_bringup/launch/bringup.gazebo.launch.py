@@ -11,9 +11,12 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnProcessExit
-
+from launch_ros.actions import SetParameter
 
 def generate_launch_description():
+    
+    set_sim_time = SetParameter(name='use_sim_time', value=True)
+
     # ------------------------
     # Declare Launch Arguments
     # ------------------------
@@ -45,7 +48,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true"
         }.items()
     )
 
@@ -64,7 +68,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true"
         }.items()
     )
     
@@ -79,7 +84,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true"
         }.items()
     )
     
@@ -94,7 +100,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true"
         }.items()
     )
 
@@ -109,7 +116,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true"
         }.items()
     )
 
@@ -141,6 +149,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # -- Launch Arguments --
+        set_sim_time,
         namespace_arg,
         robot_arg,
         

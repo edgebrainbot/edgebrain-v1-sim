@@ -47,7 +47,7 @@ echo "🔹 [2/4] Building body_balance_controller..."
 colcon build --packages-up-to body_balance_controller ${BUILD_ARGS}
 
 echo "🔹 [3/4] Building edge_interfaces..."
-colcon build --base-paths src/edge-brain-go2/edge_interfaces ${BUILD_ARGS}
+colcon build --base-paths src/edge-brain-go2/edge_common/edge_interfaces ${BUILD_ARGS}
 
 echo "🔹 [4/4] Building edge_navigation..."
 colcon build --base-paths src/edge-brain-go2/edge_navigation ${BUILD_ARGS}

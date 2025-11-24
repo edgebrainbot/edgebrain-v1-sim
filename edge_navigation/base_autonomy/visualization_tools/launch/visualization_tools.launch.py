@@ -48,7 +48,10 @@ def generate_launch_description():
             "yawInterval": 0.17,
             "overallMapDisplayInterval": 2,
             "exploredAreaDisplayInterval": 1,
-        }]
+        }],
+        remappings=[
+            ("/state_estimation", "/odom"),
+        ],
     )
 
     return LaunchDescription([
