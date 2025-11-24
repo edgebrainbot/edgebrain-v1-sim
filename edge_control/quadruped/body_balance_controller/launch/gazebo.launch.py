@@ -15,9 +15,11 @@ def launch_setup(context, *args, **kwargs):
     robot_name = context.launch_configurations['robot']
     init_height = context.launch_configurations['height']
     
-    package_description = f"{robot_name}_description"
+    pkg_description = f"{robot_name}_description"
+    pkg_gazebo = "edge_gazebo"
     
-    model_resource_path = "/home/edgebot/ros2_ws/install/go2_description/share/go2_description/models"
+    # Set GAZEBO model path
+    model_resource_path = os.path.join(get_package_share_directory(pkg_gazebo), "models")
 
     os.environ["IGN_GAZEBO_RESOURCE_PATH"] = \
         os.environ.get("IGN_GAZEBO_RESOURCE_PATH", "") + ":" + model_resource_path
@@ -26,9 +28,9 @@ def launch_setup(context, *args, **kwargs):
         os.environ.get("GZ_SIM_RESOURCE_PATH", "") + ":" + model_resource_path
     
     try:
-        pkg_path = os.path.join(get_package_share_directory(package_description))
+        pkg_path = os.path.join(get_package_share_directory(pkg_description))
     except Exception as e:
-        print(f"Error: Could not find package '{package_description}'. Please ensure it is installed.")
+        print(f"Error: Could not find package '{pkg_description}'. Please ensure it is installed.")
         print(f"Available packages can be checked with: ros2 pkg list | grep {robot_name}")
         raise e
 
@@ -47,7 +49,7 @@ def launch_setup(context, *args, **kwargs):
     rviz = Node(
         package='rviz2',
         executable='rviz2',
-        name='rviz_ocs2',
+        name='rviz_robot_go2',
         output='screen',
         arguments=["-d", rviz_config_file],
         parameters=[{'use_sim_time': True}]
@@ -69,7 +71,7 @@ def launch_setup(context, *args, **kwargs):
                 ('gz_args', [
                     '-r -v 4 ',
                     PathJoinSubstitution([
-                        FindPackageShare(package_description),
+                        FindPackageShare(pkg_gazebo),
                         'worlds',
                         'test.world'
                     ])
@@ -132,6 +134,14 @@ def launch_setup(context, *args, **kwargs):
         parameters=[{'use_sim_time': True}],
     )
 
+    tf_static = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=["0", "0", "0", "0", "0", "0", "map", "leg_odom"],
+        parameters=[{'use_sim_time': True}],
+    )
+
+
     return [
         rviz,
         Node(
@@ -166,7 +176,8 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[body_balance_controller],
             )
         ),
-        # tf_to_map_node
+        tf_to_map_node,
+        tf_static
     ]
 
 

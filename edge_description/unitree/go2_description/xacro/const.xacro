@@ -43,11 +43,9 @@
 	<xacro:property name="thigh_offset_y" value="0.0955"/>
 	<xacro:property name="thigh_offset_z" value="0.0"/>
 
-
 	<xacro:property name="calf_offset_x" value="0.0"/>
 	<xacro:property name="calf_offset_y" value="0.0"/>
 	<xacro:property name="calf_offset_z" value="-0.213"/>
-
 
 	<!-- joint limits -->
 	<xacro:property name="damping" value="0.1"/>

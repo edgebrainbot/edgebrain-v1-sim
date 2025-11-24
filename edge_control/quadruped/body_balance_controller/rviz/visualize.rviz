@@ -10,7 +10,11 @@ Panels:
         - /RobotModel1
         - /Safety_Indicator1
         - /Safety_Indicator1/Topic1
-      Splitter Ratio: 0.5
+        - /TF1
+        - /PointCloud21
+        - /PointCloud21/Topic1
+        - /LaserScan1
+      Splitter Ratio: 0.49705880880355835
     Tree Height: 519
   - Class: rviz_common/Selection
     Name: Selection
@@ -29,14 +33,14 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.5
-      Cell Size: 0.5
+      Cell Size: 1
       Class: rviz_default_plugins/Grid
-      Color: 153; 193; 241
+      Color: 36; 31; 49
       Enabled: true
       Line Style:
         Line Width: 0.029999999329447746
@@ -168,7 +172,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        lidar:
+        lidar_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -235,58 +239,141 @@ Visualization Manager:
           Value: false
         RR_thigh:
           Value: false
+        aft_mapped:
+          Value: true
         base_link:
+          Value: true
+        camera:
           Value: true
         camera_d435:
           Value: false
+        camera_init:
+          Value: true
         front_camera:
           Value: false
         imu_link:
           Value: false
         leg_odom:
           Value: true
-        lidar:
-          Value: false
+        lidar_link:
+          Value: true
+        map:
+          Value: true
+        sensor:
+          Value: true
         trunk:
           Value: false
+        vehicle:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
       Show Axes: true
       Show Names: false
       Tree:
-        leg_odom:
-          base_link:
-            camera_d435:
-              {}
-            trunk:
-              FL_hip:
-                FL_thigh:
-                  FL_calf:
-                    FL_foot:
-                      {}
-              FR_hip:
-                FR_thigh:
-                  FR_calf:
-                    FR_foot:
-                      {}
-              RL_hip:
-                RL_thigh:
-                  RL_calf:
-                    RL_foot:
-                      {}
-              RR_hip:
-                RR_thigh:
-                  RR_calf:
-                    RR_foot:
-                      {}
-              front_camera:
+        map:
+          camera_init:
+            {}
+          leg_odom:
+            base_link:
+              camera_d435:
                 {}
-              imu_link:
-                {}
-              lidar:
-                {}
+              trunk:
+                FL_hip:
+                  FL_thigh:
+                    FL_calf:
+                      FL_foot:
+                        {}
+                FR_hip:
+                  FR_thigh:
+                    FR_calf:
+                      FR_foot:
+                        {}
+                RL_hip:
+                  RL_thigh:
+                    RL_calf:
+                      RL_foot:
+                        {}
+                RR_hip:
+                  RR_thigh:
+                    RR_calf:
+                      RR_foot:
+                        {}
+                front_camera:
+                  {}
+                imu_link:
+                  {}
+                lidar_link:
+                  {}
       Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 0.3219054043292999
+        Min Value: 0.21880146861076355
+        Value: true
+      Axis: Z
+      Channel Name: y
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: true
+      Max Color: 255; 255; 255
+      Max Intensity: 4.621255874633789
+      Min Color: 0; 0; 0
+      Min Intensity: -4.858222484588623
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.029999999329447746
+      Style: Spheres
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /registered_scan
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/LaserScan
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 0
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: LaserScan
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.029999999329447746
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scan
+      Use Fixed Frame: true
+      Use rainbow: true
       Value: true
   Enabled: true
   Global Options:
@@ -334,25 +421,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 7.311415672302246
+      Distance: 1.1419613361358643
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.28415024280548096
-        Y: -0.060070641338825226
-        Z: 0.06125098466873169
+        X: -0.45587992668151855
+        Y: 1.7175371646881104
+        Z: 2.7661051750183105
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2853979468345642
+      Pitch: 0.5953980088233948
       Target Frame: base
       Value: Orbit (rviz)
-      Yaw: 0.6553958058357239
+      Yaw: 2.8404104709625244
     Saved: ~
 Window Geometry:
   Displays:
@@ -370,5 +457,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1146
-  X: 176
-  Y: 76
+  X: 422
+  Y: 54

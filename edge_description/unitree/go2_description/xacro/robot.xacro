@@ -6,20 +6,22 @@
   <xacro:arg name="GAZEBO" default="false"/>
   <xacro:arg name="CLASSIC" default="false"/>
 
-  <xacro:include filename="$(find go2_description)/xacro/const.xacro"/>
-  <xacro:include filename="$(find go2_description)/xacro/materials.xacro"/>
-  <xacro:include filename="$(find go2_description)/xacro/leg.xacro"/>
+  <xacro:property name="pkg_description" value="$(find go2_description)"/>
+
+  <xacro:include filename="${pkg_description}/xacro/const.xacro"/>
+  <xacro:include filename="${pkg_description}/xacro/materials.xacro"/>
+  <xacro:include filename="${pkg_description}/xacro/leg.xacro"/>
 
   <xacro:if value="$(arg GAZEBO)">
     <xacro:if value="$(arg CLASSIC)">
-      <xacro:include filename="$(find go2_description)/xacro/gazebo_classic.xacro"/>
+      <xacro:include filename="${pkg_description}/xacro/gazebo_classic.xacro"/>
     </xacro:if>
     <xacro:unless value="$(arg CLASSIC)">
-      <xacro:include filename="$(find go2_description)/xacro/gazebo.xacro"/>
+      <xacro:include filename="${pkg_description}/xacro/gazebo.xacro"/>
     </xacro:unless>
   </xacro:if>
   <xacro:unless value="$(arg GAZEBO)">
-    <xacro:include filename="$(find go2_description)/xacro/go2.ros2_control.xacro"/>
+    <xacro:include filename="${pkg_description}/xacro/go2.ros2_control.xacro"/>
   </xacro:unless>
 
 
@@ -57,7 +59,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find go2_description)/meshes/trunk.dae" scale="1 1 1"/>
+        <mesh filename="file://${pkg_description}/meshes/trunk.dae" scale="1 1 1"/>
       </geometry>
       <!-- <material name="orange"/> -->
     </visual>

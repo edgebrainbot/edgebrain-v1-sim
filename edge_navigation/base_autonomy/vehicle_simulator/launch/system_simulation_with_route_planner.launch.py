@@ -33,6 +33,7 @@ def generate_launch_description():
             {"dev": "/dev/input/js0"},
             {"deadzone": 0.12},
             {"autorepeat_rate": 0.0},
+            {"use_sim_time": True},
         ],
     )
 
@@ -52,6 +53,7 @@ def generate_launch_description():
         "cameraOffsetZ": LaunchConfiguration("cameraOffsetZ"),
         "goalX": LaunchConfiguration("vehicleX"),
         "goalY": LaunchConfiguration("vehicleY"),
+        "use_sim_time": "true",
         }.items()
     )
 
@@ -64,7 +66,10 @@ def generate_launch_description():
             FindPackageShare("terrain_analysis"),
             "launch",
             "terrain_analysis.launch.py"
-        ]))
+        ])),
+        launch_arguments={
+            "use_sim_time": "true",
+        }.items()
     )
 
     # -----------------------------
@@ -78,7 +83,8 @@ def generate_launch_description():
             "terrain_analysis_ext.launch.py"
         ])),
         launch_arguments={
-        "checkTerrainConn": LaunchConfiguration("checkTerrainConn")
+            "checkTerrainConn": LaunchConfiguration("checkTerrainConn"),
+            "use_sim_time": "true",
         }.items()
     )
 
@@ -100,6 +106,7 @@ def generate_launch_description():
         "vehicleY": LaunchConfiguration("vehicleY"),
         "terrainZ": LaunchConfiguration("terrainZ"),
         "vehicleYaw": LaunchConfiguration("vehicleYaw"),
+        "use_sim_time": "true",
         }.items()
     )
 
@@ -112,7 +119,10 @@ def generate_launch_description():
             FindPackageShare("sensor_scan_generation"),
             "launch",
             "sensor_scan_generation.launch.py"
-        ]))
+        ])),
+        launch_arguments={
+        "use_sim_time": "true",
+        }.items()
     )
 
     # -----------------------------
@@ -126,7 +136,8 @@ def generate_launch_description():
             "visualization_tools.launch.py"
         ])),
         launch_arguments={
-        "world_name": LaunchConfiguration("world_name")
+        "world_name": LaunchConfiguration("world_name"),
+        "use_sim_time": "true",
         }.items()
     )
 
@@ -141,6 +152,7 @@ def generate_launch_description():
         parameters=[
         {"ROS_IP": "0.0.0.0"},
         {"ROS_TCP_PORT": 10000},
+        {"use_sim_time": True},
         ]
     )
 
@@ -159,6 +171,7 @@ def generate_launch_description():
         {"sem_raw_out_topic": "/camera/semantic_image/raw"},
         {"depth_in_topic": "/camera/depth/compressed"},
         {"depth_raw_out_topic": "/camera/depth/raw"},
+        {"use_sim_time": True}
         ],
     )
 
@@ -172,7 +185,10 @@ def generate_launch_description():
             "launch",
             "far_planner.launch.py"
         ])
-        )
+        ),
+        launch_arguments={
+            "use_sim_time": "true",
+        }.items()
     )
 
     # -----------------------------
