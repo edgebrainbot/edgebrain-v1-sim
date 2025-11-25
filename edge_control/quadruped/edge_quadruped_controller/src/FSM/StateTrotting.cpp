@@ -33,9 +33,9 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     Kp_swing_ = Vec3(400, 400, 400).asDiagonal();
     Kd_swing_ = Vec3(10, 10, 10).asDiagonal();
 
-    v_x_limit_ << -0.4, 0.4;
+    v_x_limit_ << -0.5, 0.5;
     v_y_limit_ << -0.3, 0.3;
-    w_yaw_limit_ << -0.5, 0.5;
+    w_yaw_limit_ << -1.0, 1.0;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
     // Initialize last tracking error and action
@@ -215,7 +215,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     // accel(5) = saturation(accel(5), Vec2(-20, 20));  // Wrong limit, should be (-10, 10)
     accel(3) = saturation(accel(3), Vec2(-40, 40));
     accel(4) = saturation(accel(4), Vec2(-40, 40));
-    accel(5) = saturation(accel(5), Vec2(-10, 10));
+    accel(5) = saturation(accel(5), Vec2(-20, 20));
 
     std::cout << "acc command: " << accel.transpose() << std::endl;
 

@@ -157,7 +157,7 @@ def generate_launch_description():
         led_launch,
         controller_launch,
         phy_teacher_launch,
-        # drl_student_launch,
+        drl_student_launch,
         trigger_launch,
         virtual_safety_indicator_node,
         

@@ -156,7 +156,7 @@ namespace ocs2::legged_robot {
         auto odom = getOdomMsg();
         odom.header.stamp = time;
         odom.header.frame_id = "odom";
-        odom.child_frame_id = "base";
+        odom.child_frame_id = "base_link";
         publishMsgs(odom);
 
         return rbd_state_;

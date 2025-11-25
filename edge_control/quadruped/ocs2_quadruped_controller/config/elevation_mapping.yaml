@@ -2,7 +2,7 @@
 elevation_mapping:
   ros__parameters:
     map_frame_id: odom
-    robot_base_frame_id: base
+    robot_base_frame_id: base_link
     robot_pose_with_covariance_topic: /pose
     input_sources:
       front: # A name to identify the input source
@@ -22,7 +22,7 @@ elevation_mapping:
           ignore_points_above: 0.5
           ignore_points_below: -0.5
 
-    track_point_frame_id: base
+    track_point_frame_id: base_link
     track_point_x: 0.0
     track_point_y: 0.0
     track_point_z: 0.0
