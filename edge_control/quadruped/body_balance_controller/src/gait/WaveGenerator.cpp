@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 WaveGenerator::WaveGenerator(const double period, const double st_ratio, const Vec4& bias,
@@ -140,4 +140,4 @@ void WaveGenerator::setStatusFromFSM(FSMStateName fsm_state)
     }
 }
 
-} // namespace edge::locomotion
+} 

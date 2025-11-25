@@ -8,7 +8,7 @@
 #include <body_balance_controller/control/Estimator.h>
 #include <body_balance_controller/gait/WaveGenerator.h>
 
-using namespace edge::locomotion;
+using namespace edge::control::quadruped;
 
 StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                              CtrlComponent& ctrl_component,

@@ -4,7 +4,7 @@
 #include "body_balance_controller/utils/math/mathTools.h"
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
@@ -148,4 +148,4 @@ void BalanceCtrl::solveQP() {
     }
 }
 
-}  // namespace edge::locomotion
+} 

@@ -16,7 +16,7 @@ namespace rclcpp_lifecycle
     class LifecycleNode;
 }
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 class WaveGenerator;
@@ -216,4 +216,4 @@ private:
     std::string base_frame_id_;
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

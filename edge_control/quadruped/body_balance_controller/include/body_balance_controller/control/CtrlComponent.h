@@ -6,7 +6,7 @@
 #include "Estimator.h"
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 struct CtrlComponent
@@ -19,4 +19,4 @@ struct CtrlComponent
     CtrlComponent() = default;
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

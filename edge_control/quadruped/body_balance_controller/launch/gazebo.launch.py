@@ -143,7 +143,8 @@ def launch_setup(context, *args, **kwargs):
 
 
     return [
-        # rviz,
+        tf_to_map_node,
+        tf_static,
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
@@ -184,9 +185,6 @@ def launch_setup(context, *args, **kwargs):
                 on_exit=[rviz],
             )
         ),
-        
-        tf_to_map_node,
-        tf_static
     ]
 
 

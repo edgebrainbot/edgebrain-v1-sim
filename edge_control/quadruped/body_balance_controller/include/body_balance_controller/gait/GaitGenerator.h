@@ -5,7 +5,7 @@
 #include "body_balance_controller/gait/FootstepPlanner.hpp"
 
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 struct CtrlComponent;
@@ -77,4 +77,4 @@ private:
     bool first_run_;
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

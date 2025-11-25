@@ -8,7 +8,7 @@
 // Forward declaration
 enum class FSMStateName;
 
-namespace edge::locomotion {
+namespace edge::control::quadruped {
 
 class WaveGenerator {
 public:
@@ -67,4 +67,4 @@ private:
     double accumulated_time_{0.0};  // The accumulated time since start_time_
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

@@ -3,7 +3,7 @@
 #include <body_balance_controller/control/CtrlComponent.h>
 #include <body_balance_controller/control/Estimator.h>
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 FootstepPlanner::FootstepPlanner(CtrlComponent &ctrl_component)

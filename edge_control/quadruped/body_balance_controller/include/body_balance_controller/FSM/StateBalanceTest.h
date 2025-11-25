@@ -6,7 +6,7 @@
 
 
 // Forward declarations for ROS2 types
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     class WaveGenerator;
     class BalanceCtrl;
@@ -17,7 +17,7 @@ namespace edge::locomotion
 
 struct CtrlInterfaces;
 
-using namespace edge::locomotion;
+using namespace edge::control::quadruped;
 
 class StateBalanceTest final : public FSMState {
 public:

@@ -6,7 +6,7 @@
 #include <body_balance_controller/gait/WaveGenerator.h>
 
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 GaitGenerator::GaitGenerator(CtrlComponent &ctrl_component)
@@ -95,4 +95,4 @@ double GaitGenerator::cycloidZVelocity(const double height, const double phase) 
     return height * M_PI * sin(phase_pi) / wave_generator_->get_t_swing();
 }
 
-} // namespace edge::locomotion
+} 

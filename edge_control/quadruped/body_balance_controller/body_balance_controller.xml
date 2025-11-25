@@ -1,6 +1,6 @@
 <library path="body_balance_controller">
     <class name="body_balance_controller/BodyBalanceController"
-           type="edge::locomotion::BodyBalanceController"
+           type="edge::control::quadruped::BodyBalanceController"
            base_class_type="controller_interface::ControllerInterface">
         <description>
             ROS2-Control Plugin for Quadruped Body Balance Controller

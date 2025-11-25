@@ -16,7 +16,7 @@
 // Forward declarations for ROS2 types
 struct CtrlInterfaces;
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     struct CtrlComponent;
     class WaveGenerator;
@@ -25,7 +25,7 @@ namespace edge::locomotion
     class Estimator;
 }
 
-using namespace edge::locomotion;
+using namespace edge::control::quadruped;
 using namespace edge::ros_interfaces;
 
 class StateTrotting final : public FSMState {

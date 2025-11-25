@@ -6,13 +6,13 @@
 #include "controller_common/FSM/FSMState.h"
 
 struct CtrlInterfaces;
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     struct CtrlComponent;
     class QuadrupedModel;
 }
 
-using namespace edge::locomotion;
+using namespace edge::control::quadruped;
 
 class StateFreeStand final : public FSMState {
 public:

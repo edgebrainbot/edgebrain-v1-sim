@@ -5,12 +5,12 @@
 
 struct CtrlInterfaces;
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     struct CtrlComponent;
 }
 
-using namespace edge::locomotion;
+using namespace edge::control::quadruped;
 
 class StateFixedStand final : public BaseFixedStand {
 public:

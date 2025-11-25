@@ -18,7 +18,7 @@
 #include <controller_common/common/enumClass.h>
 #include <controller_common/common/mathTypes.h>
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     struct CtrlComponent;
     class WaveGenerator;
@@ -27,7 +27,7 @@ namespace edge::locomotion
     class Estimator;
 }
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
     struct FSMStateList
     {
@@ -215,4 +215,4 @@ namespace edge::locomotion
                           0, 0, 0, -0.098, -0.0121, 5.3879).finished() * 5;
         bool gain_update_{false};
     };
-} // namespace edge::locomotion::body_balance_controller
+} // namespace edge::control::quadruped

@@ -379,6 +379,7 @@ int main(int argc, char** argv)
         vehicleYawRate = 0;
       }
 
+      // Adjust speed when close to goal (TODO: refine for reverse case)
       if (pathSize <= 1) {
         joySpeed2 = 0;
       } else if (endDis / slowDwnDisThre < joySpeed) {

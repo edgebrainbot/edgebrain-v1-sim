@@ -13,7 +13,7 @@
 #include <pinocchio/algorithm/centroidal.hpp>
 #include <cmath>
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 QuadrupedModel::QuadrupedModel(CtrlInterfaces& ctrl_interfaces,
@@ -474,4 +474,4 @@ double QuadrupedModel::q3_ik(double b3z, double b4z, double b) const
     return q3;
 }
 
-} // namespace edge::locomotion
+} 

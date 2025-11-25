@@ -5,7 +5,7 @@
 #include "body_balance_controller/utils/math/mathTypes.h"
 
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 class QuadrupedModel;
@@ -31,6 +31,6 @@ private:
     double t_stance_{}, t_swing_{};
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped
 
 #endif //FOOTSTEPPLANNER_HPP

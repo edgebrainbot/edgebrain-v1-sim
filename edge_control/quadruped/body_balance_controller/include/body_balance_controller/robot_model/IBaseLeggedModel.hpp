@@ -17,7 +17,7 @@ struct CtrlInterfaces;
  * 
  */
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 
 class IBaseLeggedModel
@@ -74,4 +74,4 @@ protected:
     CtrlInterfaces& ctrl_interfaces_;  /// Control interface reference
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

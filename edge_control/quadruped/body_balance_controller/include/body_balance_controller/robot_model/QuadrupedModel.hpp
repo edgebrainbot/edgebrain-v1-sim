@@ -16,7 +16,7 @@ struct CtrlInterfaces;
  * - Automatically calculates geometric parameters (link lengths, hip offsets, etc.)
  */
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {   
 
 class QuadrupedModel : public IBaseLeggedModel
@@ -239,4 +239,4 @@ private:
     void computeStandFootPositions(const Vec12& default_stand_joint_positions);
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

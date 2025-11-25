@@ -5,7 +5,7 @@
 #include "body_balance_controller/robot_model/QuadrupedModel.hpp"
 
 
-namespace edge::locomotion
+namespace edge::control::quadruped
 {
 class QuadrupedModel;
 
@@ -50,4 +50,4 @@ private:
     Eigen::Matrix<double, 5, 3> friction_mat_;
 };
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped
