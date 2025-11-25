@@ -19,10 +19,10 @@ controller_manager:
     rl_quadruped_controller:
       type: rl_quadruped_controller/LeggedGymController
 
-    body_balance_controller:
-      type: body_balance_controller/BodyBalanceController
+    edge_quadruped_controller:
+      type: edge_quadruped_controller/EdgeQuadrupedController
 
-body_balance_controller:
+edge_quadruped_controller:
   ros__parameters:
     topic_namespace: "edge"
 

@@ -18,7 +18,7 @@
   <exec_depend>edge_phy_teacher</exec_depend>
   <exec_depend>edge_trigger</exec_depend>
   <exec_depend>edge_config</exec_depend>
-  <exec_depend>body_balance_controller</exec_depend>
+  <exec_depend>edge_quadruped_controller</exec_depend>
   <exec_depend>safety_led_driver</exec_depend>
   <exec_depend>vehicle_simulator</exec_depend>
 

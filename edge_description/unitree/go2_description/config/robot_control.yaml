@@ -23,15 +23,15 @@ controller_manager:
     safety_patch_controller:
       type: safety_patch_controller/SafetyPatchController
 
-    body_balance_controller:
-      type: body_balance_controller/BodyBalanceController
+    edge_quadruped_controller:
+      type: edge_quadruped_controller/EdgeQuadrupedController
 
 imu_sensor_broadcaster:
   ros__parameters:
     sensor_name: "imu_sensor"
     frame_id: "imu_link"
 
-body_balance_controller:
+edge_quadruped_controller:
   ros__parameters:
     topic_namespace: "edge"
 

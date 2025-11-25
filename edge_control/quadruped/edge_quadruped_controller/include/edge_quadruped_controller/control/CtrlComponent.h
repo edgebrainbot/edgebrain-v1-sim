@@ -1,0 +1,22 @@
+#pragma once
+
+#include <edge_quadruped_controller/gait/WaveGenerator.h>
+
+#include "BalanceCtrl.h"
+#include "Estimator.h"
+#include "edge_quadruped_controller/robot_model/QuadrupedModel.hpp"
+
+namespace edge::control::quadruped
+{
+
+struct CtrlComponent
+{
+    std::shared_ptr<QuadrupedModel> robot_model_;
+    std::shared_ptr<Estimator> estimator_;
+    std::shared_ptr<BalanceCtrl> balance_ctrl_;
+    std::shared_ptr<WaveGenerator> wave_generator_;
+
+    CtrlComponent() = default;
+};
+
+} // namespace edge::control::quadruped

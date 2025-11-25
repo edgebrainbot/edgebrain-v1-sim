@@ -43,8 +43,8 @@ echo "------------------------------------------------------------"
 echo "🔹 [1/4] Building edge_bringup..."
 colcon build --packages-up-to edge_bringup ${BUILD_ARGS}
 
-echo "🔹 [2/4] Building body_balance_controller..."
-colcon build --packages-up-to body_balance_controller ${BUILD_ARGS}
+echo "🔹 [2/4] Building edge_quadruped_controller..."
+colcon build --packages-up-to edge_quadruped_controller ${BUILD_ARGS}
 
 echo "🔹 [3/4] Building edge_interfaces..."
 colcon build --base-paths src/edge-brain-go2/edge_common/edge_interfaces ${BUILD_ARGS}

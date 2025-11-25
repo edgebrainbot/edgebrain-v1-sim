@@ -168,7 +168,7 @@ ENV PYTHONPATH=/usr/lib/python3/dist-packages:/home/edgebot/ros2_ws/install/lib/
 # ---------- [8] Build ROS2 Workspace ----------
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    cd ${ROS2_WS_PATH} && colcon build --packages-up-to body_balance_controller --symlink-install || true
+    cd ${ROS2_WS_PATH} && colcon build --packages-up-to edge_quadruped_controller --symlink-install || true
 
 
 # ---------- [9] Entrypoint ----------

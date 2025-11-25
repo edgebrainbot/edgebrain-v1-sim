@@ -61,7 +61,7 @@ def generate_launch_description():
     controller_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("body_balance_controller"),
+                FindPackageShare("edge_quadruped_controller"),
                 "launch",
                 "gazebo.launch.py"
             ])

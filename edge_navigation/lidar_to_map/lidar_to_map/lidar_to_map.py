@@ -14,7 +14,6 @@ class LidarToLegodom(Node):
     def __init__(self):
         super().__init__("lidar_to_legodom")
 
-        # 声明参数
         self.declare_parameter('target_frame', 'leg_odom')
         self.declare_parameter('input_topic', '/scan/points')
         self.declare_parameter('output_topic', '/registered_scan')
@@ -29,7 +28,6 @@ class LidarToLegodom(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # 订阅和发布
         self.sub = self.create_subscription(
             PointCloud2, 
             input_topic, 
@@ -43,7 +41,6 @@ class LidarToLegodom(Node):
             10
         )
 
-        # 统计
         self.success_count = 0
         self.fail_count = 0
         self.last_log_time = self.get_clock().now()
@@ -84,7 +81,6 @@ class LidarToLegodom(Node):
         r = R.from_quat([q.x, q.y, q.z, q.w])
         rot_matrix = r.as_matrix()
         
-        # 构造 4x4 齐次变换矩阵
         T = np.eye(4, dtype=np.float32)
         T[:3, :3] = rot_matrix
         T[:3, 3] = [t.x, t.y, t.z]
@@ -107,7 +103,6 @@ class LidarToLegodom(Node):
             self.get_logger().error(f"解析点云失败: {e}")
             return
 
-        # 3. 查找 TF 变换
         try:
             # 使用点云消息的时间戳
             transform = self.tf_buffer.lookup_transform(
