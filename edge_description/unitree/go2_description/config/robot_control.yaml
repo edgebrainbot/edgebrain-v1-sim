@@ -36,7 +36,7 @@ edge_quadruped_controller:
     topic_namespace: "edge"
 
     gait_height: 0.06
-    update_rate: 300  # Hz
+    update_rate: 400  # Hz
     robot_name: "go2"
     down_pos:
       - -0.01

@@ -14,8 +14,8 @@ def process_xacro():
     xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
     robot_description_config = xacro.process_file(xacro_file)
     return robot_description_config.toxml()
-def generate_launch_description():
 
+def generate_launch_description():
     rviz_config_file = os.path.join(get_package_share_directory(package_description), "rviz", "visualize_urdf.rviz")
     robot_description = process_xacro()
 

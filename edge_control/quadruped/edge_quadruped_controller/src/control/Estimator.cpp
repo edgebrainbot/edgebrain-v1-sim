@@ -335,7 +335,7 @@ void Estimator::publishOdometryAndTf()
     odom_msg->twist.covariance[35] = 0.05; // wz
 
     // Publish odometry
-    odom_publisher_->publish(std::move(odom_msg));
+    // odom_publisher_->publish(std::move(odom_msg));   // Comment for real
 
     // Create and publish transform
     geometry_msgs::msg::TransformStamped transform_stamped;

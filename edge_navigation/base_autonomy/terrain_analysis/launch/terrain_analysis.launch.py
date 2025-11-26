@@ -42,7 +42,7 @@ def generate_launch_description():
             "minRelZ": -1.5,
             "maxRelZ": 0.5,
             "disRatioZ": 0.2,
-            'use_sim_time': True,
+            # 'use_sim_time': True,
         }],
         remappings=[
             ("/state_estimation", "/odom"),

@@ -124,7 +124,7 @@ def launch_setup(context, *args, **kwargs):
 
     return [
         tf_static,
-        tf_to_map_node,
+        # tf_to_map_node,
 
         rviz,
         robot_state_publisher,
@@ -154,13 +154,13 @@ def generate_launch_description():
 
     use_real_robot = DeclareLaunchArgument(
         'use_real_robot',
-        default_value='false',
+        default_value='true',
         description='Whether to use real robot or not'
     )
     
     network_interface = DeclareLaunchArgument(
         'network_interface',
-        default_value='lo',
+        default_value='eno1',
         description='Network interface for DDS communication (e.g., eno1, wlan0, lo)'
     )
 

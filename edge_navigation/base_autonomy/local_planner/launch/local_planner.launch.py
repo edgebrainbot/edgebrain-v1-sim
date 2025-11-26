@@ -76,7 +76,7 @@ def generate_launch_description():
             "goalClearRange": 0.5,
             "goalX": LaunchConfiguration("goalX"),
             "goalY": LaunchConfiguration("goalY"),
-            'use_sim_time': True,
+            # 'use_sim_time': True,
         }],
         remappings=[
             ("/state_estimation", "/odom"),
@@ -124,7 +124,7 @@ def generate_launch_description():
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
             "is_real_robot": LaunchConfiguration("is_real_robot"),
-            'use_sim_time': True,
+            # 'use_sim_time': True,
         }],
         remappings=[
             ("/state_estimation", "/odom"),
@@ -147,7 +147,7 @@ def generate_launch_description():
             "0", "0", "0",                          # rpy
             "sensor", "vehicle"
         ],
-        parameters=[{'use_sim_time': True}],
+        # parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------
@@ -162,7 +162,7 @@ def generate_launch_description():
             "-1.5707963", "0", "-1.5707963",
             "sensor", "camera"
         ],
-        parameters=[{'use_sim_time': True}],
+        # parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------
