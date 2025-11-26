@@ -33,9 +33,13 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     Kp_swing_ = Vec3(400, 400, 400).asDiagonal();
     Kd_swing_ = Vec3(10, 10, 10).asDiagonal();
 
-    v_x_limit_ << -0.5, 0.5;
-    v_y_limit_ << -0.3, 0.3;
-    w_yaw_limit_ << -1.0, 1.0;
+    // v_x_limit_ << -0.5, 0.5;
+    // v_y_limit_ << -0.3, 0.3;
+    // w_yaw_limit_ << -1.0, 1.0;
+
+    v_x_limit_ << -0.3, 0.3;
+    v_y_limit_ << -0.2, 0.2;
+    w_yaw_limit_ << -0.45, 0.45;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
     // Initialize last tracking error and action
