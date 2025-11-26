@@ -188,3 +188,6 @@ if __name__ == "__main__":
     
     sampled_batch = dual_buf.sample(batch_size=5)
     print(f"Sampled Batch: {sampled_batch}")
+    
+    dual_buf.stu_buf.dump(path="./stu_buffer_dump.txt", format='csv')
+    dual_buf.tea_buf.dump(path="./tea_buffer_dump.txt", format='csv')

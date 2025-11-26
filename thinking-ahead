@@ -1,0 +1,68 @@
+1. Local Planner can output the vehicle's distances with goal and obstacles, which can be used for the rewards design ans switching logic of percpetion Simplex. 
+
+2. First Experiment: DRL-Student and Phy-Teacher share the same Navigation. 
+
+3. Second Experimnet: Phy-Teacher: Far > Facio > PP > Locomotion. DRL-Student: Vision > Action > Locomotion. 
+
+=======================================================All Matrix========
+Frequency and Recency for Continous States and Actions:
+
+Input: 1. family_criteria > identify family ID. 2. replay_buffer_size. 3. family_number.
+
+upper_triangular_matrix = np.triu(np.ones((reply_buffer_size, reply_buffer_size))); Create upper triangular matrix with ones.
+
+If instances in the same family are given the same score, choose 
+upper_triangular_matrix = np.ones((reply_buffer_size, reply_buffer_size)); 
+
+time_vector = np.arange(1, (replay_buffer_size+1)); 
+
+family_range = np.arange(family_number);
+family_matrix = np.tile(family_range, (replay_buffer_size, 1));
+family_ID = int(buffer(0,:,:,:)/family_criteria);
+family_freezing_matrix = (family_group == family_ID).astype(int); 
+
+fr_score_raw = np.power(time_vector, decay_factor);
+fr_score_individual = family_freezing_matrix * fr_score_raw; 
+fr_score_matrix_all = np.matmul(upper_triangular_matrix, fr_score_individual);  
+fr_score_matrix_all = np.log(fr_score_matrix_all);  
+fr_score_matrix_freezing = fr_score_matrix_all  * family_freezing_matrix;
+fr_score = np.sum(fr_score_matrix_freezing, axis=0)
+
+
+fr_score_exp = np.exp(fr_score/tem)
+fr_score_p = (np.exp(fr_score/tem))/sum(fr_score_exp)
+
+
+
+
+=======================================================Using a Loop============
+Input: family_criteria: identify family ID. 
+Input: 1. family_criteria > identify family ID. 2. batch_size. 3. family_number.
+
+time_index = np.arange(1, (batch_size+1)); 
+
+family_ID = int(v(s)/family_criteria);
+upper_triangular_matrix = np.triu(np.ones((reply_buffer_size, reply_buffer_size))); Create upper triangular matrix with ones.
+If instances in the same family are given the same score, choose 
+upper_triangular_matrix = np.ones((reply_buffer_size, reply_buffer_size)); 
+
+for i = 0 : (family_number-1); 
+  family_checking_i = i *  ones(1,replay_buffer_size);
+  family_freezing_i = (family_group == family_checking_i).astype(int); 
+  elementwise_fr_score_i = (indx + 1)^{-0.5} * family_freezing_i;  This is elementwise multiplications. Indx indicate time difference;
+  sum_fr_score_i = upper_triangular_matrix * elementwise_fr_score_i;  This is matrix-vector multiplication. 
+  sum_fr_score_i = log(sum_fr_score_i)
+  fr_score_i = sum_fr_score_i * family_freezing_i;  This is elementwise multiplications.
+  fr_score_i = fr_score_i + fr_score_i-1;
+end for 
+
+
+=======Questions to Answer=======
+1. Using only current states in instances or using a whole instance (including current states, action, next states) to identify family IDs? 
+
+
+
+
+
+
+
