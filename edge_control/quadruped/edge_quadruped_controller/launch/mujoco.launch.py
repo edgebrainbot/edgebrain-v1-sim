@@ -13,6 +13,9 @@ from launch_ros.substitutions import FindPackageShare
 def launch_setup(context, *args, **kwargs):
     namespace = "edge"
     robot_name = context.launch_configurations['robot']
+    use_real_robot = context.launch_configurations['use_real_robot']
+    network_interface = context.launch_configurations['network_interface']
+    dds_domain_id = context.launch_configurations['dds_domain_id']
     
     package_description = f"{robot_name}_description"
     
@@ -31,7 +34,14 @@ def launch_setup(context, *args, **kwargs):
     
     print(f"Using robot description file: {xacro_file}")
     
-    robot_description = xacro.process_file(xacro_file).toxml()
+    robot_description = xacro.process_file(
+        xacro_file, 
+        mappings={
+            'use_real_robot': use_real_robot,
+            'network_interface': network_interface,
+            'dds_domain_id': dds_domain_id,
+        }
+    ).toxml()
 
     robot_controllers = PathJoinSubstitution(
         [
@@ -46,7 +56,7 @@ def launch_setup(context, *args, **kwargs):
     rviz = Node(
         package='rviz2',
         executable='rviz2',
-        name='rviz_ocs2',
+        name='rviz_robot_go2',
         namespace=namespace,
         output='screen',
         arguments=["-d", rviz_config_file]
@@ -98,7 +108,24 @@ def launch_setup(context, *args, **kwargs):
         arguments=["edge_quadruped_controller", "--controller-manager", "/controller_manager"],
     )
 
+    tf_to_map_node = Node(
+        package='lidar_to_map',
+        executable='lidar_to_map',
+        name='lidar_to_map_node',
+        output='screen',
+    )
+
+    tf_static = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=["0", "0", "0", "0", "0", "0", "map", "leg_odom"],
+    )
+
+
     return [
+        tf_static,
+        tf_to_map_node,
+
         rviz,
         robot_state_publisher,
         controller_manager,
@@ -125,7 +152,28 @@ def generate_launch_description():
         description='name of the robot (e.g., go2, go1)'
     )
 
+    use_real_robot = DeclareLaunchArgument(
+        'use_real_robot',
+        default_value='false',
+        description='Whether to use real robot or not'
+    )
+    
+    network_interface = DeclareLaunchArgument(
+        'network_interface',
+        default_value='lo',
+        description='Network interface for DDS communication (e.g., eno1, wlan0, lo)'
+    )
+
+    dds_domain_id = DeclareLaunchArgument(
+        'dds_domain_id',
+        default_value='0',
+        description='DDS domain ID for communication'
+    )
+
     return LaunchDescription([
         robot_name,
+        use_real_robot,
+        network_interface,
+        dds_domain_id,
         OpaqueFunction(function=launch_setup),
     ])

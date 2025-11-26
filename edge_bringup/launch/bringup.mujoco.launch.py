@@ -33,23 +33,6 @@ def generate_launch_description():
     robot = LaunchConfiguration("robot")
 
     # ------------------------
-    # Hardware layer
-    # ------------------------
-    led_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare("safety_led_driver"),
-                "launch",
-                "safety_led_driver.launch.py"
-            ])
-        ),
-        launch_arguments={
-            "namespace": namespace,
-            "robot": robot
-        }.items()
-    )
-
-    # ------------------------
     # Locomotion Control Layer
     # ------------------------
     
@@ -142,7 +125,6 @@ def generate_launch_description():
         robot_arg,
         
         # -- Launch Components --
-        led_launch,
         controller_launch,
         phy_teacher_launch,
         # drl_student_launch,

@@ -339,14 +339,15 @@ void StateTrotting::calcGain() const
 
 bool StateTrotting::checkStepOrNot()
 {
-    if (fabs(v_cmd_body_(0)) > 0.03 || fabs(v_cmd_body_(1)) > 0.03 ||
-        fabs(pos_error_(0)) > 0.08 || fabs(pos_error_(1)) > 0.08 ||
-        fabs(vel_error_(0)) > 0.05 || fabs(vel_error_(1)) > 0.05 ||
-        fabs(d_yaw_cmd_) > 0.20)
-    {
-        return true;
-    }
-    return false;
+    // if (fabs(v_cmd_body_(0)) > 0.03 || fabs(v_cmd_body_(1)) > 0.03 ||
+    //     fabs(pos_error_(0)) > 0.08 || fabs(pos_error_(1)) > 0.08 ||
+    //     fabs(vel_error_(0)) > 0.05 || fabs(vel_error_(1)) > 0.05 ||
+    //     fabs(d_yaw_cmd_) > 0.20)
+    // {
+    //     return true;
+    // }
+    // return false;
+    return true;
 }
 
 // Publish transition topic

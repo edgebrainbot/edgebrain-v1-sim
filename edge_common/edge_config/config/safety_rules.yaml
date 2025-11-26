@@ -3,13 +3,13 @@ safety_rules:
   # roll limit in degrees
   roll:   
     index: 3
-    limit: 4.0
+    limit: 2.0
     unit: deg
 
   # pitch limit in degrees
   pitch:
     index: 4
-    limit: 5.0
+    limit: 3.0
     unit: deg
 
   # height limit in meters

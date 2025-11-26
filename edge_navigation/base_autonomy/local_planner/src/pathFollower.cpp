@@ -447,7 +447,7 @@ int main(int argc, char** argv)
           else{
                sport_req.Move(req, cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z);
           }
-          pubGo2Request->publish(req);
+        //   pubGo2Request->publish(req);
         }
       }
     }

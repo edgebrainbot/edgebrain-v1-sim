@@ -28,8 +28,8 @@ def generate_launch_description():
                 {'use_sim_time': True}
             ],
             remappings=[
-                # ('/odom_world', '/state_estimation'),
-                ('/odom_world', '/odom'),
+                ('/odom_world', '/state_estimation'),
+                # ('/odom_world', '/odom'),
                 ('/terrain_cloud', '/terrain_map_ext'),
                 ('/scan_cloud', '/terrain_map'),
                 ('/terrain_local_cloud', '/registered_scan')

@@ -19,7 +19,7 @@ def launch_setup(context, *args, **kwargs):
     xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
     robot_description = xacro.process_file(xacro_file, mappings={'GAZEBO': 'true', 'CLASSIC': 'true'}).toxml()
 
-    rviz_config_file = os.path.join(get_package_share_directory(package_description), "config", "visualize_urdf.rviz")
+    rviz_config_file = os.path.join(get_package_share_directory(package_description), "rviz", "visualize_urdf.rviz")
 
     rviz = Node(
         package='rviz2',
