@@ -94,6 +94,12 @@ class SoloReplayBuffer(BaseBuffer):
         sample_indices = self.sampler.fetch(batch_size, valid_size)
         return self._get_samples(sample_indices)
     
+    
+    def get_samples(self, indices: torch.Tensor) -> TransitionBatch:
+        """Public API to get samples by indices (reserved for external use)."""
+        return self._get_samples(indices)
+
+    
     # ======================================================
     # Dump / Load Public API
     # ======================================================

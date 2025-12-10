@@ -7,6 +7,7 @@ import torch
 from edge_drl_student.memory.samplers import BaseSampler
 from edge_drl_student.memory.samplers import UniformSampler
 
+
 @dataclass
 class TransitionData:
     """Batch-level semantic wrapper for sampled experiences."""
@@ -16,6 +17,7 @@ class TransitionData:
     next_obs: torch.Tensor  # Next observation
     done: torch.Tensor      # Whether the episode is done
     info: Any = None        # Additional info
+
 
 @dataclass
 class TransitionBatch:

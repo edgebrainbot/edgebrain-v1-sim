@@ -15,6 +15,7 @@ from edge_drl_student.utils.utils import ActionMode
 from edge_msgs.msg import Transition, TrackingError, EdgeAction
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
 from ament_index_python.packages import get_package_prefix
 
@@ -30,13 +31,21 @@ class DRLStudentNode(Node):
 
         self.obs_dim = 12
         self.act_dim = 6
-        self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
-                                       student_prefill_size=int(1e3),
-                                       teacher_buf_size=int(1e5), 
-                                       teacher_prefill_size=int(1),
-                                       obs_dim=self.obs_dim, 
-                                       action_dim=self.act_dim, 
-                                       device=self.device)
+        self.policy_blendering_weight = 0.5
+        # self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
+        #                                student_prefill_size=int(1e3),
+        #                                teacher_buf_size=int(1e5), 
+        #                                teacher_prefill_size=int(1),
+        #                                obs_dim=self.obs_dim, 
+        #                                action_dim=self.act_dim, 
+        #                                device=self.device)
+        self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e4), 
+                                            student_prefill_size=int(1e3),
+                                            teacher_buf_size=int(1e4), 
+                                            teacher_prefill_size=int(1),
+                                            obs_dim=self.obs_dim, 
+                                            action_dim=self.act_dim, 
+                                            device=self.device)
         self.batch_size = 512
         self.last_reload_time = 0.0
         self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
@@ -60,15 +69,29 @@ class DRLStudentNode(Node):
 
         self.get_logger().info("✅ DRLStudent Node initialized")
 
+
+    def output_action(self):
+        if self.buffer is CognitiveReplayBuffer:
+            
+            blending_action = self.buffer.get_weighted_blended_action()
+            
+            return self.policy_action() * (1 - self.policy_blendering_weight) \
+                   + blending_action * self.policy_blendering_weight
+        else:
+            return self.policy_action()
+
+    def policy_action(self):
+        return self.agent.act(torch.tensor(
+            np.array(self.tracking_error_.tracking_error, dtype=np.float32),
+            dtype=torch.float32
+        ))      # Non-scaled control action
+
     def action_loop(self):
         
         edge_action_msg = EdgeAction()
         
         edge_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_action_msg.control_action = self.agent.act(torch.tensor(
-            np.array(self.tracking_error_.tracking_error, dtype=np.float32),
-            dtype=torch.float32
-        )).detach().cpu().numpy().astype(np.float64) # Scaled control action
+        edge_action_msg.control_action = self.output_action().detach().cpu().numpy().astype(np.float64) # Scaled control action
         edge_action_msg.action_mode = ActionMode.STUDENT.value
         
         self.action_pub.publish(edge_action_msg)
