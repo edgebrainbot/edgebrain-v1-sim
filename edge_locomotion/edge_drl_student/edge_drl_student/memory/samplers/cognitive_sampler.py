@@ -52,7 +52,6 @@ class ACTRCognitiveSampler(BaseSampler):
         print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
 
-
     def fetch(self, batch_size: int, valid_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Uniformly sample indices from [0, valid_size).
@@ -140,22 +139,8 @@ class ACTRCognitiveSampler(BaseSampler):
         cog_ranking = fr_score * self.fr_weight + sm_score * self.sm_weight
         print(f"cog_ranking: {cog_ranking}")
         
-        
-        
-        # test = obs[0,:] @ state_mat @ obs[:,0]
-        # print(f"test: {test}")
-        # # test = obs * state_mat * obs
-        # V_state = torch.matmul(torch.matmul(obs, state_mat), obs)
-        # print(f"V_state: {V_state}")
-        
-        # q_values = torch.tensor([1.0, 2.0, 0.5])
-        
-        # Boltzmann distribution
-        # temperature = torch.tensor(0.5, device="cuda:0")
-        # cog_ranking = torch.softmax(cog_score / temperature, dim=-1)
-        
-        cog_sum = torch.sum(cog_ranking)
-        print(f"cog_ranking: {cog_ranking}")
+        # cog_sum = torch.sum(cog_ranking)
+        # print(f"cog_ranking: {cog_ranking}")
         # print(f"cog_sum: {cog_sum}")
         
         topk_values, topk_ids = torch.topk(cog_ranking, batch_size)
@@ -182,7 +167,7 @@ class ACTRCognitiveSampler(BaseSampler):
         return batch_samples
 
     def update(self, indices: np.ndarray, **kwargs):
-        """Uniform sampler has no internal state to update."""
+        """ Update sampling priorities based on provided criteria."""
         pass
 
     def get_blending_action(self) -> torch.Tensor:
