@@ -71,8 +71,7 @@ class DRLStudentNode(Node):
 
 
     def output_action(self):
-        if self.buffer is CognitiveReplayBuffer:
-            
+        if isinstance(self.buffer, CognitiveReplayBuffer):
             blending_action = self.buffer.get_weighted_blended_action()
             
             return self.policy_action() * (1 - self.policy_blendering_weight) \

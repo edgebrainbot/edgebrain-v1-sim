@@ -89,30 +89,44 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size
         
-        stu_batch = self.stu_cognitive_sampler.fetch(stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
-        tea_batch = self.tea_cognitive_sampler.fetch(tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
+        stu_batch = self.stu_cognitive_sampler.fetch(boundary_state, stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
+        tea_batch = self.tea_cognitive_sampler.fetch(boundary_state, tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
 
         print(f"stu_batch_size: {stu_batch_size}, tea_batch_size: {tea_batch_size}")
-        if tea_batch_size == 1:
-            print(f"tea_batch: {tea_batch}")
-        # print(f"stu_batch: {stu_batch}, tea_batch: {tea_batch}")
 
+        # print(f"stu_batch: {stu_batch}, tea_batch: {tea_batch}")
 
         stu_dict = asdict(stu_batch) if stu_batch is not None else None
         tea_dict = asdict(tea_batch) if tea_batch is not None else None
+        
+        if tea_batch_size == 1:
+            print(f"tea_batch: {tea_batch}")
+            print(f"tea_dict: {tea_dict}")
 
-        # Merge two batches
-        merged_dict = {
-            k: torch.cat(
-                [b[k] for b in [stu_dict, tea_dict] if b is not None and b[k] is not None],
-                dim=0
-            )
-            for k in (stu_dict.keys() if stu_dict is not None else tea_dict.keys())
-        }
+        # Merge two batches safely
+        merged_dict = {}
+        keys = stu_dict.keys() if stu_dict is not None else tea_dict.keys()
+        
+        for k in keys:
+            # Get non-None values
+            vals = [b[k] for b in (stu_dict, tea_dict) if b is not None and b[k] is not None]
 
-        return TransitionBatch(**merged_dict), 
+            # Case 1: Both batches have None for this key, e.g., info
+            if len(vals) == 0:
+                merged_dict[k] = None
+                continue
 
-    def get_weighted_blended_action(self) -> Optional[torch.Tensor]:
+            # Case 2: If not a Tensor (e.g., info has a value)
+            if not isinstance(vals[0], torch.Tensor):
+                merged_dict[k] = vals[0]
+                continue
+
+            # Case 3: Tensor → concat
+            merged_dict[k] = torch.cat(vals, dim=0)
+
+        return TransitionBatch(**merged_dict)
+
+    def get_weighted_blended_action(self) -> torch.Tensor:
         """Get the weighted blended action from both cognitive samplers.
 
         Returns:

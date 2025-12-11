@@ -44,16 +44,17 @@ class ACTRCognitiveSampler(BaseSampler):
         
         self.device = device
 
-        self._last_blending_action = None     # Blended action output
+        self._last_blending_action = torch.Tensor([0.] * 6).to(device)     # Blended action output
         # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
         print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
 
-    def fetch(self, batch_size: int, valid_size: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def fetch(self, plant_state: torch.Tensor, batch_size: int, valid_size: int) -> torch.Tensor:
         """
         Uniformly sample indices from [0, valid_size).
 
         Args:
+            plant_state (torch.Tensor): Current state of the plant.
             batch_size (int): Number of samples to fetch.
             valid_size (int): Number of valid transitions currently stored.
 
@@ -133,9 +134,9 @@ class ACTRCognitiveSampler(BaseSampler):
                 
             print(f"fr_score after family {i}: {fr_score}")
 
-        real_state = self.replay_buf.obs[self.replay_buf.size - 1]      # Assume last obs is the current state
+        # real_state = self.replay_buf.obs[self.replay_buf.size - 1]      # Assume last obs is the current state
         # real_state = torch.tensor([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0], device="cuda:0")
-        sm_error = obs - real_state     # Similarity error
+        sm_error = obs - plant_state    # Similarity error
         print(f"obs: {obs}")
         print(f"sm_error: {sm_error}")
         

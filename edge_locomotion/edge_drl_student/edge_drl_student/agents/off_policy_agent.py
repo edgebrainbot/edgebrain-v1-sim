@@ -2,10 +2,12 @@
 import torch
 import torch.nn as nn
 
+
 from .base_agent import BaseAgent
 from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 from typing import Union
 
 
@@ -13,7 +15,7 @@ class OffPolicyAgent(BaseAgent):
     """Base class for off-policy algorithms (DDPG, TD3, SAC, etc.)."""
 
     def __init__(self, 
-                 replay_buffer: Union[SoloReplayBuffer, DualReplayBuffer], 
+                 replay_buffer: Union[SoloReplayBuffer, DualReplayBuffer, CognitiveReplayBuffer], 
                  batch_size=256,
                  gamma=0.99, 
                  tau=0.005,  
