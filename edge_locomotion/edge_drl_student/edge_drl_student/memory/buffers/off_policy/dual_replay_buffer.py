@@ -45,6 +45,7 @@ class DualReplayBuffer(BaseBuffer):
                                         obs_dim=obs_dim, 
                                         action_dim=action_dim,
                                         sampler=sampler,
+                                        name="DRL-Student Replay Buffer",
                                         device=self.device)
 
         # Teaching-to-learn PHY-Teacher
@@ -53,6 +54,7 @@ class DualReplayBuffer(BaseBuffer):
                                         obs_dim=obs_dim, 
                                         action_dim=action_dim,
                                         sampler=sampler,
+                                        name="PHY-Teacher Replay Buffer",
                                         device=self.device)
 
         self.last_data_type = ActionMode.UNCERTAIN

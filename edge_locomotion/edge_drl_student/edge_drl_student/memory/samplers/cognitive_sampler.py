@@ -42,13 +42,10 @@ class ACTRCognitiveSampler(BaseSampler):
         self.fr_weight = fr_weight     # frequency + recency weight
         self.sm_weight = sm_weight     # similarity weight
         
-        self.upper_triangular_matrix = torch.ones(self.replay_buf.buffer_size, 
-                                                  self.replay_buf.buffer_size,
-                                                  device=device)
         self.device = device
 
         self._last_blending_action = None     # Blended action output
-        print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
+        # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
         print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
 
@@ -65,16 +62,19 @@ class ACTRCognitiveSampler(BaseSampler):
         """
         if valid_size <= 0:
             raise ValueError("Cannot fetch from an empty buffer.")
-        if valid_size > self.buffer_size:
+        if valid_size > self.replay_buf.size:
             raise ValueError(
-                f"valid_size ({valid_size}) cannot exceed buffer_size ({self.buffer_size})."
+                f"valid_size ({valid_size}) cannot exceed buffer_size ({self.replay_buf.size})."
             )
 
         # Get indices according to time order
-        time_idx = torch.arange(1, self.buffer_size + 1, device=self.device)
+        time_idx = torch.arange(1, self.replay_buf.size + 1, device=self.device)
         print(f"time_idx: {time_idx}")
         
-        
+        # TODO: 10w * 10w -> 1w * 1w (generate vector)
+        self.upper_triangular_matrix = torch.ones(self.replay_buf.size, 
+                                                  self.replay_buf.size,
+                                                  device=self.device)
         # obs = dual_buf.stu_buf.obs[:dual_buf.stu_buf.size]
         # actions = dual_buf.stu_buf.actions[:dual_buf.stu_buf.size]
         # rewards = dual_buf.stu_buf.rewards[:dual_buf.stu_buf.size]
@@ -108,17 +108,23 @@ class ACTRCognitiveSampler(BaseSampler):
         
         for i in range(self.family_number):
             family_checking_i = i * torch.ones(self.replay_buf.size, device=self.device)
-            # print(f"family_checking_i: {family_checking_i}")
-            family_freezing_i = (family_ID == family_checking_i).to(torch.int8)
-            # print(f"family_freezing_i: {family_freezing_i}")
+            print(f"family_checking_i: {family_checking_i}")
+            family_freezing_i = (family_ID == family_checking_i).to(torch.int)
+            print(f"family_freezing_i: {family_freezing_i}")
+            print(f"family_freezing_i dtype: {family_freezing_i.dtype}")
+            print(f"time_idx dtype: {time_idx.dtype}")
+            print(f"family_freezing_i shape: {family_freezing_i.shape}")
             elementwise_fr_score_i = (time_idx + 1).pow(self.memory_decay_factor) * family_freezing_i  # This is elementwise multiplications. Indx indicate time difference;
             # print(f"elementwise_fr_score_i: {elementwise_fr_score_i}")
             sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
             
+            # Do the sum for the score:
+            # sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
+
+            
             sum_fr_score_i = torch.log(sum_fr_score_i + 1e-8)
             
             fr_score_i = sum_fr_score_i * family_freezing_i  # This is elementwise multiplications.
-            
             
             if i == 0:
                 fr_score = fr_score_i
@@ -163,6 +169,8 @@ class ACTRCognitiveSampler(BaseSampler):
         
         batch_samples = self.replay_buf.get_samples(topk_ids)
         print(f"batch_samples: {batch_samples}")
+        
+        print(f"replay_buf name: {self.replay_buf.buf_name}")
         
         return batch_samples
 

@@ -60,6 +60,7 @@ class BaseBuffer(ABC):
                  buffer_size: int, 
                  prefill_size: int,
                  sampler: Optional[BaseSampler] = None, 
+                 name: str = "BaseBuffer",
                  device: Optional[str] = 'cpu'):
         """
         Args:
@@ -79,6 +80,7 @@ class BaseBuffer(ABC):
         self.buffer_size = buffer_size
         self.prefill_size = prefill_size
         self.device = device
+        self.buf_name = name
         
         self.sampler: BaseSampler = sampler or UniformSampler(buffer_size)
         if hasattr(self.sampler, "set_buffer_size"):

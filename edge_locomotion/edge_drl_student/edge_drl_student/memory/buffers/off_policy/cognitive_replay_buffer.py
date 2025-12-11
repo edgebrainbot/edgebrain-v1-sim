@@ -92,6 +92,12 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         stu_batch = self.stu_cognitive_sampler.fetch(stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
         tea_batch = self.tea_cognitive_sampler.fetch(tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
 
+        print(f"stu_batch_size: {stu_batch_size}, tea_batch_size: {tea_batch_size}")
+        if tea_batch_size == 1:
+            print(f"tea_batch: {tea_batch}")
+        # print(f"stu_batch: {stu_batch}, tea_batch: {tea_batch}")
+
+
         stu_dict = asdict(stu_batch) if stu_batch is not None else None
         tea_dict = asdict(tea_batch) if tea_batch is not None else None
 

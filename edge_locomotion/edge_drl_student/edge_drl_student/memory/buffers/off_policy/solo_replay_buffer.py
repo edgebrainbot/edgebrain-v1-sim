@@ -21,11 +21,12 @@ class SoloReplayBuffer(BaseBuffer):
                  sampler: Optional[UniformSampler] = None, 
                  obs_dim: int = 12,
                  action_dim: int = 6,
+                 name: str = "SoloReplayBuffer",
                  device: Optional[str] = 'cpu'):
         if sampler is None:
             sampler = UniformSampler(buffer_size)
             
-        super().__init__(buffer_size, prefill_size, sampler, device=device)
+        super().__init__(buffer_size, prefill_size, sampler, name, device=device)
 
         self.obs = torch.zeros((buffer_size, obs_dim), dtype=torch.float32, device=self.device)
         self.actions = torch.zeros((buffer_size, action_dim), dtype=torch.float32, device=self.device)
