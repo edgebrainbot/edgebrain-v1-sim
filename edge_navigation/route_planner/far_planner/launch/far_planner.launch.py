@@ -25,7 +25,7 @@ def generate_launch_description():
                 '/config/', 
                 LaunchConfiguration('config'), 
                 '.yaml"']),
-                # {'use_sim_time': True}
+                {'use_sim_time': True}
             ],
             remappings=[
                 # ('/odom_world', '/state_estimation'),
@@ -48,7 +48,7 @@ def generate_launch_description():
                 LaunchConfiguration('config'), 
                 '.rviz"'])
             ],
-            # parameters=[{'use_sim_time': True}],
+            parameters=[{'use_sim_time': True}],
             output='screen',
             respawn=False,
         ),

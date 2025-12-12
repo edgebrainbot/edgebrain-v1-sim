@@ -147,7 +147,7 @@ def generate_launch_description():
             "0", "0", "0",                          # rpy
             "sensor", "vehicle"
         ],
-        # parameters=[{'use_sim_time': True}],
+        parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------
@@ -162,7 +162,7 @@ def generate_launch_description():
             "-1.5707963", "0", "-1.5707963",
             "sensor", "camera"
         ],
-        # parameters=[{'use_sim_time': True}],
+        parameters=[{'use_sim_time': True}],
     )
 
     # -----------------------------
