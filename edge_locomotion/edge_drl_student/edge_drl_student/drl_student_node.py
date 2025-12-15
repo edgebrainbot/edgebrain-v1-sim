@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
-
+import os
+import time
 import rclpy
-from rclpy.node import Node
+import random
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import time
-import os
-import random
+from rclpy.node import Node
+
 
 from edge_drl_student.utils.utils import ActionMode
+from ament_index_python.packages import get_package_prefix
 from edge_msgs.msg import Transition, TrackingError, EdgeAction
+from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
-from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
-from ament_index_python.packages import get_package_prefix
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(current_dir, "models", "drl_student")
@@ -32,20 +33,20 @@ class DRLStudentNode(Node):
         self.obs_dim = 12
         self.act_dim = 6
         self.policy_blendering_weight = 0.5
-        # self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
-        #                                student_prefill_size=int(1e3),
-        #                                teacher_buf_size=int(1e5), 
-        #                                teacher_prefill_size=int(1),
-        #                                obs_dim=self.obs_dim, 
-        #                                action_dim=self.act_dim, 
-        #                                device=self.device)
-        self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e4), 
-                                            student_prefill_size=int(1e3),
-                                            teacher_buf_size=int(1e4), 
-                                            teacher_prefill_size=int(1),
-                                            obs_dim=self.obs_dim, 
-                                            action_dim=self.act_dim, 
-                                            device=self.device)
+        self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
+                                       student_prefill_size=int(1e3),
+                                       teacher_buf_size=int(1e5), 
+                                       teacher_prefill_size=int(1),
+                                       obs_dim=self.obs_dim, 
+                                       action_dim=self.act_dim, 
+                                       device=self.device)
+        # self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e4), 
+        #                                     student_prefill_size=int(1e3),
+        #                                     teacher_buf_size=int(1e4), 
+        #                                     teacher_prefill_size=int(1),
+        #                                     obs_dim=self.obs_dim, 
+        #                                     action_dim=self.act_dim, 
+        #                                     device=self.device)
         self.batch_size = 512
         self.last_reload_time = 0.0
         self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
@@ -66,6 +67,8 @@ class DRLStudentNode(Node):
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
         self.learn_timer = self.create_timer(1.0, self.learn_step)    # Learning weights updates
+        
+        self.update_count_ = 0
 
         self.get_logger().info("✅ DRLStudent Node initialized")
 
@@ -140,7 +143,9 @@ class DRLStudentNode(Node):
 
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
         self.agent.save_models(MODEL_PATH)
-        self.get_logger().info(f"[Learner] Updated policy (actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})")
+        
+        self.update_count_ += 1
+        self.get_logger().info(f"Count: {self.update_count_}, [Learner] Updated policy (actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})")
 
 
 # ==========================================================

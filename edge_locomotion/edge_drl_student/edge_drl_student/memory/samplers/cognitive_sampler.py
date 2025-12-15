@@ -1,6 +1,7 @@
-from typing import Tuple
+import time
 import torch
 import numpy as np
+from typing import Tuple
 
 from edge_drl_student.memory.buffers.base_buffer import TransitionData
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
@@ -48,6 +49,7 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
         print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
+        self._last_time = time.time()
 
     def fetch(self, plant_state: torch.Tensor, batch_size: int, valid_size: int) -> torch.Tensor:
         """
@@ -68,9 +70,10 @@ class ACTRCognitiveSampler(BaseSampler):
                 f"valid_size ({valid_size}) cannot exceed buffer_size ({self.replay_buf.size})."
             )
 
+        t1 = time.time()
         # Get indices according to time order
         time_idx = torch.arange(1, self.replay_buf.size + 1, device=self.device)
-        print(f"time_idx: {time_idx}")
+        # print(f"time_idx: {time_idx}")
         
         # TODO: 10w * 10w -> 1w * 1w (generate vector)
         self.upper_triangular_matrix = torch.ones(self.replay_buf.size, 
@@ -94,27 +97,27 @@ class ACTRCognitiveSampler(BaseSampler):
         
         squeezed_obs = torch.sqrt(obs[:,:].square().sum(dim=1))
         squeezed_actions = torch.sqrt(actions[:,:].square().sum(dim=1))
-        print(f"squeezed_obs: {squeezed_obs}")
-        print(f"squeezed_actions: {squeezed_actions}")
+        # print(f"squeezed_obs: {squeezed_obs}")
+        # print(f"squeezed_actions: {squeezed_actions}")
 
         compacted_tuple = self.obs_weight * squeezed_obs + self.action_weight * squeezed_actions
-        print(f"compacted_item: {compacted_tuple}")
-        print(f"rewards.squeeze(): {rewards.squeeze()}")
+        # print(f"compacted_item: {compacted_tuple}")
+        # print(f"rewards.squeeze(): {rewards.squeeze()}")
         compacted_tuple = compacted_tuple * rewards.squeeze()
-        print(f"compacted_item after reward weighting: {compacted_tuple}")
+        # print(f"compacted_item after reward weighting: {compacted_tuple}")
         
         family_ID = (compacted_tuple / self.family_criteria).floor()
-        print(f"family_ID: {family_ID}")
+        # print(f"family_ID: {family_ID}")
         
         
         for i in range(self.family_number):
             family_checking_i = i * torch.ones(self.replay_buf.size, device=self.device)
-            print(f"family_checking_i: {family_checking_i}")
+            # print(f"family_checking_i: {family_checking_i}")
             family_freezing_i = (family_ID == family_checking_i).to(torch.int)
-            print(f"family_freezing_i: {family_freezing_i}")
-            print(f"family_freezing_i dtype: {family_freezing_i.dtype}")
-            print(f"time_idx dtype: {time_idx.dtype}")
-            print(f"family_freezing_i shape: {family_freezing_i.shape}")
+            # print(f"family_freezing_i: {family_freezing_i}")
+            # print(f"family_freezing_i dtype: {family_freezing_i.dtype}")
+            # print(f"time_idx dtype: {time_idx.dtype}")
+            # print(f"family_freezing_i shape: {family_freezing_i.shape}")
             elementwise_fr_score_i = (time_idx + 1).pow(self.memory_decay_factor) * family_freezing_i  # This is elementwise multiplications. Indx indicate time difference;
             # print(f"elementwise_fr_score_i: {elementwise_fr_score_i}")
             sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
@@ -132,19 +135,19 @@ class ACTRCognitiveSampler(BaseSampler):
             else:
                 fr_score = fr_score + fr_score_i
                 
-            print(f"fr_score after family {i}: {fr_score}")
+            # print(f"fr_score after family {i}: {fr_score}")
 
         # real_state = self.replay_buf.obs[self.replay_buf.size - 1]      # Assume last obs is the current state
         # real_state = torch.tensor([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0], device="cuda:0")
         sm_error = obs - plant_state    # Similarity error
-        print(f"obs: {obs}")
-        print(f"sm_error: {sm_error}")
+        # print(f"obs: {obs}")
+        # print(f"sm_error: {sm_error}")
         
         sm_score = torch.sqrt(sm_error[:,:].square().sum(dim=1))
-        print(f"sm_score: {sm_score}")
+        # print(f"sm_score: {sm_score}")
         
         cog_ranking = fr_score * self.fr_weight + sm_score * self.sm_weight
-        print(f"cog_ranking: {cog_ranking}")
+        # print(f"cog_ranking: {cog_ranking}")
         
         # cog_sum = torch.sum(cog_ranking)
         # print(f"cog_ranking: {cog_ranking}")
@@ -152,26 +155,29 @@ class ACTRCognitiveSampler(BaseSampler):
         
         topk_values, topk_ids = torch.topk(cog_ranking, batch_size)
         
-        print(f"topk_values: {topk_values}")
-        print(f"topk_ids: {topk_ids}")
+        # print(f"topk_values: {topk_values}")
+        # print(f"topk_ids: {topk_ids}")
         
         temperature = torch.tensor(0.5, device="cuda:0")
         topk_values = torch.softmax(topk_values / temperature, dim=-1)
-        print(f"topk_values after softmax: {topk_values}")
+        # print(f"topk_values after softmax: {topk_values}")
         
         blending_action_pool = actions[topk_ids]
-        print(f"actions: {actions}")
-        print(f"blending_action_pool: {blending_action_pool}")
+        # print(f"actions: {actions}")
+        # print(f"blending_action_pool: {blending_action_pool}")
         
         blending_action = torch.sum(blending_action_pool * topk_values.unsqueeze(-1), dim=0)
-        print(f"blending_action: {blending_action}")
+        # print(f"blending_action: {blending_action}")
         
         self._last_blending_action = blending_action
         
         batch_samples = self.replay_buf.get_samples(topk_ids)
-        print(f"batch_samples: {batch_samples}")
         
-        print(f"replay_buf name: {self.replay_buf.buf_name}")
+        t2 = time.time()
+        print(f"Sampling time: {t2 - t1} seconds")
+        # print(f"batch_samples: {batch_samples}")
+        
+        # print(f"replay_buf name: {self.replay_buf.buf_name}")
         
         return batch_samples
 

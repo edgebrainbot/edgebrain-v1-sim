@@ -60,20 +60,13 @@ def launch_setup(context, *args, **kwargs):
             [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
                                     'launch',
                                     'gz_sim.launch.py'])]),
-            # launch_arguments=[('gz_args', [' -r -v 4 empty.sdf'])],
-            # launch_arguments={
-            #     'gz_args': PathJoinSubstitution([
-            #     FindPackageShare(package_description),
-            #     'worlds',
-            #     'tugbot_warehouse.sdf'
-            # ])}.items()
             launch_arguments=[
                 ('gz_args', [
                     '-r -v 4 ',
                     PathJoinSubstitution([
                         FindPackageShare(pkg_gazebo),
                         'worlds',
-                        'test.world'
+                        'simple_indoor.world'
                     ])
                 ]),
             ],
@@ -124,6 +117,7 @@ def launch_setup(context, *args, **kwargs):
         executable="spawner",
         arguments=["edge_quadruped_controller", "--controller-manager", "/controller_manager"],
         parameters=[{'use_sim_time': True}],
+        remappings=[('odom', 'odom_sim')],
     )
 
     tf_to_map_node = Node(

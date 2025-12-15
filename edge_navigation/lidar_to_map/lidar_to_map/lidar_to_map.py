@@ -145,6 +145,8 @@ class LidarToLegodom(Node):
             
             # 变换: (4, 4) @ (N, 4).T = (4, N) -> (N, 4) -> 取前3列
             pts_transformed = (T @ pts_h.T).T[:, :3]
+
+            # pts_transformed[:, 0] = -pts_transformed[:, 0]  # X 轴取反以适应 leg_odom 坐标系
             
         except Exception as e:
             self.fail_count += 1
