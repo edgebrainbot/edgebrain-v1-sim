@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import os
+import time
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     RegisterEventHandler,
+    ExecuteProcess,
+    TimerAction,
 )
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -128,6 +131,41 @@ def generate_launch_description():
             'use_sim_time': True,
         }]
     )
+    
+    # === Goal Publisher Node ===
+    goal_publisher_node = Node(
+        package='edge_config', 
+        executable='goal_publisher_node',
+        name='goal_publisher',
+        namespace=namespace,
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'goal_x': 10.0,          # 目标 x 坐标
+            'goal_y': 5.0,           # 目标 y 坐标
+            'goal_z': 0.0,           # 目标 z 坐标
+            'publish_rate': 1.0,     # 发布频率 (Hz)
+            'goal_topic': '/goal_pose',  # 目标话题名称
+        }]
+    )
+
+    # === Publish goal point (one-shot) ===
+    goal = [2.5, 1.0, 0.0]
+    publish_goal_point = TimerAction(
+        period=5.0,  # Delay 5 seconds to wait for system ready
+        actions=[
+            ExecuteProcess(
+                cmd=[
+                    'ros2', 'topic', 'pub', '-r', '100',
+                    '/goal_point',
+                    'geometry_msgs/msg/PointStamped',
+                    f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'
+                ],
+                output='screen'
+            )
+        ]
+    )
+
 
     return LaunchDescription([
         # -- Launch Arguments --
@@ -143,4 +181,5 @@ def generate_launch_description():
         virtual_safety_indicator_node,
         
         # navigation_launch,
+        publish_goal_point,
     ])
