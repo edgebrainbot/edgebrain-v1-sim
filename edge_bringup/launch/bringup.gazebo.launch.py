@@ -131,28 +131,12 @@ def generate_launch_description():
             'use_sim_time': True,
         }]
     )
-    
-    # === Goal Publisher Node ===
-    goal_publisher_node = Node(
-        package='edge_config', 
-        executable='goal_publisher_node',
-        name='goal_publisher',
-        namespace=namespace,
-        output='screen',
-        parameters=[{
-            'use_sim_time': True,
-            'goal_x': 10.0,          # 目标 x 坐标
-            'goal_y': 5.0,           # 目标 y 坐标
-            'goal_z': 0.0,           # 目标 z 坐标
-            'publish_rate': 1.0,     # 发布频率 (Hz)
-            'goal_topic': '/goal_pose',  # 目标话题名称
-        }]
-    )
 
     # === Publish goal point (one-shot) ===
-    goal = [2.5, 1.0, 0.0]
+    # goal = [3.0, 0.0, 0.0]
+    goal = [20.0, 0.0, 0.0]
     publish_goal_point = TimerAction(
-        period=5.0,  # Delay 5 seconds to wait for system ready
+        period=1.0, 
         actions=[
             ExecuteProcess(
                 cmd=[
@@ -176,7 +160,7 @@ def generate_launch_description():
         # -- Launch Components --
         controller_launch,
         phy_teacher_launch,
-        # drl_student_launch,
+        drl_student_launch,
         trigger_launch,
         virtual_safety_indicator_node,
         

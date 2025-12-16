@@ -22,10 +22,10 @@ class ACTRCognitiveSampler(BaseSampler):
 
     def __init__(self, 
                  replay_buf: SoloReplayBuffer,
-                 obs_weight: float = 0.1,
-                 action_weight: float = 0.9,
-                 family_criteria: float = 100.0,
-                 family_number: int = 15,
+                 obs_weight: float = 0.9,
+                 action_weight: float = 0.1,
+                 family_criteria: float = 1.0,
+                 family_number: int = 30,
                  memory_decay_factor: float = -0.5,
                  fr_weight: float = 0.5,
                  sm_weight: float = 0.5,
@@ -76,9 +76,11 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"time_idx: {time_idx}")
         
         # TODO: 10w * 10w -> 1w * 1w (generate vector)
-        self.upper_triangular_matrix = torch.ones(self.replay_buf.size, 
-                                                  self.replay_buf.size,
-                                                  device=self.device)
+        # self.upper_triangular_matrix = torch.ones(self.replay_buf.size, 
+        #                                           self.replay_buf.size,
+        #                                           device=self.device)
+        self.upper_triangular_vector = torch.ones(self.replay_buf.size, 1, device=self.device)
+        
         # obs = dual_buf.stu_buf.obs[:dual_buf.stu_buf.size]
         # actions = dual_buf.stu_buf.actions[:dual_buf.stu_buf.size]
         # rewards = dual_buf.stu_buf.rewards[:dual_buf.stu_buf.size]
@@ -103,7 +105,14 @@ class ACTRCognitiveSampler(BaseSampler):
         compacted_tuple = self.obs_weight * squeezed_obs + self.action_weight * squeezed_actions
         # print(f"compacted_item: {compacted_tuple}")
         # print(f"rewards.squeeze(): {rewards.squeeze()}")
-        compacted_tuple = compacted_tuple * rewards.squeeze()
+        # print(f"compacted_item before reward weighting: {compacted_tuple}")
+        
+        # Apply reward weighting
+        rewards = torch.exp(rewards * 0.01)
+        # rewards = torch.softmax(rewards.squeeze(), dim=0)
+        
+        compacted_tuple *= rewards.squeeze()
+        # print(f"rewards after exp weighting: {rewards.squeeze()}")
         # print(f"compacted_item after reward weighting: {compacted_tuple}")
         
         family_ID = (compacted_tuple / self.family_criteria).floor()
@@ -120,7 +129,11 @@ class ACTRCognitiveSampler(BaseSampler):
             # print(f"family_freezing_i shape: {family_freezing_i.shape}")
             elementwise_fr_score_i = (time_idx + 1).pow(self.memory_decay_factor) * family_freezing_i  # This is elementwise multiplications. Indx indicate time difference;
             # print(f"elementwise_fr_score_i: {elementwise_fr_score_i}")
-            sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
+            # sum_fr_score_i_origin = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
+            sum_fr_score_i = elementwise_fr_score_i.sum() * self.upper_triangular_vector.squeeze()  # ********** KEY FIX **********
+            
+            # print(f"sum_fr_score_i_origin: {sum_fr_score_i_origin}")
+            # print(f"sum_fr_score_i before log: {sum_fr_score_i}")
             
             # Do the sum for the score:
             # sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 

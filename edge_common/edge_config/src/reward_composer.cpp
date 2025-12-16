@@ -131,5 +131,6 @@ double RewardComposer::lyapunov(const Eigen::VectorXd& err_prev,
     double v1 = sp.transpose() * P_ * sp;
     double v2 = sn.transpose() * P_ * sn;
 
-    return v1 - v2;
+    // return v1 - v2;
+    return -v2;
 }

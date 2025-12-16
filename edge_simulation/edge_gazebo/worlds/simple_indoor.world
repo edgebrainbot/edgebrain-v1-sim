@@ -63,10 +63,6 @@
       </link>
     </model>
 
-<include>
-      <uri>model://10by10</uri>
-    </include>
-
     <include>
       <uri>model://obstacle1</uri>
     </include>

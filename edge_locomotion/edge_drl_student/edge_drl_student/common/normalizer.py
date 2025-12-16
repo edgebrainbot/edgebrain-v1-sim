@@ -1,6 +1,8 @@
 import abc
 import torch
+import numpy as np
 import torch.nn as nn
+from collections import deque
 
 
 # ============================================================
@@ -153,3 +155,40 @@ class EmpiricalNormalizer(BaseNormalizer, nn.Module):
 
     def denormalize(self, x):
         return x * (self._std + self.eps) + self._mean
+
+
+class RewardNormalizerWindow:
+    """基于滑动窗口的奖励归一化"""
+    
+    def __init__(self, window_size=1000, clip_range=5.0):
+        """
+        Args:
+            window_size: 窗口大小
+            clip_range: 裁剪范围
+        """
+        self.window_size = window_size
+        self.clip_range = clip_range
+        self.rewards = deque(maxlen=window_size)
+        
+    def normalize(self, reward):
+        self.rewards.append(reward)
+        
+        if len(self.rewards) < 2:
+            return reward
+        
+        mean = np.mean(self.rewards)
+        std = np.std(self.rewards)
+        
+        if std > 1e-8:
+            normalized_reward = (reward - mean) / std
+        else:
+            normalized_reward = reward - mean
+        
+        if self.clip_range is not None:
+            normalized_reward = np.clip(
+                normalized_reward,
+                -self.clip_range,
+                self.clip_range
+            )
+        
+        return normalized_reward

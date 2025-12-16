@@ -16,13 +16,14 @@ from edge_drl_student.utils.utils import ActionMode
 from ament_index_python.packages import get_package_prefix
 from edge_msgs.msg import Transition, TrackingError, EdgeAction
 from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
+from edge_drl_student.common.normalizer import RewardNormalizerWindow
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-PROJECT_NAME = f"drl_student_{TIMESTAMP}"
+PROJECT_NAME = f"drl_student_cog_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
@@ -43,21 +44,25 @@ class DRLStudentNode(Node):
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
         
+        # Initialize Reward Normalizer
+        self.reward_normalizer = RewardNormalizerWindow(window_size=1000, clip_range=5.0)
+        
         # self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
-        #                                student_prefill_size=int(1e3),
+        #                                student_prefill_size=int(512),
         #                                teacher_buf_size=int(1e5), 
-        #                                teacher_prefill_size=int(1),
+        #                                teacher_prefill_size=int(50),
         #                                obs_dim=self.obs_dim, 
         #                                action_dim=self.act_dim, 
         #                                device=self.device)
-        self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e4), 
-                                            student_prefill_size=int(1e3),
-                                            teacher_buf_size=int(1e4), 
-                                            teacher_prefill_size=int(1),
+        self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e5), 
+                                            student_prefill_size=int(512),
+                                            teacher_buf_size=int(1e5), 
+                                            teacher_prefill_size=int(50),
                                             obs_dim=self.obs_dim, 
                                             action_dim=self.act_dim, 
                                             device=self.device)
         self.batch_size = 512
+        # self.batch_size = 256
         self.last_reload_time = 0.0
         self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
         
@@ -217,6 +222,33 @@ class DRLStudentNode(Node):
         if self.update_count % self.print_interval == 0:
             self.get_logger().info(f"Count: {self.update_count}, [Learner] Updated policy (actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})")
 
+
+    def normalize(self, reward):
+        """归一化奖励"""
+        self.current_episode_reward.append(reward)
+        
+        if len(self.current_episode_reward) < 2:
+            return reward
+        
+        # 计算窗口内的均值和标准差
+        mean = np.mean(self.current_episode_reward)
+        std = np.std(self.current_episode_reward)
+        
+        # 标准化
+        if std > 1e-8:
+            normalized_reward = (reward - mean) / std
+        else:
+            normalized_reward = reward - mean
+        
+        # 裁剪
+        if self.clip_range is not None:
+            normalized_reward = np.clip(
+                normalized_reward,
+                -self.clip_range,
+                self.clip_range
+            )
+        
+        return normalized_reward
 
 # ==========================================================
 # 🔹 Main

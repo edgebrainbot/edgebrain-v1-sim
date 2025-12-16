@@ -23,9 +23,6 @@ class CognitiveReplayBuffer(DualReplayBuffer):
                  device: str = "cpu",
                  ) -> None:
 
-        # if cognitive_sampler is None:
-        #     raise ValueError("Cognitive sampler must be provided for CognitiveReplayBuffer.")
-
         super().__init__(
             student_buf_size=student_buf_size,
             student_prefill_size=student_prefill_size,
@@ -47,8 +44,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             device=device
         )
         
-        self.stu_blending_weight = 0.5
-        self.tea_blending_weight = 0.5
+        self.stu_blending_weight = 0.7
+        self.tea_blending_weight = 0.3
         
         print("Initialized CognitiveReplayBuffer with cognitive samplers for both student and teacher buffers.")
 
@@ -85,6 +82,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
 
         # Batch size for PHY-Teacher Buffer
         tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
+        
+        tea_batch_size = 50
 
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size
