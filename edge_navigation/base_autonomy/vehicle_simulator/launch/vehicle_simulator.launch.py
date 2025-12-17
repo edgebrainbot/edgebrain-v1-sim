@@ -11,6 +11,7 @@ def generate_launch_description():
     # Declare launch arguments
     # -----------------------------
     args = [
+        DeclareLaunchArgument("use_sim_time", default_value="true"),
         DeclareLaunchArgument("sensorOffsetX", default_value="0.0"),
         DeclareLaunchArgument("sensorOffsetY", default_value="0.0"),
         DeclareLaunchArgument("vehicleHeight", default_value="0.366"),
@@ -68,6 +69,8 @@ def generate_launch_description():
             "smoothRateIncl": LaunchConfiguration("smoothRateIncl"),
             "InclFittingThre": LaunchConfiguration("InclFittingThre"),
             "maxIncl": LaunchConfiguration("maxIncl"),
+            
+            "use_sim_time": LaunchConfiguration("use_sim_time"),
         }]
     )
 

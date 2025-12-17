@@ -22,13 +22,14 @@ class ACTRCognitiveSampler(BaseSampler):
 
     def __init__(self, 
                  replay_buf: SoloReplayBuffer,
-                 obs_weight: float = 0.9,
-                 action_weight: float = 0.1,
-                 family_criteria: float = 1.0,
-                 family_number: int = 30,
+                 obs_weight: float = 0.99,
+                 action_weight: float = 0.01,
+                 family_criteria: float = 0.006,
+                 family_number: int = 55,
                  memory_decay_factor: float = -0.5,
                  fr_weight: float = 0.5,
                  sm_weight: float = 0.5,
+                 blending_size: int = 10,
                  device: str = "cpu"):
         
         self.replay_buf = replay_buf
@@ -38,6 +39,7 @@ class ACTRCognitiveSampler(BaseSampler):
         self.action_weight = action_weight
         self.family_number = family_number
         self.family_criteria = family_criteria
+        self.blending_size = blending_size
         self.memory_decay_factor = memory_decay_factor
         
         self.fr_weight = fr_weight     # frequency + recency weight
@@ -100,15 +102,17 @@ class ACTRCognitiveSampler(BaseSampler):
         squeezed_obs = torch.sqrt(obs[:,:].square().sum(dim=1))
         squeezed_actions = torch.sqrt(actions[:,:].square().sum(dim=1))
         # print(f"squeezed_obs: {squeezed_obs}")
-        # print(f"squeezed_actions: {squeezed_actions}")
+        #print(f"squeezed_actions: {squeezed_actions}")
 
         compacted_tuple = self.obs_weight * squeezed_obs + self.action_weight * squeezed_actions
         # print(f"compacted_item: {compacted_tuple}")
         # print(f"rewards.squeeze(): {rewards.squeeze()}")
         # print(f"compacted_item before reward weighting: {compacted_tuple}")
         
+        # print(f"rewards before exp weighting: {rewards.squeeze()}")
+        
         # Apply reward weighting
-        rewards = torch.exp(rewards * 0.01)
+        rewards = torch.exp(rewards * 0.1)
         # rewards = torch.softmax(rewards.squeeze(), dim=0)
         
         compacted_tuple *= rewards.squeeze()
@@ -167,24 +171,28 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"cog_sum: {cog_sum}")
         
         topk_values, topk_ids = torch.topk(cog_ranking, batch_size)
+        batch_samples = self.replay_buf.get_samples(topk_ids)
         
         # print(f"topk_values: {topk_values}")
         # print(f"topk_ids: {topk_ids}")
+
+        blending_topk_ids = topk_ids[:self.blending_size]
+        blending_topk_values = topk_values[:self.blending_size]  
         
-        temperature = torch.tensor(0.5, device="cuda:0")
-        topk_values = torch.softmax(topk_values / temperature, dim=-1)
+
+        temperature = torch.tensor(0.5, device=self.device)
+        blending_topk_values = torch.softmax(blending_topk_values / temperature, dim=-1)
         # print(f"topk_values after softmax: {topk_values}")
         
-        blending_action_pool = actions[topk_ids]
+        blending_action_pool = actions[blending_topk_ids]
         # print(f"actions: {actions}")
         # print(f"blending_action_pool: {blending_action_pool}")
         
-        blending_action = torch.sum(blending_action_pool * topk_values.unsqueeze(-1), dim=0)
+        blending_action = torch.sum(blending_action_pool * blending_topk_values.unsqueeze(-1), dim=0)
         # print(f"blending_action: {blending_action}")
         
         self._last_blending_action = blending_action
         
-        batch_samples = self.replay_buf.get_samples(topk_ids)
         
         t2 = time.time()
         print(f"Sampling time: {t2 - t1} seconds")

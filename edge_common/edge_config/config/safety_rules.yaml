@@ -21,17 +21,17 @@ safety_rules:
   # velocity limit in meters per second
   vx:
     index: 6
-    limit: 0.5
+    limit: 0.2
     unit: m/s
 
   # velocity limit in meters per second
   vy:
     index: 7
-    limit: 0.5
+    limit: 0.2
     unit: m/s
 
   # angular velocity limit in radians per second
   wz:
     index: 11
-    limit: 0.5
+    limit: 0.2
     unit: rad

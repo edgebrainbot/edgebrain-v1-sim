@@ -648,6 +648,7 @@ int main(int argc, char** argv)
   RCLCPP_INFO(nh->get_logger(), "Initialization complete.");
 
   rclcpp::Rate rate(100);
+//   rclcpp::Rate rate(1);
   bool status = rclcpp::ok();
   while (status) {
     rclcpp::spin_some(nh);

@@ -134,7 +134,7 @@ def generate_launch_description():
 
     # === Publish goal point (one-shot) ===
     # goal = [3.0, 0.0, 0.0]
-    goal = [20.0, 0.0, 0.0]
+    goal = [6.0, 0.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0, 
         actions=[
@@ -160,7 +160,7 @@ def generate_launch_description():
         # -- Launch Components --
         controller_launch,
         phy_teacher_launch,
-        drl_student_launch,
+        # drl_student_launch,
         trigger_launch,
         virtual_safety_indicator_node,
         

@@ -76,7 +76,7 @@ def generate_launch_description():
             "goalClearRange": 0.5,
             "goalX": LaunchConfiguration("goalX"),
             "goalY": LaunchConfiguration("goalY"),
-            # 'use_sim_time': True,
+            'use_sim_time': True,
         }],
         remappings=[
             ("/state_estimation", "/odom"),
@@ -97,8 +97,8 @@ def generate_launch_description():
             "pubSkipNum": 1,
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
             "lookAheadDis": 0.5,
-            "yawRateGain": 1.5,
-            # "yawRateGain": 1.0,
+            # "yawRateGain": 1.5,
+            "yawRateGain": 1.0,
             "stopYawRateGain": 1.5,
             "maxYawRate": 80.0,
             "maxSpeed": LaunchConfiguration("maxSpeed"),
@@ -125,7 +125,7 @@ def generate_launch_description():
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
             "is_real_robot": LaunchConfiguration("is_real_robot"),
-            # 'use_sim_time': True,
+            'use_sim_time': True,
         }],
         remappings=[
             ("/state_estimation", "/odom"),

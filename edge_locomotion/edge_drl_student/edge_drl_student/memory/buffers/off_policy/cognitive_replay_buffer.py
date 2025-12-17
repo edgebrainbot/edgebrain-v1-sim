@@ -44,8 +44,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             device=device
         )
         
-        self.stu_blending_weight = 0.7
-        self.tea_blending_weight = 0.3
+        self.stu_blending_weight = 0.1
+        self.tea_blending_weight = 0.9
         
         print("Initialized CognitiveReplayBuffer with cognitive samplers for both student and teacher buffers.")
 

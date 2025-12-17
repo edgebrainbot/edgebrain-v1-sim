@@ -23,7 +23,8 @@ from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import C
 
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-PROJECT_NAME = f"drl_student_cog_{TIMESTAMP}"
+# PROJECT_NAME = f"drl_student_dual_{TIMESTAMP}"
+PROJECT_NAME = f"drl_student_cognitive_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
@@ -70,7 +71,7 @@ class DRLStudentNode(Node):
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
             replay_buffer=self.buffer,
-            action_bound=(-1.0, 1.0),
+            action_bound=(-12.0, 12.0),
             device=self.device
         )
 
@@ -98,11 +99,12 @@ class DRLStudentNode(Node):
     def output_action(self):
         if isinstance(self.buffer, CognitiveReplayBuffer):
             blending_action = self.buffer.get_weighted_blended_action()
-            
-            return self.policy_action() * (1 - self.policy_blendering_weight) \
-                   + blending_action * self.policy_blendering_weight
+            # output_action = self.policy_action() * 5
+            output_action = self.policy_action() * 0.1 + blending_action * self.policy_blendering_weight
         else:
-            return self.policy_action()
+            output_action = self.policy_action() 
+
+        return output_action 
 
     def policy_action(self):
         return self.agent.act(torch.tensor(
