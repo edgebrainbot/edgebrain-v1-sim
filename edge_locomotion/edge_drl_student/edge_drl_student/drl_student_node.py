@@ -21,10 +21,11 @@ from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloRe
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 
+# RUN = 'cognitive'
+RUN = 'dual'
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-# PROJECT_NAME = f"drl_student_dual_{TIMESTAMP}"
-PROJECT_NAME = f"drl_student_cognitive_{TIMESTAMP}"
+PROJECT_NAME = f"drl_student_{RUN}_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
@@ -48,24 +49,29 @@ class DRLStudentNode(Node):
         # Initialize Reward Normalizer
         self.reward_normalizer = RewardNormalizerWindow(window_size=1000, clip_range=5.0)
         
-        # self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
-        #                                student_prefill_size=int(512),
-        #                                teacher_buf_size=int(1e5), 
-        #                                teacher_prefill_size=int(50),
-        #                                obs_dim=self.obs_dim, 
-        #                                action_dim=self.act_dim, 
-        #                                device=self.device)
-        self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e5), 
-                                            student_prefill_size=int(512),
-                                            teacher_buf_size=int(1e5), 
-                                            teacher_prefill_size=int(50),
-                                            obs_dim=self.obs_dim, 
-                                            action_dim=self.act_dim, 
-                                            device=self.device)
         self.batch_size = 512
         # self.batch_size = 256
         self.last_reload_time = 0.0
         self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
+        
+        if RUN == 'dual':
+            self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
+                                           student_prefill_size=int(self.batch_size),
+                                           teacher_buf_size=int(1e5), 
+                                           teacher_prefill_size=int(50),
+                                           obs_dim=self.obs_dim, 
+                                           action_dim=self.act_dim, 
+                                           device=self.device)
+        elif RUN == 'cognitive':
+            self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e5), 
+                                                student_prefill_size=int(self.batch_size),
+                                                teacher_buf_size=int(1e5), 
+                                                teacher_prefill_size=int(50),
+                                                obs_dim=self.obs_dim, 
+                                                action_dim=self.act_dim, 
+                                                device=self.device)
+        else:
+            raise ValueError(f"Unsupported RUN type: {RUN}")
         
         self.agent = DDPGAgent(
             obs_dim=self.obs_dim,

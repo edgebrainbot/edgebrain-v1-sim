@@ -29,7 +29,7 @@ class ACTRCognitiveSampler(BaseSampler):
                  memory_decay_factor: float = -0.5,
                  fr_weight: float = 0.5,
                  sm_weight: float = 0.5,
-                 blending_size: int = 10,
+                 blending_size: int = 80,  #good: 10, 20
                  device: str = "cpu"):
         
         self.replay_buf = replay_buf
