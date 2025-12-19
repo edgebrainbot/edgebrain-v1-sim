@@ -66,10 +66,20 @@ void StateTrotting::enter()
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::EdgeAction& latest_accel_,
                         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-                        double cmd_vx, double cmd_vy, double cmd_wz)
+                        double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY)
 {
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
+
+    // Robot position in global frame (x, y, yaw)
+    robot_pos_(0) = pos_body_(0);
+    robot_pos_(1) = pos_body_(1);
+    robot_pos_(2) = estimator_->getYaw();
+
+    // Goal position in global frame (x, y)
+    nav_goal_(0) = goalX;
+    nav_goal_(1) = goalY;
+
 
     std::cout << "Body pos: " << pos_body_.transpose() << std::endl;
     std::cout << "Body vel: " << vel_body_.transpose() << std::endl;
@@ -361,7 +371,12 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
     edge_msgs::msg::Transition transition;
     transition.obs = EigenToVector(last_tracking_error_);
     transition.action = EigenToVector(last_edge_action_);
-    transition.reward = reward_composer_.computeTotalReward(last_tracking_error_, tracking_error);
+    transition.reward = reward_composer_.computeTotalReward(
+        last_tracking_error_, 
+        tracking_error,
+        nav_goal_,
+        robot_pos_
+    );
     transition.next_obs = EigenToVector(tracking_error);
     transition.done = false;
     transition.action_mode = action_mode;

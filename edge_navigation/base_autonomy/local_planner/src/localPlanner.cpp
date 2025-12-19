@@ -81,10 +81,17 @@ bool autonomyMode = false;
 double autonomySpeed = 1.0;
 double joyToSpeedDelay = 2.0;
 double joyToCheckObstacleDelay = 5.0;
-double goalCloseDis = 1.0;
-double goalClearRange = 0.5;
+// double goalCloseDis = 1.0;
+// double goalClearRange = 0.5;
+
+double goalCloseDis = 0.2;
+double goalClearRange = 0.1;
+
 double goalX = 0;
 double goalY = 0;
+
+double globalGoalX = 0;
+double globalGoalY = 0;
 
 float joySpeed = 0;
 float joySpeedRaw = 0;
@@ -149,6 +156,7 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
   vehicleX = odom->pose.pose.position.x - cos(yaw) * sensorOffsetX + sin(yaw) * sensorOffsetY;
   vehicleY = odom->pose.pose.position.y - sin(yaw) * sensorOffsetX - cos(yaw) * sensorOffsetY;
   vehicleZ = odom->pose.pose.position.z;
+
 }
 
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
@@ -166,6 +174,10 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
       float pointX = point.x;
       float pointY = point.y;
       float pointZ = point.z;
+
+      std::cout << "laserCloudSize: " << laserCloudSize << std::endl;
+      std::cout << "Original point: (" << pointX << ", " << pointY << ", " << pointZ << ")" << std::endl;
+      std::cout << "intensity: " << point.intensity << std::endl;
 
       float dis = sqrt((pointX - vehicleX) * (pointX - vehicleX) + (pointY - vehicleY) * (pointY - vehicleY));
       if (dis < adjacentRange) {
@@ -249,6 +261,13 @@ void goalHandler(const geometry_msgs::msg::PointStamped::ConstSharedPtr goal)
 {
   goalX = goal->point.x;
   goalY = goal->point.y;
+}
+
+// New global goal handler
+void globalGoalHandler(const geometry_msgs::msg::PointStamped::ConstSharedPtr globalGoal)
+{
+  globalGoalX = globalGoal->point.x;
+  globalGoalY = globalGoal->point.y;
 }
 
 void speedHandler(const std_msgs::msg::Float32::ConstSharedPtr speed)
@@ -594,6 +613,8 @@ int main(int argc, char** argv)
 
   auto subGoal = nh->create_subscription<geometry_msgs::msg::PointStamped> ("/way_point", 5, goalHandler);
 
+  auto subGlobalGoal = nh->create_subscription<geometry_msgs::msg::PointStamped> ("/goal_point", 50, globalGoalHandler);    
+
   auto subSpeed = nh->create_subscription<std_msgs::msg::Float32>("/speed", 5, speedHandler);
 
   auto subBoundary = nh->create_subscription<geometry_msgs::msg::PolygonStamped>("/navigation_boundary", 5, boundaryHandler);
@@ -603,6 +624,13 @@ int main(int argc, char** argv)
   auto subCheckObstacle = nh->create_subscription<std_msgs::msg::Bool>("/check_obstacle", 5, checkObstacleHandler);
 
   auto pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 5);
+
+  auto pubMinObstacleDis = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_distance", 50);
+
+  auto goal_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/goal_distance", 50);
+
+  auto obstacle_reward_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_reward", 50);
+
   nav_msgs::msg::Path path;
 
   #if PLOTPATHSET == 1
@@ -648,7 +676,6 @@ int main(int argc, char** argv)
   RCLCPP_INFO(nh->get_logger(), "Initialization complete.");
 
   rclcpp::Rate rate(100);
-//   rclcpp::Rate rate(1);
   bool status = rclcpp::ok();
   while (status) {
     rclcpp::spin_some(nh);
@@ -681,13 +708,27 @@ int main(int argc, char** argv)
       float sinVehicleYaw = sin(vehicleYaw);
       float cosVehicleYaw = cos(vehicleYaw);
 
+
+      #define MAX_OBSTACLE_DISTANCE 1000
+      float safety_condition_obstacle = MAX_OBSTACLE_DISTANCE;
+
+      float obstacleReward = 0.0;   // cumulative obstacle reward
+
       pcl::PointXYZI point;
       plannerCloudCrop->clear();
       int plannerCloudSize = plannerCloud->points.size();
+      std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
+      
+      // Publish global goal distance for monitoring
+      goal_distance_pub_->publish(std_msgs::msg::Float32().set__data(
+        sqrt((globalGoalX - vehicleX) * (globalGoalX - vehicleX) + (globalGoalY - vehicleY) * (globalGoalY - vehicleY)))
+      );
+
       for (int i = 0; i < plannerCloudSize; i++) {
         float pointX1 = plannerCloud->points[i].x - vehicleX;
         float pointY1 = plannerCloud->points[i].y - vehicleY;
         float pointZ1 = plannerCloud->points[i].z - vehicleZ;
+
 
         point.x = pointX1 * cosVehicleYaw + pointY1 * sinVehicleYaw;
         point.y = -pointX1 * sinVehicleYaw + pointY1 * cosVehicleYaw;
@@ -695,12 +736,35 @@ int main(int argc, char** argv)
         point.intensity = plannerCloud->points[i].intensity;
 
         float dis = sqrt(point.x * point.x + point.y * point.y);
+
+        // Cumulative obstacle reward based on distance
+        obstacleReward += dis;
+
+        // Crop points within adjacent range and height limits
         if (dis < adjacentRange && ((point.z > minRelZ && point.z < maxRelZ) || useTerrainAnalysis)) {
           plannerCloudCrop->push_back(point);
+
+          // Update safety condition based on closest obstacle in boundary
+          if (dis < safety_condition_obstacle) {
+              safety_condition_obstacle = dis;
+          }
+          std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
+          pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
         }
       }
 
+      // Average obstacle reward
+      obstacleReward = obstacleReward / float(plannerCloudSize);
+      obstacleReward = -1.0 / obstacleReward;
+      std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
+      obstacle_reward_pub_->publish(std_msgs::msg::Float32().set__data(obstacleReward));
+
+
+      // TODO: stddev of obstacle distances can be calculated here for more robust reward
+
+
       int boundaryCloudSize = boundaryCloud->points.size();
+      std::cout << "Number of boundary points: " << boundaryCloudSize << std::endl;
       for (int i = 0; i < boundaryCloudSize; i++) {
         point.x = ((boundaryCloud->points[i].x - vehicleX) * cosVehicleYaw 
                 + (boundaryCloud->points[i].y - vehicleY) * sinVehicleYaw);
@@ -710,12 +774,22 @@ int main(int argc, char** argv)
         point.intensity = boundaryCloud->points[i].intensity;
 
         float dis = sqrt(point.x * point.x + point.y * point.y);
+
+        // Update safety condition based on closest obstacle in boundary
+        // if (dis < safety_condition_obstacle) {
+        //     safety_condition_obstacle = dis;
+        // }
+        // std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
+        // pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
+
         if (dis < adjacentRange) {
           plannerCloudCrop->push_back(point);
         }
       }
 
       int addedObstaclesSize = addedObstacles->points.size();
+      std::cout << "Number of added obstacles: " << addedObstaclesSize << std::endl;
+
       for (int i = 0; i < addedObstaclesSize; i++) {
         point.x = ((addedObstacles->points[i].x - vehicleX) * cosVehicleYaw 
                 + (addedObstacles->points[i].y - vehicleY) * sinVehicleYaw);
@@ -725,6 +799,7 @@ int main(int argc, char** argv)
         point.intensity = addedObstacles->points[i].intensity;
 
         float dis = sqrt(point.x * point.x + point.y * point.y);
+
         if (dis < adjacentRange) {
           plannerCloudCrop->push_back(point);
         }
@@ -736,10 +811,18 @@ int main(int argc, char** argv)
       float relativeGoalDis = adjacentRange;
 
       if (autonomyMode) {
+        
         float relativeGoalX = ((goalX - vehicleX) * cosVehicleYaw + (goalY - vehicleY) * sinVehicleYaw);
         float relativeGoalY = (-(goalX - vehicleX) * sinVehicleYaw + (goalY - vehicleY) * cosVehicleYaw);
-
         relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
+
+        // Publish relative goal distance for rewarding function
+        // pubRelativeGoalDis->publish(std_msgs::msg::Float32().set__data(relativeGoalDis));
+        // pubGoalXY->publish(geometry_msgs::msg::PointStamped().set__point(geometry_msgs::msg::Point().set__x(goalX).set__y(goalY).set__z(0.0)));
+        // std::cout << "Relative goal distance: " << relativeGoalDis << " m." << std::endl;
+        // std::cout << "goalX: " << goalX << ", goalY: " << goalY << std::endl;
+        // std::cout << "vehicleX: " << vehicleX << ", vehicleY: " << vehicleY << std::endl;
+
         joyDir = atan2(relativeGoalY, relativeGoalX) * 180 / PI;
 
         if (!twoWayDrive) {
@@ -767,6 +850,7 @@ int main(int argc, char** argv)
         float diameter = sqrt(vehicleLength / 2.0 * vehicleLength / 2.0 + vehicleWidth / 2.0 * vehicleWidth / 2.0);
         float angOffset = atan2(vehicleWidth, vehicleLength) * 180.0 / PI;
         int plannerCloudCropSize = plannerCloudCrop->points.size();
+        std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
         for (int i = 0; i < plannerCloudCropSize; i++) {
           float x = plannerCloudCrop->points[i].x / pathScale;
           float y = plannerCloudCrop->points[i].y / pathScale;

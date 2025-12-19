@@ -4,6 +4,7 @@
 #include "lmi_optimizer.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_config/safety_monitor.hpp"
@@ -19,6 +20,8 @@ public:
 
 private:
     void errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg);
+    void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
+    void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void lmiCallback();
 
     // For phy-teacher logistics
@@ -45,11 +48,18 @@ private:
     double roll_limit_rad_;
     double pitch_limit_rad_;
     double height_limit_;
+
+    double obstacle_distance_;
+    double goal_distance_;
+
     bool is_last_safe_ = true;
     std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
 
     rclcpp::Subscription<edge_msgs::msg::TrackingError>::SharedPtr sub_;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_subs_;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr goal_subs_;
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr pub_;
+    
     rclcpp::TimerBase::SharedPtr lmi_timer_;
 };
 

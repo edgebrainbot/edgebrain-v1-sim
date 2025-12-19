@@ -169,6 +169,18 @@ namespace edge::control::quadruped
                 std::cout << "latest_edge_action mode: " << edge::ToString(edge::ActionMode(latest_edge_action_.action_mode)) << std::endl;
             });
 
+            // Subscribe to goal point
+            goal_sub_ = get_node()->create_subscription<geometry_msgs::msg::PointStamped>(
+                "/goal_point", 100,
+                [this](const geometry_msgs::msg::PointStamped::SharedPtr msg) -> void
+            {
+                latest_goal_x_ = msg->point.x;
+                latest_goal_y_ = msg->point.y;
+                std::cout << "Received new goal from the trigger." << std::endl;
+                std::cout << "latest_edge_goal x: " << latest_goal_x_ << std::endl;
+                std::cout << "latest_edge_goal y: " << latest_goal_y_ << std::endl;
+            });
+
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
@@ -260,7 +272,9 @@ namespace edge::control::quadruped
                           transition_pub_, 
                           cmd_vx_, 
                           cmd_vy_, 
-                          cmd_wz_);
+                          cmd_wz_,
+                          latest_goal_x_, 
+                          latest_goal_y_);
             } else {
                 current_state_->run(time, period);
             }

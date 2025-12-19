@@ -48,6 +48,14 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
       std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
+    obstacle_subs_ = this->create_subscription<std_msgs::msg::Float32>("/obstacle_distance", 10,
+      std::bind(&PhyTeacher::obstacleDistanceCallback, this, std::placeholders::_1)
+    );
+
+    goal_subs_ = this->create_subscription<std_msgs::msg::Float32>("/goal_distance", 10,
+      std::bind(&PhyTeacher::goalDistanceCallback, this, std::placeholders::_1)
+    );
+
     pub_ = this->create_publisher<edge_msgs::msg::EdgeAction>("phy_teacher_action", 10);
 
     RCLCPP_INFO(this->get_logger(), "Phy-Teacher Safety Controller Node initialized.");
@@ -69,12 +77,23 @@ void PhyTeacher::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr ms
     got_msg_ = true;
 }
 
+
+void PhyTeacher::obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg) {
+    // Update obstacle distances
+    obstacle_distance_ = msg->data;
+}
+
+void PhyTeacher::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg) {
+    // Update goal distances
+    goal_distance_ = msg->data;
+}
+
 void PhyTeacher::lmiCallback() {
     // Only proceed if a new message has been received
     if (!got_msg_) return;
 
     auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
-    bool is_current_safe = safety_monitor_->evaluateSafety(err_state_);
+    bool is_current_safe = safety_monitor_->evaluateSafety(err_state_, obstacle_distance_, goal_distance_);
 
     // If teacher is not active
     if (!teacher_active_) {

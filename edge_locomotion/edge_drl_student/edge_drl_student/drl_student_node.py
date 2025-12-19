@@ -4,6 +4,7 @@ import os
 import time
 import rclpy
 import random
+import std_msgs.msg
 import torch
 import numpy as np
 import torch.nn as nn
@@ -21,8 +22,8 @@ from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloRe
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 
-# RUN = 'cognitive'
-RUN = 'dual'
+RUN = 'cognitive'
+# RUN = 'dual'
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 PROJECT_NAME = f"drl_student_{RUN}_{TIMESTAMP}"
@@ -86,6 +87,10 @@ class DRLStudentNode(Node):
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
         self.create_subscription(TrackingError, 'tracking_error', self.tracking_error_callback, 10)
 
+        self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
+
+        self.obstacle_reward = 0.0
+
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
         self.learn_timer = self.create_timer(1.0, self.learn_step)    # Learning weights updates
@@ -133,6 +138,11 @@ class DRLStudentNode(Node):
 
         # self.get_logger().info(f"[Action] Published action (r={msg.action:.3f})")
 
+    def obstacle_reward_callback(self, msg: std_msgs.msg.Float32):
+        # self.get_logger().info(f"[ObstacleReward] Received obstacle reward: {msg.data}")
+        self.obstacle_reward = msg.data
+        # print(f"[ObstacleReward] Updated obstacle reward: {self.obstacle_reward}")
+
     def transition_callback(self, msg: Transition):
         # print(f"Received transition: {msg}")
         t = self.buffer.to_transition(
@@ -146,6 +156,7 @@ class DRLStudentNode(Node):
 
         # Update episode statistics
         self.current_episode_reward += msg.reward
+        self.current_episode_reward += self.obstacle_reward  # Adding obstacle reward
         self.current_episode_length += 1
 
         # Logging stepwise reward

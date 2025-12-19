@@ -43,7 +43,7 @@ public:
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, edge_msgs::msg::EdgeAction &latest_accel, 
              rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-             double cmd_vx, double cmd_vy, double cmd_wz);
+             double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY);
 
     void exit() override;
 
@@ -120,6 +120,10 @@ private:
     // Gain parameters
     std::vector<double> swing_gains_;
     std::vector<double> stable_gains_;
+
+    // For reward calculation
+    Vec2 nav_goal_;
+    Vec3 robot_pos_;
 
     // rclcpp::Publisher<phy_teacher_interfaces::msg::TrackingError>::SharedPtr pub_;
     // rclcpp::Subscription<phy_teacher_interfaces::msg::ControlGains>::SharedPtr sub_gain_;

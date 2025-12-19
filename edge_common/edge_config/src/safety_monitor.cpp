@@ -108,7 +108,9 @@ double SafetyMonitor::convertLimit(double raw, const std::string& unit)
     return raw; 
 }
 
-bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState)
+bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState, 
+                                   double obstacle_distance, 
+                                   double goal_distance)
 {
     if (errorState.size() < 12) {
         throw std::runtime_error("ErrorState too small in evaluateSafety()");
@@ -118,6 +120,27 @@ bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState)
     bool is_safe = true;
 
     for (const auto& r : rules_) {
+
+        if (r.index == -1) {
+            // Special case: obstacle distance
+            if (r.name == "obstacle_distance" && obstacle_distance < r.limit) {
+                is_safe = false;
+                violation_reasons_.push_back(
+                    r.name + ": " + std::to_string(obstacle_distance) + " < " + 
+                    std::to_string(r.limit) + " (" + r.unit + ")"
+                );
+            }
+            // Special case: goal distance
+            if (r.name == "goal_distance" && goal_distance < r.limit) {
+                is_safe = false;
+                violation_reasons_.push_back(
+                    r.name + ": " + std::to_string(goal_distance) + " < " + 
+                    std::to_string(r.limit) + " (" + r.unit + ")"
+                );
+            }
+            continue;
+        }
+
         double v = errorState[r.index];
         if (std::abs(v) > r.limit) {
             is_safe = false;

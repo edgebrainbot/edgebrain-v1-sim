@@ -28,7 +28,7 @@ class SafetyMonitor
 public:
     explicit SafetyMonitor(const std::string& yaml_path="");
 
-    bool evaluateSafety(const std::vector<double>& errorState);
+    bool evaluateSafety(const std::vector<double>& errorState, double obstacle_distance, double goal_distance);
 
 private:
     std::vector<SafetyRule> rules_;

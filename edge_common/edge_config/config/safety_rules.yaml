@@ -35,3 +35,16 @@ safety_rules:
     index: 11
     limit: 0.2
     unit: rad
+
+
+  # distance limit to obstacles in meters (reference to local planner)
+  obstacle_distance:
+    index: -1   # -1 means not used
+    limit: 0.2
+    unit: m
+
+  # distance limit to goal in meters (reference to global planner)
+  goal_distance:
+    index: -1   # -1 means not used
+    limit: 1.0
+    unit: m

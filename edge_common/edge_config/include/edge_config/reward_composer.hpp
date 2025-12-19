@@ -37,7 +37,9 @@ public:
     // Compute total reward (scalar only)
     double computeTotalReward(
         const Eigen::VectorXd& err_prev,     // 12D tracking error
-        const Eigen::VectorXd& err_next     // 12D tracking error next
+        const Eigen::VectorXd& err_next,     // 12D tracking error next
+        const Eigen::VectorXd& goal,         // 3D goal position
+        const Eigen::VectorXd& vehicle_pos    // 3D vehicle position
         // int is_fail,                          // 0 or 1
         // const Eigen::VectorXd& delta_action, // action_t - action_(t-1)
         // double forward_speed,
@@ -57,13 +59,18 @@ private:
     double orientation_tracking(const Eigen::VectorXd& err);
     double height_tracking(const Eigen::VectorXd& err);
     double jerky_action(const Eigen::VectorXd& delta_action);
-    double forward_speed_rew(double speed);
-    double body_contact_rew(double c);
+    double forward_speed(double speed);
+    double body_contact(double c);
     double energy_consumption(double en);
     double upright(double gz);
 
     double lyapunov(
         const Eigen::VectorXd& err_prev,
         const Eigen::VectorXd& err_next
+    );
+
+    double goal_distance(
+        const Eigen::VectorXd& goal, 
+        const Eigen::VectorXd& vehicle_pos
     );
 };

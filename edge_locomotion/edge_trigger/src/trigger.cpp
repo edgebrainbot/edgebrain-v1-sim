@@ -25,7 +25,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     last_teacher_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial action
     is_last_state_safe_ = true;      // initial alert state
 
-    // Subscribers (state, teacher action, student action)
+    // Subscribers (state, teacher action, student action, obstacle distance)
     sub_error_ = this->create_subscription<edge_msgs::msg::TrackingError>(
         "tracking_error", 50, std::bind(&Trigger::errorCallback, this, _1));
 
@@ -34,6 +34,12 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
     sub_student_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
         "drl_student_action", 50, std::bind(&Trigger::studentCallback, this, _1));
+
+    sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
+        "/obstacle_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
+
+    sub_goal_distance_ = this->create_subscription<std_msgs::msg::Float32>(
+        "/goal_distance", 50, std::bind(&Trigger::goalDistanceCallback, this, _1));
 
     // Publishers (for alert and terminal action)
     pub_alert_ = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
@@ -61,11 +67,23 @@ void Trigger::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg)
     //             last_error_state_[0], last_error_state_[1], last_error_state_[2]);
 }
 
+void Trigger::obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
+{
+    // Placeholder for distance callback
+    obstacle_distance_ = msg->data;
+}
+
+void Trigger::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
+{
+    // Placeholder for distance callback
+    goal_distance_ = msg->data;
+}
+
 // -------------------- Main periodic update --------------------
 void Trigger::updateLoop()
 {
     std::vector<double> v(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-    bool is_safe = safety_monitor_->evaluateSafety(v);
+    bool is_safe = safety_monitor_->evaluateSafety(v, obstacle_distance_, goal_distance_);
 
     if (print_processing_)
     {

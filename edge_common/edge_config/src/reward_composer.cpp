@@ -39,7 +39,9 @@ RewardComposer::RewardComposer(const std::string& yaml_path)
 
 double RewardComposer::computeTotalReward(
     const Eigen::VectorXd& err_prev,
-    const Eigen::VectorXd& err_next
+    const Eigen::VectorXd& err_next,
+    const Eigen::VectorXd& goal,
+    const Eigen::VectorXd& robot_pos
     // int is_fail,
     // const Eigen::VectorXd& delta_action,
     // double forward_speed,
@@ -55,6 +57,14 @@ double RewardComposer::computeTotalReward(
 
         double r = 0.0;
 
+        /// TODO: Add obstacle distance reward
+        // float obstacleDistanceReward = 0.0;
+        // if (safety_condition_obstacle < obstacle_distance_limit) {
+        //     obstacleDistanceReward = -1 * (obstacle_distance_limit - safety_condition_obstacle);
+        // } else {
+        //     obstacleDistanceReward = 0.0;
+        // }
+
         // if (key == "fall_down") r = fall_down(is_fail);
         if (key == "lin_vel_tracking") r = lin_vel_tracking(err_prev);
         else if (key == "ang_vel_tracking") r = ang_vel_tracking(err_prev);
@@ -66,6 +76,8 @@ double RewardComposer::computeTotalReward(
         // else if (key == "energy_consumption") r = energy_consumption(energy);
         // else if (key == "upright") r = upright(grav_z);
         else if (key == "lyapunov") r = lyapunov(err_prev, err_next);
+        else if (key == "goal_distance") r = goal_distance(goal, robot_pos);
+        // else if (key == "obstacle_distance") r = obstacle_distance(obstacleDistanceReward);
 
         // else {
         //     std::cout << "[RewardComposer] Unknown reward key: " << key << "\n";
@@ -106,11 +118,11 @@ double RewardComposer::jerky_action(const Eigen::VectorXd& delta_action) {
     return delta_action.sum();
 }
 
-double RewardComposer::forward_speed_rew(double speed) {
+double RewardComposer::forward_speed(double speed) {
     return speed;
 }
 
-double RewardComposer::body_contact_rew(double c) {
+double RewardComposer::body_contact(double c) {
     return -c;
 }
 
@@ -133,4 +145,21 @@ double RewardComposer::lyapunov(const Eigen::VectorXd& err_prev,
 
     // return v1 - v2;
     return -v2;
+}
+
+
+double RewardComposer::goal_distance(const Eigen::VectorXd& goal, const Eigen::VectorXd& robot_pos) {
+    
+    // Read Glboal Goal (goalX, goalY) and Robot Position (robotX, robotY, robotYaw)
+    auto goalX = goal(0);
+    auto goalY = goal(1);
+    auto robotX = robot_pos(0);
+    auto robotY = robot_pos(1);
+    auto robotYaw = robot_pos(2);
+
+    // Calculate the relative goal position in the vehicle's local frame
+    float relativeGoalX = ((goalX - robotX) * cos(robotYaw) + (goalY - robotY) * sin(robotYaw));
+    float relativeGoalY = (-(goalX - robotX) * sin(robotYaw) + (goalY - robotY) * cos(robotYaw));
+
+    return -1 * (relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
 }

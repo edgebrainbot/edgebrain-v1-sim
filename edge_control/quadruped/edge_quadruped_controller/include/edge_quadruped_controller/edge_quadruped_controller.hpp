@@ -18,6 +18,8 @@
 #include <controller_common/common/enumClass.h>
 #include <controller_common/common/mathTypes.h>
 
+#include <geometry_msgs/msg/point_stamped.hpp>
+
 namespace edge::control::quadruped
 {
     struct CtrlComponent;
@@ -173,6 +175,10 @@ namespace edge::control::quadruped
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
+        rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
+
+        double latest_goal_x_ = 0.0;
+        double latest_goal_y_ = 0.0;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
         // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)

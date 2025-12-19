@@ -16,7 +16,10 @@ reward:
   # ang_vel_tracking: 5
   # orientation_tracking: 80
   # height_tracking: 50
+  
+  goal_distance: 1
   lyapunov: 100
+
   # distance_to_wp: 50
   # reach_wp: 100
   # reach_goal: 500
