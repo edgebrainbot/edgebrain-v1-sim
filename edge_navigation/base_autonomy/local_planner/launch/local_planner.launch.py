@@ -19,7 +19,7 @@ def generate_launch_description():
         DeclareLaunchArgument("maxSpeed", default_value="1.0"),
         DeclareLaunchArgument("autonomyMode", default_value="true"),
         # DeclareLaunchArgument("autonomySpeed", default_value="1.0"),
-        DeclareLaunchArgument("autonomySpeed", default_value="0.8"),
+        DeclareLaunchArgument("autonomySpeed", default_value="0.7"),
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
         DeclareLaunchArgument("goalCloseDis", default_value="0.2"),
         DeclareLaunchArgument("goalX", default_value="0.0"),

@@ -43,7 +43,7 @@ double RewardComposer::computeTotalReward(
     const Eigen::VectorXd& err_next,
     const Eigen::VectorXd& goal,
     const Eigen::VectorXd& robot_pos,
-    const Eigen::VectorXd& state
+    const Eigen::VectorXd& robot_state
     // int is_fail,
     // const Eigen::VectorXd& delta_action,
     // double forward_speed,
@@ -78,7 +78,7 @@ double RewardComposer::computeTotalReward(
         // else if (key == "energy_consumption") r = energy_consumption(energy);
         // else if (key == "upright") r = upright(grav_z);
         else if (key == "lyapunov") r = lyapunov(err_prev, err_next);
-        else if (key == "state") r = body_state(state);
+        else if (key == "body_state") r = body_state(robot_state);
         else if (key == "goal_distance") r = goal_distance(goal, robot_pos);
         // else if (key == "obstacle_distance") r = obstacle_distance(obstacleDistanceReward);
 
@@ -151,19 +151,10 @@ double RewardComposer::lyapunov(const Eigen::VectorXd& err_prev,
 }
 
 
-double RewardComposer::body_state(const Eigen::VectorXd& state) 
+double RewardComposer::body_state(const Eigen::VectorXd& errState) 
 {
-    // Eigen::VectorXd s = state.tail(12);
-
-    Eigen::VectorXd studentGoal = Eigen::VectorXd::Zero(12);
-    studentGoal(2) = 0.35;  // desired height
-    studentGoal(6) = 0.8;   // desired forward velocity
-
-    auto tracking_error = state - studentGoal;
-    double res = tracking_error.transpose() * I_ * tracking_error;
-
+    double res = errState.transpose() * I_ * errState;
     return -res;
-
 }
 
 

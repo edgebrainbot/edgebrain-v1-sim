@@ -17,9 +17,9 @@ reward:
   # orientation_tracking: 80
   # height_tracking: 50
   
-  goal_distance: 1
+  goal_distance: 5
   # lyapunov: 100
-  state: 0.1
+  body_state: 0.1
 
   # distance_to_wp: 50
   # reach_wp: 100

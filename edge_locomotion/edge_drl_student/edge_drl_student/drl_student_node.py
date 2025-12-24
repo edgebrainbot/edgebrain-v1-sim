@@ -45,15 +45,14 @@ class DRLStudentNode(Node):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         
-        
         self.RESIDUAL_GAIN = torch.tensor([
-            [100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 70.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0, 0.0],
+            [100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 0.0, 0.0, 0.0, 0.0, 0.0, 100.0]
-        ], dtype=torch.float32, device=self.device)
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        ], dtype=torch.float32, device=self.device) * -0.1
 
 
         self.body_state_dim = 12  # Example dimension for body state
@@ -110,7 +109,7 @@ class DRLStudentNode(Node):
         self.action_pub = self.create_publisher(EdgeAction, 'drl_student_action', 10)
         self.learned_action_pub = self.create_publisher(EdgeAction, 'drl_student_learned_action', 10)
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
-        self.create_subscription(TrackingError, 'tracking_error', self.tracking_error_callback, 10)
+        self.create_subscription(TrackingError, 'tracking_error_stu', self.tracking_error_callback, 10)
         self.create_subscription(PointCloud2, '/registered_scan', self.pointcloud_callback, 10)
         self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
 
@@ -118,7 +117,7 @@ class DRLStudentNode(Node):
 
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
-        self.learn_timer = self.create_timer(1.0, self.learn_step)    # Learning weights updates
+        self.learn_timer = self.create_timer(0.5, self.learn_step)    # Learning weights updates
         
         # Statistical variables
         self.update_count = 0
@@ -136,14 +135,14 @@ class DRLStudentNode(Node):
         x = torch.log(self.mat_base_vec) * 0.0001
         
         self.vis_feature_mat = torch.vander(x, N=8, increasing=True).T.to(self.device)
-        self.curr_body_state = torch.zeros(self.body_state_dim, device=self.device)
+        self.stu_tracking_error = torch.zeros(self.body_state_dim, device=self.device)
         
         self.get_logger().info("✅ DRLStudent Node initialized")
 
 
     def output_action(self):
         
-        residual_action = self.RESIDUAL_GAIN @ self.curr_body_state.unsqueeze(-1)
+        residual_action = self.RESIDUAL_GAIN @ self.stu_tracking_error.unsqueeze(-1)
         residual_action = residual_action.flatten() 
         print(f"residual_action: {residual_action}")
         
@@ -153,7 +152,8 @@ class DRLStudentNode(Node):
         else:
             drl_action = self.policy_action() 
             
-        output_action = drl_action * 1.0 + residual_action * 0.15   # Add residual action
+        output_action = drl_action * 1.0 + residual_action   # Add residual action
+        # output_action = drl_action   # Add residual action
         
         return output_action, drl_action 
 
@@ -256,7 +256,7 @@ class DRLStudentNode(Node):
     def transition_callback(self, msg: Transition):
         # print(f"Received transition: {msg}")
         
-        self.curr_body_state = torch.tensor(msg.obs,
+        self.stu_tracking_error = torch.tensor(msg.obs,
             dtype=torch.float32,
             device=self.device
         )

@@ -113,11 +113,11 @@ private:
     Mat3 Kp_swing_, Kd_swing_;
     Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
 
-    Vec12 last_tracking_error_;
-    Vec12 curr_tracking_error_;
+    Vec12 last_tracking_error_tea_;
+    Vec12 curr_tracking_error_tea_;
 
-    Vec12 last_robot_state_;
-    Vec12 curr_robot_state_;
+    Vec12 last_tracking_error_stu_;
+    Vec12 curr_tracking_error_stu_;
 
     Vec6 last_edge_action_;
     Vec6 curr_edge_action_;

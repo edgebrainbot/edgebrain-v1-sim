@@ -18,14 +18,14 @@ safety_rules:
   roll:   
     type: relative
     index: 3
-    limit: 5.0
+    limit: 10.0
     unit: deg
 
-  # pitch limit in degrees (relative mode)
+  # # pitch limit in degrees (relative mode)
   pitch:
     type: relative
     index: 4
-    limit: 5.0
+    limit: 10.0
     unit: deg
 
   # height limit in meters (relative mode)
@@ -35,32 +35,53 @@ safety_rules:
     limit: 0.06   # (original 0.08)
     unit: m
 
-  # velocity limit in meters per second (relative mode)
-  vx:
+  # vertical velocity limit in meters per second (relative mode)
+  vz:
     type: relative
-    index: 6
-    limit: 1.3
+    index: 8
+    limit: 0.2
     unit: m/s
 
-  # velocity limit in meters per second (relative mode)
-  vy:
+  # roll_rate limit in degrees per second (relative mode)
+  wx:
     type: relative
-    index: 7
-    limit: 1.2
-    unit: m/s
+    index: 9
+    limit: 5.0
+    unit: deg/s
+  
+  # pitch_rate limit in degrees per second (relative mode)
+  wy:
+    type: relative
+    index: 10
+    limit: 5.0
+    unit: deg/s
 
-  # angular velocity limit in radians per second (relative mode)
-  wz:
-    type: relative
-    index: 11
-    limit: 1.2
-    unit: rad/s
+  # velocity limit in meters per second (relative mode)
+  # vx:
+  #   type: relative
+  #   index: 6
+  #   limit: 1.3
+  #   unit: m/s
+
+  # # velocity limit in meters per second (relative mode)
+  # vy:
+  #   type: relative
+  #   index: 7
+  #   limit: 1.2
+  #   unit: m/s
+
+  # # angular velocity limit in radians per second (relative mode)
+  # wz:
+  #   type: relative
+  #   index: 11
+  #   limit: 1.2
+  #   unit: rad/s
 
   # distance limit to obstacles in meters (reference to local planner)
   obstacle_distance:
     type: relative
     index: -1   # -1 means not used for errorState
-    limit: 0.2
+    limit: 0.25
     unit: m
 
   # =========================================================
