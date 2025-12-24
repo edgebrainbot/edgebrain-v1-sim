@@ -39,7 +39,8 @@ public:
         const Eigen::VectorXd& err_prev,     // 12D tracking error
         const Eigen::VectorXd& err_next,     // 12D tracking error next
         const Eigen::VectorXd& goal,         // 3D goal position
-        const Eigen::VectorXd& vehicle_pos    // 3D vehicle position
+        const Eigen::VectorXd& vehicle_pos,    // 3D vehicle position
+        const Eigen::VectorXd& state
         // int is_fail,                          // 0 or 1
         // const Eigen::VectorXd& delta_action, // action_t - action_(t-1)
         // double forward_speed,
@@ -51,6 +52,7 @@ public:
 private:
     std::unordered_map<std::string, double> scales_;
     Eigen::MatrixXd P_;   // Lyapunov
+    Eigen::MatrixXd I_;   // Identity
 
     // Reward funcs return double now
     double fall_down(int is_fail);
@@ -63,6 +65,8 @@ private:
     double body_contact(double c);
     double energy_consumption(double en);
     double upright(double gz);
+
+    double body_state(const Eigen::VectorXd& state);
 
     double lyapunov(
         const Eigen::VectorXd& err_prev,

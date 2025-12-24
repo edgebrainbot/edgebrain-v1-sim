@@ -161,6 +161,8 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
 
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
 {
+  
+  std::cout << "---------- laserCloudHandler called ---------" << std::endl;
   if (!useTerrainAnalysis) {
     laserCloud->clear();
     pcl::fromROSMsg(*laserCloud2, *laserCloud);
@@ -168,12 +170,19 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
     pcl::PointXYZI point;
     laserCloudCrop->clear();
     int laserCloudSize = laserCloud->points.size();
+
+    std::cout << "---------- Received laser cloud with size: ---------" << laserCloudSize << std::endl;
+    // pubLaserCloudSize->publish(std_msgs::msg::Float32().set__data(float(laserCloudSize)));
+
     for (int i = 0; i < laserCloudSize; i++) {
       point = laserCloud->points[i];
 
       float pointX = point.x;
       float pointY = point.y;
       float pointZ = point.z;
+
+      /// TODO: send to drl-student for processing as input
+      // laserCloudStudent->push_back(point);
 
       std::cout << "laserCloudSize: " << laserCloudSize << std::endl;
       std::cout << "Original point: (" << pointX << ", " << pointY << ", " << pointZ << ")" << std::endl;
@@ -602,6 +611,8 @@ int main(int argc, char** argv)
   nh->get_parameter("goalClearRange", goalClearRange);
   nh->get_parameter("goalX", goalX);
   nh->get_parameter("goalY", goalY);
+
+  auto pubLaserCloudSize = nh->create_publisher<std_msgs::msg::Float32>("/laser_cloud_size", 5);
 
   auto subOdometry = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odometryHandler);
 

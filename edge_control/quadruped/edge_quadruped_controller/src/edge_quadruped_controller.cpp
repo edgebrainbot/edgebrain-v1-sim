@@ -185,6 +185,10 @@ namespace edge::control::quadruped
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
 
+            // Publisher for tracking error of DRL student
+            tracking_error_stu_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
+                topic_ns_ + "/tracking_error_stu", 100);
+
             // Publisher for experience
             transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
                 topic_ns_ + "/transition", 100);
@@ -269,12 +273,9 @@ namespace edge::control::quadruped
             if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
                 trot->run(time, period, latest_edge_action_, 
                           tracking_error_pub_, 
+                          tracking_error_stu_pub_,
                           transition_pub_, 
-                          cmd_vx_, 
-                          cmd_vy_, 
-                          cmd_wz_,
-                          latest_goal_x_, 
-                          latest_goal_y_);
+                          cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_);
             } else {
                 current_state_->run(time, period);
             }

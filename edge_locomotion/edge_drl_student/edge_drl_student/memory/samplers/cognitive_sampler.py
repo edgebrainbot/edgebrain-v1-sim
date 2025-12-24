@@ -195,7 +195,7 @@ class ACTRCognitiveSampler(BaseSampler):
         
         
         t2 = time.time()
-        print(f"Sampling time: {t2 - t1} seconds")
+        # print(f"Sampling time: {t2 - t1} seconds")
         # print(f"batch_samples: {batch_samples}")
         
         # print(f"replay_buf name: {self.replay_buf.buf_name}")

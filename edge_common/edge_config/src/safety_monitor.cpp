@@ -69,25 +69,47 @@ void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
         std::string name = it->first.as<std::string>();
         YAML::Node node = it->second;
 
-        int index        = node["index"].as<int>();
-        double raw_limit = node["limit"].as<double>();
+        int index = node["index"].as<int>();
         std::string unit = node["unit"].as<std::string>();
-
-        double converted_limit = convertLimit(raw_limit, unit);
-
-        rules_.push_back({
-        name,
-        index,
-        converted_limit,
-        unit
-        });
+        
+        // Determine rule type (default: relative)
+        std::string type_str = node["type"] ? node["type"].as<std::string>() : "relative";
+        RuleType type = (type_str == "absolute") ? RuleType::ABSOLUTE : RuleType::RELATIVE;
+        
+        SafetyRule rule;
+        rule.name = name;
+        rule.index = index;
+        rule.unit = unit;
+        rule.type = type;
+        rule.limit = 0.0;
+        rule.lower = 0.0;
+        rule.upper = 0.0;
+        
+        if (type == RuleType::RELATIVE) {
+            // Relative mode: |x| <= limit
+            double raw_limit = node["limit"].as<double>();
+            rule.limit = convertValue(raw_limit, unit);
+        } else if (type == RuleType::ABSOLUTE) {
+            // Absolute mode: lower < x < upper
+            if (!node["bound"] || !node["bound"].IsSequence() || node["bound"].size() != 2) {
+                throw std::runtime_error("Absolute rule '" + name + "' requires 'bound: [lower, upper]'");
+            }
+            double raw_lower = node["bound"][0].as<double>();
+            double raw_upper = node["bound"][1].as<double>();
+            rule.lower = convertValue(raw_lower, unit);
+            rule.upper = convertValue(raw_upper, unit);
+        } else {
+            throw std::runtime_error("Unknown rule type for rule '" + name + "'");
+        }
+        
+        rules_.push_back(rule);
     }
 }
 
 /**
- * Convert the user-provided limit to internal value (always SI)
+ * Convert the user-provided value to internal value (always SI)
  */
-double SafetyMonitor::convertLimit(double raw, const std::string& unit)
+double SafetyMonitor::convertValue(double raw, const std::string& unit)
 {
     if (unit == "deg") {
         return raw * M_PI / 180.0; // convert to rad
@@ -108,18 +130,23 @@ double SafetyMonitor::convertLimit(double raw, const std::string& unit)
     return raw; 
 }
 
-bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState, 
-                                   double obstacle_distance, 
+bool SafetyMonitor::evaluateSafety(RuleType ruleType,
+                                   const std::vector<double>& state,
+                                   double obstacle_distance,
                                    double goal_distance)
 {
-    if (errorState.size() < 12) {
-        throw std::runtime_error("ErrorState too small in evaluateSafety()");
+    if (state.size() < 12) {
+        throw std::runtime_error("State vector too small in evaluateSafety()");
     }
 
     violation_reasons_.clear();
     bool is_safe = true;
 
     for (const auto& r : rules_) {
+        // Only check rules matching the specified type
+        if (r.type != ruleType) {
+            continue;
+        }
 
         if (r.index == -1) {
             // Special case: obstacle distance
@@ -141,14 +168,31 @@ bool SafetyMonitor::evaluateSafety(const std::vector<double>& errorState,
             continue;
         }
 
-        double v = errorState[r.index];
-        if (std::abs(v) > r.limit) {
-            is_safe = false;
-
-            violation_reasons_.push_back(
-                r.name + ": " + std::to_string(v) + " > " + 
-                std::to_string(r.limit) + " (" + r.unit + ")"
-            );
+        double v = state[r.index];
+        
+        if (r.type == RuleType::RELATIVE) {
+            // Relative mode: |error_x| <= limit
+            // state is errorState (already contains error/deviation)
+            if (std::abs(v) > r.limit) {
+                is_safe = false;
+                violation_reasons_.push_back(
+                    r.name + ": |" + std::to_string(v) + "| = " + 
+                    std::to_string(std::abs(v)) + " > " + 
+                    std::to_string(r.limit) + " (" + r.unit + ")"
+                );
+            }
+        } else if (r.type == RuleType::ABSOLUTE) {
+            // Absolute mode: lower < x < upper
+            // state is robotState
+            if (v <= r.lower || v >= r.upper) {
+                is_safe = false;
+                violation_reasons_.push_back(
+                    r.name + ": " + std::to_string(v) + " not in (" + 
+                    std::to_string(r.lower) + ", " + std::to_string(r.upper) + ") (" + r.unit + ")"
+                );
+            }
+        } else {
+            throw std::runtime_error("Unknown rule type in evaluateSafety()");
         }
     }
 
@@ -190,10 +234,11 @@ void SafetyMonitor::printLoadedRules() const
 {
     const int NAME_W  = 10;
     const int IDX_W   = 6;
-    const int LIMIT_W = 14;
+    const int TYPE_W  = 10;
+    const int LIMIT_W = 22;
     const int UNIT_W  = 8;
 
-    int total_w = NAME_W + IDX_W + LIMIT_W + UNIT_W + 9;
+    int total_w = NAME_W + IDX_W + TYPE_W + LIMIT_W + UNIT_W + 12;
 
     auto line = [&]() {
         std::cout << "  " << std::string(total_w, '-') << "\n";
@@ -226,6 +271,7 @@ void SafetyMonitor::printLoadedRules() const
 
     auto FName  = makeFormatter(NAME_W);
     auto FIdx   = makeFormatter(IDX_W);
+    auto FType  = makeFormatter(TYPE_W);
     auto FLimit = makeFormatter(LIMIT_W);
     auto FUnit  = makeFormatter(UNIT_W);
 
@@ -244,7 +290,8 @@ void SafetyMonitor::printLoadedRules() const
     std::cout << "  "
               << C_HEADER << FName.text("Name")  << C_RESET << " | "
               << C_HEADER << FIdx.text("Idx")    << C_RESET << " | "
-              << C_HEADER << FLimit.text("Limit")<< C_RESET << " | "
+              << C_HEADER << FType.text("Type")  << C_RESET << " | "
+              << C_HEADER << FLimit.text("Limit/Bounds")<< C_RESET << " | "
               << C_HEADER << FUnit.text("Unit")  << C_RESET
               << "\n";
 
@@ -254,10 +301,25 @@ void SafetyMonitor::printLoadedRules() const
     // Rows
     // ------------------------------------------------------------
     for (const auto& r : rules_) {
+        std::string bound_str;
+        std::string type_str;
+        if (r.type == RuleType::RELATIVE) {
+            type_str = "relative";
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(4) << r.limit;
+            bound_str = "±" + ss.str();
+        } else {
+            type_str = "absolute";
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(4) << "(" << r.lower << ", " << r.upper << ")";
+            bound_str = ss.str();
+        }
+        
         std::cout << "  "
                   << FName.text(r.name) << " | "
                   << FIdx.text(std::to_string(r.index)) << " | "
-                  << C_VALUE << FLimit.number(r.limit) << C_RESET << " | "
+                  << FType.text(type_str) << " | "
+                  << C_VALUE << FLimit.text(bound_str) << C_RESET << " | "
                   << C_UNIT  << FUnit.text(r.unit)     << C_RESET
                   << "\n";
     }

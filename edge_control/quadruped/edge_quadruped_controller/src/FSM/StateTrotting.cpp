@@ -37,15 +37,17 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     // v_y_limit_ << -0.3, 0.3;
     // w_yaw_limit_ << -1.0, 1.0;
 
-    v_x_limit_ << -0.3, 0.3;
-    v_y_limit_ << -0.2, 0.2;
+    v_x_limit_ << -1.3, 1.3;        // max forward/backward speed 1.3 m/s (does affect stability)
+    v_y_limit_ << -1.2, 1.2;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     w_yaw_limit_ << -0.45, 0.45;
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
     // Initialize last tracking error and action
     last_tracking_error_.setZero();
+    last_robot_state_.setZero();
     last_edge_action_.setZero();
     curr_tracking_error_.setZero();
+    curr_robot_state_.setZero();
     curr_edge_action_.setZero();
 
 }
@@ -65,6 +67,7 @@ void StateTrotting::enter()
 
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::EdgeAction& latest_accel_,
                         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+                        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY)
 {
@@ -102,7 +105,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         wave_generator_->status_ = WaveStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_pub_, transition_pub_, latest_accel_);
+    calcTau(tracking_error_pub_, tracking_error_stu_pub_, transition_pub_, latest_accel_);
     calcQQd();
     calcGain();
 }
@@ -179,6 +182,7 @@ void StateTrotting::calcCmd()
 }
 
 void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+    rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
     const edge_msgs::msg::EdgeAction& latest_accel_)
 {
@@ -190,6 +194,8 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
         // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
     Vector12d tracking_error = computeTrackingError();
+    Vector12d robot_state = computeState();
+    Vector12d tracking_error_stu = robot_state - computeDRLStudentGoalState();
     std::cout << "tracking error: ";
     for (int i = 0; i < 12; i++) {
         std::cout << tracking_error[i] << " ";
@@ -197,14 +203,18 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, tracking_error, latest_accel_.action_mode);
+    pubTransitionTopic(transition_pub, tracking_error, robot_state, latest_accel_.action_mode);
 
     // update last action and tracking error
     last_edge_action_ = EdgeActionMsgToEigen(latest_accel_);
     last_tracking_error_ = tracking_error;   
+    last_robot_state_ = robot_state;
 
     auto track_msg = EigenToTrackingErrorMsg(tracking_error);
     tracking_error_pub_->publish(track_msg);
+
+    auto track_stu_msg = EigenToTrackingErrorMsg(tracking_error_stu);
+    tracking_error_stu_pub_->publish(track_stu_msg);
 
     std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
     std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;
@@ -278,7 +288,6 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
 
     Vec34 force_feet_global =
         -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), wave_generator_->contact_);
-
 
     Vec34 pos_feet_global = estimator_->getFeetPos();
     Vec34 vel_feet_global = estimator_->getFeetVel();
@@ -366,18 +375,21 @@ bool StateTrotting::checkStepOrNot()
 
 // Publish transition topic
 void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                                       Vector12d& tracking_error, uint8_t action_mode)
+                                       Vector12d& tracking_error, Vector12d& robot_state, uint8_t action_mode)
 {
     edge_msgs::msg::Transition transition;
-    transition.obs = EigenToVector(last_tracking_error_);
+    // transition.obs = EigenToVector(last_tracking_error_);
+    transition.obs = EigenToVector(last_robot_state_);
     transition.action = EigenToVector(last_edge_action_);
     transition.reward = reward_composer_.computeTotalReward(
         last_tracking_error_, 
         tracking_error,
         nav_goal_,
-        robot_pos_
+        robot_pos_,
+        robot_state
     );
-    transition.next_obs = EigenToVector(tracking_error);
+    // transition.next_obs = EigenToVector(tracking_error);
+    transition.next_obs = EigenToVector(robot_state);
     transition.done = false;
     transition.action_mode = action_mode;
     transition_pub->publish(transition);
@@ -406,4 +418,43 @@ Vector12d StateTrotting::computeTrackingError() const
     tracking_error.segment<3>(9) = gyro_err;
 
     return tracking_error;
+}
+
+Vector12d StateTrotting::computeState() const
+{
+    Vector12d robotState = Vector12d::Zero();
+
+    // Robot Position state
+    robotState[2] = pos_body_(2);
+
+    // Robot Orientation state
+    robotState.segment<3>(3) = rotMatToExp(estimator_->getRotation());
+
+    // Linear velocity state
+    robotState.segment<3>(6) = vel_body_;
+
+    // Angular velocity state
+    robotState.segment<3>(9) = estimator_->getGyroGlobal();
+
+    return robotState;
+}
+
+Vector12d StateTrotting::computeDRLStudentGoalState() const
+{
+    Vector12d robotState = Vector12d::Zero();
+
+    // Robot Position state
+    robotState[2] = 0.35;
+
+    // Robot Orientation state
+    // robotState.segment<3>(3) = Eigen::Vector3d::Zero();
+
+    // Linear velocity state
+    // robotState.segment<3>(6) = Eigen::Vector3d(0.8, 0.0, 0.0);
+    robotState[6] = 0.8;
+
+    // Angular velocity state
+    // robotState.segment<3>(9) = Eigen::Vector3d::Zero();
+
+    return robotState;
 }

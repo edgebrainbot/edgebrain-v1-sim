@@ -18,7 +18,8 @@ reward:
   # height_tracking: 50
   
   goal_distance: 1
-  lyapunov: 100
+  # lyapunov: 100
+  state: 0.1
 
   # distance_to_wp: 50
   # reach_wp: 100

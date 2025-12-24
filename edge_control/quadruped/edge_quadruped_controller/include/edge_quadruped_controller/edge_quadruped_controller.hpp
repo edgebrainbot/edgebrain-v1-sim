@@ -173,6 +173,7 @@ namespace edge::control::quadruped
         // }
 
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
+        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;

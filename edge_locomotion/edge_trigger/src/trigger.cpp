@@ -83,7 +83,7 @@ void Trigger::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
 void Trigger::updateLoop()
 {
     std::vector<double> v(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-    bool is_safe = safety_monitor_->evaluateSafety(v, obstacle_distance_, goal_distance_);
+    bool is_safe = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, v, obstacle_distance_, goal_distance_);
 
     if (print_processing_)
     {

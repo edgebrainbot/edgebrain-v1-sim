@@ -16,10 +16,18 @@
 namespace edge::config
 {
 
+// Rule type: 
+// 1. relative = |x - x_ref| <= limit, 
+// 2. absolute = lower < x < upper
+enum class RuleType { RELATIVE, ABSOLUTE };
+
 struct SafetyRule {
+    RuleType type;      // RELATIVE or ABSOLUTE
     std::string name;   // rule name (yaml key)
-    int index;          // errorState index
-    double limit;       // limit after unit conversion
+    int index;          // state index
+    double limit;       // limit for relative mode (after unit conversion)
+    double lower;       // lower bound for absolute mode
+    double upper;       // upper bound for absolute mode
     std::string unit;   // unit used in logging
 };
 
@@ -28,7 +36,11 @@ class SafetyMonitor
 public:
     explicit SafetyMonitor(const std::string& yaml_path="");
 
-    bool evaluateSafety(const std::vector<double>& errorState, double obstacle_distance, double goal_distance);
+    // type: RELATIVE (state=errorState) or ABSOLUTE (state=robotState)
+    bool evaluateSafety(RuleType ruleType,
+                        const std::vector<double>& state,
+                        double obstacle_distance = 0.0, 
+                        double goal_distance = 0.0);
 
 private:
     std::vector<SafetyRule> rules_;
@@ -40,7 +52,7 @@ private:
     std::string parseYamlPath(const std::string& user_path);
     void safetyStatusLogging();
 
-    double convertLimit(double raw, const std::string& unit);
+    double convertValue(double raw, const std::string& unit);
     void printLoadedRules() const;
 };
 

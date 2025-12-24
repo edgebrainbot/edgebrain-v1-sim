@@ -12,6 +12,9 @@ import torch.optim as optim
 from rclpy.node import Node
 from datetime import datetime
 
+from sensor_msgs.msg import PointCloud2
+from sensor_msgs_py import point_cloud2
+
 from edge_drl_student.common.logger import Logger
 from edge_drl_student.utils.utils import ActionMode
 from ament_index_python.packages import get_package_prefix
@@ -22,6 +25,7 @@ from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloRe
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 
+
 RUN = 'cognitive'
 # RUN = 'dual'
 
@@ -30,17 +34,34 @@ PROJECT_NAME = f"drl_student_{RUN}_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
-LOG_PATH = os.path.join(CURRENT_DIR, "logs", PROJECT_NAME)
+LOG_PATH = os.path.join(CURRENT_DIR, "logs/new_data", PROJECT_NAME)
+
+# Set torch print options for better readability
+torch.set_printoptions(sci_mode=False)
 
 class DRLStudentNode(Node):
     def __init__(self):
         super().__init__(PROJECT_NAME, namespace='edge')
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        
+        
+        self.RESIDUAL_GAIN = torch.tensor([
+            [100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 70.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 0.0, 0.0, 0.0, 0.0, 0.0, 100.0]
+        ], dtype=torch.float32, device=self.device)
 
-        self.obs_dim = 12
+
+        self.body_state_dim = 12  # Example dimension for body state
+        self.vision_feature_dim = 24  # Example dimension for vision features from lidar
+        self.obs_dim = self.body_state_dim + self.vision_feature_dim  # 12 from tracking error + 24 from lidar features
+        
         self.act_dim = 6
-        self.policy_blendering_weight = 0.5
+        self.policy_blendering_weight = 0.0
         self.save_interval = 300
         self.print_interval = 10
         
@@ -53,7 +74,9 @@ class DRLStudentNode(Node):
         self.batch_size = 512
         # self.batch_size = 256
         self.last_reload_time = 0.0
-        self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.obs_dim)
+        self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.body_state_dim)
+        self.curr_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
+        self.last_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
         
         if RUN == 'dual':
             self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
@@ -64,6 +87,7 @@ class DRLStudentNode(Node):
                                            action_dim=self.act_dim, 
                                            device=self.device)
         elif RUN == 'cognitive':
+            print(f"obs_dim: {self.obs_dim}, act_dim: {self.act_dim}")
             self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e5), 
                                                 student_prefill_size=int(self.batch_size),
                                                 teacher_buf_size=int(1e5), 
@@ -78,15 +102,16 @@ class DRLStudentNode(Node):
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
             replay_buffer=self.buffer,
-            action_bound=(-12.0, 12.0),
+            action_bound=(-10.0, 10.0),
             device=self.device
         )
 
         # ros2 topics
         self.action_pub = self.create_publisher(EdgeAction, 'drl_student_action', 10)
+        self.learned_action_pub = self.create_publisher(EdgeAction, 'drl_student_learned_action', 10)
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
         self.create_subscription(TrackingError, 'tracking_error', self.tracking_error_callback, 10)
-
+        self.create_subscription(PointCloud2, '/registered_scan', self.pointcloud_callback, 10)
         self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
 
         self.obstacle_reward = 0.0
@@ -103,65 +128,180 @@ class DRLStudentNode(Node):
         self.collection_time = 0.0
         self.learn_time = 0.0
         self.iteration_start_time = time.time()
-
+        
+        # Matrix processing lidar
+        self.points = None
+        self.mat_base_vec = torch.arange(0.1, 144.1, 0.1, dtype=torch.float32).to(self.device) * 50
+        # x = torch.log(self.mat_base_vec) * 0.1        # (original version)
+        x = torch.log(self.mat_base_vec) * 0.0001
+        
+        self.vis_feature_mat = torch.vander(x, N=8, increasing=True).T.to(self.device)
+        self.curr_body_state = torch.zeros(self.body_state_dim, device=self.device)
+        
         self.get_logger().info("✅ DRLStudent Node initialized")
 
 
     def output_action(self):
+        
+        residual_action = self.RESIDUAL_GAIN @ self.curr_body_state.unsqueeze(-1)
+        residual_action = residual_action.flatten() 
+        print(f"residual_action: {residual_action}")
+        
         if isinstance(self.buffer, CognitiveReplayBuffer):
             blending_action = self.buffer.get_weighted_blended_action()
-            # output_action = self.policy_action() * 5
-            output_action = self.policy_action() * 0.1 + blending_action * self.policy_blendering_weight
+            drl_action = self.policy_action() * 1.0 + blending_action * self.policy_blendering_weight
         else:
-            output_action = self.policy_action() 
-
-        return output_action 
+            drl_action = self.policy_action() 
+            
+        output_action = drl_action * 1.0 + residual_action * 0.15   # Add residual action
+        
+        return output_action, drl_action 
 
     def policy_action(self):
-        return self.agent.act(torch.tensor(
-            np.array(self.tracking_error_.tracking_error, dtype=np.float32),
-            dtype=torch.float32
-        ))      # Non-scaled control action
+        observation = torch.cat((
+            torch.tensor(
+                np.array(self.tracking_error_.tracking_error, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.curr_vision_feature
+        ), dim=0)
+        
+        return self.agent.act(observation.unsqueeze(0))      # Non-scaled control action
 
     def action_loop(self):
         action_start = time.time()
         
+        # ️ Generate and publish action
         edge_action_msg = EdgeAction()
         edge_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_action_msg.control_action = self.output_action().detach().cpu().numpy().astype(np.float64) # Scaled control action
+        edge_action_msg.control_action = self.output_action()[0].detach().cpu().numpy().flatten().astype(np.float64)
         edge_action_msg.action_mode = ActionMode.STUDENT.value
         
-        self.action_pub.publish(edge_action_msg)
+        # Learned action message
+        edge_drl_action_msg = EdgeAction()
+        edge_drl_action_msg.header.stamp = self.get_clock().now().to_msg()
+        edge_drl_action_msg.control_action = self.output_action()[1].detach().cpu().numpy().flatten().astype(np.float64)
+        edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
+        
+        self.action_pub.publish(edge_action_msg)                    # Publish action to control the robot
+        self.learned_action_pub.publish(edge_drl_action_msg)        # Publish learned action for logging    
         
         self.action_count += 1
         self.collection_time = time.time() - action_start
 
+        self.t = time.time()
         # self.get_logger().info(f"[Action] Published action (r={msg.action:.3f})")
+
+    def pointcloud_callback(self, msg):
+        """
+        Callback function for processing incoming PointCloud2 messages
+        """
+        # self.get_logger().info('---------- laserCloudHandler called ---------')
+        
+        # Parse point cloud
+        self.points = self.parse_pointcloud(msg)
+        
+        t2 = time.time()
+        # self.get_logger().info(f'Point cloud parsing time: {t2 - self.t:.4f} seconds')
+        self.t = t2
+        # Process points as needed
+        if self.points is not None:
+            # self.get_logger().info(f'Parsed {len(self.points)} points from point cloud.')
+            pass
+            # for i, point in enumerate(points[:5]):
+            #     self.get_logger().info(f'Point {i}: x={point[0]:.3f}, y={point[1]:.3f}, z={point[2]:.3f}')
+    
+        points = torch.tensor(self.points, dtype=torch.float32).to(self.device)
+        # print(f"points shape: {points.shape}")
+        # print(f"self.lidar_matrix shape: {self.lidar_matrix.shape}")
+        res =  self.vis_feature_mat @ points 
+        res *= 0.01
+        
+        self.curr_vision_feature = res.flatten()
+        # print(f"self.curr_vision_feature: {self.curr_vision_feature}")
+        # print(f"curr_vision_feature shape: {self.curr_vision_feature.shape}")
+        # print(f"res shape: {res.shape}")
+        # print(f"res: {res}")
+    
+    
+    def parse_pointcloud(self, msg):
+        """
+        Parse PointCloud2 message to extract XYZ coordinates
+        """
+        try:
+            # Use point_cloud2 module to read points
+            points_list = []
+            
+            # Read point cloud data (x, y, z, intensity fields)
+            # for point in point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
+            for point in point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=False):
+                clean_point = np.nan_to_num([point[0], point[1], point[2]], 
+                                 nan=0.0, posinf=0.0, neginf=0.0)
+                points_list.append(clean_point.tolist())
+                # self.get_logger().info(f'Raw point data: x={clean_point[0]}, y={clean_point[1]}, z={clean_point[2]}')
+
+            
+            return np.array(points_list)
+            
+        except Exception as e:
+            self.get_logger().error(f'Failed to parse point cloud data: {str(e)}')
+            return None
 
     def obstacle_reward_callback(self, msg: std_msgs.msg.Float32):
         # self.get_logger().info(f"[ObstacleReward] Received obstacle reward: {msg.data}")
         self.obstacle_reward = msg.data
-        # print(f"[ObstacleReward] Updated obstacle reward: {self.obstacle_reward}")
+        # self.get_logger().info(f"[ObstacleReward] Updated obstacle reward: {self.obstacle_reward}")
 
     def transition_callback(self, msg: Transition):
         # print(f"Received transition: {msg}")
+        
+        self.curr_body_state = torch.tensor(msg.obs,
+            dtype=torch.float32,
+            device=self.device
+        )
+        
+        observation = torch.cat((
+            torch.tensor(
+                np.array(self.tracking_error_.tracking_error, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.last_vision_feature
+        ), dim=0)
+        
+        next_observation = torch.cat((
+            torch.tensor(
+                np.array(msg.next_obs, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.curr_vision_feature
+        ), dim=0)
+        
+        # print(f"observation in transition_callback: {observation} shape: {observation.shape}")
+        # print(f"msg.next_obs in transition_callback: {msg.next_obs} shape: {len(msg.next_obs)}")
         t = self.buffer.to_transition(
-            obs=msg.obs,
+            obs=observation,
             action=msg.action,
             reward=msg.reward,
-            next_obs=msg.next_obs,
+            next_obs=next_observation,
             done=msg.done
         )
         action_mode = ActionMode(msg.action_mode)
 
+        stepwise_total_reward = msg.reward + self.obstacle_reward
         # Update episode statistics
-        self.current_episode_reward += msg.reward
-        self.current_episode_reward += self.obstacle_reward  # Adding obstacle reward
+        self.current_episode_reward += stepwise_total_reward
         self.current_episode_length += 1
 
         # Logging stepwise reward
-        self.logger.writer.add_scalar('Step/reward', msg.reward, self.action_count)
+        self.logger.writer.add_scalar('Reward/total_reward', stepwise_total_reward, self.action_count)
+        self.logger.writer.add_scalar('Reward/obstacle_reward', self.obstacle_reward, self.action_count)
 
+
+        # TODO: input from tracking error to velocity
+        
         if msg.done:
             self.episode_count += 1
             
@@ -170,13 +310,18 @@ class DRLStudentNode(Node):
                 length=self.current_episode_length
             )
             
-            self.logger.writer.add_scalar('Episode/reward', self.current_episode_reward, self.episode_count)
             self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
+            self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/obstacle_reward', self.obstacle_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/avg_reward_per_step', 
+                                          self.current_episode_reward / self.current_episode_length, 
+                                          self.episode_count)
             
             self.get_logger().info(
                 f"📊 Episode {self.episode_count} done | "
-                f"Reward: {self.current_episode_reward:.2f} | "
-                f"Length: {self.current_episode_length}"
+                f"Total Reward: {self.current_episode_reward:.2f} | "
+                f"Length: {self.current_episode_length} | "
+                f"Obstacle Reward: {self.obstacle_reward:.2f}"
             )
             
             # Reset episode statistics
@@ -227,8 +372,8 @@ class DRLStudentNode(Node):
 
         # Saving models and logging
         if self.update_count % self.save_interval == 0:
-            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-            self.agent.save_models(MODEL_PATH)
+            os.makedirs(os.path.dirname(f"{MODEL_PATH}_{self.update_count}"), exist_ok=True)
+            self.agent.save_models(f"{MODEL_PATH}_{self.update_count}")
             
         # Logging losses
         self.logger.writer.add_scalar('Timing/learn', self.learn_time, self.update_count)
@@ -280,9 +425,14 @@ def main(args=None):
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        node.get_logger().error(f"Exception: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

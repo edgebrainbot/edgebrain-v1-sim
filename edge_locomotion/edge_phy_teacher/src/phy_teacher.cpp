@@ -93,7 +93,8 @@ void PhyTeacher::lmiCallback() {
     if (!got_msg_) return;
 
     auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
-    bool is_current_safe = safety_monitor_->evaluateSafety(err_state_, obstacle_distance_, goal_distance_);
+    bool is_current_safe = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, 
+                                                           err_state_, obstacle_distance_, goal_distance_);
 
     // If teacher is not active
     if (!teacher_active_) {

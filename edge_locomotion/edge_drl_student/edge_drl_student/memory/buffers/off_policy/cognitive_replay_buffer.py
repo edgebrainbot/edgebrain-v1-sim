@@ -70,11 +70,23 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         L = batch_size
         if self.last_data_type == ActionMode.STUDENT:
             stu_idx = self.stu_buf.pointer - 1
-            boundary_state = self.stu_buf.obs[stu_idx]
+            self.boundary_obs = self.stu_buf.obs[stu_idx]
+            
+            # Boundary obs might contain vision features
+            if self.boundary_obs.size(0) > 12:
+                boundary_state = self.boundary_obs[:12]
+            else:
+                boundary_state = self.boundary_obs
 
         elif self.last_data_type == ActionMode.TEACHER:
             tea_idx = self.tea_buf.pointer - 1
-            boundary_state = self.tea_buf.obs[tea_idx]
+            self.boundary_obs = self.tea_buf.obs[tea_idx]
+            
+            # Boundary obs might contain vision features
+            if self.boundary_obs.size(0) > 12:
+                boundary_state = self.boundary_obs[:12]
+            else:
+                boundary_state = self.boundary_obs
         else:
             raise RuntimeError(f"Unknown action type pointer: {self.last_data_type}")
 
@@ -88,8 +100,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size
         
-        stu_batch = self.stu_cognitive_sampler.fetch(boundary_state, stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
-        tea_batch = self.tea_cognitive_sampler.fetch(boundary_state, tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
+        stu_batch = self.stu_cognitive_sampler.fetch(self.boundary_obs, stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
+        tea_batch = self.tea_cognitive_sampler.fetch(self.boundary_obs, tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
 
         print(f"stu_batch_size: {stu_batch_size}, tea_batch_size: {tea_batch_size}")
 

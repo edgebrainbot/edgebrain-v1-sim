@@ -42,6 +42,7 @@ public:
     void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, edge_msgs::msg::EdgeAction &latest_accel, 
              rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+             rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY);
 
@@ -61,6 +62,7 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
+                 rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                  const edge_msgs::msg::EdgeAction& latest_accel_);
 
@@ -81,7 +83,7 @@ private:
     bool checkStepOrNot();
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                            Vector12d& tracking_error, uint8_t action_mode);
+                            Vector12d& tracking_error, Vector12d& robot_state, uint8_t action_mode);
 
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
@@ -114,6 +116,9 @@ private:
     Vec12 last_tracking_error_;
     Vec12 curr_tracking_error_;
 
+    Vec12 last_robot_state_;
+    Vec12 curr_robot_state_;
+
     Vec6 last_edge_action_;
     Vec6 curr_edge_action_;
 
@@ -139,8 +144,10 @@ private:
     //     gain_update_ = true;
     // }
 
+    Vector12d computeState() const;
     Vector12d computeTrackingError() const;
-
+    Vector12d computeDRLStudentGoalState() const;
+    
     RewardComposer reward_composer_{""};
 
     Mat6 latest_kp_;
