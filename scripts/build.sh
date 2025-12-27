@@ -2,6 +2,25 @@
 set -e
 
 # ==========================================
+# 📋 Usage
+# ==========================================
+usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Options:
+    -w, --workspace DIR    Specify the ROS 2 workspace directory (ros2_ws*)
+    -h, --help            Show this help message
+
+Example:
+    $0                              # Auto-detect workspace
+    $0 -w /path/to/ros2_ws         # Specify workspace manually
+    $0 --workspace ~/ros2_ws_dev   # Using long option
+EOF
+    exit 0
+}
+
+# ==========================================
 # 🔍 Auto-detect ros2_ws*
 # ==========================================
 find_ros2_ws_root() {
@@ -17,16 +36,63 @@ find_ros2_ws_root() {
     return 1
 }
 
-# Current script directory
-SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_DIR=$(find_ros2_ws_root "$SCRIPT_PATH")
+# ==========================================
+# 🎯 Parse command line arguments
+# ==========================================
+WORKSPACE_DIR=""
 
-if [[ -z "$WORKSPACE_DIR" ]]; then
-    echo "❌ Error: Could not find any directory named 'ros2_ws*' above $SCRIPT_PATH"
-    exit 1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -w|--workspace)
+            WORKSPACE_DIR="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "❌ Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# ==========================================
+# 🔍 Determine workspace directory
+# ==========================================
+if [[ -n "$WORKSPACE_DIR" ]]; then
+    # User specified workspace
+    if [[ ! -d "$WORKSPACE_DIR" ]]; then
+        echo "❌ Error: Specified workspace directory does not exist: $WORKSPACE_DIR"
+        exit 1
+    fi
+    
+    # Verify it's a ros2_ws* directory
+    base=$(basename "$WORKSPACE_DIR")
+    if [[ $base != ros2_ws* ]]; then
+        echo "⚠️  Warning: Directory name '$base' doesn't match pattern 'ros2_ws*'"
+        read -p "Continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+    
+    echo "✅ Using specified workspace: $WORKSPACE_DIR"
+else
+    # Auto-detect workspace
+    SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    WORKSPACE_DIR=$(find_ros2_ws_root "$SCRIPT_PATH")
+    
+    if [[ -z "$WORKSPACE_DIR" ]]; then
+        echo "❌ Error: Could not find any directory named 'ros2_ws*' above $SCRIPT_PATH"
+        echo "💡 Tip: Use -w option to specify workspace manually"
+        exit 1
+    fi
+    
+    echo "✅ ROS 2 workspace auto-detected: $WORKSPACE_DIR"
 fi
 
-echo "✅ ROS 2 workspace detected: $WORKSPACE_DIR"
 cd "$WORKSPACE_DIR"
 
 # ==========================================
