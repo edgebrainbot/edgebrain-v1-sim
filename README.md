@@ -6,8 +6,6 @@
 
 ---
 
-🔧
-
 ## 💡 User Guide
 
 ### ⚙️ Dependencies
@@ -83,6 +81,29 @@ git submodule  update --init --recursive
 ```bash
 docker build -t edge-brain:humble -f ./docker/Dockerfile .
 ```
+
+### 🔧 Build Script
+
+A convenient build script is provided to compile the ROS 2 workspace:
+
+```bash
+# Auto-detect workspace and build
+./scripts/build.sh
+
+# Specify workspace manually
+./scripts/build.sh -w ~/ros2_ws
+
+# Show help
+./scripts/build.sh -h
+```
+
+**Options:**
+- `-w, --workspace DIR` : Specify the ROS 2 workspace directory (must contain `ros2_ws` in name)
+- `-h, --help` : Display help message
+
+**Note:** Ensure the script has execute permissions: `chmod +x scripts/build.sh`
+
+---
 
 ## ⏳ To Do ##
 
