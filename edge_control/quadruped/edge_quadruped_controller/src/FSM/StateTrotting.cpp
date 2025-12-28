@@ -71,7 +71,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-                        double obstacleAvgDistance)
+                        double obstacleAvgDistance, bool is_goal_reached)
 {
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
@@ -106,7 +106,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         wave_generator_->status_ = WaveStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_pub_, tracking_error_stu_pub_, transition_pub_, latest_accel_, obstacleAvgDistance);
+    calcTau(tracking_error_pub_, tracking_error_stu_pub_, transition_pub_, latest_accel_, obstacleAvgDistance, is_goal_reached);
     calcQQd();
     calcGain();
 }
@@ -185,7 +185,7 @@ void StateTrotting::calcCmd()
 void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
     rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-    const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance)
+    const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance, bool is_goal_reached)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
@@ -204,7 +204,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, tracking_error_tea, tracking_error_stu, latest_accel_.action_mode, obstacleAvgDistance);
+    pubTransitionTopic(transition_pub, tracking_error_tea, tracking_error_stu, latest_accel_.action_mode, obstacleAvgDistance, is_goal_reached);
 
     // update last action and tracking error
     last_edge_action_ = EdgeActionMsgToEigen(latest_accel_);
@@ -377,7 +377,7 @@ bool StateTrotting::checkStepOrNot()
 // Publish transition topic
 void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                                        Vector12d& tracking_error_tea, Vector12d& tracking_error_stu, uint8_t action_mode,
-                                       double obstacleAvgDistance)
+                                       double obstacleAvgDistance, bool is_goal_reached)
 {
     edge_msgs::msg::Transition transition;
     // transition.obs = EigenToVector(last_tracking_error_);
@@ -393,7 +393,7 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
     );
     // transition.next_obs = EigenToVector(tracking_error);
     transition.next_obs = EigenToVector(tracking_error_stu);
-    transition.done = false;
+    transition.done = is_goal_reached;
     transition.action_mode = action_mode;
     transition_pub->publish(transition);
     std::cout << "Published to transition topic." << std::endl;

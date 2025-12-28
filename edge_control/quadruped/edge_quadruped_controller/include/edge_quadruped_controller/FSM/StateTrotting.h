@@ -45,7 +45,7 @@ public:
              rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-             double obstacleAvgDistance);
+             double obstacleAvgDistance, bool is_goal_reached);
 
     void exit() override;
 
@@ -65,7 +65,7 @@ private:
     void calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
                  rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-                 const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance);
+                 const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance, bool is_goal_reached);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -85,7 +85,7 @@ private:
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                             Vector12d& tracking_error, Vector12d& robot_state, uint8_t action_mode,
-                            double obstacleAvgDistance);
+                            double obstacleAvgDistance, bool is_goal_reached);
 
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;

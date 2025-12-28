@@ -636,9 +636,11 @@ int main(int argc, char** argv)
 
   auto pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 5);
 
-  auto pubMinObstacleDis = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_distance", 50);
+  auto pubMinObstacleDis = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_min_distance", 50);
 
   auto goal_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/goal_distance", 50);
+
+  auto is_goal_reached_pub_ = nh->create_publisher<std_msgs::msg::Bool>("/is_goal_reached", 50);
 
   auto obstacle_avg_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_avg_distance", 50);
 

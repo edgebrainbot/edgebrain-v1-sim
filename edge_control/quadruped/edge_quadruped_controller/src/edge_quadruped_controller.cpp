@@ -191,6 +191,16 @@ namespace edge::control::quadruped
                 // std::cout << "obstacle_avg_distance: " << obstacle_avg_distance_ << std::endl;
             });
 
+            // Subscribe to far_reach_goal_status to update is_goal_reached_
+            is_goal_reached_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
+                "/far_reach_goal_status", 100,
+                [this](const std_msgs::msg::Bool::SharedPtr msg) -> void
+            {
+                is_goal_reached_ = msg->data;
+                // std::cout << "Received new is_goal_reached." << std::endl;
+                // std::cout << "is_goal_reached: " << is_goal_reached_ << std::endl;
+            });
+
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
@@ -286,7 +296,8 @@ namespace edge::control::quadruped
                           tracking_error_stu_pub_,
                           transition_pub_, 
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
-                          obstacle_avg_distance_);
+                          obstacle_avg_distance_,
+                          is_goal_reached_);
             } else {
                 current_state_->run(time, period);
             }

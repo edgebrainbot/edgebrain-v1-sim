@@ -36,7 +36,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
         "drl_student_action", 50, std::bind(&Trigger::studentCallback, this, _1));
 
     sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
-        "/obstacle_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
+        "/obstacle_min_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
 
     sub_goal_distance_ = this->create_subscription<std_msgs::msg::Float32>(
         "/goal_distance", 50, std::bind(&Trigger::goalDistanceCallback, this, _1));

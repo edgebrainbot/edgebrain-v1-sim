@@ -18,8 +18,9 @@
 #include <controller_common/common/enumClass.h>
 #include <controller_common/common/mathTypes.h>
 
-#include <geometry_msgs/msg/point_stamped.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 
 namespace edge::control::quadruped
 {
@@ -179,11 +180,13 @@ namespace edge::control::quadruped
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_distance_sub_;
+        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_goal_reached_sub_;
 
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;
 
         double obstacle_avg_distance_ = 0.0;
+        bool is_goal_reached_ = false;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
         // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)

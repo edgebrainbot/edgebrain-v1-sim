@@ -48,7 +48,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
       std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
-    obstacle_subs_ = this->create_subscription<std_msgs::msg::Float32>("/obstacle_distance", 10,
+    obstacle_subs_ = this->create_subscription<std_msgs::msg::Float32>("/obstacle_min_distance", 10,
       std::bind(&PhyTeacher::obstacleDistanceCallback, this, std::placeholders::_1)
     );
 
