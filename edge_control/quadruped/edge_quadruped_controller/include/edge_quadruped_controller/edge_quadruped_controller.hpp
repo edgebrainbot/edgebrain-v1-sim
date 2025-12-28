@@ -19,6 +19,7 @@
 #include <controller_common/common/mathTypes.h>
 
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <std_msgs/msg/float32.hpp>
 
 namespace edge::control::quadruped
 {
@@ -177,9 +178,12 @@ namespace edge::control::quadruped
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
+        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_distance_sub_;
 
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;
+
+        double obstacle_avg_distance_ = 0.0;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
         // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)

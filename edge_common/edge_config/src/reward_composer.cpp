@@ -38,12 +38,13 @@ RewardComposer::RewardComposer(const std::string& yaml_path)
     }
 }
 
-double RewardComposer::computeTotalReward(
+edge_msgs::msg::Reward RewardComposer::computeTotalReward(
     const Eigen::VectorXd& err_prev,
     const Eigen::VectorXd& err_next,
     const Eigen::VectorXd& goal,
     const Eigen::VectorXd& robot_pos,
-    const Eigen::VectorXd& robot_state
+    const Eigen::VectorXd& robot_state,
+    double obstacleDisAvgReward
     // int is_fail,
     // const Eigen::VectorXd& delta_action,
     // double forward_speed,
@@ -51,7 +52,8 @@ double RewardComposer::computeTotalReward(
     // double energy,
     // double grav_z
 ) {
-    double total = 0.0;
+    edge_msgs::msg::Reward reward_msg;
+
 
     for (auto& kv : scales_) {
         const std::string& key = kv.first;
@@ -72,14 +74,24 @@ double RewardComposer::computeTotalReward(
         else if (key == "ang_vel_tracking") r = ang_vel_tracking(err_prev);
         else if (key == "orientation_tracking") r = orientation_tracking(err_prev);
         else if (key == "height_tracking") r = height_tracking(err_prev);
+        else if (key == "obstacle_distance"){
+            r = obstacle_distance(obstacleDisAvgReward);
+            reward_msg.obstacle_reward = static_cast<float>(r * scale);
+        } 
         // else if (key == "jerky_action") r = jerky_action(delta_action);
         // else if (key == "forward_speed") r = forward_speed_rew(forward_speed);
         // else if (key == "body_contact") r = body_contact_rew(body_contact);
         // else if (key == "energy_consumption") r = energy_consumption(energy);
         // else if (key == "upright") r = upright(grav_z);
         else if (key == "lyapunov") r = lyapunov(err_prev, err_next);
-        else if (key == "body_state") r = body_state(robot_state);
-        else if (key == "goal_distance") r = goal_distance(goal, robot_pos);
+        else if (key == "body_state") {
+            r = body_state(robot_state);
+            reward_msg.body_state_reward = static_cast<float>(r * scale);
+        } 
+        else if (key == "goal_distance") {
+            r = goal_distance(goal, robot_pos);
+            reward_msg.goal_distance_reward = static_cast<float>(r * scale);   
+        }
         // else if (key == "obstacle_distance") r = obstacle_distance(obstacleDistanceReward);
 
         // else {
@@ -87,11 +99,11 @@ double RewardComposer::computeTotalReward(
         //     continue;
         // }
 
-        total += r * scale;
+        // total += r * scale;
     }
 
-    std::cout << "[RewardComposer] Total reward: " << total << "\n";
-    return total;
+    // std::cout << "[RewardComposer] Total reward: " << total << "\n";
+    return reward_msg;
 }
 
 
@@ -155,6 +167,10 @@ double RewardComposer::body_state(const Eigen::VectorXd& errState)
 {
     double res = errState.transpose() * I_ * errState;
     return -res;
+}
+
+double RewardComposer::obstacle_distance(double obstacleDisAvgReward) {
+    return -1.0 / obstacleDisAvgReward;
 }
 
 

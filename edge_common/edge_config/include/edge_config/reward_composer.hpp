@@ -1,8 +1,10 @@
 #pragma once
+
 #include <Eigen/Dense>
 #include <string>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
+#include <edge_msgs/msg/reward.hpp>
 
 // static const double MATRIX_P[10][10] = {
 //     {140.6434, 0.0,     0.0,     0.0,     0.0,    0.0,    5.3276, 0.0,     0.0,     0.0},
@@ -35,12 +37,13 @@ public:
     RewardComposer(const std::string& yaml_path);
 
     // Compute total reward (scalar only)
-    double computeTotalReward(
+    edge_msgs::msg::Reward computeTotalReward(
         const Eigen::VectorXd& err_prev,     // 12D tracking error
         const Eigen::VectorXd& err_next,     // 12D tracking error next
         const Eigen::VectorXd& goal,         // 3D goal position
         const Eigen::VectorXd& vehicle_pos,    // 3D vehicle position
-        const Eigen::VectorXd& state
+        const Eigen::VectorXd& state,
+        double obstacleDisAvgReward
         // int is_fail,                          // 0 or 1
         // const Eigen::VectorXd& delta_action, // action_t - action_(t-1)
         // double forward_speed,
@@ -61,6 +64,7 @@ private:
     double orientation_tracking(const Eigen::VectorXd& err);
     double height_tracking(const Eigen::VectorXd& err);
     double jerky_action(const Eigen::VectorXd& delta_action);
+    double obstacle_distance(double obstacleDisAvgReward);
     double forward_speed(double speed);
     double body_contact(double c);
     double energy_consumption(double en);

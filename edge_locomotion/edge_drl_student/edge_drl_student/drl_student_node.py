@@ -111,9 +111,11 @@ class DRLStudentNode(Node):
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
         self.create_subscription(TrackingError, 'tracking_error_stu', self.tracking_error_callback, 10)
         self.create_subscription(PointCloud2, '/registered_scan', self.pointcloud_callback, 10)
-        self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
+        # self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
 
         self.obstacle_reward = 0.0
+        self.goal_distance_reward = 0.0
+        self.body_state_reward = 0.0
 
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
@@ -248,14 +250,20 @@ class DRLStudentNode(Node):
             self.get_logger().error(f'Failed to parse point cloud data: {str(e)}')
             return None
 
-    def obstacle_reward_callback(self, msg: std_msgs.msg.Float32):
-        # self.get_logger().info(f"[ObstacleReward] Received obstacle reward: {msg.data}")
-        self.obstacle_reward = msg.data
+    # def obstacle_reward_callback(self, msg: std_msgs.msg.Float32):
+    #     # self.get_logger().info(f"[ObstacleReward] Received obstacle reward: {msg.data}")
+    #     self.obstacle_reward = msg.data
         # self.get_logger().info(f"[ObstacleReward] Updated obstacle reward: {self.obstacle_reward}")
 
     def transition_callback(self, msg: Transition):
-        # print(f"Received transition: {msg}")
+        # ️Process received transition and add to replay buffer
+        self.goal_distance_reward = msg.reward.goal_distance_reward
+        self.body_state_reward = msg.reward.body_state_reward
+        self.obstacle_reward = msg.reward.obstacle_reward
         
+        # Compute total reward
+        stepwise_total_reward = self.obstacle_reward + self.goal_distance_reward + self.body_state_reward
+
         self.stu_tracking_error = torch.tensor(msg.obs,
             dtype=torch.float32,
             device=self.device
@@ -284,13 +292,12 @@ class DRLStudentNode(Node):
         t = self.buffer.to_transition(
             obs=observation,
             action=msg.action,
-            reward=msg.reward,
+            reward=stepwise_total_reward,
             next_obs=next_observation,
             done=msg.done
         )
         action_mode = ActionMode(msg.action_mode)
 
-        stepwise_total_reward = msg.reward + self.obstacle_reward
         # Update episode statistics
         self.current_episode_reward += stepwise_total_reward
         self.current_episode_length += 1
@@ -298,7 +305,8 @@ class DRLStudentNode(Node):
         # Logging stepwise reward
         self.logger.writer.add_scalar('Reward/total_reward', stepwise_total_reward, self.action_count)
         self.logger.writer.add_scalar('Reward/obstacle_reward', self.obstacle_reward, self.action_count)
-
+        self.logger.writer.add_scalar('Reward/goal_distance_reward', self.goal_distance_reward, self.action_count)
+        self.logger.writer.add_scalar('Reward/body_state_reward', self.body_state_reward, self.action_count)
 
         # TODO: input from tracking error to velocity
         
@@ -313,6 +321,8 @@ class DRLStudentNode(Node):
             self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
             self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
             self.logger.writer.add_scalar('Episode/obstacle_reward', self.obstacle_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/goal_distance_reward', self.goal_distance_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/body_state_reward', self.body_state_reward, self.episode_count)
             self.logger.writer.add_scalar('Episode/avg_reward_per_step', 
                                           self.current_episode_reward / self.current_episode_length, 
                                           self.episode_count)
@@ -321,12 +331,17 @@ class DRLStudentNode(Node):
                 f"📊 Episode {self.episode_count} done | "
                 f"Total Reward: {self.current_episode_reward:.2f} | "
                 f"Length: {self.current_episode_length} | "
-                f"Obstacle Reward: {self.obstacle_reward:.2f}"
+                f"Obstacle Reward: {self.obstacle_reward:.2f} | "
+                f"Goal Distance Reward: {self.goal_distance_reward:.2f} | "
+                f"Body State Reward: {self.body_state_reward:.2f}"
             )
             
             # Reset episode statistics
             self.current_episode_reward = 0.0
             self.current_episode_length = 0
+            self.obstacle_reward = 0.0
+            self.goal_distance_reward = 0.0
+            self.body_state_reward = 0.0
 
         # Add transition to the self-learning buffer
         if action_mode == ActionMode.STUDENT:

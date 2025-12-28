@@ -181,6 +181,16 @@ namespace edge::control::quadruped
                 std::cout << "latest_edge_goal y: " << latest_goal_y_ << std::endl;
             });
 
+            // Subscribe to obstacle average distance
+            obstacle_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
+                "/obstacle_avg_distance", 100,
+                [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
+            {
+                obstacle_avg_distance_ = msg->data;
+                // std::cout << "Received new obstacle average distance." << std::endl;
+                // std::cout << "obstacle_avg_distance: " << obstacle_avg_distance_ << std::endl;
+            });
+
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
@@ -275,7 +285,8 @@ namespace edge::control::quadruped
                           tracking_error_pub_, 
                           tracking_error_stu_pub_,
                           transition_pub_, 
-                          cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_);
+                          cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
+                          obstacle_avg_distance_);
             } else {
                 current_state_->run(time, period);
             }

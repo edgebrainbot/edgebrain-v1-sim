@@ -17,6 +17,7 @@ reward:
   # orientation_tracking: 80
   # height_tracking: 50
   
+  obstacle_distance: 10
   goal_distance: 5
   # lyapunov: 100
   body_state: 0.1

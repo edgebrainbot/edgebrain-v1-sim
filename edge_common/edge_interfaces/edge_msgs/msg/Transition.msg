@@ -3,7 +3,7 @@
 std_msgs/Header header
 float64[] obs
 float64[] action
-float64 reward
+Reward reward
 float64[] next_obs
 bool done
 uint8 action_mode           # 0=STUDENT, 1=TEACHER

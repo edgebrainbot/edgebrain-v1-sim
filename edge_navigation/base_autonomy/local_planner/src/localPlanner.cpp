@@ -640,7 +640,7 @@ int main(int argc, char** argv)
 
   auto goal_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/goal_distance", 50);
 
-  auto obstacle_reward_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_reward", 50);
+  auto obstacle_avg_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_avg_distance", 50);
 
   nav_msgs::msg::Path path;
 
@@ -723,7 +723,8 @@ int main(int argc, char** argv)
       #define MAX_OBSTACLE_DISTANCE 1000
       float safety_condition_obstacle = MAX_OBSTACLE_DISTANCE;
 
-      float obstacleReward = 0.0;   // cumulative obstacle reward
+      float obstacleSumDistance = 0.0;   // Cumulative distance to obstacles
+      float obstacleAvgDistance = 0.0;   // Average distance to obstacles
 
       pcl::PointXYZI point;
       plannerCloudCrop->clear();
@@ -749,7 +750,7 @@ int main(int argc, char** argv)
         float dis = sqrt(point.x * point.x + point.y * point.y);
 
         // Cumulative obstacle reward based on distance
-        obstacleReward += dis;
+        obstacleSumDistance += dis;
 
         // Crop points within adjacent range and height limits
         if (dis < adjacentRange && ((point.z > minRelZ && point.z < maxRelZ) || useTerrainAnalysis)) {
@@ -765,10 +766,10 @@ int main(int argc, char** argv)
       }
 
       // Average obstacle reward
-      obstacleReward = obstacleReward / float(plannerCloudSize);
-      obstacleReward = -1.0 / obstacleReward;
-      std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
-      obstacle_reward_pub_->publish(std_msgs::msg::Float32().set__data(obstacleReward));
+      obstacleAvgDistance = obstacleSumDistance / float(plannerCloudSize);
+    //   obstacleReward = -1.0 / obstacleReward;
+    //   std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
+      obstacle_avg_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleAvgDistance));
 
 
       // TODO: stddev of obstacle distances can be calculated here for more robust reward

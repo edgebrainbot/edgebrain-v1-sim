@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED) 
+find_package(edge_msgs REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/safety_monitor.cpp
@@ -29,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   std_msgs
+  edge_msgs
 )
 
 add_executable(virtual_safety_indicator_node src/virtual_safety_indicator_node.cpp)

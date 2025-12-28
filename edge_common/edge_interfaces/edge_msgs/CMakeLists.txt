@@ -16,6 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EdgeAction.msg"
   "msg/TrackingError.msg"
   "msg/Transition.msg"
+  "msg/Reward.msg"
   DEPENDENCIES std_msgs
 )
 
