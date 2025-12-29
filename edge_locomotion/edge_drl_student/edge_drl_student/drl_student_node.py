@@ -55,7 +55,6 @@ class DRLStudentNode(Node):
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ], dtype=torch.float32, device=self.device) * -0.1
 
-
         self.body_state_dim = 12  # Example dimension for body state
         self.vision_feature_dim = 24  # Example dimension for vision features from lidar
         self.obs_dim = self.body_state_dim + self.vision_feature_dim  # 12 from tracking error + 24 from lidar features
