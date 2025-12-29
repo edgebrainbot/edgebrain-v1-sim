@@ -55,7 +55,6 @@ class DRLStudentNode(Node):
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ], dtype=torch.float32, device=self.device) * -0.1
 
-
         self.body_state_dim = 12  # Example dimension for body state
         self.vision_feature_dim = 24  # Example dimension for vision features from lidar
         self.obs_dim = self.body_state_dim + self.vision_feature_dim  # 12 from tracking error + 24 from lidar features
@@ -451,7 +450,7 @@ class DRLStudentNode(Node):
                 length=self.current_episode_length
             )
             
-            activation_ratio = self.stu_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
+            activation_ratio = self.tea_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
             
             self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
             self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
