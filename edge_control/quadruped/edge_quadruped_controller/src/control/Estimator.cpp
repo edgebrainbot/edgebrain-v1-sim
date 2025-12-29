@@ -4,7 +4,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include "edge_quadruped_controller/control/Estimator.h"
-#include "edge_quadruped_controller/gait/WaveGenerator.h"
+#include "edge_quadruped_controller/gait/PhaseScheduler.h"
 #include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
 #include "edge_quadruped_controller/control/CtrlComponent.h"
@@ -19,14 +19,14 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
                      std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
     : ctrl_interfaces_(ctrl_interfaces),
       robot_model_(ctrl_component.robot_model_),
-      wave_generator_(ctrl_component.wave_generator_),
+      phase_scheduler_(ctrl_component.phase_scheduler_),
       node_(node)
 {
     g_ << 0, 0, -9.81;
     dt_ = 1.0 / ctrl_interfaces.frequency_;
-
     std::cout << "dt: " << dt_ << std::endl;
     large_variance_ = 100;
+
     for (int i(0); i < Qdig.rows(); ++i)
     {
         Qdig(i) = i < 6 ? 0.0003 : 0.01;
@@ -186,8 +186,8 @@ void Estimator::update()
     acceleration_ << ctrl_interfaces_.imu_state_interface_[7].get().get_value(),
                      ctrl_interfaces_.imu_state_interface_[8].get().get_value(),
                      ctrl_interfaces_.imu_state_interface_[9].get().get_value();
-    phase_ = wave_generator_->phase_;
-    contact_ = wave_generator_->contact_;
+    phase_ = phase_scheduler_->phase_;
+    contact_ = phase_scheduler_->contact_;
 
     feet_h_.setZero();
     Q = QInit_;
@@ -368,5 +368,46 @@ Vec34 Estimator::getFeetVelGlobal() const
 {
     return feet_vel_global_kine_;
 }
+
+void Estimator::reset()
+{
+    // Reset the core variables of the estimator to initial states
+    x_hat_.setZero();
+    u_.setZero();
+    
+    P.setIdentity();
+    P = large_variance_ * P;
+    
+    // Reset measurement and foot states
+    y_.setZero();
+    y_hat_.setZero();
+    feet_pos_body_.setZero();
+    feet_vel_body_.setZero();
+    feet_h_.setZero();
+    feet_pos_global_kine_.setZero();
+    feet_vel_global_kine_.setZero();
+    
+    // Reset Kalman filter intermediate variables
+    Ppriori.setZero();
+    S.setZero();
+    Sy.setZero();
+    Sc.setZero();
+    SR.setZero();
+    STC.setZero();
+    IKC.setIdentity();
+    
+    // Reset sensor data (optional, will be overwritten by update)
+    rotation_.setIdentity();
+    gyro_.setZero();
+    acceleration_.setZero();
+    
+    for (auto& filter : low_pass_filters_) {
+        if (filter) filter->clear(); 
+    }
+
+    RCLCPP_INFO(node_->get_logger(), "Estimator reset completed");
+}
+
+
 
 } 

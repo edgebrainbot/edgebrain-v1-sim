@@ -103,10 +103,17 @@ namespace edge::control::quadruped
             // Initialize robot model with auto-generated URDF path
             initializeRobotModel();
 
+            // Reset service parameters
+            reset_cooldown_ = auto_declare<double>("reset_cooldown", 1.0);
+            RCLCPP_INFO(get_node()->get_logger(), "Reset Cooldown: %.2f s", reset_cooldown_);
+
+            // Initialize reset time
+            last_reset_time_ = get_node()->now();
+
             ctrl_component_.estimator_ = std::make_shared<Estimator>(ctrl_interfaces_, ctrl_component_, get_node());
             ctrl_component_.balance_ctrl_ = std::make_shared<BalanceCtrl>(ctrl_component_.robot_model_);
 
-            ctrl_component_.wave_generator_ = std::make_shared<WaveGenerator>(
+            ctrl_component_.phase_scheduler_ = std::make_shared<PhaseScheduler>(
                 0.45, 0.5, Vec4(0, 0.5, 0.5, 0), get_node()->now());
         }
         catch (const std::exception& e)
@@ -201,6 +208,9 @@ namespace edge::control::quadruped
                 // std::cout << "is_goal_reached: " << is_goal_reached_ << std::endl;
             });
 
+            // Reset service
+            setupResetService();
+
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
@@ -285,7 +295,7 @@ namespace edge::control::quadruped
     controller_interface::return_type EdgeQuadrupedController::update(const rclcpp::Time& time, const rclcpp::Duration& period)
     {
         ctrl_component_.robot_model_->update();
-        ctrl_component_.wave_generator_->update(time);
+        ctrl_component_.phase_scheduler_->update(time);
         ctrl_component_.estimator_->update();
 
         if (mode_ == FSMMode::NORMAL)
@@ -316,10 +326,10 @@ namespace edge::control::quadruped
             current_state_->exit();
             current_state_ = next_state_;
 
-            // Set WaveGenerator status based on FSM state
-            if (ctrl_component_.wave_generator_)
+            // Set PhaseScheduler status based on FSM state
+            if (ctrl_component_.phase_scheduler_)
             {
-                ctrl_component_.wave_generator_->setStatusFromFSM(next_state_name_);
+                ctrl_component_.phase_scheduler_->setStatusFromFSM(next_state_name_);
             }
 
             current_state_->enter();
@@ -428,7 +438,61 @@ namespace edge::control::quadruped
             return state_list_.invalid;
         }
     }
+
+    void EdgeQuadrupedController::setupResetService()
+    {
+        reset_service_ = get_node()->create_service<std_srvs::srv::Trigger>(
+            topic_ns_ + "/reset",
+            [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+            {
+                // Debounce check
+                auto now = get_node()->now();
+                double time_since_last = (now - last_reset_time_).seconds();
+                
+                if (time_since_last < reset_cooldown_) {
+                    response->success = false;
+                    response->message = "Reset cooldown active (" + 
+                        std::to_string(reset_cooldown_ - time_since_last) + "s remaining)";
+                    RCLCPP_WARN(get_node()->get_logger(), "%s", response->message.c_str());
+                    return;
+                }
+                
+                // Execute reset
+                try {
+                    // Reset estimator
+                    if (ctrl_component_.estimator_) {
+                        ctrl_component_.estimator_->reset();
+                    }
+                    
+                    // Reset gait generator if in trotting state
+                    if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
+                        trot->getGaitGenerator().reset();
+                    }
+                    
+                    // Update timestamp
+                    last_reset_time_ = now;
+                    response->success = true;
+                    response->message = "Reset successful";
+                    
+                    RCLCPP_INFO(get_node()->get_logger(), 
+                        "Reset triggered by service call at time %.3f", now.seconds());
+                        
+                } catch (const std::exception& e) {
+                    response->success = false;
+                    response->message = std::string("Reset failed: ") + e.what();
+                    RCLCPP_ERROR(get_node()->get_logger(), "Reset failed: %s", e.what());
+                }
+            }
+        );
+    
+        RCLCPP_INFO(get_node()->get_logger(), 
+            "Reset service created at: %s/reset (cooldown: %.2fs)", 
+            topic_ns_.c_str(), reset_cooldown_);
+    }
 }
+
+
 
 #include "pluginlib/class_list_macros.hpp"
 PLUGINLIB_EXPORT_CLASS(edge::control::quadruped::EdgeQuadrupedController, controller_interface::ControllerInterface);

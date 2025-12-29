@@ -1,4 +1,4 @@
-#include "edge_quadruped_controller/gait/WaveGenerator.h"
+#include "edge_quadruped_controller/gait/PhaseScheduler.h"
 #include "controller_common/FSM/FSMState.h"
 
 #include <iostream>
@@ -6,13 +6,13 @@
 namespace edge::control::quadruped
 {
 
-WaveGenerator::WaveGenerator(const double period, const double st_ratio, const Vec4& bias,
+PhaseScheduler::PhaseScheduler(const double period, const double st_ratio, const Vec4& bias,
                              const rclcpp::Time& start_time) : start_time_(start_time)
 {
     phase_past_ << 0.5, 0.5, 0.5, 0.5;
     contact_past_.setZero();
-    status_past_ = WaveStatus::SWING_ALL;
-    status_ = WaveStatus::SWING_ALL;
+    status_past_ = PhaseStatus::SWING_ALL;
+    status_ = PhaseStatus::SWING_ALL;
 
     period_ = period;
     st_ratio_ = st_ratio;
@@ -20,7 +20,7 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
 
     if (st_ratio_ >= 1 || st_ratio_ <= 0)
     {
-        std::cerr << "[ERROR] The stancePhaseRatio of WaveGenerator should between (0, 1)"
+        std::cerr << "[ERROR] The stancePhaseRatio of PhaseScheduler should between (0, 1)"
             << std::endl;
         exit(-1);
     }
@@ -29,19 +29,19 @@ WaveGenerator::WaveGenerator(const double period, const double st_ratio, const V
     {
         if (bias_(i) > 1 || bias_(i) < 0)
         {
-            std::cerr << "[ERROR] The bias of WaveGenerator should between [0, 1]"
+            std::cerr << "[ERROR] The bias of PhaseScheduler should between [0, 1]"
                 << std::endl;
             exit(-1);
         }
     }
 }
 
-auto WaveGenerator::update(const rclcpp::Time& time) -> void
+auto PhaseScheduler::update(const rclcpp::Time& time) -> void
 {
     // Accumulate time since start
     accumulated_time_ = (time - start_time_).seconds();
 
-    calcWave(phase_, contact_, status_);
+    calcPhase(phase_, contact_, status_);
 
     if (status_ != status_past_)
     {
@@ -49,13 +49,13 @@ auto WaveGenerator::update(const rclcpp::Time& time) -> void
         {
             switch_status_.setOnes();
         }
-        calcWave(phase_past_, contact_past_, status_past_);
+        calcPhase(phase_past_, contact_past_, status_past_);
 
-        if (status_ == WaveStatus::STANCE_ALL && status_past_ == WaveStatus::SWING_ALL)
+        if (status_ == PhaseStatus::STANCE_ALL && status_past_ == PhaseStatus::SWING_ALL)
         {
             contact_past_.setOnes();
         }
-        else if (status_ == WaveStatus::SWING_ALL && status_past_ == WaveStatus::STANCE_ALL)
+        else if (status_ == PhaseStatus::SWING_ALL && status_past_ == PhaseStatus::STANCE_ALL)
         {
             contact_past_.setZero();
         }
@@ -82,13 +82,13 @@ auto WaveGenerator::update(const rclcpp::Time& time) -> void
     }
 }
 
-void WaveGenerator::calcWave(Vec4& phase, VecInt4& contact, const WaveStatus status)
+void PhaseScheduler::calcPhase(Vec4& phase, VecInt4& contact, const PhaseStatus status)
 {
     switch (status)
     {
-    case WaveStatus::WAVE_ALL:
+    case PhaseStatus::WAVE_ALL:
         {
-            // 使用累积时间
+            // Calculate phase and contact for each foot (using accumulated time and bias)
             for (int i(0); i < 4; ++i)
             {
                 normal_t_(i) =
@@ -106,13 +106,13 @@ void WaveGenerator::calcWave(Vec4& phase, VecInt4& contact, const WaveStatus sta
             }
             break;
         }
-    case WaveStatus::SWING_ALL:
+    case PhaseStatus::SWING_ALL:
         {
             contact.setZero();
             phase << 0.5, 0.5, 0.5, 0.5;
             break;
         }
-    case WaveStatus::STANCE_ALL:
+    case PhaseStatus::STANCE_ALL:
         {
             contact.setOnes();
             phase << 0.5, 0.5, 0.5, 0.5;
@@ -121,7 +121,7 @@ void WaveGenerator::calcWave(Vec4& phase, VecInt4& contact, const WaveStatus sta
     }
 }
 
-void WaveGenerator::setStatusFromFSM(FSMStateName fsm_state)
+void PhaseScheduler::setStatusFromFSM(FSMStateName fsm_state)
 {
     switch (fsm_state)
     {
@@ -130,12 +130,12 @@ void WaveGenerator::setStatusFromFSM(FSMStateName fsm_state)
     case FSMStateName::FREESTAND:
     case FSMStateName::BALANCETEST:
     case FSMStateName::TROTTING:
-        setStatus(WaveStatus::STANCE_ALL);
+        setStatus(PhaseStatus::STANCE_ALL);
         break;
 
     default:
         // Default to SWING_ALL for safety (PASSIVE, INVALID, and unknown states)
-        setStatus(WaveStatus::SWING_ALL);
+        setStatus(PhaseStatus::SWING_ALL);
         break;
     }
 }

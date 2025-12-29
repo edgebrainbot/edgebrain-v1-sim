@@ -3,7 +3,7 @@
 #include <edge_quadruped_controller/edge_quadruped_controller.hpp>
 
 #include "edge_quadruped_controller/utils/math/mathTools.h"
-#include "edge_quadruped_controller/gait/WaveGenerator.h"
+#include "edge_quadruped_controller/gait/PhaseScheduler.h"
 
 StateBalanceTest::StateBalanceTest(CtrlInterfaces& ctrl_interfaces,
                                    CtrlComponent& ctrl_component,
@@ -14,8 +14,8 @@ StateBalanceTest::StateBalanceTest(CtrlInterfaces& ctrl_interfaces,
       estimator_(ctrl_component.estimator_),
       robot_model_(ctrl_component.robot_model_),
       balance_ctrl_(ctrl_component.balance_ctrl_),
-      wave_generator_(
-          ctrl_component.wave_generator_),
+      phase_scheduler_(
+          ctrl_component.phase_scheduler_),
       stable_gains_(stable_gains)
 {
     _xMax = 0.05;
@@ -56,8 +56,8 @@ void StateBalanceTest::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/
 
 void StateBalanceTest::exit()
 {
-    // 重置wave generator状态
-    wave_generator_->status_ = WaveStatus::SWING_ALL;
+    // Reset phase scheduler to SWING_ALL
+    phase_scheduler_->status_ = PhaseStatus::SWING_ALL;
 }
 
 FSMStateName StateBalanceTest::checkChange()
@@ -91,7 +91,7 @@ void StateBalanceTest::calcTorque()
     // calculate foot force
     const Vec34 pos_feet_2_body_global = estimator_->getFeetPos2Body();
     const Vec34 force_feet_global = -balance_ctrl_->calcGRF(dd_pcd_, d_wbd_, B2G_Rotation,
-                                                         pos_feet_2_body_global, wave_generator_->contact_);
+                                                         pos_feet_2_body_global, phase_scheduler_->contact_);
     const Vec34 force_feet_body = G2B_Rotation * force_feet_global;
 
     // Get current joint positions

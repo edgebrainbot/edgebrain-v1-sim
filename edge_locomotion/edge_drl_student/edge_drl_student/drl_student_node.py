@@ -12,6 +12,7 @@ import torch.optim as optim
 from rclpy.node import Node
 from datetime import datetime
 
+from std_srvs.srv import Trigger
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 
@@ -63,6 +64,7 @@ class DRLStudentNode(Node):
         self.policy_blendering_weight = 0.0
         self.save_interval = 300
         self.print_interval = 10
+        self.max_episode_steps = 15000
         
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
@@ -111,7 +113,24 @@ class DRLStudentNode(Node):
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
         self.create_subscription(TrackingError, 'tracking_error_stu', self.tracking_error_callback, 10)
         self.create_subscription(PointCloud2, '/registered_scan', self.pointcloud_callback, 10)
-        # self.create_subscription(std_msgs.msg.Float32, '/obstacle_reward', self.obstacle_reward_callback, 10)
+        
+        # ========== Reset Service Client ==========
+        self.declare_parameter('reset_service_name', '/edge/reset')
+        self.declare_parameter('reset_service_timeout', 5.0)
+        self.declare_parameter('auto_reset_on_done', True)  # Whether to auto reset when episode done
+        
+        self.reset_service_name = self.get_parameter('reset_service_name').value
+        self.reset_service_timeout = self.get_parameter('reset_service_timeout').value
+        self.auto_reset_on_done = self.get_parameter('auto_reset_on_done').value
+        
+        self.reset_client = self.create_client(Trigger, self.reset_service_name)
+        self.reset_count = 0
+        self.reset_success_count = 0
+        self.reset_failure_count = 0
+        
+        self.get_logger().info(f"Reset service client created: {self.reset_service_name}")
+        self.get_logger().info(f"Auto reset on episode done: {self.auto_reset_on_done}")
+    
 
         self.obstacle_reward = 0.0
         self.goal_distance_reward = 0.0
@@ -129,6 +148,9 @@ class DRLStudentNode(Node):
         self.collection_time = 0.0
         self.learn_time = 0.0
         self.iteration_start_time = time.time()
+        self.episode_count = 0
+        self.stu_action_count = 0
+        self.tea_action_count = 0
         
         # Matrix processing lidar
         self.points = None
@@ -141,6 +163,104 @@ class DRLStudentNode(Node):
         
         self.get_logger().info("✅ DRLStudent Node initialized")
 
+    # ========== Reset Service Methods ==========
+    def call_reset_service(self):
+        """
+        Call reset service to reset controller
+        
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        self.reset_count += 1
+        
+        # Wait for service
+        self.get_logger().info(f'[Reset #{self.reset_count}] Waiting for service: {self.reset_service_name}...')
+        
+        if not self.reset_client.wait_for_service(timeout_sec=self.reset_service_timeout):
+            error_msg = f'Service {self.reset_service_name} not available after {self.reset_service_timeout}s'
+            self.get_logger().error(error_msg)
+            self.reset_failure_count += 1
+            return False, error_msg
+        
+        # Create request
+        request = Trigger.Request()
+        
+        # Call service
+        self.get_logger().info('Calling reset service...')
+        reset_start = time.time()
+        
+        try:
+            future = self.reset_client.call_async(request)
+            rclpy.spin_until_future_complete(self, future, timeout_sec=self.reset_service_timeout)
+            
+            if future.result() is not None:
+                response = future.result()
+                elapsed_time = time.time() - reset_start
+                
+                if response.success:
+                    self.reset_success_count += 1
+                    self.get_logger().info(
+                        f'✓ Reset successful in {elapsed_time:.2f}s: {response.message}'
+                    )
+                    
+                    # Log reset statistics
+                    self.logger.writer.add_scalar('Reset/success', 1, self.reset_count)
+                    self.logger.writer.add_scalar('Reset/time', elapsed_time, self.reset_count)
+                    
+                else:
+                    self.reset_failure_count += 1
+                    self.get_logger().warn(
+                        f'✗ Reset failed in {elapsed_time:.2f}s: {response.message}'
+                    )
+                    self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
+                
+                return response.success, response.message
+            else:
+                error_msg = 'Service call failed - no response received'
+                self.get_logger().error(error_msg)
+                self.reset_failure_count += 1
+                self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
+                return False, error_msg
+                
+        except Exception as e:
+            error_msg = f'Exception during service call: {str(e)}'
+            self.get_logger().error(error_msg)
+            self.reset_failure_count += 1
+            self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
+            return False, error_msg
+    
+    def reset_episode(self):
+        """
+        Reset episode (call reset service and reset internal states)
+        """
+        # Call reset service
+        success, message = self.call_reset_service()
+        
+        if success:
+            # Reset internal states
+            self.current_episode_reward = 0.0
+            self.current_episode_length = 0
+            self.obstacle_reward = 0.0
+            self.goal_distance_reward = 0.0
+            self.body_state_reward = 0.0
+            self.stu_action_count = 0
+            self.tea_action_count = 0
+            
+            # Reset vision features
+            self.curr_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
+            self.last_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
+            
+            self.get_logger().info(f'Episode reset complete. Total resets: {self.reset_count}')
+            
+            # Log reset statistics
+            success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
+            self.logger.writer.add_scalar('Reset/total_count', self.reset_count, self.episode_count)
+            self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.episode_count)
+            
+        else:
+            self.get_logger().error(f'Episode reset failed: {message}')
+        
+        return success
 
     def output_action(self):
         
@@ -250,10 +370,6 @@ class DRLStudentNode(Node):
             self.get_logger().error(f'Failed to parse point cloud data: {str(e)}')
             return None
 
-    # def obstacle_reward_callback(self, msg: std_msgs.msg.Float32):
-    #     # self.get_logger().info(f"[ObstacleReward] Received obstacle reward: {msg.data}")
-    #     self.obstacle_reward = msg.data
-        # self.get_logger().info(f"[ObstacleReward] Updated obstacle reward: {self.obstacle_reward}")
 
     def transition_callback(self, msg: Transition):
         # ️Process received transition and add to replay buffer
@@ -298,54 +414,10 @@ class DRLStudentNode(Node):
         )
         action_mode = ActionMode(msg.action_mode)
 
-        # Update episode statistics
-        self.current_episode_reward += stepwise_total_reward
-        self.current_episode_length += 1
-
-        # Logging stepwise reward
-        self.logger.writer.add_scalar('Reward/total_reward', stepwise_total_reward, self.action_count)
-        self.logger.writer.add_scalar('Reward/obstacle_reward', self.obstacle_reward, self.action_count)
-        self.logger.writer.add_scalar('Reward/goal_distance_reward', self.goal_distance_reward, self.action_count)
-        self.logger.writer.add_scalar('Reward/body_state_reward', self.body_state_reward, self.action_count)
-
-        # TODO: input from tracking error to velocity
-        
-        if msg.done:
-            self.episode_count += 1
-            
-            self.logger.add_episode_info(
-                reward=self.current_episode_reward,
-                length=self.current_episode_length
-            )
-            
-            self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
-            self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/obstacle_reward', self.obstacle_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/goal_distance_reward', self.goal_distance_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/body_state_reward', self.body_state_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/avg_reward_per_step', 
-                                          self.current_episode_reward / self.current_episode_length, 
-                                          self.episode_count)
-            
-            self.get_logger().info(
-                f"📊 Episode {self.episode_count} done | "
-                f"Total Reward: {self.current_episode_reward:.2f} | "
-                f"Length: {self.current_episode_length} | "
-                f"Obstacle Reward: {self.obstacle_reward:.2f} | "
-                f"Goal Distance Reward: {self.goal_distance_reward:.2f} | "
-                f"Body State Reward: {self.body_state_reward:.2f}"
-            )
-            
-            # Reset episode statistics
-            self.current_episode_reward = 0.0
-            self.current_episode_length = 0
-            self.obstacle_reward = 0.0
-            self.goal_distance_reward = 0.0
-            self.body_state_reward = 0.0
-
         # Add transition to the self-learning buffer
         if action_mode == ActionMode.STUDENT:
             self.buffer.add_transition(t, action_mode=ActionMode.STUDENT)
+            self.stu_action_count += 1
             
             if not self.buffer.stu_buf.is_ready:
                 print(f"[Transition] Added transition to student buffer. Current size: {self.buffer.stu_buf_size}")
@@ -353,9 +425,71 @@ class DRLStudentNode(Node):
         # Add transition to the teaching-to-learn buffer
         elif action_mode == ActionMode.TEACHER:
             self.buffer.add_transition(t, action_mode=ActionMode.TEACHER)
+            self.tea_action_count += 1
             
             if not self.buffer.tea_buf.is_ready:
                 print(f"[Transition] Added transition to teacher buffer. Current size: {self.buffer.tea_buf_size}")
+        
+        # Update episode statistics
+        self.current_episode_reward += stepwise_total_reward
+        self.current_episode_length += 1
+        
+        # Logging stepwise statistics
+        self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, self.current_episode_length)
+        self.logger.writer.add_scalar('Stepwise/obstacle_reward', self.obstacle_reward, self.current_episode_length)
+        self.logger.writer.add_scalar('Stepwise/goal_distance_reward', self.goal_distance_reward, self.current_episode_length)
+        self.logger.writer.add_scalar('Stepwise/body_state_reward', self.body_state_reward, self.current_episode_length)
+        self.logger.writer.add_scalar('Stepwise/student_action_count', self.stu_action_count, self.current_episode_length)
+        self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.tea_action_count, self.current_episode_length)
+        
+        # Episode done processing
+        if msg.done or self.current_episode_length >= self.max_episode_steps:
+            self.episode_count += 1
+            
+            self.logger.add_episode_info(
+                reward=self.current_episode_reward,
+                length=self.current_episode_length
+            )
+            
+            activation_ratio = self.stu_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
+            
+            self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
+            self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/obstacle_reward', self.obstacle_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/goal_distance_reward', self.goal_distance_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/body_state_reward', self.body_state_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/avg_reward_per_step', self.current_episode_reward / self.current_episode_length, 
+                                          self.episode_count)
+            self.logger.writer.add_scalar('Episode/student_action_count', self.stu_action_count, self.episode_count)
+            self.logger.writer.add_scalar('Episode/teacher_action_count', self.tea_action_count, self.episode_count)
+            self.logger.writer.add_scalar('Episode/activation_ratio', activation_ratio, self.episode_count)
+            
+            self.get_logger().info(
+                f"📊 Episode {self.episode_count} done | "
+                f"Total Reward: {self.current_episode_reward:.2f} | "
+                f"Length: {self.current_episode_length} | "
+                f"Obstacle Reward: {self.obstacle_reward:.2f} | "
+                f"Goal Distance Reward: {self.goal_distance_reward:.2f} | "
+                f"Body State Reward: {self.body_state_reward:.2f} | "
+                f"Student Action Count: {self.stu_action_count} | "
+                f"Teacher Action Count: {self.tea_action_count} | "
+                f"Activation Ratio: {activation_ratio:.2f}"
+            )
+
+            # ========== Auto Reset on Episode Done ==========
+            if self.auto_reset_on_done:
+                self.get_logger().info('Auto reset triggered on episode done')
+                self.reset_episode()
+            else:
+                # Manual reset of internal states
+                self.current_episode_reward = 0.0
+                self.current_episode_length = 0
+                self.obstacle_reward = 0.0
+                self.goal_distance_reward = 0.0
+                self.body_state_reward = 0.0
+                self.stu_action_count = 0
+                self.tea_action_count = 0                        
+            
         
     def tracking_error_callback(self, msg: TrackingError):
         self.tracking_error_ = msg

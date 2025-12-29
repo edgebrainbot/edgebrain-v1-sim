@@ -6,7 +6,7 @@
 #include <edge_quadruped_controller/utils/math/mathTools.h>
 #include <edge_quadruped_controller/control/CtrlComponent.h>
 #include <edge_quadruped_controller/control/Estimator.h>
-#include <edge_quadruped_controller/gait/WaveGenerator.h>
+#include <edge_quadruped_controller/gait/PhaseScheduler.h>
 
 using namespace edge::control::quadruped;
 
@@ -20,7 +20,7 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                                 estimator_(ctrl_component.estimator_),
                                 robot_model_(ctrl_component.robot_model_),
                                 balance_ctrl_(ctrl_component.balance_ctrl_),
-                                wave_generator_(ctrl_component.wave_generator_),
+                                phase_scheduler_(ctrl_component.phase_scheduler_),
                                 gait_generator_(ctrl_component),
                                 swing_gains_(swing_gains),
                                 stable_gains_(stable_gains),
@@ -99,11 +99,11 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
 
     if (checkStepOrNot())
     {
-        wave_generator_->status_ = WaveStatus::WAVE_ALL;
+        phase_scheduler_->status_ = PhaseStatus::WAVE_ALL;
     }
     else
     {
-        wave_generator_->status_ = WaveStatus::STANCE_ALL;
+        phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
     calcTau(tracking_error_pub_, tracking_error_stu_pub_, transition_pub_, latest_accel_, obstacleAvgDistance, is_goal_reached);
@@ -113,7 +113,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
 
 void StateTrotting::exit()
 {
-    wave_generator_->status_ = WaveStatus::SWING_ALL;
+    phase_scheduler_->status_ = PhaseStatus::SWING_ALL;
 }
 
 FSMStateName StateTrotting::checkChange()
@@ -288,14 +288,14 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;
 
     Vec34 force_feet_global =
-        -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), wave_generator_->contact_);
+        -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), phase_scheduler_->contact_);
 
     Vec34 pos_feet_global = estimator_->getFeetPos();
     Vec34 vel_feet_global = estimator_->getFeetVel();
 
     for (int i(0); i < 4; ++i)
     {
-        if (wave_generator_->contact_(i) == 0)
+        if (phase_scheduler_->contact_(i) == 0)
         {
             force_feet_global.col(i) =
                 Kp_swing_ * (pos_feet_global_goal_.col(i) - pos_feet_global.col(i)) +
@@ -340,7 +340,7 @@ void StateTrotting::calcGain() const
 {
     for (int i(0); i < 4; ++i)
     {
-        if (wave_generator_->contact_(i) == 0)
+        if (phase_scheduler_->contact_(i) == 0)
         {
             // swing gain
             for (int j = 0; j < 3; j++)

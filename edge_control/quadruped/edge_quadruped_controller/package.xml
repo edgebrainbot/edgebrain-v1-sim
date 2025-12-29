@@ -11,6 +11,7 @@
 
   <depend>edge_config</depend>
   <depend>edge_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>edge_ros_interfaces</depend>
   <depend>controller_interface</depend>
   <depend>controller_common</depend>

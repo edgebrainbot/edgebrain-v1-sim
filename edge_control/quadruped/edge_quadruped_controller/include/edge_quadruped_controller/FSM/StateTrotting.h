@@ -19,7 +19,7 @@ struct CtrlInterfaces;
 namespace edge::control::quadruped
 {
     struct CtrlComponent;
-    class WaveGenerator;
+    class PhaseScheduler;
     class BalanceCtrl;
     class QuadrupedModel;
     class Estimator;
@@ -48,6 +48,9 @@ public:
              double obstacleAvgDistance, bool is_goal_reached);
 
     void exit() override;
+
+    GaitGenerator& getGaitGenerator() { return gait_generator_; }
+    const GaitGenerator& getGaitGenerator() const { return gait_generator_; }
 
     FSMStateName checkChange() override;
 
@@ -90,7 +93,7 @@ private:
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
-    std::shared_ptr<WaveGenerator> &wave_generator_;
+    std::shared_ptr<PhaseScheduler> &phase_scheduler_;
 
     GaitGenerator gait_generator_;
 

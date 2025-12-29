@@ -34,9 +34,39 @@ def generate_launch_description():
         default_value="go2",
         description="Robot name (e.g. go2, go1, a1)"
     )
+    
+    # ========== NEW: Reset Handler Arguments ==========
+    world_name_arg = DeclareLaunchArgument(
+        "world_name",
+        default_value="bayland_world",
+        description="Gazebo world name for reset"
+    )
+    
+    reset_position_x_arg = DeclareLaunchArgument(
+        "reset_position_x",
+        default_value="0.0",
+        description="Robot reset position X"
+    )
+    
+    reset_position_y_arg = DeclareLaunchArgument(
+        "reset_position_y",
+        default_value="0.0",
+        description="Robot reset position Y"
+    )
+    
+    reset_position_z_arg = DeclareLaunchArgument(
+        "reset_position_z",
+        default_value="0.35",
+        description="Robot reset position Z"
+    )
+
 
     namespace = LaunchConfiguration("namespace")
     robot = LaunchConfiguration("robot")
+    world_name = LaunchConfiguration("world_name")
+    reset_position_x = LaunchConfiguration("reset_position_x")
+    reset_position_y = LaunchConfiguration("reset_position_y")
+    reset_position_z = LaunchConfiguration("reset_position_z")
 
     # ------------------------
     # Locomotion Control Layer
@@ -150,12 +180,40 @@ def generate_launch_description():
         ]
     )
 
+    # ========== NEW: Reset Handler Node ==========
+    reset_handler_node = Node(
+        package='edge_bringup', 
+        executable='reset_handler_node', 
+        name='reset_handler',
+        namespace=namespace,
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'world_name': world_name,
+            'robot_name': robot,
+            'reset_position_x': reset_position_x,
+            'reset_position_y': reset_position_y,
+            'reset_position_z': reset_position_z,
+            'reset_orientation_x': 0.0,
+            'reset_orientation_y': 0.0,
+            'reset_orientation_z': 0.0,
+            'reset_orientation_w': 1.0,
+            'service_timeout': 3000,
+            'reset_world': True,
+            'reset_robot_pose': True,
+            'wait_after_reset': 0.5,
+        }]
+    )
 
     return LaunchDescription([
         # -- Launch Arguments --
         set_sim_time,
         namespace_arg,
         robot_arg,
+        world_name_arg,          
+        reset_position_x_arg,    
+        reset_position_y_arg,   
+        reset_position_z_arg,    
         
         # -- Launch Components --
         controller_launch,
@@ -165,5 +223,6 @@ def generate_launch_description():
         virtual_safety_indicator_node,
         
         # navigation_launch,
-        publish_goal_point,
+        publish_goal_point
+        # reset_handler_node
     ])

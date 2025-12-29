@@ -8,7 +8,7 @@
 // Forward declarations for ROS2 types
 namespace edge::control::quadruped
 {
-    class WaveGenerator;
+    class PhaseScheduler;
     class BalanceCtrl;
     class QuadrupedModel;
     class Estimator;
@@ -41,7 +41,7 @@ private:
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
-    std::shared_ptr<WaveGenerator> &wave_generator_;
+    std::shared_ptr<PhaseScheduler> &phase_scheduler_;
 
     Vec3 pcd_, pcd_init_;
     RotMat Rd_;

@@ -19,7 +19,7 @@ namespace rclcpp_lifecycle
 namespace edge::control::quadruped
 {
 
-class WaveGenerator;
+class PhaseScheduler;
 class QuadrupedModel;
 struct CtrlComponent;
 
@@ -143,6 +143,7 @@ public:
     [[nodiscard]] Vec34 getFeetVelGlobal() const;
 
     void update();
+    void reset();
 
     /**
      * Publish odometry and tf data
@@ -152,7 +153,7 @@ public:
 private:
     CtrlInterfaces& ctrl_interfaces_;
     std::shared_ptr<QuadrupedModel>& robot_model_;
-    std::shared_ptr<WaveGenerator>& wave_generator_;
+    std::shared_ptr<PhaseScheduler>& phase_scheduler_;
 
     Eigen::Matrix<double, 18, 1> x_hat_; // The state of estimator, position(3)+velocity(3)+feet position(3x4)
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <edge_quadruped_controller/gait/WaveGenerator.h>
+#include <edge_quadruped_controller/gait/PhaseScheduler.h>
 
 #include "BalanceCtrl.h"
 #include "Estimator.h"
@@ -14,7 +14,7 @@ struct CtrlComponent
     std::shared_ptr<QuadrupedModel> robot_model_;
     std::shared_ptr<Estimator> estimator_;
     std::shared_ptr<BalanceCtrl> balance_ctrl_;
-    std::shared_ptr<WaveGenerator> wave_generator_;
+    std::shared_ptr<PhaseScheduler> phase_scheduler_;
 
     CtrlComponent() = default;
 };

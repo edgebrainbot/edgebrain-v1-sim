@@ -21,9 +21,9 @@ FootstepPlanner::FootstepPlanner(CtrlComponent &ctrl_component)
         feet_init_angle_(i) = atan2(feet_pos_body(1, i), feet_pos_body(0, i));
     }
     
-    // Set stance and swing time from wave generator
-    t_stance_ = ctrl_component_.wave_generator_->get_t_stance();
-    t_swing_ = ctrl_component_.wave_generator_->get_t_swing();
+    // Set stance and swing time from phase scheduler
+    t_stance_ = ctrl_component_.phase_scheduler_->get_t_stance();
+    t_swing_ = ctrl_component_.phase_scheduler_->get_t_swing();
 }
 
 
@@ -45,10 +45,8 @@ Vec3 FootstepPlanner::calcFootPos(const int index, Vec2 vxy_goal_global, const d
     const double next_yaw = d_yaw * (1 - phase) * t_swing_ + d_yaw * t_stance_ / 2 +
                             k_yaw_ * (d_yaw_global - d_yaw);
 
-    next_step(0) +=
-            feet_radius_(index) * cos(yaw + feet_init_angle_(index) + next_yaw);
-    next_step(1) +=
-            feet_radius_(index) * sin(yaw + feet_init_angle_(index) + next_yaw);
+    next_step(0) += feet_radius_(index) * cos(yaw + feet_init_angle_(index) + next_yaw);
+    next_step(1) += feet_radius_(index) * sin(yaw + feet_init_angle_(index) + next_yaw);
 
     Vec3 foot_pos = estimator_->getPosition() + next_step;
     foot_pos(2) = 0.0;
@@ -56,4 +54,4 @@ Vec3 FootstepPlanner::calcFootPos(const int index, Vec2 vxy_goal_global, const d
     return foot_pos;
 }
 
-} // namespace edge::locomotion
+} // namespace edge::control::quadruped

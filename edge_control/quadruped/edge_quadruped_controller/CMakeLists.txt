@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find the dependencies
 set(CONTROLLER_DEPENDENCIES
+    std_srvs
     rclcpp
     pluginlib
     rcpputils
@@ -53,7 +54,7 @@ add_library(${PROJECT_NAME} SHARED
   src/utils/quadProgpp/Array.cc
   src/utils/quadProgpp/QuadProg++.cc
 
-  src/gait/WaveGenerator.cpp
+  src/gait/PhaseScheduler.cpp
   src/gait/FootstepPlanner.cpp
   src/gait/GaitGenerator.cpp
 )

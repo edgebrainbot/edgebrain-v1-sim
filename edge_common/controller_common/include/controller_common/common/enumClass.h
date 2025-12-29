@@ -35,7 +35,7 @@ enum class FrameType
     GLOBAL
 };
 
-enum class WaveStatus
+enum class PhaseStatus
 {
     STANCE_ALL,
     SWING_ALL,

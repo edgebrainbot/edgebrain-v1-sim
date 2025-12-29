@@ -20,12 +20,14 @@
 
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
+
 
 namespace edge::control::quadruped
 {
     struct CtrlComponent;
-    class WaveGenerator;
+    class PhaseScheduler;
     class BalanceCtrl;
     class QuadrupedModel;
     class Estimator;
@@ -78,6 +80,11 @@ namespace edge::control::quadruped
          * Initialize robot model with auto-generated URDF path
          */
         void initializeRobotModel();
+
+        /**
+         * @brief Setup reset service
+         */
+        void setupResetService();
 
         CtrlComponent ctrl_component_;
         CtrlInterfaces ctrl_interfaces_;
@@ -174,6 +181,7 @@ namespace edge::control::quadruped
         //             << "wz = " << cmd_wz_ << std::endl;
         // }
 
+        // For publishers and subscribers
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
         rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
@@ -181,6 +189,12 @@ namespace edge::control::quadruped
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_distance_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_goal_reached_sub_;
+
+        // For reset service
+        rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
+        rclcpp::Time last_reset_time_;  // last reset time for debounce protection
+        double reset_cooldown_{1.0};  // reset cooldown duration in seconds
+
 
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;

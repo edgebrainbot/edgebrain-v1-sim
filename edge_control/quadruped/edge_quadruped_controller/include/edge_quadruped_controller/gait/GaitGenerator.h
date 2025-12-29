@@ -9,7 +9,7 @@ namespace edge::control::quadruped
 {
 
 struct CtrlComponent;
-class WaveGenerator;
+class PhaseScheduler;
 class BalanceCtrl;
 class QuadrupedModel;
 class Estimator;
@@ -25,6 +25,8 @@ public:
     void generate(Vec34 &feet_pos, Vec34 &feet_vel);
 
     void restart();
+
+    void reset();
 
 private:
     Vec3 getFootPos(int i);
@@ -66,7 +68,7 @@ private:
      */
     [[nodiscard]] double cycloidZVelocity(double height, double phase) const;
 
-    std::shared_ptr<WaveGenerator> &wave_generator_;
+    std::shared_ptr<PhaseScheduler> &phase_scheduler_;
     std::shared_ptr<Estimator> &estimator_;
     FootstepPlanner footstep_planner_;
 
