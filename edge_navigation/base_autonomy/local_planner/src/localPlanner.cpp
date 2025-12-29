@@ -730,7 +730,7 @@ int main(int argc, char** argv)
 
       pcl::PointXYZI point;
       plannerCloudCrop->clear();
-      int plannerCloudSize = plannerCloud->points.size();
+      int plannerCloudSize = std::max(1, (int)plannerCloud->points.size());  
       std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
       
       // Publish global goal distance for monitoring
