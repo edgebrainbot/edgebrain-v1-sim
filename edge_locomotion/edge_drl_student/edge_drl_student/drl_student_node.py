@@ -64,7 +64,7 @@ class DRLStudentNode(Node):
         self.policy_blendering_weight = 0.0
         self.save_interval = 300
         self.print_interval = 10
-        self.max_episode_steps = 15000
+        self.max_episode_steps = int(1e6)
         
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
@@ -451,7 +451,7 @@ class DRLStudentNode(Node):
                 length=self.current_episode_length
             )
             
-            activation_ratio = self.stu_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
+            activation_ratio = self.tea_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
             
             self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
             self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
