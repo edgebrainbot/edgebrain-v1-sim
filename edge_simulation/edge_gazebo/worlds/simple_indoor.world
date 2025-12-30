@@ -20,7 +20,10 @@
       filename="ignition-gazebo-contact-system"
       name="gz::sim::systems::Contact">
     </plugin>
-
+    <plugin
+      filename="ignition-gazebo-apply-link-wrench-system"
+      name="gz::sim::systems::ApplyLinkWrench">
+    </plugin>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>

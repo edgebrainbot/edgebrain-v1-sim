@@ -7,6 +7,7 @@
   <xacro:arg name="CLASSIC" default="false"/>
 
   <xacro:property name="pkg_description" value="$(find go2_description)"/>
+  <xacro:property name="edge_gazebo" value="$(find edge_gazebo)"/>
 
   <xacro:include filename="${pkg_description}/xacro/const.xacro"/>
   <xacro:include filename="${pkg_description}/xacro/materials.xacro"/>
@@ -14,10 +15,10 @@
 
   <xacro:if value="$(arg GAZEBO)">
     <xacro:if value="$(arg CLASSIC)">
-      <xacro:include filename="${pkg_description}/xacro/gazebo_classic.xacro"/>
+      <xacro:include filename="${edge_gazebo}/xacro/gazebo_classic.xacro"/>
     </xacro:if>
     <xacro:unless value="$(arg CLASSIC)">
-      <xacro:include filename="${pkg_description}/xacro/gazebo.xacro"/>
+      <xacro:include filename="${edge_gazebo}/xacro/gazebo.xacro"/>
     </xacro:unless>
   </xacro:if>
   <xacro:unless value="$(arg GAZEBO)">

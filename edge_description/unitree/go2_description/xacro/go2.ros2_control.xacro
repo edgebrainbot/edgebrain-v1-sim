@@ -10,19 +10,19 @@
 		<hardware>
 			<plugin>unitree_go2_hardware/Go2HardwareInterface</plugin>
 
-      <!-- Parameters for real robot -->
-      <xacro:if value="$(arg use_real_robot)">
-        <param name="domain">$(arg dds_domain_id)</param> 
-		    <param name="network_interface">$(arg network_interface)</param>
-			  <param name="show_foot_force">true</param>
-      </xacro:if>
+			<!-- Parameters for real robot -->
+			<xacro:if value="$(arg use_real_robot)">
+				<param name="domain">$(arg dds_domain_id)</param> 
+					<param name="network_interface">$(arg network_interface)</param>
+					<param name="show_foot_force">true</param>
+			</xacro:if>
 
-      <!-- Parameters for simulation -->
-      <xacro:unless value="$(arg use_real_robot)">
-        <param name="domain">1</param> 
-		    <param name="network_interface">lo</param>
-			  <param name="show_foot_force">true</param>
-      </xacro:unless>
+			<!-- Parameters for Mujoco simulation -->
+			<xacro:unless value="$(arg use_real_robot)">
+				<param name="domain">1</param> 
+					<param name="network_interface">lo</param>
+					<param name="show_foot_force">true</param>
+			</xacro:unless>
 		</hardware>
 
 		<joint name="FR_hip_joint">
