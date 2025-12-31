@@ -118,6 +118,18 @@ void StateTrotting::exit()
 
 FSMStateName StateTrotting::checkChange()
 {
+    if (is_reset_)
+    {
+        is_reset_ = false; // Reset the flag
+        return FSMStateName::FIXEDSTAND;
+    }
+
+    // if (launch_after_reset_)
+    // {
+    //     launch_after_reset_ = false; // Reset the flag
+    //     return FSMStateName::TROTTING;
+    // }
+
     switch (ctrl_interfaces_.control_inputs_.command)
     {
     case 1:

@@ -181,9 +181,9 @@ def generate_launch_description():
     )
 
     # ========== NEW: Reset Handler Node ==========
-    reset_handler_node = Node(
+    gz_reset_handler_node = Node(
         package='edge_bringup', 
-        executable='reset_handler_node', 
+        executable='gazebo_reset_handler', 
         name='reset_handler',
         namespace=namespace,
         output='screen',
@@ -199,7 +199,7 @@ def generate_launch_description():
             'reset_orientation_z': 0.0,
             'reset_orientation_w': 1.0,
             'service_timeout': 3000,
-            'reset_world': True,
+            'reset_world': False,
             'reset_robot_pose': True,
             'wait_after_reset': 0.5,
         }]
@@ -224,5 +224,5 @@ def generate_launch_description():
         
         # navigation_launch,
         publish_goal_point,
-        reset_handler_node,
+        gz_reset_handler_node,
     ])

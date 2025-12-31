@@ -211,6 +211,9 @@ namespace edge::control::quadruped
             // Reset service
             setupResetService();
 
+            // Launch service
+            setupLaunchService();
+
             // Publisher for tracking error
             tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::TrackingError>(
                 topic_ns_ + "/tracking_error", 100);
@@ -442,21 +445,21 @@ namespace edge::control::quadruped
     void EdgeQuadrupedController::setupResetService()
     {
         reset_service_ = get_node()->create_service<std_srvs::srv::Trigger>(
-            topic_ns_ + "/reset",
+            topic_ns_ + "/reset/controller",
             [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
                 std::shared_ptr<std_srvs::srv::Trigger::Response> response)
             {
                 // Debounce check
                 auto now = get_node()->now();
-                double time_since_last = (now - last_reset_time_).seconds();
+                // double time_since_last = (now - last_reset_time_).seconds();
                 
-                if (time_since_last < reset_cooldown_) {
-                    response->success = false;
-                    response->message = "Reset cooldown active (" + 
-                        std::to_string(reset_cooldown_ - time_since_last) + "s remaining)";
-                    RCLCPP_WARN(get_node()->get_logger(), "%s", response->message.c_str());
-                    return;
-                }
+                // if (time_since_last < reset_cooldown_) {
+                //     response->success = false;
+                //     response->message = "Reset cooldown active (" + 
+                //         std::to_string(reset_cooldown_ - time_since_last) + "s remaining)";
+                //     RCLCPP_WARN(get_node()->get_logger(), "%s", response->message.c_str());
+                //     return;
+                // }
                 
                 // Execute reset
                 try {
@@ -468,10 +471,11 @@ namespace edge::control::quadruped
                     // Reset gait generator if in trotting state
                     if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
                         trot->getGaitGenerator().reset();
+                        trot->setReset(true);       // inform the trotting state of the reset
                     }
                     
                     // Update timestamp
-                    last_reset_time_ = now;
+                    // last_reset_time_ = now;
                     response->success = true;
                     response->message = "Reset successful";
                     
@@ -487,7 +491,43 @@ namespace edge::control::quadruped
         );
     
         RCLCPP_INFO(get_node()->get_logger(), 
-            "Reset service created at: %s/reset (cooldown: %.2fs)", 
+            "Reset service created at: %s/reset/controller (cooldown: %.2fs)", 
+            topic_ns_.c_str(), reset_cooldown_);
+    }
+
+    void EdgeQuadrupedController::setupLaunchService()
+    {
+        launch_service_ = get_node()->create_service<std_srvs::srv::Trigger>(
+            topic_ns_ + "/launch/controller",
+            [this](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+            {
+                // Debounce check
+                auto now = get_node()->now();
+                // double time_since_last = (now - last_reset_time_).seconds();
+    
+                // Execute reset
+                try {
+                    current_state_->setLaunchAfterReset(true);
+                    
+                    // Update timestamp
+                    // last_reset_time_ = now;
+                    response->success = true;
+                    response->message = "Launch successful";
+                    
+                    RCLCPP_INFO(get_node()->get_logger(), 
+                        "Launch triggered by service call at time %.3f", now.seconds());
+                        
+                } catch (const std::exception& e) {
+                    response->success = false;
+                    response->message = std::string("Launch failed: ") + e.what();
+                    RCLCPP_ERROR(get_node()->get_logger(), "Launch failed: %s", e.what());
+                }
+            }
+        );
+    
+        RCLCPP_INFO(get_node()->get_logger(), 
+            "Launch service created at: %s/controller/launch (cooldown: %.2fs)", 
             topic_ns_.c_str(), reset_cooldown_);
     }
 }

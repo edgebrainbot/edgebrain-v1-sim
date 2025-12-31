@@ -27,7 +27,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'reset_handler_node = edge_bringup.reset_handler:main',
+            'gazebo_reset_handler = edge_bringup.gazebo_reset_handler:main',
         ],
     },
 )

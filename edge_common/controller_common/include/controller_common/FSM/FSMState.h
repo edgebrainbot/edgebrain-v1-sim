@@ -26,6 +26,14 @@ public:
     {
     }
 
+    void setReset(bool reset) {
+        is_reset_ = reset;
+    }
+
+    void setLaunchAfterReset(bool launch) {
+        launch_after_reset_ = launch;
+    }
+
     static std::string sanitizeName(std::string name) {
     std::replace(name.begin(), name.end(), ' ', '_');  // Space → Underscore
     return name;
@@ -45,6 +53,8 @@ public:
 
 protected:
     CtrlInterfaces& ctrl_interfaces_;
+    bool is_reset_{false};
+    bool launch_after_reset_{false};
 };
 
 #endif //FSMSTATE_H

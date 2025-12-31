@@ -18,6 +18,11 @@ void StateFixedStand::enter() {
 
 FSMStateName StateFixedStand::checkChange()
 {
+    if (launch_after_reset_) {
+        launch_after_reset_ = false;
+        return FSMStateName::TROTTING;
+    }
+
     if (percent_ < 1.5)
     {
         return FSMStateName::FIXEDSTAND;

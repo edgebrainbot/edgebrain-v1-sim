@@ -86,6 +86,11 @@ namespace edge::control::quadruped
          */
         void setupResetService();
 
+        /**
+         * @brief Setup launch service
+         */
+        void setupLaunchService();
+
         CtrlComponent ctrl_component_;
         CtrlInterfaces ctrl_interfaces_;
 
@@ -192,6 +197,7 @@ namespace edge::control::quadruped
 
         // For reset service
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
+        rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr launch_service_;
         rclcpp::Time last_reset_time_;  // last reset time for debounce protection
         double reset_cooldown_{1.0};  // reset cooldown duration in seconds
 
