@@ -55,9 +55,9 @@ class DRLStudentNode(Node):
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         ], dtype=torch.float32, device=self.device) * -0.1
 
-        self.body_state_dim = 12  # Example dimension for body state
-        self.vision_feature_dim = 24  # Example dimension for vision features from lidar
-        self.obs_dim = self.body_state_dim + self.vision_feature_dim  # 12 from tracking error + 24 from lidar features
+        self.body_state_dim = 12
+        self.vision_feature_dim = 24
+        self.obs_dim = self.body_state_dim + self.vision_feature_dim
         
         self.act_dim = 6
         self.policy_blendering_weight = 0.0
@@ -72,7 +72,6 @@ class DRLStudentNode(Node):
         self.reward_normalizer = RewardNormalizerWindow(window_size=1000, clip_range=5.0)
         
         self.batch_size = 512
-        # self.batch_size = 256
         self.last_reload_time = 0.0
         self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.body_state_dim)
         self.curr_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
@@ -115,43 +114,31 @@ class DRLStudentNode(Node):
         
         # ========== Reset Service Configuration ==========
         self.declare_parameter('reset_service_name', '/edge/reset')
-        self.declare_parameter('reset_service_timeout', 5.0)
+        self.declare_parameter('reset_service_timeout', 10.0)  # ✅ 增加到 10 秒
         self.declare_parameter('auto_reset_on_done', True)
-        self.declare_parameter('reset_max_retries', 3)  # Maximum number of retries
-        self.declare_parameter('reset_retry_delay', 0.5)  # Delay between retries (seconds)
-        self.declare_parameter('pause_learning_on_reset', True)  # Pause learning during reset
         
         self.reset_service_name = self.get_parameter('reset_service_name').value
         self.reset_service_timeout = self.get_parameter('reset_service_timeout').value
         self.auto_reset_on_done = self.get_parameter('auto_reset_on_done').value
-        self.reset_max_retries = self.get_parameter('reset_max_retries').value
-        self.reset_retry_delay = self.get_parameter('reset_retry_delay').value
-        self.pause_learning_on_reset = self.get_parameter('pause_learning_on_reset').value
         
         self.reset_client = self.create_client(Trigger, self.reset_service_name)
         self.reset_count = 0
         self.reset_success_count = 0
         self.reset_failure_count = 0
-        self.reset_total_attempts = 0  # Total number of attempts across all resets
         
         # Reset state flags
-        self.is_resetting = False  # Whether currently resetting
-        self.learning_paused = False  # Whether learning is paused
-        self.skipped_updates_during_reset = 0  # Number of updates skipped during reset
+        self.is_resetting = False
         
         self.get_logger().info(f"Reset service client created: {self.reset_service_name}")
         self.get_logger().info(f"Auto reset on episode done: {self.auto_reset_on_done}")
-        self.get_logger().info(f"Reset max retries: {self.reset_max_retries}")
-        self.get_logger().info(f"Reset retry delay: {self.reset_retry_delay}s")
-        self.get_logger().info(f"Pause learning on reset: {self.pause_learning_on_reset}")
 
         self.obstacle_reward = 0.0
         self.goal_distance_reward = 0.0
         self.body_state_reward = 0.0
 
         # Create timers
-        self.action_timer = self.create_timer(0.1, self.action_loop)  # Generate and publish actions
-        self.learn_timer = self.create_timer(0.5, self.learn_step)    # Learning weights updates
+        self.action_timer = self.create_timer(0.1, self.action_loop)
+        self.learn_timer = self.create_timer(0.5, self.learn_step)
         
         # Statistical variables
         self.update_count = 0
@@ -168,7 +155,6 @@ class DRLStudentNode(Node):
         # Matrix processing lidar
         self.points = None
         self.mat_base_vec = torch.arange(0.1, 144.1, 0.1, dtype=torch.float32).to(self.device) * 50
-        # x = torch.log(self.mat_base_vec) * 0.1        # (original version)
         x = torch.log(self.mat_base_vec) * 0.0001
         
         self.vis_feature_mat = torch.vander(x, N=8, increasing=True).T.to(self.device)
@@ -177,208 +163,147 @@ class DRLStudentNode(Node):
         self.get_logger().info("✅ DRLStudent Node initialized")
 
     # ========== Reset Service Methods ==========
-    def call_reset_service(self, max_retries=None):
+    def call_reset_service(self):
         """
-        Call reset service to reset controller with retry mechanism
-        
-        Args:
-            max_retries: Maximum number of retry attempts (default: use self.reset_max_retries)
+        Call reset service to reset controller (single attempt, no retry)
+        Uses simple polling instead of spin_until_future_complete to avoid blocking
         
         Returns:
             tuple: (success: bool, message: str)
         """
-        if max_retries is None:
-            max_retries = self.reset_max_retries
-        
-        # Mark as resetting and pause learning
+        # Mark as resetting
         self.is_resetting = True
-        if self.pause_learning_on_reset:
-            self.learning_paused = True
-            self.get_logger().info('🔸 Learning paused during reset')
-        
         self.reset_count += 1
-        reset_overall_start = time.time()
         
-        for attempt in range(1, max_retries + 1):
-            self.reset_total_attempts += 1
+        self.get_logger().info(
+            f'[Reset #{self.reset_count}] Waiting for service: {self.reset_service_name}...'
+        )
+        
+        reset_start = time.time()
+        
+        # Wait for service
+        if not self.reset_client.wait_for_service(timeout_sec=self.reset_service_timeout):
+            error_msg = f'Service {self.reset_service_name} not available after {self.reset_service_timeout}s'
+            self.get_logger().error(error_msg)
+            self.reset_failure_count += 1
+            self.is_resetting = False
+            self._log_reset_failure()
+            return False, error_msg
+        
+        # Create request
+        request = Trigger.Request()
+        
+        # Call service
+        self.get_logger().info(f'📞 Calling reset service (timeout: {self.reset_service_timeout}s)...')
+        
+        try:
+            future = self.reset_client.call_async(request)
             
-            self.get_logger().info(
-                f'[Reset #{self.reset_count}, Attempt {attempt}/{max_retries}] '
-                f'Waiting for service: {self.reset_service_name}...'
-            )
-            
-            # Wait for service
-            if not self.reset_client.wait_for_service(timeout_sec=self.reset_service_timeout):
-                error_msg = (f'Service {self.reset_service_name} not available '
-                           f'after {self.reset_service_timeout}s')
-                self.get_logger().error(error_msg)
+            # ✅ Use simple polling instead of spin_until_future_complete
+            start_time = time.time()
+            while not future.done():
+                elapsed = time.time() - start_time
                 
-                if attempt < max_retries:
-                    self.get_logger().warn(
-                        f'Service unavailable, retrying in {self.reset_retry_delay}s... '
-                        f'({attempt}/{max_retries})'
-                    )
-                    time.sleep(self.reset_retry_delay)
-                    continue
-                else:
-                    self.reset_failure_count += 1
-                    self._log_reset_failure(attempt)
-                    # Resume learning after failed reset
-                    self._resume_learning(reset_overall_start)
-                    return False, error_msg
-            
-            # Create request
-            request = Trigger.Request()
-            
-            # Call service
-            self.get_logger().info(f'Calling reset service (attempt {attempt}/{max_retries})...')
-            reset_start = time.time()
-            
-            try:
-                future = self.reset_client.call_async(request)
-                rclpy.spin_until_future_complete(self, future, timeout_sec=self.reset_service_timeout)
-                
-                if future.result() is not None:
-                    response = future.result()
-                    elapsed_time = time.time() - reset_start
-                    
-                    if response.success:
-                        self.reset_success_count += 1
-                        self.get_logger().info(
-                            f'✓ Reset successful on attempt {attempt}/{max_retries} '
-                            f'in {elapsed_time:.2f}s: {response.message}'
-                        )
-                        
-                        # Log reset statistics
-                        self._log_reset_success(elapsed_time, attempt)
-                        
-                        # Resume learning after successful reset
-                        self._resume_learning(reset_overall_start)
-                        
-                        return True, response.message
-                    else:
-                        self.get_logger().warn(
-                            f'✗ Reset failed on attempt {attempt}/{max_retries} '
-                            f'in {elapsed_time:.2f}s: {response.message}'
-                        )
-                        
-                        if attempt < max_retries:
-                            self.get_logger().warn(
-                                f'Reset failed, retrying in {self.reset_retry_delay}s... '
-                                f'({attempt}/{max_retries})'
-                            )
-                            time.sleep(self.reset_retry_delay)
-                            continue
-                        else:
-                            self.reset_failure_count += 1
-                            self._log_reset_failure(attempt)
-                            # Resume learning after failed reset
-                            self._resume_learning(reset_overall_start)
-                            return False, response.message
-                else:
-                    error_msg = 'Service call failed - no response received'
+                if elapsed > self.reset_service_timeout:
+                    error_msg = f'⏱️ Service call timeout after {elapsed:.2f}s'
                     self.get_logger().error(error_msg)
-                    
-                    if attempt < max_retries:
-                        self.get_logger().warn(
-                            f'No response, retrying in {self.reset_retry_delay}s... '
-                            f'({attempt}/{max_retries})'
-                        )
-                        time.sleep(self.reset_retry_delay)
-                        continue
-                    else:
-                        self.reset_failure_count += 1
-                        self._log_reset_failure(attempt)
-                        # Resume learning after failed reset
-                        self._resume_learning(reset_overall_start)
-                        return False, error_msg
-                        
-            except Exception as e:
-                error_msg = f'Exception during service call: {str(e)}'
-                self.get_logger().error(error_msg)
-                
-                if attempt < max_retries:
                     self.get_logger().warn(
-                        f'Exception occurred, retrying in {self.reset_retry_delay}s... '
-                        f'({attempt}/{max_retries})'
+                        '💡 Tip: Reset service may be slow. Consider increasing reset_service_timeout parameter.'
                     )
-                    time.sleep(self.reset_retry_delay)
-                    continue
+                    self.reset_failure_count += 1
+                    self._log_reset_failure()
+                    self.is_resetting = False
+                    return False, error_msg
+                
+                # Short sleep to avoid high CPU usage
+                time.sleep(0.01)
+            
+            elapsed_time = time.time() - reset_start
+            
+            # Get result
+            try:
+                response = future.result()
+                
+                if response is None:
+                    error_msg = f'⚠️ Service returned None response after {elapsed_time:.2f}s'
+                    self.get_logger().error(error_msg)
+                    self.get_logger().warn(
+                        '💡 This may indicate the service crashed or returned invalid data.'
+                    )
+                    self.reset_failure_count += 1
+                    self._log_reset_failure()
+                    self.is_resetting = False
+                    return False, error_msg
+                
+                # Log response details
+                self.get_logger().info(
+                    f'📨 Response received: success={response.success}, message="{response.message}"'
+                )
+                
+                if response.success:
+                    self.reset_success_count += 1
+                    self.get_logger().info(
+                        f'✅ Reset successful in {elapsed_time:.2f}s: {response.message}'
+                    )
+                    self._log_reset_success(elapsed_time)
+                    self.is_resetting = False
+                    return True, response.message
                 else:
                     self.reset_failure_count += 1
-                    self._log_reset_failure(attempt)
-                    # Resume learning after failed reset
-                    self._resume_learning(reset_overall_start)
-                    return False, error_msg
-        
-        # Should not reach here
-        self._resume_learning(reset_overall_start)
-        return False, "Max retries exceeded"
-    
-    def _resume_learning(self, reset_start_time):
-        """
-        Resume learning after reset is complete
-        
-        Args:
-            reset_start_time: Time when reset started
-        """
-        self.is_resetting = False
-        if self.pause_learning_on_reset:
-            self.learning_paused = False
-            reset_duration = time.time() - reset_start_time
-            self.get_logger().info(
-                f'🔸 Learning resumed after reset (duration: {reset_duration:.2f}s, '
-                f'skipped updates: {self.skipped_updates_during_reset})'
-            )
+                    self.get_logger().warn(
+                        f'❌ Reset failed in {elapsed_time:.2f}s: {response.message}'
+                    )
+                    self._log_reset_failure()
+                    self.is_resetting = False
+                    return False, response.message
+                    
+            except Exception as e:
+                error_msg = f'💥 Exception getting result after {elapsed_time:.2f}s: {type(e).__name__}: {str(e)}'
+                self.get_logger().error(error_msg)
+                
+                import traceback
+                self.get_logger().error(f'Traceback:\n{traceback.format_exc()}')
+                
+                self.reset_failure_count += 1
+                self._log_reset_failure()
+                self.is_resetting = False
+                return False, error_msg
+                    
+        except Exception as e:
+            error_msg = f'💥 Exception during service call: {type(e).__name__}: {str(e)}'
+            self.get_logger().error(error_msg)
             
-            # Log skipped updates
-            if self.skipped_updates_during_reset > 0:
-                self.logger.writer.add_scalar(
-                    'Reset/skipped_updates', 
-                    self.skipped_updates_during_reset, 
-                    self.reset_count
-                )
-                self.logger.writer.add_scalar(
-                    'Reset/duration', 
-                    reset_duration, 
-                    self.reset_count
-                )
+            import traceback
+            self.get_logger().error(f'Traceback:\n{traceback.format_exc()}')
             
-            # Reset counter
-            self.skipped_updates_during_reset = 0
+            self.reset_failure_count += 1
+            self._log_reset_failure()
+            self.is_resetting = False
+            return False, error_msg
     
-    def _log_reset_success(self, elapsed_time, attempts):
+    def _log_reset_success(self, elapsed_time):
         """Log successful reset statistics"""
         self.logger.writer.add_scalar('Reset/success', 1, self.reset_count)
         self.logger.writer.add_scalar('Reset/time', elapsed_time, self.reset_count)
-        self.logger.writer.add_scalar('Reset/attempts', attempts, self.reset_count)
-        self.logger.writer.add_scalar('Reset/total_attempts', self.reset_total_attempts, self.reset_count)
         
         success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-        avg_attempts = self.reset_total_attempts / self.reset_count if self.reset_count > 0 else 0.0
-        
         self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
-        self.logger.writer.add_scalar('Reset/avg_attempts', avg_attempts, self.reset_count)
     
-    def _log_reset_failure(self, attempts):
+    def _log_reset_failure(self):
         """Log failed reset statistics"""
         self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
-        self.logger.writer.add_scalar('Reset/attempts', attempts, self.reset_count)
-        self.logger.writer.add_scalar('Reset/total_attempts', self.reset_total_attempts, self.reset_count)
         
         success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
         failure_rate = self.reset_failure_count / self.reset_count if self.reset_count > 0 else 0.0
-        avg_attempts = self.reset_total_attempts / self.reset_count if self.reset_count > 0 else 0.0
         
         self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
         self.logger.writer.add_scalar('Reset/failure_rate', failure_rate, self.reset_count)
-        self.logger.writer.add_scalar('Reset/avg_attempts', avg_attempts, self.reset_count)
     
     def reset_episode(self):
         """
         Reset episode (call reset service and reset internal states)
         """
-        # Call reset service with retry
+        # Call reset service (single attempt)
         success, message = self.call_reset_service()
         
         if success:
@@ -403,16 +328,12 @@ class DRLStudentNode(Node):
             
             # Log reset statistics
             success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-            avg_attempts = self.reset_total_attempts / self.reset_count if self.reset_count > 0 else 0.0
             
             self.logger.writer.add_scalar('Reset/total_count', self.reset_count, self.episode_count)
             self.logger.writer.add_scalar('Reset/cumulative_success_rate', success_rate, self.episode_count)
-            self.logger.writer.add_scalar('Reset/cumulative_avg_attempts', avg_attempts, self.episode_count)
             
         else:
-            self.get_logger().error(
-                f'❌ Episode reset failed after {self.reset_max_retries} attempts: {message}'
-            )
+            self.get_logger().error(f'❌ Episode reset failed: {message}')
         
         return success
 
@@ -506,6 +427,11 @@ class DRLStudentNode(Node):
             return None
 
     def transition_callback(self, msg: Transition):
+        # ✅ 防护：如果正在 reset，忽略 transition
+        if self.is_resetting:
+            self.get_logger().debug('Ignoring transition during reset')
+            return
+        
         # Process received transition and add to replay buffer
         self.goal_distance_reward = msg.reward.goal_distance_reward
         self.body_state_reward = msg.reward.body_state_reward
@@ -513,6 +439,15 @@ class DRLStudentNode(Node):
         
         # Compute total reward
         stepwise_total_reward = self.obstacle_reward + self.goal_distance_reward + self.body_state_reward
+        
+        # ✅ 检查并 clip reward（可选）
+        if abs(stepwise_total_reward) > 1000:
+            self.get_logger().warn(
+                f'⚠️ Abnormal reward: {stepwise_total_reward:.2f} '
+                f'(obstacle={self.obstacle_reward:.2f}, '
+                f'goal={self.goal_distance_reward:.2f}, '
+                f'body={self.body_state_reward:.2f})'
+            )
 
         self.stu_tracking_error = torch.tensor(msg.obs,
             dtype=torch.float32,
@@ -574,39 +509,56 @@ class DRLStudentNode(Node):
         self.logger.writer.add_scalar('Stepwise/student_action_count', self.stu_action_count, self.current_episode_length)
         self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.tea_action_count, self.current_episode_length)
         
-        print(f"msg.done: {msg.done}, current_episode_length: {self.current_episode_length}, max_episode_steps: {self.max_episode_steps}")
-        
         # Episode done processing
         if msg.done or self.current_episode_length >= self.max_episode_steps:
+            # ✅ 保存当前 episode 的统计信息
+            episode_length = self.current_episode_length
+            episode_reward = self.current_episode_reward
+            episode_obstacle_reward = self.obstacle_reward
+            episode_goal_distance_reward = self.goal_distance_reward
+            episode_body_state_reward = self.body_state_reward
+            episode_stu_action_count = self.stu_action_count
+            episode_tea_action_count = self.tea_action_count
+            
+            # ✅ 立即重置内部状态，防止重复触发
+            self.current_episode_length = 0
+            self.current_episode_reward = 0.0
+            self.obstacle_reward = 0.0
+            self.goal_distance_reward = 0.0
+            self.body_state_reward = 0.0
+            self.stu_action_count = 0
+            self.tea_action_count = 0
+            
             self.episode_count += 1
             
+            # 使用保存的值记录日志
             self.logger.add_episode_info(
-                reward=self.current_episode_reward,
-                length=self.current_episode_length
+                reward=episode_reward,
+                length=episode_length
             )
             
-            activation_ratio = self.tea_action_count / (self.stu_action_count + self.tea_action_count) if (self.stu_action_count + self.tea_action_count) > 0 else 0
+            activation_ratio = episode_tea_action_count / (episode_stu_action_count + episode_tea_action_count) if (episode_stu_action_count + episode_tea_action_count) > 0 else 0
             
-            self.logger.writer.add_scalar('Episode/length', self.current_episode_length, self.episode_count)
-            self.logger.writer.add_scalar('Episode/total_reward', self.current_episode_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/obstacle_reward', self.obstacle_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/goal_distance_reward', self.goal_distance_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/body_state_reward', self.body_state_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/avg_reward_per_step', self.current_episode_reward / self.current_episode_length, 
+            self.logger.writer.add_scalar('Episode/length', episode_length, self.episode_count)
+            self.logger.writer.add_scalar('Episode/total_reward', episode_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/obstacle_reward', episode_obstacle_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/goal_distance_reward', episode_goal_distance_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/body_state_reward', episode_body_state_reward, self.episode_count)
+            self.logger.writer.add_scalar('Episode/avg_reward_per_step', episode_reward / episode_length, 
                                           self.episode_count)
-            self.logger.writer.add_scalar('Episode/student_action_count', self.stu_action_count, self.episode_count)
-            self.logger.writer.add_scalar('Episode/teacher_action_count', self.tea_action_count, self.episode_count)
+            self.logger.writer.add_scalar('Episode/student_action_count', episode_stu_action_count, self.episode_count)
+            self.logger.writer.add_scalar('Episode/teacher_action_count', episode_tea_action_count, self.episode_count)
             self.logger.writer.add_scalar('Episode/activation_ratio', activation_ratio, self.episode_count)
             
             self.get_logger().info(
                 f"📊 Episode {self.episode_count} done | "
-                f"Total Reward: {self.current_episode_reward:.2f} | "
-                f"Length: {self.current_episode_length} | "
-                f"Obstacle Reward: {self.obstacle_reward:.2f} | "
-                f"Goal Distance Reward: {self.goal_distance_reward:.2f} | "
-                f"Body State Reward: {self.body_state_reward:.2f} | "
-                f"Student Action Count: {self.stu_action_count} | "
-                f"Teacher Action Count: {self.tea_action_count} | "
+                f"Total Reward: {episode_reward:.2f} | "
+                f"Length: {episode_length} | "
+                f"Obstacle Reward: {episode_obstacle_reward:.2f} | "
+                f"Goal Distance Reward: {episode_goal_distance_reward:.2f} | "
+                f"Body State Reward: {episode_body_state_reward:.2f} | "
+                f"Student Action Count: {episode_stu_action_count} | "
+                f"Teacher Action Count: {episode_tea_action_count} | "
                 f"Activation Ratio: {activation_ratio:.2f}"
             )
 
@@ -614,16 +566,6 @@ class DRLStudentNode(Node):
             if self.auto_reset_on_done:
                 self.get_logger().info('Auto reset triggered on episode done')
                 self.reset_episode()
-            else:
-                # Manual reset of internal states
-                self.current_episode_reward = 0.0
-                self.current_episode_length = 0
-                self.obstacle_reward = 0.0
-                self.goal_distance_reward = 0.0
-                self.body_state_reward = 0.0
-                self.stu_action_count = 0
-                self.tea_action_count = 0                        
-            
         
     def tracking_error_callback(self, msg: TrackingError):
         self.tracking_error_ = msg
@@ -636,17 +578,7 @@ class DRLStudentNode(Node):
     def learn_step(self):
         """
         Perform one learning step (weight update)
-        Skips learning if currently resetting and pause_learning_on_reset is enabled
         """
-        # Check if learning should be paused during reset
-        if self.learning_paused and self.is_resetting:
-            self.skipped_updates_during_reset += 1
-            if self.skipped_updates_during_reset % 10 == 0:  # Log every 10 skipped updates
-                self.get_logger().debug(
-                    f'Learning paused during reset (skipped {self.skipped_updates_during_reset} updates)'
-                )
-            return
-        
         # Logging buffer sizes
         self.logger.writer.add_scalar('Buffer/student_size', self.buffer.stu_buf_size, self.update_count)
         self.logger.writer.add_scalar('Buffer/teacher_size', self.buffer.tea_buf_size, self.update_count)
@@ -690,33 +622,6 @@ class DRLStudentNode(Node):
                 f"[Learner] Updated policy "
                 f"(actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})"
             )
-
-    def normalize(self, reward):
-        """Normalize reward"""
-        self.current_episode_reward.append(reward)
-        
-        if len(self.current_episode_reward) < 2:
-            return reward
-        
-        # Calculate mean and std within window
-        mean = np.mean(self.current_episode_reward)
-        std = np.std(self.current_episode_reward)
-        
-        # Normalize
-        if std > 1e-8:
-            normalized_reward = (reward - mean) / std
-        else:
-            normalized_reward = reward - mean
-        
-        # Clip
-        if self.clip_range is not None:
-            normalized_reward = np.clip(
-                normalized_reward,
-                -self.clip_range,
-                self.clip_range
-            )
-        
-        return normalized_reward
 
 
 # ==========================================================
