@@ -416,6 +416,7 @@ Vector12d StateTrotting::computeTrackingError() const
 {
 
     Vector12d tracking_error = Vector12d::Zero();
+    
     // Distance to goal
     double distance = (nav_goal_ - pos_body_.head<2>()).norm();
     tracking_error[0] = distance; // Distance to goal
