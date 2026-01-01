@@ -8,6 +8,7 @@ __pycache__/
 logs/
 temp/
 models
+!edge_simulation/edge_gazebo/models/
 isaacgym/
 unitree_rl_gym/
 *.conf
