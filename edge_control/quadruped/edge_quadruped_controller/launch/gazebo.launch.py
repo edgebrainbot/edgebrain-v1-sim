@@ -14,6 +14,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def launch_setup(context, *args, **kwargs):
     robot_name = context.launch_configurations['robot']
     init_height = context.launch_configurations['height']
+    world_file_name = context.launch_configurations['world']
     
     pkg_description = f"{robot_name}_description"
     pkg_gazebo = "edge_gazebo"
@@ -54,6 +55,12 @@ def launch_setup(context, *args, **kwargs):
         arguments=["-d", rviz_config_file],
         parameters=[{'use_sim_time': True}]
     )
+    
+    world_file = PathJoinSubstitution([
+        FindPackageShare(pkg_gazebo),
+        'worlds',
+        world_file_name  
+    ])
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -61,14 +68,7 @@ def launch_setup(context, *args, **kwargs):
                                     'launch',
                                     'gz_sim.launch.py'])]),
             launch_arguments=[
-                ('gz_args', [
-                    '-r -v 4 ',
-                    PathJoinSubstitution([
-                        FindPackageShare(pkg_gazebo),
-                        'worlds',
-                        'simple_indoor.world'
-                    ])
-                ]),
+                ('gz_args', ['-r -v 4 ', world_file]),
             ],
     )
 
@@ -195,9 +195,16 @@ def generate_launch_description():
         default_value='0.5',
         description='Init height in simulation'
     )
+    
+    world_file_name = DeclareLaunchArgument(
+        'world',
+        default_value='obstacle_course.world',
+        description='World file name (including .world extension)'
+    )
 
     return LaunchDescription([
         robot_name,
         height,
+        world_file_name,
         OpaqueFunction(function=launch_setup),
     ])

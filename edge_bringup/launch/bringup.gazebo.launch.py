@@ -38,7 +38,7 @@ def generate_launch_description():
     # ========== NEW: Reset Handler Arguments ==========
     world_name_arg = DeclareLaunchArgument(
         "world_name",
-        default_value="bayland_world",
+        default_value="simple_indoor",
         description="Gazebo world name for reset"
     )
     
@@ -163,7 +163,7 @@ def generate_launch_description():
     )
 
     # === Publish goal point (one-shot) ===
-    goal = [5.0, -5.0, 0.0]
+    goal = [6.0, -6.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0, 
         actions=[

@@ -18,7 +18,7 @@ safety_rules:
   roll:   
     type: relative
     index: 3
-    limit: 3.0
+    limit: 0.0
     unit: deg
 
   # # pitch limit in degrees (relative mode)

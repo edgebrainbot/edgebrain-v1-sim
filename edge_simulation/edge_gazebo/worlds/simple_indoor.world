@@ -1,5 +1,6 @@
-<sdf version="1.6">
-  <world name="bayland_world">
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="simple_indoor">
     <physics name="1ms" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
@@ -67,42 +68,64 @@
     </model>
 
     <include>
-      <uri>model://cubic_wall</uri>
-      <name>cubic_wall</name>
+      <uri>model://shaped/cubic_medium</uri>
+      <name>cubic_medium</name>
       <pose>6.86722 -3.00334 0.5 0 -0 0</pose>
       <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle2</uri>
+      <uri>model://shaped/cuboid_medium</uri>
+      <name>cuboid_medium</name>
+      <pose>2.93083 3.17413 0.5 0 -0 0</pose>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle3</uri>
+      <uri>model://shaped/cuboid_small</uri>
+      <pose>2.77777 -0.965179 0.5 0 -0 0</pose>
+      <name>cuboid_small</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle4</uri>
+      <uri>model://shaped/cubic_large</uri>
+      <pose>6.83432 2.93655 0.5 0 -0 0</pose>
+      <name>cubic_large</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle5</uri>
+      <uri>model://shaped/cylinder_medium</uri>
+      <pose>2.06176 -3.02362 0.5 0 -0 0</pose>
+      <name>cylinder_medium</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle6</uri>
+      <uri>model://shaped/cylinder_small</uri>
+      <pose>6.93418 -1.01849 0.5 0 -0 0</pose>
+      <name>cylinder_small</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle7</uri>
+      <uri>model://shaped/cylinder_large</uri>
+      <pose>2.96968 0.886818 0.5 0 -0 0</pose>
+      <name>cylinder_large</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://obstacle8</uri>
+      <uri>model://shaped/cuboid_thin</uri>
+      <pose>4.434793 -3.83522 0.5 0 -0 0</pose>
+      <name>cuboid_thin</name>
+      <static>true</static>
     </include>
 
     <include>
-      <uri>model://enclosure</uri>
+      <uri>model://shaped/enclosure</uri>
+      <static>true</static>
     </include>
 
   </world>
