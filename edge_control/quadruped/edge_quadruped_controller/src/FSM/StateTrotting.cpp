@@ -414,7 +414,11 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
 
 Vector12d StateTrotting::computeTrackingError() const
 {
+
     Vector12d tracking_error = Vector12d::Zero();
+    // Distance to goal
+    double distance = (nav_goal_ - pos_body_.head<2>()).norm();
+    tracking_error[0] = distance; // Distance to goal
 
     // Pre-compute values
     Eigen::Vector3d ori_err = rotMatToExp(Rd * G2B_RotMat);     
@@ -438,6 +442,10 @@ Vector12d StateTrotting::computeTrackingError() const
 Vector12d StateTrotting::computeState() const
 {
     Vector12d robotState = Vector12d::Zero();
+
+    // Distance to goal
+    double distance = (nav_goal_ - pos_body_.head<2>()).norm();
+    robotState[0] = distance; // Distance to goal
 
     // Robot Position state
     robotState[2] = pos_body_(2);
