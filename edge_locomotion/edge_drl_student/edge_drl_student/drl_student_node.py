@@ -63,7 +63,7 @@ class DRLStudentNode(Node):
         self.policy_blendering_weight = 0.0
         self.save_interval = 300
         self.print_interval = 10
-        self.max_episode_steps = int(1e4)
+        self.max_episode_steps = int(5e3)
         
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
@@ -114,7 +114,7 @@ class DRLStudentNode(Node):
         
         # ========== Reset Service Configuration ==========
         self.declare_parameter('reset_service_name', '/edge/reset')
-        self.declare_parameter('reset_service_timeout', 10.0)  # ✅ 增加到 10 秒
+        self.declare_parameter('reset_service_timeout', 15.0)  
         self.declare_parameter('auto_reset_on_done', True)
         
         self.reset_service_name = self.get_parameter('reset_service_name').value
@@ -145,6 +145,7 @@ class DRLStudentNode(Node):
         self.action_count = 0
         self.current_episode_reward = 0.0
         self.current_episode_length = 0
+        self.step_count = 0
         self.collection_time = 0.0
         self.learn_time = 0.0
         self.iteration_start_time = time.time()
@@ -427,7 +428,7 @@ class DRLStudentNode(Node):
             return None
 
     def transition_callback(self, msg: Transition):
-        # ✅ 防护：如果正在 reset，忽略 transition
+        # ✅ Ignore transitions during reset
         if self.is_resetting:
             self.get_logger().debug('Ignoring transition during reset')
             return
@@ -500,6 +501,7 @@ class DRLStudentNode(Node):
         # Update episode statistics
         self.current_episode_reward += stepwise_total_reward
         self.current_episode_length += 1
+        self.step_count += 1
         
         # Logging stepwise statistics
         self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, self.current_episode_length)
@@ -509,9 +511,16 @@ class DRLStudentNode(Node):
         self.logger.writer.add_scalar('Stepwise/student_action_count', self.stu_action_count, self.current_episode_length)
         self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.tea_action_count, self.current_episode_length)
         
+        self.logger.writer.add_scalar('Timestep/total_reward', stepwise_total_reward, self.step_count)
+        self.logger.writer.add_scalar('Timestep/obstacle_reward', self.obstacle_reward, self.step_count)
+        self.logger.writer.add_scalar('Timestep/goal_distance_reward', self.goal_distance_reward, self.step_count)
+        self.logger.writer.add_scalar('Timestep/body_state_reward', self.body_state_reward, self.step_count)
+        self.logger.writer.add_scalar('Timestep/student_action_count', self.stu_action_count, self.step_count)
+        self.logger.writer.add_scalar('Timestep/teacher_action_count', self.tea_action_count, self.step_count)
+        
         # Episode done processing
         if msg.done or self.current_episode_length >= self.max_episode_steps:
-            # ✅ 保存当前 episode 的统计信息
+            # Save current episode stats before resetting
             episode_length = self.current_episode_length
             episode_reward = self.current_episode_reward
             episode_obstacle_reward = self.obstacle_reward
@@ -520,7 +529,7 @@ class DRLStudentNode(Node):
             episode_stu_action_count = self.stu_action_count
             episode_tea_action_count = self.tea_action_count
             
-            # ✅ 立即重置内部状态，防止重复触发
+            # Reset episode stats
             self.current_episode_length = 0
             self.current_episode_reward = 0.0
             self.obstacle_reward = 0.0
@@ -531,7 +540,7 @@ class DRLStudentNode(Node):
             
             self.episode_count += 1
             
-            # 使用保存的值记录日志
+            # Log episode information
             self.logger.add_episode_info(
                 reward=episode_reward,
                 length=episode_length

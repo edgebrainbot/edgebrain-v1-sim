@@ -77,7 +77,7 @@ def launch_setup(context, *args, **kwargs):
         executable='create',
         output='screen',
         arguments=['-topic', 'robot_description', '-name',
-                   robot_name, '-allow_renaming', 'true', '-z', init_height],
+                   robot_name, '-allow_renaming', 'true', '-x', '0.', '-y', '0', '-z', init_height],
         parameters=[{'use_sim_time': True}],
     )
 

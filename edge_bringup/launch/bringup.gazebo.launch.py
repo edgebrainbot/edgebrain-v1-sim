@@ -163,8 +163,7 @@ def generate_launch_description():
     )
 
     # === Publish goal point (one-shot) ===
-    # goal = [3.0, 0.0, 0.0]
-    goal = [10.0, 0.0, 0.0]
+    goal = [5.0, -5.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0, 
         actions=[

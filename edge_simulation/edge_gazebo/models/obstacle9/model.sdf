@@ -1,7 +1,7 @@
 <?xml version='1.0'?>
 <sdf version='1.6'>
   <model name='obstacle9'>
-      <pose>3.3266 3.5035 0.500001 4e-06 1.1e-05 -1.2e-05</pose>
+      <pose>7.3266 3.5035 0.500001 4e-06 1.1e-05 -1.2e-05</pose>
       <link name='link'>
         <inertial>
           <mass>1</mass>

@@ -67,7 +67,10 @@
     </model>
 
     <include>
-      <uri>model://obstacle1</uri>
+      <uri>model://cubic_wall</uri>
+      <name>cubic_wall</name>
+      <pose>6.86722 -3.00334 0.5 0 -0 0</pose>
+      <static>true</static>
     </include>
 
     <include>
@@ -96,6 +99,10 @@
 
     <include>
       <uri>model://obstacle8</uri>
+    </include>
+
+    <include>
+      <uri>model://enclosure</uri>
     </include>
 
   </world>
