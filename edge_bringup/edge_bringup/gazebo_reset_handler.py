@@ -26,7 +26,7 @@ class ResetCoordinatorNode(Node):
         
         # ========== Parameter Declaration ==========
         # Gazebo parameters
-        self.declare_parameter('world_name', 'obstacle_course')
+        self.declare_parameter('world_name', 'simple_indoor')
         self.declare_parameter('robot_name', 'go2')
         self.declare_parameter('reset_position_x', 0.0)
         self.declare_parameter('reset_position_y', 0.0)

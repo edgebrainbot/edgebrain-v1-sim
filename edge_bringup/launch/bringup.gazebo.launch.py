@@ -38,7 +38,8 @@ def generate_launch_description():
     # ========== NEW: Reset Handler Arguments ==========
     world_name_arg = DeclareLaunchArgument(
         "world_name",
-        default_value="obstacle_course",
+        default_value="simple_indoor.world",
+        # default_value="obstacle_course.world",
         description="Gazebo world name for reset"
     )
     
@@ -84,6 +85,7 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
+            "world": world_name,
             "use_sim_time": "true"
         }.items()
     )

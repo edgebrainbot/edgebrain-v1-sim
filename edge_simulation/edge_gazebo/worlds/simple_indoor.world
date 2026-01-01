@@ -77,16 +77,16 @@
     <include>
       <uri>model://shaped/cuboid_medium</uri>
       <name>cuboid_medium</name>
-      <pose>2.93083 3.17413 0.5 0 -0 0</pose>
+      <pose>2.93083 5.17413 0.5 0 -0 0</pose>
       <static>true</static>
     </include>
 
-    <include>
+    <!-- <include>
       <uri>model://shaped/cuboid_small</uri>
       <pose>2.77777 -0.965179 0.5 0 -0 0</pose>
       <name>cuboid_small</name>
       <static>true</static>
-    </include>
+    </include> -->
 
     <include>
       <uri>model://shaped/cubic_large</uri>
@@ -97,7 +97,7 @@
 
     <include>
       <uri>model://shaped/cylinder_medium</uri>
-      <pose>2.06176 -3.02362 0.5 0 -0 0</pose>
+      <pose>2.06176 -4.02362 0.5 0 -0 0</pose>
       <name>cylinder_medium</name>
       <static>true</static>
     </include>
@@ -118,7 +118,7 @@
 
     <include>
       <uri>model://shaped/cuboid_thin</uri>
-      <pose>4.434793 -3.83522 0.5 0 -0 0</pose>
+      <pose>4.434793 -6.03522 0.5 0 -0 1.57</pose>
       <name>cuboid_thin</name>
       <static>true</static>
     </include>
