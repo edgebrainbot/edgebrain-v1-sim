@@ -38,15 +38,15 @@ class ResetCoordinatorNode(Node):
         self.declare_parameter('service_timeout', 3000)
         self.declare_parameter('reset_world', False)
         self.declare_parameter('reset_robot_pose', True)
-        self.declare_parameter('wait_after_reset', 0.5)
+        self.declare_parameter('wait_after_reset', 0.3)
         
-        self.declare_parameter('reset_attempts', 1)
-        self.declare_parameter('wait_between_attempts', 0.2)
+        self.declare_parameter('reset_attempts', 3)  # Increase attempts for pose reset
+        self.declare_parameter('wait_between_attempts', 0.3)
         self.declare_parameter('clear_velocities', True)
         self.declare_parameter('pause_physics_during_reset', True)
-        self.declare_parameter('wait_after_pause', 0.1)
-        self.declare_parameter('wait_after_world_reset', 0.2)
-        self.declare_parameter('wait_after_pose_reset', 0.15)
+        self.declare_parameter('wait_after_pause', 0.2)
+        self.declare_parameter('wait_after_world_reset', 0.3)
+        self.declare_parameter('wait_after_pose_reset', 0.2)
         
         # Controller parameters
         self.declare_parameter('controller_reset_service', '/edge/reset/controller')
@@ -56,9 +56,9 @@ class ResetCoordinatorNode(Node):
         self.declare_parameter('reset_controller', True)
         self.declare_parameter('reset_order', 'controller_first')
         
-        # ✅ Start behavior parameters
-        self.declare_parameter('start_after_reset', True)  # Whether to start controller after reset
-        self.declare_parameter('delay_after_reset', 1.0)   # reset delay in seconds
+        # Start behavior parameters
+        self.declare_parameter('start_after_reset', True)
+        self.declare_parameter('delay_after_reset', 1.0)
         
         # Get parameters
         self.world_name = self.get_parameter('world_name').value
@@ -84,13 +84,12 @@ class ResetCoordinatorNode(Node):
         self.wait_after_pose_reset = self.get_parameter('wait_after_pose_reset').value
         
         self.controller_reset_service_name = self.get_parameter('controller_reset_service').value
-        self.controller_start_service_name = self.get_parameter('controller_start_service').value  # ✅
+        self.controller_start_service_name = self.get_parameter('controller_start_service').value
         self.controller_reset_timeout = self.get_parameter('controller_reset_timeout').value
-        self.controller_start_timeout = self.get_parameter('controller_start_timeout').value  # ✅
+        self.controller_start_timeout = self.get_parameter('controller_start_timeout').value
         self.reset_controller_flag = self.get_parameter('reset_controller').value
         self.reset_order = self.get_parameter('reset_order').value
         
-        # ✅ Start behavior
         self.start_after_reset = self.get_parameter('start_after_reset').value
         self.delay_after_reset = self.get_parameter('delay_after_reset').value
         
@@ -103,21 +102,18 @@ class ResetCoordinatorNode(Node):
         )
         
         # ========== Create Service Clients ==========
-        # Controller reset client
         self.controller_reset_client = self.create_client(
             Trigger,
             self.controller_reset_service_name,
             callback_group=self.callback_group
         )
         
-        # ✅ Controller start client
         self.controller_start_client = self.create_client(
             Trigger,
             self.controller_start_service_name,
             callback_group=self.callback_group
         )
         
-        # Gazebo reset client
         self.gz_reset_client = self.create_client(
             Empty,
             '/reset_world',
@@ -130,7 +126,7 @@ class ResetCoordinatorNode(Node):
         self.failed_resets = 0
         self.controller_reset_failures = 0
         self.gazebo_reset_failures = 0
-        self.controller_start_failures = 0  # ✅
+        self.controller_start_failures = 0
         
         # ========== Log Output ==========
         self.get_logger().info('=' * 70)
@@ -139,13 +135,14 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info('📡 Services:')
         self.get_logger().info('  Main: /edge/reset (Trigger)')
         self.get_logger().info(f'  Controller Reset: {self.controller_reset_service_name}')
-        self.get_logger().info(f'  Controller Start: {self.controller_start_service_name}')  # ✅
+        self.get_logger().info(f'  Controller Start: {self.controller_start_service_name}')
         self.get_logger().info('─' * 70)
         self.get_logger().info('⚙️  Configuration:')
         self.get_logger().info(f'  Reset Controller: {self.reset_controller_flag}')
         self.get_logger().info(f'  Reset Order: {self.reset_order}')
-        self.get_logger().info(f'  Start After Reset: {self.start_after_reset}')  # ✅
-        self.get_logger().info(f'  Delay After Reset: {self.delay_after_reset}s')  # ✅
+        self.get_logger().info(f'  Start After Reset: {self.start_after_reset}')
+        self.get_logger().info(f'  Delay After Reset: {self.delay_after_reset}s')
+        self.get_logger().info(f'  Reset Attempts: {self.reset_attempts}')
         self.get_logger().info('=' * 70)
         self.get_logger().info('✅ Ready to receive reset requests on /edge/reset')
         self.get_logger().info('=' * 70)
@@ -180,7 +177,7 @@ class ResetCoordinatorNode(Node):
         
         Flow:
         1. Reset Controller
-        2. Reset Gazebo
+        2. Reset Gazebo (使用正确的流程)
         3. Wait delay_after_reset
         4. Start Controller (if start_after_reset is True)
         """
@@ -395,46 +392,57 @@ class ResetCoordinatorNode(Node):
             return False, error_msg
     
     def _reset_gazebo(self):
-        """Reset Gazebo simulation"""
+        """
+        Reset Gazebo simulation using the CORRECT sequence:
+        1. Pause physics
+        2. Clear velocities
+        3. Reset world (optional)
+        4. Reset pose
+        5. Clear velocities again
+        6. Resume physics
+        """
         self.get_logger().info('  [2/3] 🌍 Resetting Gazebo...')
         
         gazebo_start = time.time()
         step_times = {}
         
         try:
-            # Pause Physics
+            # ========== Step 1: Pause Physics ==========
             if self.pause_physics:
-                self.get_logger().info('    [a] ⏸️  Pausing physics...')
+                self.get_logger().info('    [1/6] ⏸️  Pausing physics...')
                 step_start = time.time()
-                if self._pause_physics(True):
+                if not self._pause_physics(True):
+                    self.get_logger().warn('      ⚠️  Failed to pause physics (continuing anyway)')
+                else:
                     step_times['pause'] = time.time() - step_start
                     self.get_logger().info(f'      ✓ Physics paused ({step_times["pause"]*1000:.0f}ms)')
-                    time.sleep(self.wait_after_pause)
+                time.sleep(self.wait_after_pause)
             
-            # Clear Velocities
-            if self.clear_velocities and self.reset_robot_pose_flag:
-                self.get_logger().info('    [b] 🧹 Clearing velocities...')
+            # ========== Step 2: Clear Velocities (First Time) ==========
+            if self.clear_velocities:
+                self.get_logger().info('    [2/6] 🧹 Clearing velocities (1st)...')
                 step_start = time.time()
                 if self._clear_robot_velocities():
-                    step_times['clear_vel'] = time.time() - step_start
-                    self.get_logger().info(f'      ✓ Velocities cleared ({step_times["clear_vel"]*1000:.0f}ms)')
-                time.sleep(0.05)
+                    step_times['clear_vel_1'] = time.time() - step_start
+                    self.get_logger().info(f'      ✓ Velocities cleared ({step_times["clear_vel_1"]*1000:.0f}ms)')
+                else:
+                    self.get_logger().warn('      ⚠️  Failed to clear velocities (continuing anyway)')
+                time.sleep(0.1)
             
-            # Reset World
+            # ========== Step 3: Reset World (Optional) ==========
             if self.reset_world_flag:
-                self.get_logger().info('    [c] 🌍 Resetting world...')
+                self.get_logger().info('    [3/6] 🌍 Resetting world...')
                 step_start = time.time()
                 if not self._reset_gazebo_world():
-                    if self.pause_physics:
-                        self._pause_physics(False)
-                    return False, 'Failed to reset Gazebo world'
-                step_times['world'] = time.time() - step_start
-                self.get_logger().info(f'      ✓ World reset ({step_times["world"]*1000:.0f}ms)')
+                    self.get_logger().warn('      ⚠️  World reset failed (continuing with pose reset)')
+                else:
+                    step_times['world'] = time.time() - step_start
+                    self.get_logger().info(f'      ✓ World reset ({step_times["world"]*1000:.0f}ms)')
                 time.sleep(self.wait_after_world_reset)
             
-            # Reset Robot Pose
+            # ========== Step 4: Reset Robot Pose (with retry) ==========
             if self.reset_robot_pose_flag:
-                self.get_logger().info('    [d] 🤖 Resetting robot pose...')
+                self.get_logger().info('    [4/6] 🤖 Resetting robot pose...')
                 step_start = time.time()
                 pose_success = False
                 
@@ -443,31 +451,46 @@ class ResetCoordinatorNode(Node):
                         pose_success = True
                         step_times['pose'] = time.time() - step_start
                         self.get_logger().info(f'      ✓ Pose reset ({step_times["pose"]*1000:.0f}ms)')
-                        time.sleep(self.wait_after_pose_reset)
-                        
-                        if self.clear_velocities:
-                            self._clear_robot_velocities()
-                            time.sleep(0.05)
                         break
                     else:
                         if attempt < self.reset_attempts - 1:
-                            self.get_logger().warn(f'      ⚠️  Attempt {attempt+1} failed, retrying...')
+                            self.get_logger().warn(f'      ⚠️  Attempt {attempt+1}/{self.reset_attempts} failed, retrying...')
                             time.sleep(self.wait_between_attempts)
+                        else:
+                            self.get_logger().error(f'      ❌ All {self.reset_attempts} attempts failed')
                 
                 if not pose_success:
+                    # Terminate by unpausing physics if needed
                     if self.pause_physics:
                         self._pause_physics(False)
                     return False, f'Failed to reset robot pose after {self.reset_attempts} attempts'
+                
+                time.sleep(self.wait_after_pose_reset)
             
-            # Unpause Physics
-            if self.pause_physics:
-                self.get_logger().info('    [e] ▶️  Resuming physics...')
+            # ========== Step 5: Clear Velocities (Second Time) ==========
+            if self.clear_velocities:
+                self.get_logger().info('    [5/6] 🧹 Clearing velocities (2nd)...')
                 step_start = time.time()
-                if self._pause_physics(False):
+                if self._clear_robot_velocities():
+                    step_times['clear_vel_2'] = time.time() - step_start
+                    self.get_logger().info(f'      ✓ Velocities cleared ({step_times["clear_vel_2"]*1000:.0f}ms)')
+                else:
+                    self.get_logger().warn('      ⚠️  Failed to clear velocities')
+                time.sleep(0.1)
+            
+            # ========== Step 6: Resume Physics ==========
+            if self.pause_physics:
+                self.get_logger().info('    [6/6] ▶️  Resuming physics...')
+                step_start = time.time()
+                if not self._pause_physics(False):
+                    self.get_logger().error('      ❌ Failed to resume physics')
+                    return False, 'Failed to resume physics'
+                else:
                     step_times['unpause'] = time.time() - step_start
                     self.get_logger().info(f'      ✓ Physics resumed ({step_times["unpause"]*1000:.0f}ms)')
                 time.sleep(self.wait_after_reset)
             
+            # ========== Success ==========
             gazebo_duration = time.time() - gazebo_start
             
             timing_parts = []
@@ -481,11 +504,22 @@ class ResetCoordinatorNode(Node):
             return True, success_msg
             
         except Exception as e:
+            # Make sure to unpause physics on exception
             if self.pause_physics:
-                self._pause_physics(False)
+                try:
+                    self._pause_physics(False)
+                except:
+                    pass
             
             error_msg = f'Gazebo reset exception: {str(e)}'
             self.get_logger().error(f'    ❌ {error_msg}')
+            
+            import traceback
+            self.get_logger().error('    Traceback:')
+            for line in traceback.format_exc().split('\n'):
+                if line:
+                    self.get_logger().error(f'      {line}')
+            
             return False, error_msg
     
     def _pause_physics(self, pause=True):
@@ -510,10 +544,18 @@ class ResetCoordinatorNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            return result.returncode == 0
+            success = result.returncode == 0
             
+            if not success and result.stderr:
+                self.get_logger().debug(f'Pause/unpause stderr: {result.stderr[:100]}')
+            
+            return success
+            
+        except subprocess.TimeoutExpired:
+            self.get_logger().error(f'Timeout while trying to {"pause" if pause else "unpause"} physics')
+            return False
         except Exception as e:
-            self.get_logger().error(f'Failed to {"pause" if pause else "unpause"} physics: {e}')
+            self.get_logger().debug(f'Failed to {"pause" if pause else "unpause"} physics: {e}')
             return False
     
     def _clear_robot_velocities(self):
@@ -543,8 +585,16 @@ class ResetCoordinatorNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            return result.returncode == 0
+            success = result.returncode == 0
             
+            if not success and result.stderr:
+                self.get_logger().debug(f'Clear velocity stderr: {result.stderr[:100]}')
+            
+            return success
+            
+        except subprocess.TimeoutExpired:
+            self.get_logger().debug('Timeout while clearing velocities')
+            return False
         except Exception as e:
             self.get_logger().debug(f'Failed to clear velocities: {e}')
             return False
@@ -594,8 +644,11 @@ class ResetCoordinatorNode(Node):
             
             return result.returncode == 0
                 
+        except subprocess.TimeoutExpired:
+            self.get_logger().debug('World reset timeout')
+            return False
         except Exception as e:
-            self.get_logger().error(f'World reset exception: {e}')
+            self.get_logger().debug(f'World reset exception: {e}')
             return False
     
     def _reset_robot_pose(self):
@@ -626,10 +679,18 @@ class ResetCoordinatorNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            return result.returncode == 0
+            success = result.returncode == 0
+            
+            if not success and result.stderr:
+                self.get_logger().debug(f'Pose reset stderr: {result.stderr[:100]}')
+            
+            return success
                 
+        except subprocess.TimeoutExpired:
+            self.get_logger().error('Pose reset timeout')
+            return False
         except Exception as e:
-            self.get_logger().error(f'Pose reset exception: {e}')
+            self.get_logger().debug(f'Pose reset exception: {e}')
             return False
     
     def get_reset_stats(self):
@@ -639,7 +700,7 @@ class ResetCoordinatorNode(Node):
             'failed_resets': self.failed_resets,
             'controller_reset_failures': self.controller_reset_failures,
             'gazebo_failures': self.gazebo_reset_failures,
-            'controller_start_failures': self.controller_start_failures,  # ✅
+            'controller_start_failures': self.controller_start_failures,
             'success_rate': (self.reset_count - self.failed_resets) / max(self.reset_count, 1) * 100,
             'last_reset_time': self.last_reset_time
         }
@@ -665,7 +726,7 @@ def main(args=None):
         node.get_logger().info(f'  Failed: {stats["failed_resets"]}')
         node.get_logger().info(f'    - Controller reset failures: {stats["controller_reset_failures"]}')
         node.get_logger().info(f'    - Gazebo failures: {stats["gazebo_failures"]}')
-        node.get_logger().info(f'    - Controller start failures: {stats["controller_start_failures"]}')  # ✅
+        node.get_logger().info(f'    - Controller start failures: {stats["controller_start_failures"]}')
         node.get_logger().info(f'  Success rate: {stats["success_rate"]:.1f}%')
         node.get_logger().info('=' * 70)
     finally:

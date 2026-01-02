@@ -224,6 +224,6 @@ def generate_launch_description():
         virtual_safety_indicator_node,
         
         # navigation_launch,
-        publish_goal_point,
-        gz_reset_handler_node,
+        publish_goal_point
+        # gz_reset_handler_node,
     ])
