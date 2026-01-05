@@ -4,6 +4,7 @@ import os
 import time
 import rclpy
 import random
+import threading
 import std_msgs.msg
 import torch
 import numpy as np
@@ -98,12 +99,42 @@ class DRLStudentNode(Node):
         else:
             raise ValueError(f"Unsupported RUN type: {RUN}")
         
-        self.agent = DDPGAgent(
+        # ========== Creating Actor-Learner architecture ==========
+        self.get_logger().info("🔧 Initializing Actor-Learner architecture...")
+        
+        # Inference Agent：used for action generation (10Hz)
+        self.inference_agent = DDPGAgent(
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
             replay_buffer=self.buffer,
             action_bound=(-10.0, 10.0),
             device=self.device
+        )
+        
+        # Training Agent：used for policy learning (2Hz)
+        self.training_agent = DDPGAgent(
+            obs_dim=self.obs_dim,
+            act_dim=self.act_dim,
+            replay_buffer=self.buffer,
+            action_bound=(-10.0, 10.0),
+            device=self.device
+        )
+        
+        # Synchronization lock (used only during parameter copying, ~1ms)
+        self.sync_lock = threading.Lock()
+        
+        # Synchronization policy configuration
+        self.sync_interval = 5  # Synchronize every 5 updates
+        self.sync_count = 0
+        self.last_sync_time = 0.0
+        self.total_sync_time = 0.0
+        
+        self.get_logger().info(
+            f"✅ Actor-Learner architecture initialized:\n"
+            f"  - Inference Agent: used for action generation (10Hz)\n"
+            f"  - Training Agent: used for policy learning (2Hz)\n"
+            f"  - Sync interval: every {self.sync_interval} updates\n"
+            f"  - Architecture: IMPALA-style Actor-Learner"
         )
 
         # ROS2 topics
@@ -139,7 +170,7 @@ class DRLStudentNode(Node):
 
         # Create timers
         self.action_timer = self.create_timer(0.1, self.action_loop)
-        self.learn_timer = self.create_timer(0.5, self.learn_step)
+        self.learn_timer = self.create_timer(0.5, self.learning_loop)
         
         # Statistical variables
         self.update_count = 0
@@ -163,6 +194,63 @@ class DRLStudentNode(Node):
         self.stu_tracking_error = torch.zeros(self.body_state_dim, device=self.device)
         
         self.get_logger().info("✅ DRLStudent Node initialized")
+
+    # ========== Actor-Learner: Parameter Synchronization Method ==========
+    def sync_parameters(self):
+        """
+        Synchronize training network parameters to inference network
+        
+        This is the core of the IMPALA architecture:
+        - Training Agent learns updates (slow, 150ms)
+        - Inference Agent extracts actions (fast, 1ms)
+        - Periodic parameter synchronization (fast, ~1ms)
+        
+        Reference paper: IMPALA: Scalable Distributed Deep-RL (ICML 2018)
+        """
+        sync_start = time.time()
+        
+        with self.sync_lock:
+            # Copy Actor network parameters
+            self.inference_agent.actor.load_state_dict(
+                self.training_agent.actor.state_dict()
+            )
+            
+            # Copy Critic network parameters (optional, action extraction does not require critic)
+            self.inference_agent.critic.load_state_dict(
+                self.training_agent.critic.state_dict()
+            )
+            
+            # Copy Target network parameters
+            self.inference_agent.target_actor.load_state_dict(
+                self.training_agent.target_actor.state_dict()
+            )
+            self.inference_agent.target_critic.load_state_dict(
+                self.training_agent.target_critic.state_dict()
+            )
+        
+        sync_time = time.time() - sync_start
+        self.last_sync_time = sync_time
+        self.total_sync_time += sync_time
+        self.sync_count += 1
+        
+        # Record synchronization statistics
+        self.logger.writer.add_scalar('Sync/time_ms', sync_time * 1000, self.sync_count)
+        self.logger.writer.add_scalar('Sync/cumulative_time', self.total_sync_time, self.sync_count)
+        self.logger.writer.add_scalar('Sync/avg_time_ms', 
+                                      (self.total_sync_time / self.sync_count) * 1000, 
+                                      self.sync_count)
+        
+        self.get_logger().info(
+            f"🔄 [Sync #{self.sync_count}] Parameters synchronized in {sync_time*1000:.2f}ms "
+            f"(avg: {(self.total_sync_time/self.sync_count)*1000:.2f}ms)"
+        )
+        
+        # Check if synchronization is too slow
+        # if sync_time > 0.01:  # More than 10ms
+        #     self.get_logger().warn(
+        #         f"⚠️ Slow parameter sync: {sync_time*1000:.2f}ms "
+        #         f"(expected <10ms). This may block action generation."
+        #     )
 
     # ========== Reset Service Methods ==========
     def call_reset_service(self):
@@ -355,6 +443,11 @@ class DRLStudentNode(Node):
         return output_action, drl_action 
 
     def policy_action(self):
+        """
+        Generate action
+        
+        ✅ Double buffering: use inference_agent (not blocked by learning)
+        """
         observation = torch.cat((
             torch.tensor(
                 np.array(self.tracking_error_.tracking_error, dtype=np.float32),
@@ -364,9 +457,15 @@ class DRLStudentNode(Node):
             self.curr_vision_feature
         ), dim=0)
         
-        return self.agent.act(observation.unsqueeze(0))
+        # ✅ Use inference_agent (fast, non-blocking)
+        return self.inference_agent.act(observation.unsqueeze(0))
 
     def action_loop(self):
+        """
+        Action generation loop (10Hz)
+        
+        ✅ Actor: use inference_agent (not blocked by learning_loop)
+        """
         action_start = time.time()
         
         # Generate and publish action
@@ -386,6 +485,18 @@ class DRLStudentNode(Node):
         
         self.action_count += 1
         self.collection_time = time.time() - action_start
+        
+        # Record action generation time
+        self.logger.writer.add_scalar('Timing/action_generation_ms', 
+                                      self.collection_time * 1000, 
+                                      self.action_count)
+        
+        # Check for abnormal delay
+        # if self.collection_time > 0.01:  # More than 10ms
+        #     self.get_logger().warn(
+        #         f"⚠️ Slow action generation: {self.collection_time*1000:.2f}ms "
+        #         f"(expected <10ms)"
+        #     )
 
         self.t = time.time()
 
@@ -442,7 +553,7 @@ class DRLStudentNode(Node):
         # Compute total reward
         stepwise_total_reward = self.obstacle_reward + self.goal_distance_reward + self.body_state_reward
         
-        # ✅ 检查并 clip reward（可选）
+        # ✅ Check and clip reward (optional)
         if abs(stepwise_total_reward) > 1000:
             self.get_logger().warn(
                 f'⚠️ Abnormal reward: {stepwise_total_reward:.2f} '
@@ -585,9 +696,11 @@ class DRLStudentNode(Node):
         self.logger.writer.add_scalar('TrackingError/max', np.max(np.abs(tracking_errors)), self.action_count)
         self.logger.writer.add_scalar('TrackingError/std', np.std(tracking_errors), self.action_count)
 
-    def learn_step(self):
+    def learning_loop(self):
         """
         Perform one learning step (weight update)
+        
+        ✅ Learner: use training_agent (not blocked by action_loop)
         """
         # Logging buffer sizes
         self.logger.writer.add_scalar('Buffer/student_size', self.buffer.stu_buf_size, self.update_count)
@@ -610,13 +723,22 @@ class DRLStudentNode(Node):
             return
 
         learn_start = time.time()
-        actor_loss, critic_loss = self.agent.update(self.batch_size)
+        
+        # ✅ Learner: use training_agent (not blocked by action_loop)
+        actor_loss, critic_loss = self.training_agent.update(self.batch_size)
+        
         self.learn_time = time.time() - learn_start
-
+        self.update_count += 1
+        
+        # ✅ Learner: periodically sync parameters (core of IMPALA architecture)
+        if self.update_count % self.sync_interval == 0:
+            self.sync_parameters()
+        
         # Saving models and logging
         if self.update_count % self.save_interval == 0:
             os.makedirs(os.path.dirname(f"{MODEL_PATH}_{self.update_count}"), exist_ok=True)
-            self.agent.save_models(f"{MODEL_PATH}_{self.update_count}")
+            # ✅ Save training_agent's models (latest parameters)
+            self.training_agent.save_models(f"{MODEL_PATH}_{self.update_count}")
             
         # Logging losses
         self.logger.writer.add_scalar('Timing/learn', self.learn_time, self.update_count)
@@ -624,13 +746,15 @@ class DRLStudentNode(Node):
         self.logger.writer.add_scalar('Loss/critic', critic_loss.item(), self.update_count)
         self.logger.writer.add_scalar('Loss/total', actor_loss.item() + critic_loss.item(), self.update_count)
         
-        self.update_count += 1
+        # Recording learning time
+        self.logger.writer.add_scalar('Timing/learn_ms', self.learn_time * 1000, self.update_count)
         
         if self.update_count % self.print_interval == 0:
             self.get_logger().info(
                 f"Count: {self.update_count}, "
                 f"[Learner] Updated policy "
-                f"(actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f})"
+                f"(actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f}, "
+                f"learn_time={self.learn_time*1000:.2f}ms)"
             )
 
 
