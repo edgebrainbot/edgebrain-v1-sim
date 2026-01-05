@@ -1,6 +1,5 @@
 
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "edge_quadruped_controller/FSM/StateTrotting.h"
 #include <edge_quadruped_controller/utils/math/mathTools.h>
@@ -67,8 +66,9 @@ void StateTrotting::enter()
 }
 
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::EdgeAction& latest_accel_,
-                        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
-                        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_,
+                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
+                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
+                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
                         double obstacleAvgDistance, bool is_goal_reached)
@@ -106,7 +106,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_pub_, tracking_error_stu_pub_, transition_pub_, latest_accel_, obstacleAvgDistance, is_goal_reached);
+    calcTau(tracking_error_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_accel_, obstacleAvgDistance, is_goal_reached);
     calcQQd();
     calcGain();
 }
@@ -194,8 +194,9 @@ void StateTrotting::calcCmd()
     w_cmd_global_(2) = d_yaw_cmd_;
 }
 
-void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_, 
-    rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_, 
+void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
+    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
+    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
     const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance, bool is_goal_reached)
 {
@@ -223,11 +224,14 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::TrackingError>::Sh
     last_tracking_error_tea_ = tracking_error_tea;   
     last_tracking_error_stu_ = tracking_error_stu;
 
-    auto track_msg = EigenToTrackingErrorMsg(tracking_error_tea);
+    auto track_msg = EigenToVec12Msg(tracking_error_tea);
     tracking_error_pub_->publish(track_msg);
 
-    auto track_stu_msg = EigenToTrackingErrorMsg(tracking_error_stu);
+    auto track_stu_msg = EigenToVec12Msg(tracking_error_stu);
     tracking_error_stu_pub_->publish(track_stu_msg);
+
+    auto state_msg = EigenToVec12Msg(robot_state);
+    robot_state_pub_->publish(state_msg);
 
     std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
     std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;

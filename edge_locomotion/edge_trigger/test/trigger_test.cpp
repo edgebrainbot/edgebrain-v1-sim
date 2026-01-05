@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 #include <random>
 #include <vector>
 #include <chrono>
@@ -22,7 +22,7 @@ public:
         publish_period_ = std::chrono::duration<double>(1.0 / rate);
 
         // ---- Publishers & Subscribers ----
-        pub_error_ = this->create_publisher<edge_msgs::msg::TrackingError>("tracking_error", 10);
+        pub_error_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("tracking_error", 10);
         sub_safe_ = this->create_subscription<std_msgs::msg::Bool>(
         "is_safe", 10,
         [this](const std_msgs::msg::Bool::SharedPtr msg) {
@@ -46,22 +46,21 @@ public:
 private:
     void publishRandomState()
     {
-        edge_msgs::msg::TrackingError msg;
+        edge_msgs::msg::Vec12Msg msg;
 
         // Generate random state (roll, pitch, height + others)
-        msg.tracking_error[0] = randomRange(-max_height_, max_height_); // height
-        msg.tracking_error[1] = randomRange(-max_roll_, max_roll_);     // roll
-        msg.tracking_error[2] = randomRange(-max_pitch_, max_pitch_);   // pitch
+        msg.data[0] = randomRange(-max_height_, max_height_); // height
+        msg.data[1] = randomRange(-max_roll_, max_roll_);     // roll
+        msg.data[2] = randomRange(-max_pitch_, max_pitch_);   // pitch
 
         // Remaining 9 states (random noise)
         for (size_t i = 3; i < 12; ++i)
-        msg.tracking_error[i] = normal_dist_(rng_) * 0.1;
-
+        msg.data[i] = normal_dist_(rng_) * 0.1;
         pub_error_->publish(msg);
 
         RCLCPP_DEBUG(this->get_logger(),
                     "Published random state: height=%.2f, roll=%.2f, pitch=%.2f",
-                    msg.tracking_error[0], msg.tracking_error[1], msg.tracking_error[2]);
+                    msg.data[0], msg.data[1], msg.data[2]);
     }
 
     double randomRange(double min_val, double max_val)
@@ -71,7 +70,7 @@ private:
     }
 
     // ---- Members ----
-    rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr pub_error_;
+    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr pub_error_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr sub_safe_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::mt19937 rng_;

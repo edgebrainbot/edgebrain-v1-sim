@@ -44,7 +44,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
       std::bind(&PhyTeacher::lmiCallback, this)
     );
 
-    sub_ = this->create_subscription<edge_msgs::msg::TrackingError>("tracking_error", 10,
+    sub_ = this->create_subscription<edge_msgs::msg::Vec12Msg>("tracking_error", 10,
       std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
@@ -64,13 +64,12 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
 PhyTeacher::~PhyTeacher() {}
 
 // Subscription callback to receive tracking error
-void PhyTeacher::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg) {
+void PhyTeacher::errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg) {
 
     // Update error state
-    error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
-
-    for (int i = 0; i < 10 && i < msg->tracking_error.size(); ++i) {
-        lmi_optimizer_.tracking_err[i] = msg->tracking_error[i + 2];
+    error_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
+    for (int i = 0; i < 10 && i < msg->data.size(); ++i) {
+        lmi_optimizer_.tracking_err[i] = msg->data[i + 2];
     }
 
     RCLCPP_INFO(this->get_logger(), "Received tracking error message.");

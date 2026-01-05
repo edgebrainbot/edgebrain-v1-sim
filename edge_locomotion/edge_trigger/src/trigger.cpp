@@ -20,14 +20,19 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
 
     // Initialize cached variables
-    last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(edge_msgs::msg::TrackingError());        // initial state
+    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());        // initial state
+    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());        // initial state
     last_student_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial action
     last_teacher_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial action
     is_last_state_safe_ = true;      // initial alert state
+    is_last_state_fall_ = false;     // initial fall state
 
     // Subscribers (state, teacher action, student action, obstacle distance)
-    sub_error_ = this->create_subscription<edge_msgs::msg::TrackingError>(
+    sub_error_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
         "tracking_error", 50, std::bind(&Trigger::errorCallback, this, _1));
+
+    sub_robot_state_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
+        "robot_state", 50, std::bind(&Trigger::robotStateCallback, this, _1));
 
     sub_teacher_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
         "phy_teacher_action", 50, std::bind(&Trigger::teacherCallback, this, _1));
@@ -43,6 +48,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
     // Publishers (for alert and terminal action)
     pub_alert_ = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
+    pub_fall_ = this->create_publisher<std_msgs::msg::Bool>("is_fall", 50);
     pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>("terminal_action", 50);
 
     auto period = std::chrono::duration<double>(1.0 / update_rate_);
@@ -60,11 +66,17 @@ void Trigger::teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
     last_teacher_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
 }
 
-void Trigger::errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg)
+void Trigger::errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg)
 {
-    last_error_state_ = edge::ros_interfaces::TrackingErrorMsgToEigen(*msg);
+    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
     // RCLCPP_INFO(this->get_logger(), "Received new error state: %.3f, %.3f, %.3f",
     //             last_error_state_[0], last_error_state_[1], last_error_state_[2]);
+}
+
+void Trigger::robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg)
+{
+    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
+    if (!is_robot_state_initialized_) is_robot_state_initialized_ = true;
 }
 
 void Trigger::obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
@@ -82,20 +94,27 @@ void Trigger::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
 // -------------------- Main periodic update --------------------
 void Trigger::updateLoop()
 {
-    std::vector<double> v(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-    bool is_safe = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, v, obstacle_distance_, goal_distance_);
+    std::vector<double> error_state(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
+    std::vector<double> robot_state(last_robot_state_.data(), last_robot_state_.data() + last_robot_state_.size());
+    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, error_state, obstacle_distance_, goal_distance_);
+    is_last_state_fall_ = is_robot_state_initialized_ 
+                          ? safety_monitor_->detectFall(robot_state) 
+                          : false;
 
     if (print_processing_)
     {
-        RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_safe ? "true" : "false");
+        RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_last_state_safe_ ? "true" : "false");
     }
 
     edge_msgs::msg::EdgeAction terminal_action;
     std_msgs::msg::Bool alert_msg;
-    alert_msg.data = is_safe;
+    alert_msg.data = is_last_state_safe_;
+
+    std_msgs::msg::Bool fall_msg;
+    fall_msg.data = is_last_state_fall_;
 
     // Decide which action to publish
-    if (is_safe)
+    if (is_last_state_safe_)
         terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_student_action_, 
                                                                     edge::ToMsg(edge::ActionMode::STUDENT));
     else
@@ -104,6 +123,7 @@ void Trigger::updateLoop()
 
     pub_action_->publish(terminal_action);
     pub_alert_->publish(alert_msg);
+    pub_fall_->publish(fall_msg);
 
 }
 

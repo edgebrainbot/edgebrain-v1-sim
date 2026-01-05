@@ -7,7 +7,7 @@
 #include "FSM/StateTrotting.h"
 
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
@@ -187,9 +187,10 @@ namespace edge::control::quadruped
         // }
 
         // For publishers and subscribers
-        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_pub_;
-        rclcpp::Publisher<edge_msgs::msg::TrackingError>::SharedPtr tracking_error_stu_pub_;
+        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_;
+        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
+        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
         rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_distance_sub_;

@@ -16,7 +16,7 @@ class ExternalForceNode(Node):
         super().__init__('external_force_node')
         
         # Parameters
-        self.declare_parameter('world_name', 'simple_indoor')
+        self.declare_parameter('world_name', 'obstacle_course')
         self.declare_parameter('model_name', 'go2')
         self.declare_parameter('force_magnitude', 200.0)
         self.declare_parameter('pulse_duration', 0.3)  # Pulse duration

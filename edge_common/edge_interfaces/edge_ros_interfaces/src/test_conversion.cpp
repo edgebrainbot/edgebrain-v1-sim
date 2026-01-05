@@ -1,7 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 
 using namespace edge::ros_interfaces;
 

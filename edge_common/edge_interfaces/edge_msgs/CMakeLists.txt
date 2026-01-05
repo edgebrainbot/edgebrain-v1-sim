@@ -14,7 +14,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EdgeAction.msg"
-  "msg/TrackingError.msg"
+  "msg/Vec12Msg.msg"
   "msg/Transition.msg"
   "msg/Reward.msg"
   DEPENDENCIES std_msgs

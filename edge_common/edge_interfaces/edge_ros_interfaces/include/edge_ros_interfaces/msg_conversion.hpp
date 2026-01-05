@@ -20,7 +20,7 @@
 
 #include "msg_utils.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 
 namespace edge::ros_interfaces {
 
@@ -99,20 +99,20 @@ inline std::vector<double> EdgeActionMsgToVector(const edge_msgs::msg::EdgeActio
 }
 
 /**
- * @brief Convert std::vector<double> to edge_msgs::msg::TrackingError.
+ * @brief Convert std::vector<double> to edge_msgs::msg::Vec12.
  */
-inline edge_msgs::msg::TrackingError VectorToTrackingErrorMsg(const std::vector<double>& data) {
-  edge_msgs::msg::TrackingError msg;
-  const size_t n = std::min(msg.tracking_error.size(), data.size());
-  std::copy_n(data.begin(), n, msg.tracking_error.begin());
+inline edge_msgs::msg::Vec12Msg VectorToVec12Msg(const std::vector<double>& data) {
+  edge_msgs::msg::Vec12Msg msg;
+  const size_t n = std::min(msg.data.size(), data.size());
+  std::copy_n(data.begin(), n, msg.data.begin());
   return msg;
 }
 
 /**
- * @brief Convert edge_msgs::msg::TrackingError to std::vector<double>.
+ * @brief Convert edge_msgs::msg::Vec12 to std::vector<double>.
  */
-inline std::vector<double> TrackingErrorMsgToVector(const edge_msgs::msg::TrackingError& msg) {
-  return std::vector<double>(msg.tracking_error.begin(), msg.tracking_error.end());
+inline std::vector<double> Vec12MsgToVector(const edge_msgs::msg::Vec12Msg& msg) {
+  return std::vector<double>(msg.data.begin(), msg.data.end());
 }
 
 // ======================================================
@@ -134,17 +134,17 @@ inline edge_msgs::msg::EdgeAction EigenToEdgeActionMsg(const Vector6d& v, uint8_
 }
 
 /**
- * @brief Convert TrackingError message to Eigen 12D vector.
+ * @brief Convert Vec12 message to Eigen 12D vector.
  */
-inline Vector12d TrackingErrorMsgToEigen(const edge_msgs::msg::TrackingError& msg) {
-  return VectorToEigen<12>(TrackingErrorMsgToVector(msg));
+inline Vector12d Vec12MsgToEigen(const edge_msgs::msg::Vec12Msg& msg) {
+  return VectorToEigen<12>(Vec12MsgToVector(msg));
 }
 
 /**
- * @brief Convert Eigen 12D vector to TrackingError message.
+ * @brief Convert Eigen 12D vector to Vec12 message.
  */
-inline edge_msgs::msg::TrackingError EigenToTrackingErrorMsg(const Vector12d& v) {
-  return VectorToTrackingErrorMsg(EigenToVector(v));
+inline edge_msgs::msg::Vec12Msg EigenToVec12Msg(const Vector12d& v) {
+  return VectorToVec12Msg(EigenToVector(v));
 }
 
 // ======================================================

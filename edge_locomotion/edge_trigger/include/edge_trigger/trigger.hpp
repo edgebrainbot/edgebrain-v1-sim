@@ -13,7 +13,7 @@
 #include "msg_utils.hpp"
 #include "edge_config/safety_monitor.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/msg/tracking_error.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 
@@ -27,7 +27,8 @@ public:
 private:
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
-    void errorCallback(const edge_msgs::msg::TrackingError::SharedPtr msg);
+    void errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
+    void robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     bool checkSafety();
@@ -35,12 +36,16 @@ private:
 
     // Cached variables
     edge::ros_interfaces::Vector12d  last_error_state_;         // last received error state
+    edge::ros_interfaces::Vector12d  last_robot_state_;         // last received robot state
     edge::ros_interfaces::Vector6d   last_student_action_;      // last received student action
     edge::ros_interfaces::Vector6d   last_teacher_action_;      // last received teacher action
+
     double obstacle_distance_;      // last received distance
     double goal_distance_;          // last received goal distance
     bool is_last_state_safe_;       // last alert state (is safe)
+    bool is_last_state_fall_;       // last fall state (is fall)
     bool print_processing_;         // whether to print processing info
+    bool is_robot_state_initialized_ = false;
 
     // Safety-conditions
     double update_rate_;
@@ -50,13 +55,15 @@ private:
     // ROS Interfaces
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_;
-    rclcpp::Subscription<edge_msgs::msg::TrackingError>::SharedPtr sub_error_;
+    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_error_;
+    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_robot_state_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_obstacle_distance_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_goal_distance_;
 
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr pub_action_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_alert_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_fall_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
 
-}  // namespace edge
+}  // namespace edge::trigger
