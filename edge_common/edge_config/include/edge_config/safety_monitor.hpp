@@ -41,14 +41,27 @@ public:
                         const std::vector<double>& state,
                         double obstacle_distance = 0.0, 
                         double goal_distance = 0.0);
+    bool detectFall(const std::vector<double>& robot_state);
 
 private:
+    // ===== Switching Conditions =====
+    bool switching_enabled_ = true;
     std::vector<SafetyRule> rules_;
+    std::vector<std::string> violation_reasons_;
     bool is_curr_safe_ = true;
     bool is_last_safe_ = true;
-    std::vector<std::string> violation_reasons_;
 
+    // ===== Fall Detection =====
+    bool fall_detection_enabled_ = false;
+    double fall_height_threshold_ = 0.15;  // meters
+    double fall_roll_threshold_ = 0.5;     // radians
+    double fall_pitch_threshold_ = 0.5;    // radians
+    std::vector<std::string> fall_reasons_;
+
+    // ===== Private Methods =====
     void loadFromYaml(const std::string& yaml_path);
+    void loadSwitchingConditions(const YAML::Node& root);
+    void loadFallDetection(const YAML::Node& root);
     std::string parseYamlPath(const std::string& user_path);
     void safetyStatusLogging();
 

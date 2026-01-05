@@ -10,6 +10,7 @@
 static const std::string CYAN  = "\033[36m";
 static const std::string YELLOW = "\033[33m";
 static const std::string GREEN = "\033[32m";
+static const std::string RED = "\033[31m";
 static const std::string RESET = "\033[0m";
 
 static constexpr bool USE_COLOR = true;
@@ -18,13 +19,31 @@ static std::string color(const std::string& s, const std::string& c) {
     return USE_COLOR ? (c + s + RESET) : s;
 }
 
-// Helper: print centered text inside a width
-static std::string center(const std::string& text, size_t width) {
-    if (text.size() >= width) return text;
-    size_t total = width - text.size();
-    size_t left  = total / 2;
-    size_t right = total - left;
-    return std::string(left, ' ') + text + std::string(right, ' ');
+// Helper: get visible length (excluding ANSI codes)
+static size_t visibleLength(const std::string& s) {
+    size_t len = 0;
+    bool in_escape = false;
+    for (char c : s) {
+        if (c == '\033') {
+            in_escape = true;
+        } else if (in_escape && c == 'm') {
+            in_escape = false;
+        } else if (!in_escape) {
+            len++;
+        }
+    }
+    return len;
+}
+
+// Helper: pad string to width (considering ANSI codes) - always center
+static std::string padTo(const std::string& s, size_t width) {
+    size_t vis_len = visibleLength(s);
+    if (vis_len >= width) return s;
+    
+    size_t total_pad = width - vis_len;
+    size_t left = total_pad / 2;
+    size_t right = total_pad - left;
+    return std::string(left, ' ') + s + std::string(right, ' ');
 }
 
 namespace edge::config
@@ -58,14 +77,38 @@ void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
 {
     YAML::Node root = YAML::LoadFile(yaml_path);
 
-    if (!root["safety_rules"]) {
-        throw std::runtime_error("YAML missing 'safety_rules' section");
+    loadSwitchingConditions(root);   // Load switching conditions
+    loadFallDetection(root);         // Load fall detection settings
+}
+
+/**
+ * Load switching conditions from YAML
+ */
+void SafetyMonitor::loadSwitchingConditions(const YAML::Node& root)
+{
+    if (!root["switching"]) {
+        throw std::runtime_error("YAML missing 'switching' section");
     }
 
-    YAML::Node rules_node = root["safety_rules"];
+    YAML::Node switching_node = root["switching"];
+    
+    // Check if switching is enabled
+    switching_enabled_ = switching_node["enabled"] ? switching_node["enabled"].as<bool>() : true;
+    
+    if (!switching_enabled_) {
+        std::cout << "⚠️ Switching conditions are disabled in config" << std::endl;
+        rules_.clear();
+        return;
+    }
+
+    if (!switching_node["conditions"]) {
+        throw std::runtime_error("YAML missing 'switching.conditions' section");
+    }
+
+    YAML::Node conditions_node = switching_node["conditions"];
     rules_.clear();
 
-    for (auto it = rules_node.begin(); it != rules_node.end(); ++it) {
+    for (auto it = conditions_node.begin(); it != conditions_node.end(); ++it) {
         std::string name = it->first.as<std::string>();
         YAML::Node node = it->second;
 
@@ -104,7 +147,48 @@ void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
         
         rules_.push_back(rule);
     }
+    
+    std::cout << "✅ Loaded " << rules_.size() << " switching conditions" << std::endl;
 }
+
+/**
+ * Load fall detection configuration from YAML
+ */
+void SafetyMonitor::loadFallDetection(const YAML::Node& root)
+{
+    if (!root["fall_detection"]) {
+        std::cout << "⚠️ YAML missing 'fall_detection' section, fall detection disabled" << std::endl;
+        fall_detection_enabled_ = false;
+        return;
+    }
+
+    YAML::Node fall_node = root["fall_detection"];
+    
+    // Check if fall detection is enabled
+    fall_detection_enabled_ = fall_node["enabled"] ? fall_node["enabled"].as<bool>() : true;
+
+    if (!fall_detection_enabled_) {
+        std::cout << "⚠️ Fall detection is disabled in config" << std::endl;
+        return;
+    }
+
+    if (!fall_node["thresholds"]) {
+        throw std::runtime_error("YAML missing 'fall_detection.thresholds' section");
+    }
+
+    YAML::Node thresholds = fall_node["thresholds"];
+    
+    // Load thresholds (all in SI units: meters and radians)
+    fall_height_threshold_ = thresholds["height"] ? thresholds["height"].as<double>() : 0.15;
+    fall_roll_threshold_ = thresholds["roll"] ? thresholds["roll"].as<double>() : 0.5;
+    fall_pitch_threshold_ = thresholds["pitch"] ? thresholds["pitch"].as<double>() : 0.5;
+    
+    std::cout << "✅ Fall detection loaded: "
+              << "height=" << fall_height_threshold_ << "m, "
+              << "roll=" << fall_roll_threshold_ << "rad, "
+              << "pitch=" << fall_pitch_threshold_ << "rad" << std::endl;
+}
+
 
 /**
  * Convert the user-provided value to internal value (always SI)
@@ -114,21 +198,75 @@ double SafetyMonitor::convertValue(double raw, const std::string& unit)
     if (unit == "deg") {
         return raw * M_PI / 180.0; // convert to rad
     }
-    if (unit == "rad") {
-        return raw;
+    if (unit == "deg/s") {
+        return raw * M_PI / 180.0; // convert to rad/s
     }
-    if (unit == "m") {
-        return raw;
-    }
-    if (unit == "m/s") {
-        return raw;
-    }
-    if (unit == "rad/s") {
+    if (unit == "rad" || unit == "m" || unit == "m/s" || unit == "rad/s") {
         return raw;
     }
     std::cerr << "⚠️ Unknown unit: " << unit << " (treat as raw SI)" << std::endl;
     return raw; 
 }
+
+bool SafetyMonitor::detectFall(const std::vector<double>& robot_state)
+{
+    if (!fall_detection_enabled_) {
+        return false; // Fall detection disabled
+    }
+
+    if (robot_state.size() < 6) {
+        throw std::runtime_error("State vector too small in detectFall() - need at least 6 elements");
+    }
+
+    fall_reasons_.clear();
+    bool is_falling = false;
+
+    // Extract state values
+    double height = robot_state[2];  // pz (index 2)
+    double roll = robot_state[3];    // roll (index 3)
+    double pitch = robot_state[4];   // pitch (index 4)
+
+    // Check height drop (critical height threshold)
+    if (height < fall_height_threshold_) {
+        is_falling = true;
+        fall_reasons_.push_back(
+            "height: " + std::to_string(height) + " < " + 
+            std::to_string(fall_height_threshold_) + " m (CRITICAL)"
+        );
+    }
+
+    // Check roll angle (critical tilt)
+    if (std::abs(roll) > fall_roll_threshold_) {
+        is_falling = true;
+        fall_reasons_.push_back(
+            "roll: |" + std::to_string(roll) + "| = " + 
+            std::to_string(std::abs(roll)) + " > " + 
+            std::to_string(fall_roll_threshold_) + " rad (CRITICAL)"
+        );
+    }
+
+    // Check pitch angle (critical tilt)
+    if (std::abs(pitch) > fall_pitch_threshold_) {
+        is_falling = true;
+        fall_reasons_.push_back(
+            "pitch: |" + std::to_string(pitch) + "| = " + 
+            std::to_string(std::abs(pitch)) + " > " + 
+            std::to_string(fall_pitch_threshold_) + " rad (CRITICAL)"
+        );
+    }
+
+    // Log fall detection
+    if (is_falling) {
+        std::cerr << color("🚨 FALL DETECTED! ", RED) << "Reasons: ";
+        for (const auto& reason : fall_reasons_) {
+            std::cerr << reason << " | ";
+        }
+        std::cerr << std::endl;
+    }
+
+    return is_falling;
+}
+
 
 bool SafetyMonitor::evaluateSafety(RuleType ruleType,
                                    const std::vector<double>& state,
@@ -137,6 +275,10 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
 {
     if (state.size() < 12) {
         throw std::runtime_error("State vector too small in evaluateSafety()");
+    }
+
+    if (!switching_enabled_) {
+        return true; // If switching is disabled, always return safe
     }
 
     violation_reasons_.clear();
@@ -219,9 +361,9 @@ void SafetyMonitor::safetyStatusLogging()
         std::cerr << msg << std::endl;
     } else {
         if (!is_last_safe_) {
-        std::cout << "✅ System returned to the learning space." << std::endl;
+            std::cout << "✅ System returned to the learning space." << std::endl;
         } else {
-        std::cout << "✅ System remains within the learning space." << std::endl;
+            std::cout << "✅ System remains within the learning space." << std::endl;
         }
     }
 }
@@ -232,77 +374,46 @@ void SafetyMonitor::safetyStatusLogging()
  */
 void SafetyMonitor::printLoadedRules() const
 {
-    const int NAME_W  = 10;
-    const int IDX_W   = 6;
+    const int NAME_W  = 20;
+    const int IDX_W   = 5;
     const int TYPE_W  = 10;
-    const int LIMIT_W = 22;
-    const int UNIT_W  = 8;
+    const int LIMIT_W = 14;
+    const int UNIT_W  = 7;
 
-    int total_w = NAME_W + IDX_W + TYPE_W + LIMIT_W + UNIT_W + 12;
+    int total_w = NAME_W + IDX_W + TYPE_W + LIMIT_W + UNIT_W + 10; // +10 for separators
 
     auto line = [&]() {
         std::cout << "  " << std::string(total_w, '-') << "\n";
     };
 
     // ------------------------------------------------------------
-    // Unified formatter factory
-    // makeFormatter(width).text(str)
-    // makeFormatter(width).number(double)
+    // Print Title
     // ------------------------------------------------------------
-    struct Formatter {
-        int width;
-
-        std::string text(const std::string &s) const {
-        int pad = width - (int)s.size();
-        if (pad <= 0) return s;
-        int left = pad / 2;
-        int right = pad - left;
-        return std::string(left, ' ') + s + std::string(right, ' ');
-        }
-
-        std::string number(double v, int precision = 6) const {
-        std::ostringstream ss;
-        ss << std::fixed << std::setprecision(precision) << v;
-        return text(ss.str());
-        }
-    };
-
-    auto makeFormatter = [&](int w) { return Formatter{w}; };
-
-    auto FName  = makeFormatter(NAME_W);
-    auto FIdx   = makeFormatter(IDX_W);
-    auto FType  = makeFormatter(TYPE_W);
-    auto FLimit = makeFormatter(LIMIT_W);
-    auto FUnit  = makeFormatter(UNIT_W);
+    std::string title = "🔄 Switching Conditions Loaded";
+    std::cout << "\n  " << CYAN << std::string((total_w - title.size() + 2) / 2, '=')
+              << " " << title << " "
+              << std::string((total_w - title.size() + 2) / 2, '=') << RESET << "\n";
 
     // ------------------------------------------------------------
-    // Title
-    // ------------------------------------------------------------
-    std::string title = "----------  🚨 Safety Rules Loaded  ----------";
-    int pad = (total_w - (int)title.size()) / 2;
-    std::cout << "\n  " << C_TITLE
-              << std::string(pad, ' ') << title
-              << C_RESET << "\n";
-
-    // ------------------------------------------------------------
-    // Header
+    // Print Header (all centered)
     // ------------------------------------------------------------
     std::cout << "  "
-              << C_HEADER << FName.text("Name")  << C_RESET << " | "
-              << C_HEADER << FIdx.text("Idx")    << C_RESET << " | "
-              << C_HEADER << FType.text("Type")  << C_RESET << " | "
-              << C_HEADER << FLimit.text("Limit/Bounds")<< C_RESET << " | "
-              << C_HEADER << FUnit.text("Unit")  << C_RESET
+              << padTo(YELLOW + "Name" + RESET, NAME_W) << " | "
+              << padTo(YELLOW + "Idx" + RESET, IDX_W) << " | "
+              << padTo(YELLOW + "Type" + RESET, TYPE_W) << " | "
+              << padTo(YELLOW + "Limit/Bounds" + RESET, LIMIT_W) << " | "
+              << padTo(YELLOW + "Unit" + RESET, UNIT_W)
               << "\n";
 
     line();
 
     // ------------------------------------------------------------
-    // Rows
+    // Print Rows (all centered)
     // ------------------------------------------------------------
     for (const auto& r : rules_) {
         std::string bound_str;
         std::string type_str;
+        
         if (r.type == RuleType::RELATIVE) {
             type_str = "relative";
             std::ostringstream ss;
@@ -316,15 +427,61 @@ void SafetyMonitor::printLoadedRules() const
         }
         
         std::cout << "  "
-                  << FName.text(r.name) << " | "
-                  << FIdx.text(std::to_string(r.index)) << " | "
-                  << FType.text(type_str) << " | "
-                  << C_VALUE << FLimit.text(bound_str) << C_RESET << " | "
-                  << C_UNIT  << FUnit.text(r.unit)     << C_RESET
+                  << padTo(r.name, NAME_W) << " | "
+                  << padTo(std::to_string(r.index), IDX_W) << " | "
+                  << padTo(type_str, TYPE_W) << " | "
+                  << padTo(GREEN + bound_str + RESET, LIMIT_W) << " | "
+                  << padTo(CYAN + r.unit + RESET, UNIT_W)
                   << "\n";
     }
 
     line();
+
+    // ------------------------------------------------------------
+    // Print Fall Detection (if enabled)
+    // ------------------------------------------------------------
+    if (fall_detection_enabled_) {
+        std::cout << "\n";
+        std::string fall_title = "🚨 Fall Detection";
+        std::cout << "  " << RED << std::string((total_w - fall_title.size() + 2) / 2, '=')
+                  << " " << fall_title << " "
+                  << std::string((total_w - fall_title.size() + 2) / 2, '=') << RESET << "\n";
+
+        line();
+
+        std::ostringstream ss_h, ss_r, ss_p;
+        ss_h << std::fixed << std::setprecision(4) << fall_height_threshold_;
+        ss_r << std::fixed << std::setprecision(4) << fall_roll_threshold_;
+        ss_p << std::fixed << std::setprecision(4) << fall_pitch_threshold_;
+
+        std::cout << "  "
+                  << padTo("height", NAME_W) << " | "
+                  << padTo("", IDX_W) << " | "
+                  << padTo("threshold", TYPE_W) << " | "
+                  << padTo(GREEN + ss_h.str() + RESET, LIMIT_W) << " | "
+                  << padTo(CYAN + "m" + RESET, UNIT_W)
+                  << "\n";
+
+        std::cout << "  "
+                  << padTo("roll", NAME_W) << " | "
+                  << padTo("", IDX_W) << " | "
+                  << padTo("threshold", TYPE_W) << " | "
+                  << padTo(GREEN + ss_r.str() + RESET, LIMIT_W) << " | "
+                  << padTo(CYAN + "rad" + RESET, UNIT_W)
+                  << "\n";
+
+        std::cout << "  "
+                  << padTo("pitch", NAME_W) << " | "
+                  << padTo("", IDX_W) << " | "
+                  << padTo("threshold", TYPE_W) << " | "
+                  << padTo(GREEN + ss_p.str() + RESET, LIMIT_W) << " | "
+                  << padTo(CYAN + "rad" + RESET, UNIT_W)
+                  << "\n";
+
+        line();
+    }
+    
+    std::cout << std::endl;
 }
 
 }  // namespace edge::config

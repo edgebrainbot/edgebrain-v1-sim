@@ -62,7 +62,7 @@ class DRLStudentNode(Node):
         
         self.act_dim = 6
         self.policy_blendering_weight = 0.0
-        self.save_interval = 300
+        self.save_interval = 500
         self.print_interval = 10
         #self.max_episode_steps = int(5e5)
         self.max_episode_steps = int(5e4)
@@ -234,9 +234,9 @@ class DRLStudentNode(Node):
         self.sync_count += 1
         
         # Record synchronization statistics
-        self.logger.writer.add_scalar('Sync/time_ms', sync_time * 1000, self.sync_count)
-        self.logger.writer.add_scalar('Sync/cumulative_time', self.total_sync_time, self.sync_count)
-        self.logger.writer.add_scalar('Sync/avg_time_ms', 
+        self.logger.writer.add_scalar('Timestep/Sync/time_ms', sync_time * 1000, self.sync_count)
+        self.logger.writer.add_scalar('Timestep/Sync/cumulative_time', self.total_sync_time, self.sync_count)
+        self.logger.writer.add_scalar('Timestep/Sync/avg_time_ms', 
                                       (self.total_sync_time / self.sync_count) * 1000, 
                                       self.sync_count)
         
@@ -373,21 +373,21 @@ class DRLStudentNode(Node):
     
     def _log_reset_success(self, elapsed_time):
         """Log successful reset statistics"""
-        self.logger.writer.add_scalar('Reset/success', 1, self.reset_count)
-        self.logger.writer.add_scalar('Reset/time', elapsed_time, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/success', 1, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/time', elapsed_time, self.reset_count)
         
         success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-        self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/success_rate', success_rate, self.reset_count)
     
     def _log_reset_failure(self):
         """Log failed reset statistics"""
-        self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/success', 0, self.reset_count)
         
         success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
         failure_rate = self.reset_failure_count / self.reset_count if self.reset_count > 0 else 0.0
         
-        self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
-        self.logger.writer.add_scalar('Reset/failure_rate', failure_rate, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/success_rate', success_rate, self.reset_count)
+        self.logger.writer.add_scalar('Episode/Reset/failure_rate', failure_rate, self.reset_count)
     
     def reset_episode(self):
         """
@@ -419,8 +419,8 @@ class DRLStudentNode(Node):
             # Log reset statistics
             success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
             
-            self.logger.writer.add_scalar('Reset/total_count', self.reset_count, self.episode_count)
-            self.logger.writer.add_scalar('Reset/cumulative_success_rate', success_rate, self.episode_count)
+            self.logger.writer.add_scalar('Episode/Reset/total_count', self.reset_count, self.episode_count)
+            self.logger.writer.add_scalar('Episode/Reset/cumulative_success_rate', success_rate, self.episode_count)
             
         else:
             self.get_logger().error(f'❌ Episode reset failed: {message}')
@@ -702,6 +702,11 @@ class DRLStudentNode(Node):
         
         ✅ Learner: use training_agent (not blocked by action_loop)
         """
+        
+        if self.is_resetting:
+            self.get_logger().debug('Skipping learning during reset')
+            return
+        
         # Logging buffer sizes
         self.logger.writer.add_scalar('Buffer/student_size', self.buffer.stu_buf_size, self.update_count)
         self.logger.writer.add_scalar('Buffer/teacher_size', self.buffer.tea_buf_size, self.update_count)
