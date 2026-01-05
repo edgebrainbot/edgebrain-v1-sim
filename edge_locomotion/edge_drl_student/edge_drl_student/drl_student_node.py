@@ -64,11 +64,7 @@ class DRLStudentNode(Node):
         self.save_interval = 300
         self.print_interval = 10
         #self.max_episode_steps = int(5e5)
-        self.max_episode_steps = int(3e5)
-        
-
-
-
+        self.max_episode_steps = int(5e4)
         
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)

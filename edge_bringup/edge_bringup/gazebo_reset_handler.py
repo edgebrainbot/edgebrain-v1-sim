@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-
+import os
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import Empty, Trigger
+from pathlib import Path  
 import subprocess
 import time
 
@@ -26,7 +27,7 @@ class ResetCoordinatorNode(Node):
         
         # ========== Parameter Declaration ==========
         # Gazebo parameters
-        self.declare_parameter('world_name', 'simple_indoor')
+        self.declare_parameter('world_name', 'obstacle_course.world')
         self.declare_parameter('robot_name', 'go2')
         self.declare_parameter('reset_position_x', 0.0)
         self.declare_parameter('reset_position_y', 0.0)
@@ -61,7 +62,8 @@ class ResetCoordinatorNode(Node):
         self.declare_parameter('delay_after_reset', 1.0)
         
         # Get parameters
-        self.world_name = self.get_parameter('world_name').value
+        world_name_full = self.get_parameter('world_name').value 
+        self.world_name = Path(world_name_full).stem
         self.robot_name = self.get_parameter('robot_name').value
         self.reset_pos_x = self.get_parameter('reset_position_x').value
         self.reset_pos_y = self.get_parameter('reset_position_y').value
@@ -146,9 +148,12 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info('=' * 70)
         self.get_logger().info('✅ Ready to receive reset requests on /edge/reset')
         self.get_logger().info('=' * 70)
+
     
     def edge_reset_callback(self, request, response):
         """Main reset service callback"""
+        self.get_logger().error("===== RESET CALLBACK ENTERED =====")
+
         self.get_logger().info('')
         self.get_logger().info('═' * 70)
         self.get_logger().info('🔄 [RESET REQUEST] Received from DRL student')
@@ -177,7 +182,7 @@ class ResetCoordinatorNode(Node):
         
         Flow:
         1. Reset Controller
-        2. Reset Gazebo (使用正确的流程)
+        2. Reset Gazebo 
         3. Wait delay_after_reset
         4. Start Controller (if start_after_reset is True)
         """

@@ -9,6 +9,7 @@ from launch.actions import (
     ExecuteProcess,
     TimerAction,
 )
+from pathlib import Path
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -38,8 +39,8 @@ def generate_launch_description():
     # ========== NEW: Reset Handler Arguments ==========
     world_name_arg = DeclareLaunchArgument(
         "world_name",
-        default_value="simple_indoor.world",
-        # default_value="obstacle_course.world",
+        # default_value="simple_indoor.world",
+        default_value="obstacle_course.world",
         description="Gazebo world name for reset"
     )
     
@@ -185,8 +186,8 @@ def generate_launch_description():
     gz_reset_handler_node = Node(
         package='edge_bringup', 
         executable='gazebo_reset_handler', 
-        name='reset_handler',
-        namespace=namespace,
+        name='reset_coordinator_node',
+        # namespace=namespace,
         output='screen',
         parameters=[{
             'use_sim_time': True,
@@ -224,6 +225,6 @@ def generate_launch_description():
         virtual_safety_indicator_node,
         
         # navigation_launch,
-        publish_goal_point
-        # gz_reset_handler_node,
+        publish_goal_point,
+        gz_reset_handler_node
     ])
