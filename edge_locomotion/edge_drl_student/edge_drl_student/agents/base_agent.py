@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 class BaseAgent(ABC):
@@ -17,8 +16,13 @@ class BaseAgent(ABC):
 
     # Abstract interfaces
     @abstractmethod
-    def act(self, obs: np.ndarray, explore: bool = True) -> np.ndarray:
+    def act(self, obs: torch.Tensor, explore: bool = True) -> torch.Tensor:
         """Select action given observation."""
+        pass
+    
+    @abstractmethod
+    def update(self, *args, **kwargs):
+        """Update agent parameters."""
         pass
 
     @abstractmethod

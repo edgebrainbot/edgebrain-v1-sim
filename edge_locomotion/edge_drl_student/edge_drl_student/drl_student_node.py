@@ -3,29 +3,28 @@
 import os
 import time
 import rclpy
-import random
-import threading
-import std_msgs.msg
 import torch
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
 from rclpy.node import Node
 from datetime import datetime
 
+from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import PointCloud2
-from sensor_msgs_py import point_cloud2
 
 from edge_drl_student.common.logger import Logger
 from edge_drl_student.utils.utils import ActionMode
-from ament_index_python.packages import get_package_prefix
-from edge_msgs.msg import Transition, TrackingError, EdgeAction
-from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
+from edge_msgs.msg import Transition, Vec12Msg, EdgeAction
 from edge_drl_student.common.normalizer import RewardNormalizerWindow
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
+
+# ⭐ Import DDPG Actor-Learner
+from edge_drl_student.distributed.ddpg_actor_learner import DDPGActorLearner
+from edge_drl_student.core.action_generator import ActionGenerator
+from edge_drl_student.common.reset_manager import ResetManager
+from edge_drl_student.managers.episode_manager import EpisodeManager
+from edge_drl_student.common.vision_processor import VisionProcessor
 
 
 RUN = 'cognitive'
@@ -38,8 +37,8 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
 LOG_PATH = os.path.join(CURRENT_DIR, "logs/new_data", PROJECT_NAME)
 
-# Set torch print options for better readability
 torch.set_printoptions(sci_mode=False)
+
 
 class DRLStudentNode(Node):
     def __init__(self):
@@ -47,437 +46,268 @@ class DRLStudentNode(Node):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         
-        self.RESIDUAL_GAIN = torch.tensor([
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        ], dtype=torch.float32, device=self.device) * -0.1
-
+        # Dimensions
         self.body_state_dim = 12
         self.vision_feature_dim = 24
         self.obs_dim = self.body_state_dim + self.vision_feature_dim
-        
         self.act_dim = 6
-        self.policy_blendering_weight = 0.0
+        
+        # Training parameters
+        self.batch_size = 512
         self.save_interval = 500
         self.print_interval = 10
-        #self.max_episode_steps = int(5e5)
         self.max_episode_steps = int(5e4)
         
         # Initialize Logger
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
         
-        # Initialize Reward Normalizer
+        # Initialize Reward Normalizer (for episode-level tracking)
         self.reward_normalizer = RewardNormalizerWindow(window_size=1000, clip_range=5.0)
         
-        self.batch_size = 512
-        self.last_reload_time = 0.0
-        self.tracking_error_ = TrackingError(tracking_error=[0.0] * self.body_state_dim)
-        self.curr_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
-        self.last_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
+        # Initialize tracking error message
+        self.tracking_error_ = Vec12Msg(data=[0.0] * self.body_state_dim)
         
+        # Initialize replay buffer
         if RUN == 'dual':
-            self.buffer = DualReplayBuffer(student_buf_size=int(1e5), 
-                                           student_prefill_size=int(self.batch_size),
-                                           teacher_buf_size=int(1e5), 
-                                           teacher_prefill_size=int(50),
-                                           obs_dim=self.obs_dim, 
-                                           action_dim=self.act_dim, 
-                                           device=self.device)
+            self.buffer = DualReplayBuffer(
+                student_buf_size=int(1e5), 
+                student_prefill_size=int(self.batch_size),
+                teacher_buf_size=int(1e5), 
+                teacher_prefill_size=int(50),
+                obs_dim=self.obs_dim, 
+                action_dim=self.act_dim, 
+                device=self.device
+            )
         elif RUN == 'cognitive':
-            print(f"obs_dim: {self.obs_dim}, act_dim: {self.act_dim}")
-            self.buffer = CognitiveReplayBuffer(student_buf_size=int(1e5), 
-                                                student_prefill_size=int(self.batch_size),
-                                                teacher_buf_size=int(1e5), 
-                                                teacher_prefill_size=int(50),
-                                                obs_dim=self.obs_dim, 
-                                                action_dim=self.act_dim, 
-                                                device=self.device)
+            self.buffer = CognitiveReplayBuffer(
+                student_buf_size=int(1e5), 
+                student_prefill_size=int(self.batch_size),
+                teacher_buf_size=int(1e5), 
+                teacher_prefill_size=int(50),
+                obs_dim=self.obs_dim, 
+                action_dim=self.act_dim, 
+                device=self.device
+            )
         else:
             raise ValueError(f"Unsupported RUN type: {RUN}")
         
-        # ========== Creating Actor-Learner architecture ==========
-        self.get_logger().info("🔧 Initializing Actor-Learner architecture...")
+        # ========== Initialize Modularized Components ==========
+        self.get_logger().info("🔧 Initializing modularized components...")
         
-        # Inference Agent：used for action generation (10Hz)
-        self.inference_agent = DDPGAgent(
+        # ⭐ DDPG Actor-Learner architecture
+        # action_bound = (
+        #     torch.tensor([-10., -10., -10., -20., -20., -20.], device=self.device),
+        #     torch.tensor([ 10.,  10.,  10.,  20.,  20.,  20.], device=self.device)
+        # )
+        
+        self.actor_learner = DDPGActorLearner(
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
             replay_buffer=self.buffer,
-            action_bound=(-10.0, 10.0),
-            device=self.device
+            device=self.device,
+            logger=self.logger,
+            # action_bound=action_bound,
+            sync_interval=5,          # Sync every 5 updates
+            log_interval=100,         # ⭐ Log every 100 updates
         )
         
-        # Training Agent：used for policy learning (2Hz)
-        self.training_agent = DDPGAgent(
-            obs_dim=self.obs_dim,
-            act_dim=self.act_dim,
-            replay_buffer=self.buffer,
-            action_bound=(-10.0, 10.0),
-            device=self.device
+        # Action Generator
+        self.action_generator = ActionGenerator(
+            body_state_dim=self.body_state_dim,
+            device=self.device,
+            policy_blending_weight=0.0
         )
         
-        # Synchronization lock (used only during parameter copying, ~1ms)
-        self.sync_lock = threading.Lock()
-        
-        # Synchronization policy configuration
-        self.sync_interval = 5  # Synchronize every 5 updates
-        self.sync_count = 0
-        self.last_sync_time = 0.0
-        self.total_sync_time = 0.0
-        
-        self.get_logger().info(
-            f"✅ Actor-Learner architecture initialized:\n"
-            f"  - Inference Agent: used for action generation (10Hz)\n"
-            f"  - Training Agent: used for policy learning (2Hz)\n"
-            f"  - Sync interval: every {self.sync_interval} updates\n"
-            f"  - Architecture: IMPALA-style Actor-Learner"
+        # Vision Processor
+        self.vision_processor = VisionProcessor(
+            device=self.device,
+            feature_dim=self.vision_feature_dim
         )
+        
+        # Episode Manager
+        self.episode_manager = EpisodeManager(
+            vision_feature_dim=self.vision_feature_dim,
+            device=self.device,
+            logger=self.logger,
+            max_episode_steps=self.max_episode_steps
+        )
+        
+        # Reset Manager
+        self.declare_parameter('reset_service_name', '/edge/reset')
+        self.declare_parameter('reset_service_timeout', 15.0)
+        self.declare_parameter('auto_reset_on_done', True)
+        self.declare_parameter('auto_reset_on_fall', True)
+        
+        self.reset_manager = ResetManager(
+            node=self,
+            reset_service_name=self.get_parameter('reset_service_name').value,
+            reset_timeout=self.get_parameter('reset_service_timeout').value,
+            logger=self.logger,
+            auto_reset_on_done=self.get_parameter('auto_reset_on_done').value,
+            auto_reset_on_fall=self.get_parameter('auto_reset_on_fall').value
+        )
+        
+        self.get_logger().info("✅ All components initialized")
 
         # ROS2 topics
         self.action_pub = self.create_publisher(EdgeAction, 'drl_student_action', 10)
         self.learned_action_pub = self.create_publisher(EdgeAction, 'drl_student_learned_action', 10)
         self.create_subscription(Transition, 'transition', self.transition_callback, 10)
-        self.create_subscription(TrackingError, 'tracking_error_stu', self.tracking_error_callback, 10)
+        self.create_subscription(Vec12Msg, 'tracking_error_stu', self.tracking_error_callback, 10)
         self.create_subscription(PointCloud2, '/registered_scan', self.pointcloud_callback, 10)
+        self.create_subscription(Bool, 'is_fall', self.fall_detection_callback, 10)
         
-        # ========== Reset Service Configuration ==========
-        self.declare_parameter('reset_service_name', '/edge/reset')
-        self.declare_parameter('reset_service_timeout', 15.0)  
-        self.declare_parameter('auto_reset_on_done', True)
+        # Manual Reset Service
+        self.manual_reset_service = self.create_service(
+            Trigger, 
+            'manual_reset',
+            self.manual_reset_callback
+        )
         
-        self.reset_service_name = self.get_parameter('reset_service_name').value
-        self.reset_service_timeout = self.get_parameter('reset_service_timeout').value
-        self.auto_reset_on_done = self.get_parameter('auto_reset_on_done').value
-        
-        self.reset_client = self.create_client(Trigger, self.reset_service_name)
-        self.reset_count = 0
-        self.reset_success_count = 0
-        self.reset_failure_count = 0
-        
-        # Reset state flags
-        self.is_resetting = False
-        
-        self.get_logger().info(f"Reset service client created: {self.reset_service_name}")
-        self.get_logger().info(f"Auto reset on episode done: {self.auto_reset_on_done}")
-
-        self.obstacle_reward = 0.0
-        self.goal_distance_reward = 0.0
-        self.body_state_reward = 0.0
+        self.get_logger().info(
+            f"✅ Manual reset service created: /edge/manual_reset\n"
+            f"   Usage: ros2 service call /edge/manual_reset std_srvs/srv/Trigger"
+        )
 
         # Create timers
-        self.action_timer = self.create_timer(0.1, self.action_loop)
-        self.learn_timer = self.create_timer(0.5, self.learning_loop)
+        self.action_timer = self.create_timer(0.1, self.action_loop)  # 10Hz
+        self.learn_timer = self.create_timer(0.5, self.learning_loop)  # 2Hz
         
         # Statistical variables
         self.update_count = 0
         self.action_count = 0
-        self.current_episode_reward = 0.0
-        self.current_episode_length = 0
-        self.step_count = 0
         self.collection_time = 0.0
         self.learn_time = 0.0
-        self.iteration_start_time = time.time()
-        self.episode_count = 0
-        self.stu_action_count = 0
-        self.tea_action_count = 0
-        
-        # Matrix processing lidar
-        self.points = None
-        self.mat_base_vec = torch.arange(0.1, 144.1, 0.1, dtype=torch.float32).to(self.device) * 50
-        x = torch.log(self.mat_base_vec) * 0.0001
-        
-        self.vis_feature_mat = torch.vander(x, N=8, increasing=True).T.to(self.device)
-        self.stu_tracking_error = torch.zeros(self.body_state_dim, device=self.device)
         
         self.get_logger().info("✅ DRLStudent Node initialized")
 
-    # ========== Actor-Learner: Parameter Synchronization Method ==========
-    def sync_parameters(self):
-        """
-        Synchronize training network parameters to inference network
+    # ========== Service Callbacks ==========
+    def manual_reset_callback(self, request, response):
+        """Manual reset service callback"""
+        self.get_logger().info('🔄 Manual reset triggered by service call')
         
-        This is the core of the IMPALA architecture:
-        - Training Agent learns updates (slow, 150ms)
-        - Inference Agent extracts actions (fast, 1ms)
-        - Periodic parameter synchronization (fast, ~1ms)
+        if self.reset_manager.is_resetting:
+            response.success = False
+            response.message = 'Reset already in progress, please wait'
+            return response
         
-        Reference paper: IMPALA: Scalable Distributed Deep-RL (ICML 2018)
-        """
-        sync_start = time.time()
+        success = self.reset_episode(reason='manual')
         
-        with self.sync_lock:
-            # Copy Actor network parameters
-            self.inference_agent.actor.load_state_dict(
-                self.training_agent.actor.state_dict()
-            )
-            
-            # Copy Critic network parameters (optional, action extraction does not require critic)
-            self.inference_agent.critic.load_state_dict(
-                self.training_agent.critic.state_dict()
-            )
-            
-            # Copy Target network parameters
-            self.inference_agent.target_actor.load_state_dict(
-                self.training_agent.target_actor.state_dict()
-            )
-            self.inference_agent.target_critic.load_state_dict(
-                self.training_agent.target_critic.state_dict()
-            )
-        
-        sync_time = time.time() - sync_start
-        self.last_sync_time = sync_time
-        self.total_sync_time += sync_time
-        self.sync_count += 1
-        
-        # Record synchronization statistics
-        self.logger.writer.add_scalar('Timestep/Sync/time_ms', sync_time * 1000, self.sync_count)
-        self.logger.writer.add_scalar('Timestep/Sync/cumulative_time', self.total_sync_time, self.sync_count)
-        self.logger.writer.add_scalar('Timestep/Sync/avg_time_ms', 
-                                      (self.total_sync_time / self.sync_count) * 1000, 
-                                      self.sync_count)
-        
-        self.get_logger().info(
-            f"🔄 [Sync #{self.sync_count}] Parameters synchronized in {sync_time*1000:.2f}ms "
-            f"(avg: {(self.total_sync_time/self.sync_count)*1000:.2f}ms)"
-        )
-        
-        # Check if synchronization is too slow
-        # if sync_time > 0.01:  # More than 10ms
-        #     self.get_logger().warn(
-        #         f"⚠️ Slow parameter sync: {sync_time*1000:.2f}ms "
-        #         f"(expected <10ms). This may block action generation."
-        #     )
-
-    # ========== Reset Service Methods ==========
-    def call_reset_service(self):
-        """
-        Call reset service to reset controller (single attempt, no retry)
-        Uses simple polling instead of spin_until_future_complete to avoid blocking
-        
-        Returns:
-            tuple: (success: bool, message: str)
-        """
-        # Mark as resetting
-        self.is_resetting = True
-        self.reset_count += 1
-        
-        self.get_logger().info(
-            f'[Reset #{self.reset_count}] Waiting for service: {self.reset_service_name}...'
-        )
-        
-        reset_start = time.time()
-        
-        # Wait for service
-        if not self.reset_client.wait_for_service(timeout_sec=self.reset_service_timeout):
-            error_msg = f'Service {self.reset_service_name} not available after {self.reset_service_timeout}s'
-            self.get_logger().error(error_msg)
-            self.reset_failure_count += 1
-            self.is_resetting = False
-            self._log_reset_failure()
-            return False, error_msg
-        
-        # Create request
-        request = Trigger.Request()
-        
-        # Call service
-        self.get_logger().info(f'📞 Calling reset service (timeout: {self.reset_service_timeout}s)...')
-        
-        try:
-            future = self.reset_client.call_async(request)
-            
-            # ✅ Use simple polling instead of spin_until_future_complete
-            start_time = time.time()
-            while not future.done():
-                elapsed = time.time() - start_time
-                
-                if elapsed > self.reset_service_timeout:
-                    error_msg = f'⏱️ Service call timeout after {elapsed:.2f}s'
-                    self.get_logger().error(error_msg)
-                    self.get_logger().warn(
-                        '💡 Tip: Reset service may be slow. Consider increasing reset_service_timeout parameter.'
-                    )
-                    self.reset_failure_count += 1
-                    self._log_reset_failure()
-                    self.is_resetting = False
-                    return False, error_msg
-                
-                # Short sleep to avoid high CPU usage
-                time.sleep(0.01)
-            
-            elapsed_time = time.time() - reset_start
-            
-            # Get result
-            try:
-                response = future.result()
-                
-                if response is None:
-                    error_msg = f'⚠️ Service returned None response after {elapsed_time:.2f}s'
-                    self.get_logger().error(error_msg)
-                    self.get_logger().warn(
-                        '💡 This may indicate the service crashed or returned invalid data.'
-                    )
-                    self.reset_failure_count += 1
-                    self._log_reset_failure()
-                    self.is_resetting = False
-                    return False, error_msg
-                
-                # Log response details
-                self.get_logger().info(
-                    f'📨 Response received: success={response.success}, message="{response.message}"'
-                )
-                
-                if response.success:
-                    self.reset_success_count += 1
-                    self.get_logger().info(
-                        f'✅ Reset successful in {elapsed_time:.2f}s: {response.message}'
-                    )
-                    self._log_reset_success(elapsed_time)
-                    self.is_resetting = False
-                    return True, response.message
-                else:
-                    self.reset_failure_count += 1
-                    self.get_logger().warn(
-                        f'❌ Reset failed in {elapsed_time:.2f}s: {response.message}'
-                    )
-                    self._log_reset_failure()
-                    self.is_resetting = False
-                    return False, response.message
-                    
-            except Exception as e:
-                error_msg = f'💥 Exception getting result after {elapsed_time:.2f}s: {type(e).__name__}: {str(e)}'
-                self.get_logger().error(error_msg)
-                
-                import traceback
-                self.get_logger().error(f'Traceback:\n{traceback.format_exc()}')
-                
-                self.reset_failure_count += 1
-                self._log_reset_failure()
-                self.is_resetting = False
-                return False, error_msg
-                    
-        except Exception as e:
-            error_msg = f'💥 Exception during service call: {type(e).__name__}: {str(e)}'
-            self.get_logger().error(error_msg)
-            
-            import traceback
-            self.get_logger().error(f'Traceback:\n{traceback.format_exc()}')
-            
-            self.reset_failure_count += 1
-            self._log_reset_failure()
-            self.is_resetting = False
-            return False, error_msg
-    
-    def _log_reset_success(self, elapsed_time):
-        """Log successful reset statistics"""
-        self.logger.writer.add_scalar('Episode/Reset/success', 1, self.reset_count)
-        self.logger.writer.add_scalar('Episode/Reset/time', elapsed_time, self.reset_count)
-        
-        success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-        self.logger.writer.add_scalar('Episode/Reset/success_rate', success_rate, self.reset_count)
-    
-    def _log_reset_failure(self):
-        """Log failed reset statistics"""
-        self.logger.writer.add_scalar('Episode/Reset/success', 0, self.reset_count)
-        
-        success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-        failure_rate = self.reset_failure_count / self.reset_count if self.reset_count > 0 else 0.0
-        
-        self.logger.writer.add_scalar('Episode/Reset/success_rate', success_rate, self.reset_count)
-        self.logger.writer.add_scalar('Episode/Reset/failure_rate', failure_rate, self.reset_count)
-    
-    def reset_episode(self):
-        """
-        Reset episode (call reset service and reset internal states)
-        """
-        # Call reset service (single attempt)
-        success, message = self.call_reset_service()
-        
+        response.success = success
         if success:
-            # Reset internal states
-            self.current_episode_reward = 0.0
-            self.current_episode_length = 0
-            self.obstacle_reward = 0.0
-            self.goal_distance_reward = 0.0
-            self.body_state_reward = 0.0
-            self.stu_action_count = 0
-            self.tea_action_count = 0
-            
-            # Reset vision features
-            self.curr_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
-            self.last_vision_feature = torch.zeros(self.vision_feature_dim, device=self.device)
-            
-            self.get_logger().info(
-                f'✅ Episode reset complete. '
-                f'Total resets: {self.reset_count} '
-                f'(Success: {self.reset_success_count}, Failed: {self.reset_failure_count})'
+            response.message = (
+                f'Manual reset successful. '
+                f'Episode #{self.episode_manager.episode_count} started.'
             )
-            
-            # Log reset statistics
-            success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
-            
-            self.logger.writer.add_scalar('Episode/Reset/total_count', self.reset_count, self.episode_count)
-            self.logger.writer.add_scalar('Episode/Reset/cumulative_success_rate', success_rate, self.episode_count)
-            
         else:
-            self.get_logger().error(f'❌ Episode reset failed: {message}')
+            response.message = 'Manual reset failed. Check controller service.'
         
-        return success
+        return response
 
-    def output_action(self):
+    # ========== ROS2 Callbacks ==========
+    def fall_detection_callback(self, msg: Bool):
+        """Fall detection callback"""
+        should_reset = self.reset_manager.handle_fall_detection(msg.data)
         
-        residual_action = self.RESIDUAL_GAIN @ self.stu_tracking_error.unsqueeze(-1)
-        residual_action = residual_action.flatten() 
+        if should_reset:
+            self.reset_episode(reason='fall_detected')
+    
+    def tracking_error_callback(self, msg: Vec12Msg):
+        """Tracking error callback"""
+        self.tracking_error_ = msg
         
-        if isinstance(self.buffer, CognitiveReplayBuffer):
-            blending_action = self.buffer.get_weighted_blended_action()
-            drl_action = self.policy_action() * 1.0 + blending_action * self.policy_blendering_weight
-        else:
-            drl_action = self.policy_action() 
-            
-        output_action = drl_action * 1.0 + residual_action
+        tracking_errors = np.array(msg.data, dtype=np.float32)
+        self.logger.writer.add_scalar('TrackingError/mean', np.mean(np.abs(tracking_errors)), self.action_count)
+        self.logger.writer.add_scalar('TrackingError/max', np.max(np.abs(tracking_errors)), self.action_count)
+        self.logger.writer.add_scalar('TrackingError/std', np.std(tracking_errors), self.action_count)
+    
+    def pointcloud_callback(self, msg):
+        """Point cloud callback"""
+        points = self.vision_processor.parse_pointcloud(msg)
         
-        return output_action, drl_action 
+        if points is not None:
+            self.episode_manager.curr_vision_feature = self.vision_processor.process_pointcloud(points)
 
-    def policy_action(self):
-        """
-        Generate action
+    def transition_callback(self, msg: Transition):
+        """Transition callback"""
+        # Ignore transitions during reset
+        if self.reset_manager.is_resetting:
+            return
         
-        ✅ Double buffering: use inference_agent (not blocked by learning)
-        """
+        # Update episode statistics
+        reward_components = {
+            'obstacle': msg.reward.obstacle_reward,
+            'goal_distance': msg.reward.goal_distance_reward,
+            'body_state': msg.reward.body_state_reward
+        }
+        
+        stepwise_total_reward = self.episode_manager.update_step(reward_components)
+        
+        # ⭐ Update reward normalizer in actor_learner
+        self.actor_learner.update_reward_normalizer(stepwise_total_reward)
+        
+        # Create observation
         observation = torch.cat((
-            torch.tensor(
-                np.array(self.tracking_error_.tracking_error, dtype=np.float32),
-                dtype=torch.float32,
-                device=self.device
-            ),
-            self.curr_vision_feature
+            torch.tensor(np.array(self.tracking_error_.data, dtype=np.float32), 
+                        dtype=torch.float32, device=self.device),
+            self.episode_manager.last_vision_feature
         ), dim=0)
         
-        # ✅ Use inference_agent (fast, non-blocking)
-        return self.inference_agent.act(observation.unsqueeze(0))
-
-    def action_loop(self):
-        """
-        Action generation loop (10Hz)
+        next_observation = torch.cat((
+            torch.tensor(np.array(msg.next_obs, dtype=np.float32), 
+                        dtype=torch.float32, device=self.device),
+            self.episode_manager.curr_vision_feature
+        ), dim=0)
         
-        ✅ Actor: use inference_agent (not blocked by learning_loop)
-        """
+        # Add to buffer
+        t = self.buffer.to_transition(
+            obs=observation,
+            action=msg.action,
+            reward=stepwise_total_reward,
+            next_obs=next_observation,
+            done=msg.done
+        )
+        
+        action_mode = ActionMode(msg.action_mode)
+        self.buffer.add_transition(t, action_mode=action_mode)
+        self.episode_manager.increment_action_count(action_mode == ActionMode.STUDENT)
+        
+        # Log stepwise statistics
+        self._log_stepwise_stats(stepwise_total_reward, reward_components)
+        
+        # Check episode done
+        if msg.done or self.episode_manager.is_episode_done():
+            self._handle_episode_done()
+
+    # ========== Main Loops ==========
+    def action_loop(self):
+        """Action generation loop (10Hz)"""
         action_start = time.time()
         
-        # Generate and publish action
+        # Get tracking error
+        tracking_error = torch.tensor(
+            np.array(self.tracking_error_.data, dtype=np.float32),
+            dtype=torch.float32,
+            device=self.device
+        )
+        
+        # Generate action
+        output_action, drl_action = self.action_generator.generate_action(
+            actor_learner=self.actor_learner,
+            buffer=self.buffer,
+            tracking_error=tracking_error,
+            vision_feature=self.episode_manager.curr_vision_feature
+        )
+        
+        # Publish actions
         edge_action_msg = EdgeAction()
         edge_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_action_msg.control_action = self.output_action()[0].detach().cpu().numpy().flatten().astype(np.float64)
+        edge_action_msg.control_action = output_action.detach().cpu().numpy().flatten().astype(np.float64)
         edge_action_msg.action_mode = ActionMode.STUDENT.value
         
-        # Learned action message
         edge_drl_action_msg = EdgeAction()
         edge_drl_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_drl_action_msg.control_action = self.output_action()[1].detach().cpu().numpy().flatten().astype(np.float64)
+        edge_drl_action_msg.control_action = drl_action.detach().cpu().numpy().flatten().astype(np.float64)
         edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
         
         self.action_pub.publish(edge_action_msg)
@@ -486,286 +316,113 @@ class DRLStudentNode(Node):
         self.action_count += 1
         self.collection_time = time.time() - action_start
         
-        # Record action generation time
         self.logger.writer.add_scalar('Timing/action_generation_ms', 
                                       self.collection_time * 1000, 
                                       self.action_count)
-        
-        # Check for abnormal delay
-        # if self.collection_time > 0.01:  # More than 10ms
-        #     self.get_logger().warn(
-        #         f"⚠️ Slow action generation: {self.collection_time*1000:.2f}ms "
-        #         f"(expected <10ms)"
-        #     )
-
-        self.t = time.time()
-
-    def pointcloud_callback(self, msg):
-        """
-        Callback function for processing incoming PointCloud2 messages
-        """
-        # Parse point cloud
-        self.points = self.parse_pointcloud(msg)
-        
-        t2 = time.time()
-        self.t = t2
-        
-        if self.points is not None:
-            pass
-    
-        points = torch.tensor(self.points, dtype=torch.float32).to(self.device)
-        res = self.vis_feature_mat @ points 
-        res *= 0.01
-        
-        self.curr_vision_feature = res.flatten()
-    
-    def parse_pointcloud(self, msg):
-        """
-        Parse PointCloud2 message to extract XYZ coordinates
-        """
-        try:
-            # Use point_cloud2 module to read points
-            points_list = []
-            
-            # Read point cloud data (x, y, z fields)
-            for point in point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=False):
-                clean_point = np.nan_to_num([point[0], point[1], point[2]], 
-                                 nan=0.0, posinf=0.0, neginf=0.0)
-                points_list.append(clean_point.tolist())
-            
-            return np.array(points_list)
-            
-        except Exception as e:
-            self.get_logger().error(f'Failed to parse point cloud data: {str(e)}')
-            return None
-
-    def transition_callback(self, msg: Transition):
-        # ✅ Ignore transitions during reset
-        if self.is_resetting:
-            self.get_logger().debug('Ignoring transition during reset')
-            return
-        
-        # Process received transition and add to replay buffer
-        self.goal_distance_reward = msg.reward.goal_distance_reward
-        self.body_state_reward = msg.reward.body_state_reward
-        self.obstacle_reward = msg.reward.obstacle_reward
-        
-        # Compute total reward
-        stepwise_total_reward = self.obstacle_reward + self.goal_distance_reward + self.body_state_reward
-        
-        # ✅ Check and clip reward (optional)
-        if abs(stepwise_total_reward) > 1000:
-            self.get_logger().warn(
-                f'⚠️ Abnormal reward: {stepwise_total_reward:.2f} '
-                f'(obstacle={self.obstacle_reward:.2f}, '
-                f'goal={self.goal_distance_reward:.2f}, '
-                f'body={self.body_state_reward:.2f})'
-            )
-
-        self.stu_tracking_error = torch.tensor(msg.obs,
-            dtype=torch.float32,
-            device=self.device
-        )
-        
-        observation = torch.cat((
-            torch.tensor(
-                np.array(self.tracking_error_.tracking_error, dtype=np.float32),
-                dtype=torch.float32,
-                device=self.device
-            ),
-            self.last_vision_feature
-        ), dim=0)
-        
-        next_observation = torch.cat((
-            torch.tensor(
-                np.array(msg.next_obs, dtype=np.float32),
-                dtype=torch.float32,
-                device=self.device
-            ),
-            self.curr_vision_feature
-        ), dim=0)
-        
-        t = self.buffer.to_transition(
-            obs=observation,
-            action=msg.action,
-            reward=stepwise_total_reward,
-            next_obs=next_observation,
-            done=msg.done
-        )
-        action_mode = ActionMode(msg.action_mode)
-
-        # Add transition to the self-learning buffer
-        if action_mode == ActionMode.STUDENT:
-            self.buffer.add_transition(t, action_mode=ActionMode.STUDENT)
-            self.stu_action_count += 1
-            
-            if not self.buffer.stu_buf.is_ready:
-                print(f"[Transition] Added transition to student buffer. Current size: {self.buffer.stu_buf_size}")
-            
-        # Add transition to the teaching-to-learn buffer
-        elif action_mode == ActionMode.TEACHER:
-            self.buffer.add_transition(t, action_mode=ActionMode.TEACHER)
-            self.tea_action_count += 1
-            
-            if not self.buffer.tea_buf.is_ready:
-                print(f"[Transition] Added transition to teacher buffer. Current size: {self.buffer.tea_buf_size}")
-        
-        # Update episode statistics
-        self.current_episode_reward += stepwise_total_reward
-        self.current_episode_length += 1
-        self.step_count += 1
-        
-        # Logging stepwise statistics
-        self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, self.current_episode_length)
-        self.logger.writer.add_scalar('Stepwise/obstacle_reward', self.obstacle_reward, self.current_episode_length)
-        self.logger.writer.add_scalar('Stepwise/goal_distance_reward', self.goal_distance_reward, self.current_episode_length)
-        self.logger.writer.add_scalar('Stepwise/body_state_reward', self.body_state_reward, self.current_episode_length)
-        self.logger.writer.add_scalar('Stepwise/student_action_count', self.stu_action_count, self.current_episode_length)
-        self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.tea_action_count, self.current_episode_length)
-        
-        self.logger.writer.add_scalar('Timestep/total_reward', stepwise_total_reward, self.step_count)
-        self.logger.writer.add_scalar('Timestep/obstacle_reward', self.obstacle_reward, self.step_count)
-        self.logger.writer.add_scalar('Timestep/goal_distance_reward', self.goal_distance_reward, self.step_count)
-        self.logger.writer.add_scalar('Timestep/body_state_reward', self.body_state_reward, self.step_count)
-        self.logger.writer.add_scalar('Timestep/student_action_count', self.stu_action_count, self.step_count)
-        self.logger.writer.add_scalar('Timestep/teacher_action_count', self.tea_action_count, self.step_count)
-        
-        # Episode done processing
-        if msg.done or self.current_episode_length >= self.max_episode_steps:
-            # Save current episode stats before resetting
-            episode_length = self.current_episode_length
-            episode_reward = self.current_episode_reward
-            episode_obstacle_reward = self.obstacle_reward
-            episode_goal_distance_reward = self.goal_distance_reward
-            episode_body_state_reward = self.body_state_reward
-            episode_stu_action_count = self.stu_action_count
-            episode_tea_action_count = self.tea_action_count
-            
-            # Reset episode stats
-            self.current_episode_length = 0
-            self.current_episode_reward = 0.0
-            self.obstacle_reward = 0.0
-            self.goal_distance_reward = 0.0
-            self.body_state_reward = 0.0
-            self.stu_action_count = 0
-            self.tea_action_count = 0
-            
-            self.episode_count += 1
-            
-            # Log episode information
-            self.logger.add_episode_info(
-                reward=episode_reward,
-                length=episode_length
-            )
-            
-            activation_ratio = episode_tea_action_count / (episode_stu_action_count + episode_tea_action_count) if (episode_stu_action_count + episode_tea_action_count) > 0 else 0
-            
-            self.logger.writer.add_scalar('Episode/length', episode_length, self.episode_count)
-            self.logger.writer.add_scalar('Episode/total_reward', episode_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/obstacle_reward', episode_obstacle_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/goal_distance_reward', episode_goal_distance_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/body_state_reward', episode_body_state_reward, self.episode_count)
-            self.logger.writer.add_scalar('Episode/avg_reward_per_step', episode_reward / episode_length, 
-                                          self.episode_count)
-            self.logger.writer.add_scalar('Episode/student_action_count', episode_stu_action_count, self.episode_count)
-            self.logger.writer.add_scalar('Episode/teacher_action_count', episode_tea_action_count, self.episode_count)
-            self.logger.writer.add_scalar('Episode/activation_ratio', activation_ratio, self.episode_count)
-            
-            self.get_logger().info(
-                f"📊 Episode {self.episode_count} done | "
-                f"Total Reward: {episode_reward:.2f} | "
-                f"Length: {episode_length} | "
-                f"Obstacle Reward: {episode_obstacle_reward:.2f} | "
-                f"Goal Distance Reward: {episode_goal_distance_reward:.2f} | "
-                f"Body State Reward: {episode_body_state_reward:.2f} | "
-                f"Student Action Count: {episode_stu_action_count} | "
-                f"Teacher Action Count: {episode_tea_action_count} | "
-                f"Activation Ratio: {activation_ratio:.2f}"
-            )
-
-            # Auto reset on episode done
-            if self.auto_reset_on_done:
-                self.get_logger().info('Auto reset triggered on episode done')
-                self.reset_episode()
-        
-    def tracking_error_callback(self, msg: TrackingError):
-        self.tracking_error_ = msg
-        
-        tracking_errors = np.array(msg.tracking_error)
-        self.logger.writer.add_scalar('TrackingError/mean', np.mean(np.abs(tracking_errors)), self.action_count)
-        self.logger.writer.add_scalar('TrackingError/max', np.max(np.abs(tracking_errors)), self.action_count)
-        self.logger.writer.add_scalar('TrackingError/std', np.std(tracking_errors), self.action_count)
 
     def learning_loop(self):
-        """
-        Perform one learning step (weight update)
-        
-        ✅ Learner: use training_agent (not blocked by action_loop)
-        """
-        
-        if self.is_resetting:
-            self.get_logger().debug('Skipping learning during reset')
+        """Learning loop (2Hz)"""
+        if self.reset_manager.is_resetting:
             return
         
-        # Logging buffer sizes
-        self.logger.writer.add_scalar('Buffer/student_size', self.buffer.stu_buf_size, self.update_count)
-        self.logger.writer.add_scalar('Buffer/teacher_size', self.buffer.tea_buf_size, self.update_count)
-
-        if not self.buffer.stu_buf.is_ready:
-            self.get_logger().info(
-                f"Student Buffer not ready for learning. "
-                f"Current size: {self.buffer.stu_buf_size}, "
-                f"required prefill size: {self.buffer.stu_buf.prefill_size}."
-            )
-            return
-        
-        if not self.buffer.tea_buf.is_ready:
-            self.get_logger().info(
-                f"Teacher Buffer not ready for learning. "
-                f"Current size: {self.buffer.tea_buf_size}, "
-                f"required prefill size: {self.buffer.tea_buf.prefill_size}."
-            )
+        # Check buffer readiness
+        if not self.buffer.stu_buf.is_ready or not self.buffer.tea_buf.is_ready:
             return
 
         learn_start = time.time()
         
-        # ✅ Learner: use training_agent (not blocked by action_loop)
-        actor_loss, critic_loss = self.training_agent.update(self.batch_size)
+        # ⭐ Update policy (returns dict now)
+        losses = self.actor_learner.update(self.batch_size)
         
         self.learn_time = time.time() - learn_start
         self.update_count += 1
         
-        # ✅ Learner: periodically sync parameters (core of IMPALA architecture)
-        if self.update_count % self.sync_interval == 0:
-            self.sync_parameters()
+        # ⭐ Sync info is included in losses dict if synced
+        if 'sync_time' in losses:
+            self.get_logger().info(
+                f"🔄 [Sync #{self.actor_learner.sync_count}] "
+                f"Parameters synchronized in {losses['sync_time']*1000:.2f}ms"
+            )
         
-        # Saving models and logging
+        # Save models
         if self.update_count % self.save_interval == 0:
-            os.makedirs(os.path.dirname(f"{MODEL_PATH}_{self.update_count}"), exist_ok=True)
-            # ✅ Save training_agent's models (latest parameters)
-            self.training_agent.save_models(f"{MODEL_PATH}_{self.update_count}")
-            
-        # Logging losses
-        self.logger.writer.add_scalar('Timing/learn', self.learn_time, self.update_count)
-        self.logger.writer.add_scalar('Loss/actor', actor_loss.item(), self.update_count)
-        self.logger.writer.add_scalar('Loss/critic', critic_loss.item(), self.update_count)
-        self.logger.writer.add_scalar('Loss/total', actor_loss.item() + critic_loss.item(), self.update_count)
+            save_path = f"{MODEL_PATH}_{self.update_count}"
+            os.makedirs(save_path, exist_ok=True)
+            self.actor_learner.training_agent.save_models(save_path)
+            self.get_logger().info(f"💾 Models saved to {save_path}")
         
-        # Recording learning time
+        # ⭐ Log losses (already logged in actor_learner, but we can add extra logs here)
         self.logger.writer.add_scalar('Timing/learn_ms', self.learn_time * 1000, self.update_count)
         
+        # ⭐ Print interval logging (actor_learner already logs every log_interval)
         if self.update_count % self.print_interval == 0:
+            stats = self.actor_learner.get_ddpg_stats()
             self.get_logger().info(
-                f"Count: {self.update_count}, "
-                f"[Learner] Updated policy "
-                f"(actor_loss={actor_loss.item():.4f}, critic_loss={critic_loss.item():.4f}, "
-                f"learn_time={self.learn_time*1000:.2f}ms)"
+                f"[Update {self.update_count}] "
+                f"actor_loss={losses['actor_loss']:.4f}, "
+                f"critic_loss={losses['critic_loss']:.4f}, "
+                f"avg_actor_loss={stats['avg_actor_loss']:.4f}, "
+                f"avg_critic_loss={stats['avg_critic_loss']:.4f}, "
+                f"time={self.learn_time*1000:.2f}ms"
             )
 
+    # ========== Helper Methods ==========
+    def reset_episode(self, reason='unknown'):
+        """Reset episode"""
+        success, message = self.reset_manager.call_reset_service(reason)
+        
+        if success:
+            self.episode_manager.reset_episode_stats()
+            self.reset_manager.last_fall_state = False
+            
+            # ⭐ Finish episode for reward normalizer
+            self.actor_learner.finish_episode()
+            
+            stats = self.reset_manager.get_statistics()
+            self.get_logger().info(
+                f'✅ Episode reset complete (reason: {reason}). '
+                f'Total resets: {stats["total"]} '
+                f'(Success: {stats["success"]}, Failed: {stats["failure"]})'
+            )
+            
+            self.get_logger().info(
+                f'📊 Reset statistics: '
+                f'episode_done={stats["reasons"]["episode_done"]}, '
+                f'fall_detected={stats["reasons"]["fall_detected"]}, '
+                f'manual={stats["reasons"]["manual"]}, '
+                f'timeout={stats["reasons"]["timeout"]}'
+            )
+        else:
+            self.get_logger().error(f'❌ Episode reset failed (reason: {reason}): {message}')
+        
+        return success
+    
+    def _handle_episode_done(self):
+        """Handle episode done"""
+        stats, activation_ratio = self.episode_manager.log_episode_end()
+        
+        reset_reason = 'timeout' if self.episode_manager.is_episode_done() else 'episode_done'
+        
+        self.get_logger().info(
+            f"📊 Episode {self.episode_manager.episode_count} done (reason: {reset_reason}) | "
+            f"Total Reward: {stats['reward']:.2f} | "
+            f"Length: {stats['length']} | "
+            f"Activation Ratio: {activation_ratio:.2f}"
+        )
+        
+        if self.reset_manager.auto_reset_on_done:
+            self.reset_episode(reason=reset_reason)
+    
+    def _log_stepwise_stats(self, total_reward, reward_components):
+        """Log stepwise statistics"""
+        step = self.episode_manager.current_episode_length
+        
+        self.logger.writer.add_scalar('Stepwise/total_reward', total_reward, step)
+        self.logger.writer.add_scalar('Stepwise/obstacle_reward', reward_components['obstacle'], step)
+        self.logger.writer.add_scalar('Stepwise/goal_distance_reward', reward_components['goal_distance'], step)
+        self.logger.writer.add_scalar('Stepwise/body_state_reward', reward_components['body_state'], step)
 
-# ==========================================================
-# Main
-# ==========================================================
+
 def main(args=None):
     print(f"Model path: {MODEL_PATH}")
     rclpy.init(args=args)
