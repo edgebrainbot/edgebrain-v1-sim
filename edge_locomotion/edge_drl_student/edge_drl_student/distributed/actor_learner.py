@@ -11,8 +11,10 @@ Reference:
 import time
 import torch
 import threading
+from rclpy.node import Node
 from abc import ABC, abstractmethod
 from typing import Union, Tuple, Dict, Any, Optional
+
 
 from edge_drl_student.common.logger import Logger
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
@@ -61,6 +63,7 @@ class ActorLearner(ABC):
         self,
         obs_dim: int,
         act_dim: int,
+        node: Node,
         replay_buffer: BaseBuffer,
         device: str,
         logger: Logger,
@@ -85,6 +88,7 @@ class ActorLearner(ABC):
         # Store configuration
         self.obs_dim = obs_dim
         self.act_dim = act_dim
+        self.node = node
         self.replay_buffer = replay_buffer
         self.device = device
         self.logger = logger
@@ -321,7 +325,7 @@ class ActorLearner(ABC):
             >>> actor_learner.save_models('./models/checkpoint_1000')
         """
         self.training_agent.save_models(path)
-        self.logger.get_logger().info(f"✅ Models saved to: {path}")
+        self.node.get_logger().info(f"✅ Models saved to: {path}")
     
     def load_models(self, path: str):
         """
@@ -335,7 +339,7 @@ class ActorLearner(ABC):
         """
         self.training_agent.load_models(path)
         self.inference_agent.load_models(path)
-        self.logger.get_logger().info(f"✅ Models loaded from: {path}")
+        self.node.get_logger().info(f"✅ Models loaded from: {path}")
     
     # ==================== Statistics ====================
     
@@ -387,7 +391,7 @@ class ActorLearner(ABC):
     
     def _log_initialization(self):
         """Log initialization information"""
-        self.logger.get_logger().info(
+        self.node.get_logger().info(
             f"\n{'='*60}\n"
             f"🚀 {self.__class__.__name__} Initialized\n"
             f"{'='*60}\n"
@@ -417,7 +421,7 @@ class ActorLearner(ABC):
         
         # Log to console (every 10 syncs)
         if self.sync_count % 10 == 0:
-            self.logger.get_logger().info(
+            self.node.get_logger().info(
                 f"🔄 Sync #{self.sync_count}: "
                 f"{sync_time*1000:.2f}ms "
                 f"(avg: {self.avg_sync_time*1000:.2f}ms)"

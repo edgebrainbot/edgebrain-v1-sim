@@ -21,10 +21,9 @@ from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import C
 
 # ⭐ Import DDPG Actor-Learner
 from edge_drl_student.distributed.ddpg_actor_learner import DDPGActorLearner
-from edge_drl_student.core.action_generator import ActionGenerator
 from edge_drl_student.common.reset_manager import ResetManager
 from edge_drl_student.managers.episode_manager import EpisodeManager
-from edge_drl_student.common.vision_processor import VisionProcessor
+from edge_drl_student.processor.vision_processor import VisionProcessor
 
 
 RUN = 'cognitive'
@@ -103,6 +102,7 @@ class DRLStudentNode(Node):
         self.actor_learner = DDPGActorLearner(
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
+            node=self,
             replay_buffer=self.buffer,
             device=self.device,
             logger=self.logger,
@@ -120,6 +120,9 @@ class DRLStudentNode(Node):
         
         # Vision Processor
         self.vision_processor = VisionProcessor(
+            node=self,
+            topic_name='/registered_scan',
+            queue_size=10,
             device=self.device,
             feature_dim=self.vision_feature_dim
         )
@@ -216,10 +219,10 @@ class DRLStudentNode(Node):
         """Tracking error callback"""
         self.tracking_error_ = msg
         
-        tracking_errors = np.array(msg.data, dtype=np.float32)
-        self.logger.writer.add_scalar('TrackingError/mean', np.mean(np.abs(tracking_errors)), self.action_count)
-        self.logger.writer.add_scalar('TrackingError/max', np.max(np.abs(tracking_errors)), self.action_count)
-        self.logger.writer.add_scalar('TrackingError/std', np.std(tracking_errors), self.action_count)
+        tracking_errors = torch.tensor(msg.data, dtype=torch.float32)
+        self.logger.writer.add_scalar('TrackingError/mean', torch.mean(torch.abs(tracking_errors)), self.action_count)
+        self.logger.writer.add_scalar('TrackingError/max', torch.max(torch.abs(tracking_errors)), self.action_count)
+        self.logger.writer.add_scalar('TrackingError/std', torch.std(tracking_errors), self.action_count)
     
     def pointcloud_callback(self, msg):
         """Point cloud callback"""
@@ -279,35 +282,57 @@ class DRLStudentNode(Node):
         if msg.done or self.episode_manager.is_episode_done():
             self._handle_episode_done()
 
-    # ========== Main Loops ==========
+    def output_action(self):
+        
+        residual_action = self.RESIDUAL_GAIN @ self.stu_tracking_error.unsqueeze(-1)
+        residual_action = residual_action.flatten() 
+        
+        if isinstance(self.buffer, CognitiveReplayBuffer):
+            blending_action = self.buffer.get_weighted_blended_action()
+            drl_action = self.policy_action() * 1.0 + blending_action * self.policy_blendering_weight
+        else:
+            drl_action = self.policy_action() 
+            
+        output_action = drl_action * 1.0 + residual_action
+        
+        return output_action, drl_action 
+
+    def policy_action(self):
+        """
+        Generate action
+        
+        ✅ Double buffering: use inference_agent (not blocked by learning)
+        """
+        observation = torch.cat((
+            torch.tensor(
+                np.array(self.tracking_error_.data, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.vision_processor.curr_vision_feature
+        ), dim=0)
+        
+        # ✅ Use inference_agent (fast, non-blocking)
+        return self.actor_learner.act(observation.unsqueeze(0), explore=False)
+
     def action_loop(self):
-        """Action generation loop (10Hz)"""
+        """
+        Action generation loop (10Hz)
+        
+        ✅ Actor: use inference_agent (not blocked by learning_loop)
+        """
         action_start = time.time()
         
-        # Get tracking error
-        tracking_error = torch.tensor(
-            np.array(self.tracking_error_.data, dtype=np.float32),
-            dtype=torch.float32,
-            device=self.device
-        )
-        
-        # Generate action
-        output_action, drl_action = self.action_generator.generate_action(
-            actor_learner=self.actor_learner,
-            buffer=self.buffer,
-            tracking_error=tracking_error,
-            vision_feature=self.episode_manager.curr_vision_feature
-        )
-        
-        # Publish actions
+        # Generate and publish action
         edge_action_msg = EdgeAction()
         edge_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_action_msg.control_action = output_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_action_msg.control_action = self.output_action()[0].detach().cpu().numpy().flatten().astype(np.float64)
         edge_action_msg.action_mode = ActionMode.STUDENT.value
         
+        # Learned action message
         edge_drl_action_msg = EdgeAction()
         edge_drl_action_msg.header.stamp = self.get_clock().now().to_msg()
-        edge_drl_action_msg.control_action = drl_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_drl_action_msg.control_action = self.output_action()[1].detach().cpu().numpy().flatten().astype(np.float64)
         edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
         
         self.action_pub.publish(edge_action_msg)
@@ -316,10 +341,18 @@ class DRLStudentNode(Node):
         self.action_count += 1
         self.collection_time = time.time() - action_start
         
-        self.logger.writer.add_scalar('Timing/action_generation_ms', 
-                                      self.collection_time * 1000, 
-                                      self.action_count)
+        # Record action generation time
+        self.logger.writer.add_scalar('Perf/action_generation_ms', self.collection_time * 1000, self.action_count)
+        
+        # Check for abnormal delay
+        # if self.collection_time > 0.01:  # More than 10ms
+        #     self.get_logger().warn(
+        #         f"⚠️ Slow action generation: {self.collection_time*1000:.2f}ms "
+        #         f"(expected <10ms)"
+        #     )
 
+        self.t = time.time()
+        
     def learning_loop(self):
         """Learning loop (2Hz)"""
         if self.reset_manager.is_resetting:
@@ -352,7 +385,7 @@ class DRLStudentNode(Node):
             self.get_logger().info(f"💾 Models saved to {save_path}")
         
         # ⭐ Log losses (already logged in actor_learner, but we can add extra logs here)
-        self.logger.writer.add_scalar('Timing/learn_ms', self.learn_time * 1000, self.update_count)
+        self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, self.update_count)
         
         # ⭐ Print interval logging (actor_learner already logs every log_interval)
         if self.update_count % self.print_interval == 0:

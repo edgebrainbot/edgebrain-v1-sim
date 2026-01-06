@@ -10,12 +10,13 @@ Reference:
       https://arxiv.org/abs/1802.01561
 """
 
-from typing import Union, Tuple, Dict, Any
 import torch
+from rclpy.node import Node
+from typing import Union, Tuple, Dict, Any
 
+from edge_drl_student.common.logger import Logger
 from edge_drl_student.distributed.actor_learner import ActorLearner
 from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
-from edge_drl_student.common.logger import Logger
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
@@ -75,6 +76,7 @@ class DDPGActorLearner(ActorLearner):
         self,
         obs_dim: int,
         act_dim: int,
+        node: Node,
         replay_buffer: Union[SoloReplayBuffer, DualReplayBuffer, CognitiveReplayBuffer],
         device: str,
         logger: Logger,
@@ -124,6 +126,7 @@ class DDPGActorLearner(ActorLearner):
         super().__init__(
             obs_dim=obs_dim,
             act_dim=act_dim,
+            node=node,
             replay_buffer=replay_buffer,
             device=device,
             logger=logger,
@@ -351,7 +354,7 @@ class DDPGActorLearner(ActorLearner):
         """Log DDPG-specific initialization information"""
         network_info = self.get_network_info()
         
-        self.logger.get_logger().info(
+        self.node.get_logger().info(
             f"\n{'='*60}\n"
             f"🎯 DDPG Actor-Learner Configuration\n"
             f"{'='*60}\n"
@@ -398,7 +401,7 @@ class DDPGActorLearner(ActorLearner):
         
         # Log to console
         if self.update_count % self.log_interval == 0:
-            self.logger.get_logger().info(
+            self.node.get_logger().info(
                 f"📊 Update #{self.update_count}: "
                 f"Actor Loss: {losses.get('actor_loss', 0.0):.4f}, "
                 f"Critic Loss: {losses.get('critic_loss', 0.0):.4f}"
