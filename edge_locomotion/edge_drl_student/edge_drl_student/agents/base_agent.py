@@ -29,4 +29,14 @@ class BaseAgent(ABC):
     def train_step(self, *args, **kwargs):
         """Perform one gradient update."""
         pass
+    
+    @abstractmethod
+    def save_models(self, path: str):
+        """Abstract method — implemented in specific algorithm."""
+        raise NotImplementedError("Subclasses must implement save_models().")
+    
+    @abstractmethod
+    def load_models(self, path: str):
+        """Abstract method — implemented in specific algorithm."""
+        raise NotImplementedError("Subclasses must implement load_models().")
 

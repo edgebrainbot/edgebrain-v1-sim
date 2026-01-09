@@ -2,10 +2,11 @@ import csv
 import torch
 import pickle
 from pathlib import Path
+from edge_drl_student.utils.utils import ActionMode
 from typing import Dict, Generator, Tuple, Optional, Union
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
 from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import TransitionData, TransitionBatch
+from edge_drl_student.memory.buffers import Transition, TransitionBatch
 
 
 class SoloReplayBuffer(BaseBuffer):
@@ -37,7 +38,7 @@ class SoloReplayBuffer(BaseBuffer):
         self.obs_dim = obs_dim
         self.action_dim = action_dim
 
-    def add_transition(self, t: TransitionData):
+    def add_transition(self, t: Transition, action_mode: ActionMode = ActionMode.UNCERTAIN):
         """
         Add one transition into the buffer.
         Typically called at every environment step.
@@ -316,7 +317,7 @@ class SoloReplayBuffer(BaseBuffer):
                 no = torch.tensor(row[no_start:no_end], dtype=torch.float32, device=self.device)
                 d = torch.tensor([row[-1]], dtype=torch.float32, device=self.device)
 
-                t = TransitionData(o, a, r, no, d)
+                t = Transition(o, a, r, no, d)
                 self.add_transition(t)
 
     # ======================================================
@@ -370,7 +371,7 @@ def test_dump_and_load():
     # 2. write in transition
     # ======================================================
     for i in range(12):
-        t = TransitionData(
+        t = Transition(
             obs=torch.tensor([i, i+1, i+2, i+3], dtype=torch.float32),
             action=torch.tensor([i * 0.1, i * 0.2]),
             reward=torch.tensor([i * 1.0]),

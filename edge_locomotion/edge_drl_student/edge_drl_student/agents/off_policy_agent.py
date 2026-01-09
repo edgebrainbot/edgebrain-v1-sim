@@ -39,14 +39,6 @@ class OffPolicyAgent(BaseAgent):
     def train_step(self, *args, **kwargs):
         """Abstract method — implemented in specific algorithm."""
         raise NotImplementedError("Subclasses must implement train_step().")
-
-    def save_models(self, path: str):
-        """Abstract method — implemented in specific algorithm."""
-        raise NotImplementedError("Subclasses must implement save_models().")
-    
-    def load_models(self, path: str):
-        """Abstract method — implemented in specific algorithm."""
-        raise NotImplementedError("Subclasses must implement load_models().")
     
     @staticmethod
     @torch.no_grad()

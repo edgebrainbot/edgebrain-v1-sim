@@ -7,6 +7,71 @@ class ActionMode(enum.Enum):
     UNCERTAIN = 2
     
     
+class ResetReason(enum.Enum):
+    """
+    Reset Reason Enumeration
+    
+    Defines all possible reasons for triggering a reset.
+    
+    Example:
+        >>> reason = ResetReason.FALL_DETECTED
+        >>> print(reason.name)  # 'FALL_DETECTED'
+        >>> print(reason.value)  # 1
+    """
+    EPISODE_DONE = 0
+    FALL_DETECTED = 1
+    MANUAL = 2
+    TIMEOUT = 3
+    EXTERNAL = 4
+    UNKNOWN = 5
+    
+    @classmethod
+    def from_string(cls, reason_str: str) -> 'ResetReason':
+        """
+        Convert string to ResetReason enum
+        
+        Args:
+            reason_str: Reason string (case-insensitive)
+            
+        Returns:
+            ResetReason: Corresponding enum value
+            
+        Example:
+            >>> reason = ResetReason.from_string('fall_detected')
+            >>> assert reason == ResetReason.FALL_DETECTED
+            >>> 
+            >>> reason = ResetReason.from_string('EPISODE_DONE')
+            >>> assert reason == ResetReason.EPISODE_DONE
+        """
+        reason_map = {
+            'episode_done': cls.EPISODE_DONE,
+            'fall_detected': cls.FALL_DETECTED,
+            'manual': cls.MANUAL,
+            'timeout': cls.TIMEOUT,
+            'external': cls.EXTERNAL,
+            'unknown': cls.UNKNOWN,
+        }
+        
+        # Try exact match first
+        if reason_str in reason_map:
+            return reason_map[reason_str]
+        
+        # Try case-insensitive match
+        reason_lower = reason_str.lower()
+        if reason_lower in reason_map:
+            return reason_map[reason_lower]
+        
+        # Try enum name match
+        try:
+            return cls[reason_str.upper()]
+        except KeyError:
+            return cls.UNKNOWN
+    
+    def __str__(self) -> str:
+        """String representation (lowercase with underscores)"""
+        return self.name.lower()
+    
+    
 def safety_value(state: np.ndarray, p_mat: np.ndarray) -> float:
     """
     Get system safety value represented by s^T @ P @ s

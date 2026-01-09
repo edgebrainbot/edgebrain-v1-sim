@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from typing import Tuple
 
-from edge_drl_student.memory.buffers.base_buffer import TransitionData
+from edge_drl_student.memory.buffers.base_buffer import Transition
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers import SoloReplayBuffer
 from edge_drl_student.utils.utils import ActionMode
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     # 2. write in transition
     # ======================================================
     for i in range(24):
-        t = TransitionData(
+        t = Transition(
             obs=torch.tensor([i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11], dtype=torch.float32),
             action=torch.tensor([i * 0.1, i * 0.2, i * 0.3, i * 0.4, i * 0.5, i * 0.6], dtype=torch.float32),
             reward=torch.tensor([i * 1.0], dtype=torch.float32),
@@ -365,8 +365,6 @@ if __name__ == "__main__":
     
     stu_batch_samples = dual_buf.stu_buf._get_samples(topk_ids)
     print(f"stu_batch_samples: {stu_batch_samples}")
-    
-    
     
     dual_buf.stu_buf.dump(path="./stu_buffer_dump.txt", format='csv')
     dual_buf.tea_buf.dump(path="./tea_buffer_dump.txt", format='csv')

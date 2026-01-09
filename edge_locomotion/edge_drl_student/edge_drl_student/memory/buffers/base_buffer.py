@@ -9,7 +9,7 @@ from edge_drl_student.memory.samplers import UniformSampler
 
 
 @dataclass
-class TransitionData:
+class Transition:
     """Batch-level semantic wrapper for sampled experiences."""
     obs: torch.Tensor       # Observation
     action: torch.Tensor    # Action taken
@@ -118,7 +118,7 @@ class BaseBuffer(ABC):
         """
         raise NotImplementedError
 
-    def to_transition(self, obs, action, reward, next_obs, done, info=None) -> TransitionData:
+    def to_transition(self, obs, action, reward, next_obs, done, info=None) -> Transition:
         """Convert the tuples to Transition version."""
 
         def to_torch(x):
@@ -126,7 +126,7 @@ class BaseBuffer(ABC):
                 return x.to(device=self.device, dtype=torch.float32)
             return torch.as_tensor(x, device=self.device, dtype=torch.float32)
 
-        return TransitionData(
+        return Transition(
             obs=to_torch(obs),
             action=to_torch(action),
             reward=to_torch(reward),

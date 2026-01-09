@@ -6,7 +6,7 @@ from typing import Callable, Dict, Generator, Tuple, Optional
 from edge_drl_student.memory.buffers import SoloReplayBuffer
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
 from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import TransitionData, TransitionBatch
+from edge_drl_student.memory.buffers import Transition, TransitionBatch
 from edge_drl_student.utils.utils import ActionMode, safety_value
 
 ENVELOPE_P = np.array([[100, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -68,7 +68,7 @@ class DualReplayBuffer(BaseBuffer):
     def tea_buf_size(self) -> int:
         return self.tea_buf.size
 
-    def add_transition(self, transition: TransitionData, action_mode: ActionMode) -> None:
+    def add_transition(self, transition: Transition, action_mode: ActionMode) -> None:
         """Appends a dataset of transitions to the storage.
 
         Args:
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     # 2. write in transition
     # ======================================================
     for i in range(24):
-        t = TransitionData(
+        t = Transition(
             obs=torch.tensor([i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11], dtype=torch.float32),
             action=torch.tensor([i * 0.1, i * 0.2, i * 0.3, i * 0.4, i * 0.5, i * 0.6], dtype=torch.float32),
             reward=torch.tensor([i * 1.0], dtype=torch.float32),

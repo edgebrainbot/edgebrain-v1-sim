@@ -8,7 +8,7 @@ from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer, ENVELOPE_P
 from edge_drl_student.memory.samplers.cognitive_sampler import ACTRCognitiveSampler
 from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import TransitionData, TransitionBatch
+from edge_drl_student.memory.buffers import Transition, TransitionBatch
 from edge_drl_student.utils.utils import ActionMode, safety_value
 
 

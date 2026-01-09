@@ -98,7 +98,7 @@ class ResetCoordinatorNode(Node):
         # ========== Create Main Service ==========
         self.edge_reset_srv = self.create_service(
             Trigger,
-            '/edge/reset',
+            '/edge/reset/coordinator',
             self.edge_reset_callback,
             callback_group=self.callback_group
         )
@@ -135,7 +135,7 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info('🎯 Reset Coordinator Node Initialized')
         self.get_logger().info('=' * 70)
         self.get_logger().info('📡 Services:')
-        self.get_logger().info('  Main: /edge/reset (Trigger)')
+        self.get_logger().info('  Main: /edge/reset/coordinator (Trigger)')
         self.get_logger().info(f'  Controller Reset: {self.controller_reset_service_name}')
         self.get_logger().info(f'  Controller Start: {self.controller_start_service_name}')
         self.get_logger().info('─' * 70)
@@ -146,7 +146,7 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info(f'  Delay After Reset: {self.delay_after_reset}s')
         self.get_logger().info(f'  Reset Attempts: {self.reset_attempts}')
         self.get_logger().info('=' * 70)
-        self.get_logger().info('✅ Ready to receive reset requests on /edge/reset')
+        self.get_logger().info('✅ Ready to receive reset requests on /edge/reset/coordinator')
         self.get_logger().info('=' * 70)
 
     
@@ -156,7 +156,7 @@ class ResetCoordinatorNode(Node):
 
         self.get_logger().info('')
         self.get_logger().info('═' * 70)
-        self.get_logger().info('🔄 [RESET REQUEST] Received from DRL student')
+        self.get_logger().info('🔄 [RESET REQUEST] Received from DRL student on /edge/reset/coordinator')
         self.get_logger().info('═' * 70)
         
         success, message = self._perform_coordinated_reset()
