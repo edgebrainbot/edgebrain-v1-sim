@@ -20,28 +20,9 @@ from typing import Dict, Tuple, Optional, List
 from collections import deque
 from dataclasses import dataclass, field
 from rclpy.node import Node
+from edge_drl_student.utils.utils import ActionMode
 
 from edge_drl_student.common.logger import Logger
-
-
-# ==================== Configuration ====================
-
-@dataclass
-class EpisodeConfig:
-    """
-    Episode Configuration
-    
-    Args:
-        max_episode_length: Maximum steps per episode (timeout)
-        success_reward_threshold: Reward threshold for success
-        moving_average_window: Window size for moving average
-        log_interval: Log episode statistics every N episodes
-    """
-    max_episode_length: int = 1000
-    success_reward_threshold: float = 100.0
-    moving_average_window: int = 100
-    log_interval: int = 10
-
 
 # ==================== Episode Statistics ====================
 
@@ -109,7 +90,7 @@ class EpisodeManager:
     
     Architecture:
         ┌─────────────────────────────────────────────────┐
-        │            Episode Manager                      │
+        │                 Episode Manager                 │
         ├─────────────────────────────────────────────────┤
         │  ┌──────────────────────────────────────────┐   │
         │  │  Episode Lifecycle                       │   │
@@ -174,9 +155,11 @@ class EpisodeManager:
     
     def __init__(
         self,
-        node: Node,
         logger: Logger,
-        config: Optional[EpisodeConfig] = None,
+        max_episode_length: int = 1000,
+        training_episode: int = 10000,
+        log_interval: int = 10,
+        moving_average_window: int = 100,
     ) -> None:
         """
         Initialize Episode Manager
@@ -186,94 +169,87 @@ class EpisodeManager:
             logger: Logger instance
             config: Episode configuration (default: EpisodeConfig())
         """
-        self.node: Node = node
         self.logger: Logger = logger
-        self.config: EpisodeConfig = config or EpisodeConfig()
         
         # ========== Episode State ==========
         self.episode_count: int = 0
         self.current_episode_length: int = 0
         self.current_episode_reward: float = 0.0
         self.current_episode_start_time: float = 0.0
-        self.is_episode_active: bool = False
+
+        self.log_interval: int = log_interval
+        self.max_episode_length: int = max_episode_length
+        self.training_episode: int = training_episode
+        self.moving_average_window: int = moving_average_window
         
         # ========== Reward Components Tracking ==========
         self.current_reward_components: Dict[str, float] = {}
         self.cumulative_reward_components: Dict[str, float] = {}
         
         # ========== Action Counting ==========
-        self.current_student_action_count: int = 0
-        self.current_teacher_action_count: int = 0
+        self.stu_action_count: int = 0
+        self.tea_action_count: int = 0
         
         # ========== Episode History ==========
         self.episode_history: List[EpisodeStats] = []
         
         # ========== Moving Statistics ==========
         self.reward_window: deque = deque(
-            maxlen=self.config.moving_average_window
+            maxlen=self.moving_average_window
         )
         self.length_window: deque = deque(
-            maxlen=self.config.moving_average_window
+            maxlen=self.moving_average_window
         )
         self.success_window: deque = deque(
-            maxlen=self.config.moving_average_window
+            maxlen=self.moving_average_window
         )
         
         # ========== Global Statistics ==========
-        self.total_steps: int = 0
-        self.total_reward: float = 0.0
+        self.global_steps: int = 0
+        self.global_reward: float = 0.0
         self.success_count: int = 0
         self.failure_count: int = 0
         self.timeout_count: int = 0
         
-        self.node.get_logger().info(
-            f"\n{'='*70}\n"
-            f"✅ Episode Manager initialized\n"
-            f"{'='*70}\n"
-            f"⚙️  Configuration:\n"
-            f"   Max Episode Length:        {self.config.max_episode_length}\n"
-            f"   Success Threshold:         {self.config.success_reward_threshold}\n"
-            f"   Moving Average Window:     {self.config.moving_average_window}\n"
-            f"   Log Interval:              {self.config.log_interval}\n"
-            f"{'='*70}"
-        )
+        print(f"\n{'='*70}\n"
+              f"✅ Episode Manager initialized\n"
+              f"{'='*70}\n"
+              f"⚙️  Configuration:\n"
+              f"   Max Episode Length:        {self.max_episode_length}\n"
+              f"   Training Episodes:         {self.training_episode}\n"
+              f"   Moving Average Window:     {self.moving_average_window}\n"
+              f"   Log Interval:              {self.log_interval}\n"
+              f"{'='*70}"
+              )
     
-    # ==================== Episode Lifecycle ====================
-    
-    def start_episode(self) -> None:
+    # ==================== Episode Lifecycle ====================    
+    def reset_episode(self) -> None:
         """
-        Start a new episode
-        
-        Resets all episode-specific counters and state.
+        Reset current episode state without incrementing episode count
         
         Example:
-            >>> manager.start_episode()
-            >>> # Episode is now active
+            >>> manager.reset_episode()
+            >>> # Current episode is reset
         """
-        self.episode_count += 1
         self.current_episode_length = 0
         self.current_episode_reward = 0.0
         self.current_episode_start_time = time.time()
-        self.is_episode_active = True
         
         # Reset reward components
         self.current_reward_components = {}
         self.cumulative_reward_components = {}
         
         # Reset action counts
-        self.current_student_action_count = 0
-        self.current_teacher_action_count = 0
+        self.stu_action_count = 0
+        self.tea_action_count = 0
         
-        self.node.get_logger().info(
+        print(
             f"\n{'='*70}\n"
-            f"🎬 Episode {self.episode_count} started\n"
+            f"🔄 Episode {self.episode_count} reset\n"
             f"{'='*70}"
         )
     
-    def update_step(
-        self,
-        reward_components: Dict[str, float]
-    ) -> float:
+    def update(self, reward_components: Dict[str, float], action_mode: ActionMode):
         """
         Update episode with new step
         
@@ -290,15 +266,9 @@ class EpisodeManager:
             ...     'goal_distance': 0.5,
             ...     'body_state': -0.05
             ... }
-            >>> total_reward = manager.update_step(reward_components)
+            >>> total_reward = manager.update(reward_components, action_mode)
             >>> print(f"Step reward: {total_reward:.3f}")
         """
-        if not self.is_episode_active:
-            # self.node.get_logger().warn(
-            #     "⚠️  update_step() called but episode is not active. "
-            #     "Call start_episode() first."
-            # )
-            return 0.0
         
         # Calculate total reward
         total_reward = sum(reward_components.values())
@@ -306,8 +276,8 @@ class EpisodeManager:
         # Update episode state
         self.current_episode_length += 1
         self.current_episode_reward += total_reward
-        self.total_steps += 1
-        self.total_reward += total_reward
+        self.global_steps += 1
+        self.global_reward += total_reward
         
         # Update reward components
         self.current_reward_components = reward_components.copy()
@@ -316,23 +286,27 @@ class EpisodeManager:
                 self.cumulative_reward_components.get(key, 0.0) + value
             )
         
-        return total_reward
+        self.increment_action_count(action_mode=action_mode)
     
-    def increment_action_count(self, is_student: bool) -> None:
+    
+    def increment_action_count(self, action_mode: ActionMode) -> None:
         """
         Increment action counter
         
         Args:
-            is_student: True if student action, False if teacher action
+            action_mode: ActionMode enum indicating student or teacher action
         
         Example:
-            >>> manager.increment_action_count(is_student=True)
-            >>> manager.increment_action_count(is_student=False)
+            >>> manager.increment_action_count(action_mode=ActionMode.STUDENT)
+            >>> manager.increment_action_count(action_mode=ActionMode.TEACHER)
         """
-        if is_student:
-            self.current_student_action_count += 1
+        if action_mode == ActionMode.STUDENT:
+            self.stu_action_count += 1
+            
+        elif action_mode == ActionMode.TEACHER:
+            self.tea_action_count += 1
         else:
-            self.current_teacher_action_count += 1
+            raise ValueError(f"Unknown ActionMode: {action_mode}")
     
     def is_episode_done(self) -> bool:
         """
@@ -345,11 +319,27 @@ class EpisodeManager:
             >>> if manager.is_episode_done():
             ...     manager.log_episode_end()
         """
-        return self.current_episode_length >= self.config.max_episode_length
+        return self.current_episode_length >= self.max_episode_length
     
+    def should_continue_training(self) -> bool:
+        """
+        Check if training should continue
+        
+        Returns:
+            bool: True if more episodes should be trained
+        
+        Example:
+            >>> while manager.should_continue_training():
+            ...     # Run episode
+            ...     manager.update(...)
+            ...     if done:
+            ...         manager.log_episode_end(...)
+        """
+        return self.episode_count < self.training_episode
+
     def log_episode_end(
         self,
-        success: Optional[bool] = None,
+        success: Optional[bool],
         reason: str = 'unknown'
     ) -> Tuple[Dict, float]:
         """
@@ -370,20 +360,9 @@ class EpisodeManager:
             >>> print(f"Episode reward: {stats['reward']:.2f}")
             >>> print(f"Activation ratio: {activation_ratio:.2%}")
         """
-        if not self.is_episode_active:
-            self.node.get_logger().warn(
-                "⚠️  log_episode_end() called but episode is not active"
-            )
-            return {}, 0.0
         
         # Calculate episode duration
         episode_duration = time.time() - self.current_episode_start_time
-        
-        # Auto-detect success if not provided
-        if success is None:
-            success = (
-                self.current_episode_reward >= self.config.success_reward_threshold
-            )
         
         # Auto-detect reason if unknown
         if reason == 'unknown':
@@ -412,8 +391,8 @@ class EpisodeManager:
             reason=reason,
             duration=episode_duration,
             reward_components=self.cumulative_reward_components.copy(),
-            student_action_count=self.current_student_action_count,
-            teacher_action_count=self.current_teacher_action_count,
+            student_action_count=self.stu_action_count,
+            teacher_action_count=self.tea_action_count,
         )
         
         # Add to history
@@ -428,11 +407,14 @@ class EpisodeManager:
         self._log_episode_to_tensorboard(stats)
         
         # Console log (every N episodes)
-        if self.episode_count % self.config.log_interval == 0:
+        if self.episode_count % self.log_interval == 0:
             self._print_episode_summary()
         
-        # Mark episode as inactive
-        self.is_episode_active = False
+        # Increment episode count
+        self.episode_count += 1
+        
+        # Reset episode state
+        self.reset_episode()
         
         return stats.to_dict(), stats.activation_ratio
     
@@ -457,8 +439,8 @@ class EpisodeManager:
         Returns:
             Dict: Global statistics including:
                 - episode_count: Total episodes
-                - total_steps: Total steps across all episodes
-                - total_reward: Total reward across all episodes
+                - global_steps: Total steps across all episodes
+                - global_reward: Total reward across all episodes
                 - success_count: Number of successful episodes
                 - failure_count: Number of failed episodes
                 - timeout_count: Number of timeout episodes
@@ -468,14 +450,14 @@ class EpisodeManager:
         """
         return {
             'episode_count': self.episode_count,
-            'total_steps': self.total_steps,
-            'total_reward': self.total_reward,
+            'global_steps': self.global_steps,
+            'global_reward': self.global_reward,
             'success_count': self.success_count,
             'failure_count': self.failure_count,
             'timeout_count': self.timeout_count,
             'success_rate': self.success_count / self.episode_count if self.episode_count > 0 else 0.0,
-            'average_reward': self.total_reward / self.episode_count if self.episode_count > 0 else 0.0,
-            'average_length': self.total_steps / self.episode_count if self.episode_count > 0 else 0.0,
+            'average_reward': self.global_reward / self.episode_count if self.episode_count > 0 else 0.0,
+            'average_length': self.global_steps / self.episode_count if self.episode_count > 0 else 0.0,
             'moving_average_reward': self.get_moving_average_reward(),
             'moving_average_length': self.get_moving_average_length(),
             'moving_success_rate': self.get_success_rate(),
@@ -488,22 +470,16 @@ class EpisodeManager:
         Returns:
             Dict: Current episode state
         """
-        total_actions = (
-            self.current_student_action_count + self.current_teacher_action_count
-        )
-        activation_ratio = (
-            self.current_student_action_count / total_actions 
-            if total_actions > 0 else 0.0
-        )
-        
+        total_actions = self.stu_action_count + self.tea_action_count
+        activation_ratio = self.tea_action_count / total_actions if total_actions > 0 else 0.0
+    
         return {
             'episode_id': self.episode_count,
-            'is_active': self.is_episode_active,
             'length': self.current_episode_length,
             'reward': self.current_episode_reward,
-            'duration': time.time() - self.current_episode_start_time if self.is_episode_active else 0.0,
-            'student_actions': self.current_student_action_count,
-            'teacher_actions': self.current_teacher_action_count,
+            'duration': time.time() - self.current_episode_start_time,
+            'student_actions': self.stu_action_count,
+            'teacher_actions': self.tea_action_count,
             'activation_ratio': activation_ratio,
             'reward_components': self.cumulative_reward_components.copy(),
         }
@@ -524,7 +500,6 @@ class EpisodeManager:
         ]
     
     # ==================== Logging ====================
-    
     def _log_episode_to_tensorboard(self, stats: EpisodeStats) -> None:
         """Log episode statistics to TensorBoard"""
         episode_id = stats.episode_id
@@ -578,17 +553,17 @@ class EpisodeManager:
         """Print episode summary to console"""
         global_stats = self.get_global_statistics()
         
-        self.node.get_logger().info(
+        print(
             f"\n{'='*70}\n"
-            f"📊 Episode Summary (Last {self.config.log_interval} episodes)\n"
+            f"📊 Episode Summary (Last {self.log_interval} episodes)\n"
             f"{'='*70}\n"
             f"Episodes: {global_stats['episode_count']}\n"
-            f"  Total Steps:         {global_stats['total_steps']}\n"
-            f"  Total Reward:        {global_stats['total_reward']:.2f}\n"
+            f"  Total Steps:         {global_stats['global_steps']}\n"
+            f"  Total Reward:        {global_stats['global_reward']:.2f}\n"
             f"  Average Reward:      {global_stats['average_reward']:.2f}\n"
             f"  Average Length:      {global_stats['average_length']:.1f}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
-            f"Moving Statistics (Window: {self.config.moving_average_window}):\n"
+            f"Moving Statistics (Window: {self.moving_average_window}):\n"
             f"  Avg Reward:          {global_stats['moving_average_reward']:.2f}\n"
             f"  Avg Length:          {global_stats['moving_average_length']:.1f}\n"
             f"  Success Rate:        {global_stats['moving_success_rate']:.2%}\n"
@@ -605,11 +580,10 @@ class EpisodeManager:
         """Print current episode information"""
         info = self.get_current_episode_info()
         
-        self.node.get_logger().info(
+        print(
             f"\n{'='*70}\n"
             f"📍 Current Episode {info['episode_id']}\n"
             f"{'='*70}\n"
-            f"Status:              {'Active' if info['is_active'] else 'Inactive'}\n"
             f"Length:              {info['length']}\n"
             f"Reward:              {info['reward']:.2f}\n"
             f"Duration:            {info['duration']:.2f}s\n"
@@ -621,16 +595,16 @@ class EpisodeManager:
         )
         
         for component, value in info['reward_components'].items():
-            self.node.get_logger().info(f"  {component:20s}: {value:8.3f}")
+            print(f"  {component:20s}: {value:8.3f}")
         
-        self.node.get_logger().info(f"{'='*70}")
+        print(f"{'='*70}")
     
     # ==================== Reset ====================
     
     def reset_statistics(self) -> None:
         """Reset all statistics (keep episode history)"""
-        self.total_steps = 0
-        self.total_reward = 0.0
+        self.global_steps = 0
+        self.global_reward = 0.0
         self.success_count = 0
         self.failure_count = 0
         self.timeout_count = 0
@@ -639,12 +613,12 @@ class EpisodeManager:
         self.length_window.clear()
         self.success_window.clear()
         
-        self.node.get_logger().info("📊 Episode statistics reset")
+        print("📊 Episode statistics reset")
     
     def clear_history(self) -> None:
         """Clear episode history"""
         self.episode_history.clear()
-        self.node.get_logger().info("🗑️  Episode history cleared")
+        print("🗑️  Episode history cleared")
     
     def __repr__(self) -> str:
         """String representation"""
@@ -652,9 +626,8 @@ class EpisodeManager:
         return (
             f"EpisodeManager(\n"
             f"  episode_count={global_stats['episode_count']},\n"
-            f"  total_steps={global_stats['total_steps']},\n"
+            f"  global_steps={global_stats['global_steps']},\n"
             f"  success_rate={global_stats['success_rate']:.2%},\n"
             f"  moving_avg_reward={global_stats['moving_average_reward']:.2f},\n"
-            f"  is_active={self.is_episode_active}\n"
             f")"
         )

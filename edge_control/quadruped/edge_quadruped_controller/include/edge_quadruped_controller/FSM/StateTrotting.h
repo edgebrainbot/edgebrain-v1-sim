@@ -40,7 +40,8 @@ public:
     void enter() override;
 
     void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
-    void run(const rclcpp::Time &time, const rclcpp::Duration &period, edge_msgs::msg::EdgeAction &latest_accel, 
+    void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
+             edge_msgs::msg::EdgeAction &latest_accel, bool is_teacher_activated_,
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
@@ -128,6 +129,8 @@ private:
 
     Vec6 last_edge_action_;
     Vec6 curr_edge_action_;
+
+    bool is_teacher_activated_{false};
 
     // Gain parameters
     std::vector<double> swing_gains_;

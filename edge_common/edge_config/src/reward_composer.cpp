@@ -44,6 +44,7 @@ edge_msgs::msg::Reward RewardComposer::computeTotalReward(
     const Eigen::VectorXd& goal,
     const Eigen::VectorXd& robot_pos,
     const Eigen::VectorXd& robot_state,
+    bool is_teacher_active,
     double obstacleDisAvgReward
     // int is_fail,
     // const Eigen::VectorXd& delta_action,
@@ -70,6 +71,7 @@ edge_msgs::msg::Reward RewardComposer::computeTotalReward(
         // }
 
         // if (key == "fall_down") r = fall_down(is_fail);
+
         if (key == "lin_vel_tracking") r = lin_vel_tracking(err_prev);
         else if (key == "ang_vel_tracking") r = ang_vel_tracking(err_prev);
         else if (key == "orientation_tracking") r = orientation_tracking(err_prev);
@@ -92,6 +94,8 @@ edge_msgs::msg::Reward RewardComposer::computeTotalReward(
             r = goal_distance(goal, robot_pos);
             reward_msg.goal_distance_reward = static_cast<float>(r * scale);   
         }
+        else if (key == "teacher_activation_penalty") r = teacher_activation_penalty(is_teacher_active);
+        else if (key == "student_activation_reward") r = student_activation_reward(!is_teacher_active);
         // else if (key == "obstacle_distance") r = obstacle_distance(obstacleDistanceReward);
 
         // else {
@@ -162,6 +166,13 @@ double RewardComposer::lyapunov(const Eigen::VectorXd& err_prev,
     return -v2;
 }
 
+double RewardComposer::teacher_activation_penalty(bool is_teacher_active) {
+    return is_teacher_active ? -1.0 : 0.0;
+}
+
+double RewardComposer::student_activation_reward(bool is_student_active) {
+    return is_student_active ? 1.0 : 0.0;
+}
 
 double RewardComposer::body_state(const Eigen::VectorXd& errState) 
 {

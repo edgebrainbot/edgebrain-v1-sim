@@ -17,6 +17,9 @@ reward:
   # orientation_tracking: 80
   # height_tracking: 50
   
+  # teacher_activation_penalty: 0.1
+  # student_activation_reward: 0.1
+
   obstacle_distance: 0.01
   goal_distance: 0.005
   # lyapunov: 100

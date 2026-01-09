@@ -43,6 +43,7 @@ public:
         const Eigen::VectorXd& goal,         // 3D goal position
         const Eigen::VectorXd& vehicle_pos,    // 3D vehicle position
         const Eigen::VectorXd& state,
+        bool is_teacher_active,
         double obstacleDisAvgReward
         // int is_fail,                          // 0 or 1
         // const Eigen::VectorXd& delta_action, // action_t - action_(t-1)
@@ -68,6 +69,8 @@ private:
     double forward_speed(double speed);
     double body_contact(double c);
     double energy_consumption(double en);
+    double teacher_activation_penalty(bool is_teacher_active);
+    double student_activation_reward(bool is_student_active);
     double upright(double gz);
 
     double body_state(const Eigen::VectorXd& state);

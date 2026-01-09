@@ -173,6 +173,7 @@ namespace edge::control::quadruped
                 for (int i = 0; i < 6; i++) {
                     std::cout << "accel[" << i << "] = " << latest_edge_action_.control_action[i] << std::endl;
                 }
+                is_teacher_active_ = (edge::ActionMode(latest_edge_action_.action_mode) == edge::ActionMode::TEACHER);
                 std::cout << "latest_edge_action mode: " << edge::ToString(edge::ActionMode(latest_edge_action_.action_mode)) << std::endl;
             });
 
@@ -309,6 +310,7 @@ namespace edge::control::quadruped
         {
             if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
                 trot->run(time, period, latest_edge_action_, 
+                          is_teacher_active_,
                           tracking_error_pub_, 
                           tracking_error_stu_pub_,
                           robot_state_pub_,

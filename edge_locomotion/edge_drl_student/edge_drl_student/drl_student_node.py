@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DRL Student Node - Simplified with Configuration Classes
+DRL Student Node - Clean and Simplified
 """
 
 import os
@@ -9,25 +9,22 @@ import torch
 from rclpy.node import Node
 from datetime import datetime
 
-from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import PointCloud2
 from edge_drl_student.common.logger import Logger
-from edge_msgs.msg import Transition, Vec12Msg, EdgeAction
-from edge_drl_student.utils.utils import ActionMode, ResetReason
+from edge_drl_student.utils.utils import ResetReason
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.runners.distributed_runner import (
-    DistributedDDPG,
+    DistributedRunner,
     TopicConfig,
     LoopConfig,
     TrainingConfig,
     ResidualConfig
 )
-from edge_drl_student.common.reset_manager import ResetManager, ResetReason  
-from edge_drl_student.common.episode_handler import EpisodeManager, EpisodeConfig  
+from edge_drl_student.common.reset_manager import ResetManager
+from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
-from edge_drl_student.runners.distributed_runner import DistributedRunner
 
 
 # ========== Configuration ==========
@@ -44,20 +41,6 @@ torch.set_printoptions(sci_mode=False)
 
 
 class DRLStudentNode(Node):
-    """
-    DRL Student Training Node (Simplified with Configuration Classes)
-    
-    All training logic is now encapsulated in DistributedAgent.
-    This node only handles:
-    - Component initialization
-    - Reset management
-    - High-level coordination
-    
-    Features:
-        ✅ Clean configuration with dataclasses
-        ✅ Minimal parameter passing
-        ✅ Easy to modify and extend
-    """
     
     def __init__(self):
         super().__init__(PROJECT_NAME, namespace='edge')
@@ -116,27 +99,19 @@ class DRLStudentNode(Node):
             feature_dim=self.vision_feature_dim
         )
         
-        # ⭐ Episode Manager 
-        episode_cfg = EpisodeConfig(
-            max_episode_length=int(5e4),     
-            success_reward_threshold=100.0,   
-            moving_average_window=100,      
-            log_interval=10                 
-        )
-        
+        # Episode Manager        
         self.episode_manager = EpisodeManager(
-            node=self,            
-            logger=self.logger,    
-            config=episode_cfg     
+            logger=self.logger,
+            max_episode_length=int(5e4),
         )
         
-        # ⭐ Reset Manager 
+        # Reset Manager
         self.reset_manager = ResetManager(
             node=self,
             reset_timeout=15.0,
             logger=self.logger,
-            reset_service_name='/edge/reset',                   
-            coordinator_service_name='/edge/reset/coordinator'   
+            reset_service_name='/edge/reset',
+            coordinator_service_name='/edge/reset/coordinator'
         )
         
         # ========== Agent Configuration ==========
@@ -147,7 +122,7 @@ class DRLStudentNode(Node):
             tracking_error='tracking_error_stu',
             action='drl_student_action',
             learned_action='drl_student_learned_action',
-            fall_detection='/edge/is_fall'  
+            fall_detection='/edge/is_fall'
         )
         
         # Loop configuration
@@ -186,48 +161,52 @@ class DRLStudentNode(Node):
             torch.tensor([ 10.,  10.,  10.,  20.,  20.,  20.], device=self.device)
         )
         
-        # ⭐ Initialize Distributed Agent with clean configuration
+        # ⭐ Initialize Distributed Runner
         self.agent = DistributedRunner(
             # Core parameters
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
             node=self,
-            replay_buffer=self.buffer,
-            device=self.device,
             logger=self.logger,
-            vision_processor=self.vision_processor,
-            episode_manager=self.episode_manager,
-            reset_manager=self.reset_manager,
+            replay_buffer=self.buffer,
             action_bound=action_bound,
             body_state_dim=self.body_state_dim,
+            device=self.device,
+            
             # Configuration objects
             topic_config=topic_cfg,
             loop_config=loop_cfg,
             training_config=train_cfg,
             residual_config=residual_cfg,
-            auto_reset_on_fall=True,  
+            
+            # Components
+            vision_processor=self.vision_processor,
+            episode_manager=self.episode_manager,
+            reset_manager=self.reset_manager,
+            
+            # Options
+            auto_reset_on_fall=True,
+            
             # Agent hyperparameters
             actor_lr=3e-4,
             critic_lr=3e-4,
             gamma=0.99,
             tau=0.005,
             actor_hidden_dims=(256, 256, 256),
-            critic_hidden_dims=(256, 256, 256),
-            reward_normalization=True,
-            reward_clip_range=10.0
+            critic_hidden_dims=(256, 256, 256)
         )
         
-        self.get_logger().info("✅ Distributed Agent initialized")
+        self.get_logger().info("✅ Distributed Runner initialized")
         
         # ========== ROS2 Subscriptions ==========
-        self.create_subscription(PointCloud2, '/registered_scan', self.vision_processor.pointcloud_callback, 10)
-        self.create_subscription(Transition, '/transition', self.agent.transition_callback, 10)    
-        self.create_subscription(Vec12Msg, '/tracking_error_stu', self.agent.tracking_error_callback, 10)
-        self.create_subscription(Bool, '/edge/is_fall', self.agent.fall_detection_callback, 10) 
-        
-        # ========== ROS2 Publishers ==========
-        self.action_pub = self.create_publisher(EdgeAction, '/drl_student_action', 10)
-        self.learned_action_pub = self.create_publisher(EdgeAction, '/drl_student_learned_action', 10)
+        # ⭐ Only subscribe to PointCloud2 here
+        # Other subscriptions are handled by DistributedRunner
+        self.create_subscription(
+            PointCloud2,
+            '/registered_scan',
+            self.vision_processor.pointcloud_callback,
+            10
+        )
         
         # ========== ROS2 Services ==========
         self.create_service(Trigger, 'manual_reset', self.manual_reset_callback)
@@ -239,32 +218,11 @@ class DRLStudentNode(Node):
         # ⭐ Start agent loops
         self.agent.start()
         
-        self.get_logger().info(
-            f"\n{'='*70}\n"
-            f"🚀 DRL Student Node Started\n"
-            f"{'='*70}\n"
-            f"📦 Project:       {PROJECT_NAME}\n"
-            f"🎮 Run Mode:      {RUN}\n"
-            f"💻 Device:        {self.device}\n"
-            f"💾 Model Path:    {MODEL_PATH}\n"
-            f"📊 Log Path:      {LOG_PATH}\n"
-            f"─────────────────────────────────────────────────────────────────────\n"
-            f"📐 Dimensions:\n"
-            f"   Obs Dim:     {self.obs_dim} (body={self.body_state_dim} + vision={self.vision_feature_dim})\n"
-            f"   Act Dim:     {self.act_dim}\n"
-            f"─────────────────────────────────────────────────────────────────────\n"
-            f"⚙️  Configuration:\n"
-            f"   Action Freq:        {loop_cfg.action_frequency}Hz\n"
-            f"   Learning Freq:      {loop_cfg.learning_frequency}Hz\n"
-            f"   Batch Size:         {train_cfg.batch_size}\n"
-            f"   Save Interval:      {train_cfg.save_interval}\n"
-            f"   Sync Interval:      {train_cfg.sync_interval}\n"
-            f"   Max Episode Length: {episode_cfg.max_episode_length}\n"
-            f"   Success Threshold:  {episode_cfg.success_reward_threshold}\n"
-            f"{'='*70}\n"
-        )
+        # ========== Log Initialization Complete ==========
+        # self._log_initialization_complete(episode_cfg, loop_cfg, train_cfg)
     
     # ==================== Callbacks ====================
+    
     def manual_reset_callback(self, request: Trigger.Request, response: Trigger.Response):
         """
         Manual reset service callback
@@ -291,6 +249,47 @@ class DRLStudentNode(Node):
         
         return response
     
+    # ==================== Logging ====================
+    
+    def _log_initialization_complete(self, episode_cfg, loop_cfg, train_cfg):
+        """Log initialization complete message"""
+        self.get_logger().info(
+            f"\n{'='*70}\n"
+            f"🚀 DRL Student Node Started\n"
+            f"{'='*70}\n"
+            f"📦 Project:       {PROJECT_NAME}\n"
+            f"🎮 Run Mode:      {RUN}\n"
+            f"💻 Device:        {self.device}\n"
+            f"💾 Model Path:    {MODEL_PATH}\n"
+            f"📊 Log Path:      {LOG_PATH}\n"
+            f"─────────────────────────────────────────────────────────────────────\n"
+            f"📐 Dimensions:\n"
+            f"   Obs Dim:     {self.obs_dim} (body={self.body_state_dim} + vision={self.vision_feature_dim})\n"
+            f"   Act Dim:     {self.act_dim}\n"
+            f"─────────────────────────────────────────────────────────────────────\n"
+            f"⚙️  Configuration:\n"
+            f"   Action Freq:        {loop_cfg.action_frequency}Hz\n"
+            f"   Learning Freq:      {loop_cfg.learning_frequency}Hz\n"
+            f"   Batch Size:         {train_cfg.batch_size}\n"
+            f"   Save Interval:      {train_cfg.save_interval}\n"
+            f"   Sync Interval:      {train_cfg.sync_interval}\n"
+            f"   Max Episode Length: {episode_cfg.max_episode_length}\n"
+            f"   Success Threshold:  {episode_cfg.success_reward_threshold}\n"
+            f"─────────────────────────────────────────────────────────────────────\n"
+            f"📡 ROS2 Topics:\n"
+            f"   Subscriptions:\n"
+            f"     - /registered_scan (PointCloud2)\n"
+            f"     - /transition (Transition)\n"
+            f"     - /tracking_error_stu (Vec12Msg)\n"
+            f"     - /edge/is_fall (Bool)\n"
+            f"   Publishers:\n"
+            f"     - /drl_student_action (EdgeAction)\n"
+            f"     - /drl_student_learned_action (EdgeAction)\n"
+            f"   Services:\n"
+            f"     - /edge/manual_reset (Trigger)\n"
+            f"{'='*70}\n"
+        )
+    
     # ==================== Cleanup ====================
     
     def destroy_node(self):
@@ -304,6 +303,12 @@ class DRLStudentNode(Node):
         self.agent.save_final_checkpoint()
         
         # Print final statistics
+        self._print_final_statistics()
+        
+        super().destroy_node()
+    
+    def _print_final_statistics(self):
+        """Print final statistics"""
         stats = self.agent.get_agent_stats()
         perf_stats = self.agent.get_performance_stats()
         sync_stats = self.agent.get_sync_stats()
@@ -317,7 +322,7 @@ class DRLStudentNode(Node):
             f"{'='*70}\n"
             f"🎓 Training:\n"
             f"   Total Updates:       {stats['update_count']}\n"
-            f"   Total Syncs:         {self.agent.sync_count}\n"
+            f"   Total Syncs:         {self.agent.actor_learner.sync_count}\n"
             f"   Total Transitions:   {stats['transition_count']}\n"
             f"   Total Actions:       {stats['action_count']}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
@@ -354,8 +359,6 @@ class DRLStudentNode(Node):
             f"   Teacher Size:        {len(self.buffer.tea_buf)}/{self.buffer.tea_buf.capacity}\n"
             f"{'='*70}\n"
         )
-        
-        super().destroy_node()
 
 
 def main(args=None):

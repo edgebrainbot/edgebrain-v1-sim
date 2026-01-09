@@ -65,7 +65,8 @@ void StateTrotting::enter()
     gait_generator_.restart();
 }
 
-void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, edge_msgs::msg::EdgeAction& latest_accel_,
+void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
+                        edge_msgs::msg::EdgeAction& latest_accel_, bool is_teacher_activated,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
@@ -73,6 +74,9 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
                         double obstacleAvgDistance, bool is_goal_reached)
 {
+    // Update teacher activation status
+    is_teacher_activated_ = is_teacher_activated;
+
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
 
@@ -405,6 +409,7 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
         nav_goal_,
         robot_pos_,
         tracking_error_stu,
+        is_teacher_activated_,
         obstacleAvgDistance
     );
     // transition.next_obs = EigenToVector(tracking_error);
