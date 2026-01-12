@@ -187,7 +187,7 @@ namespace edge::control::quadruped
         // }
 
         // For publishers and subscribers
-        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_;
+        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_;
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;

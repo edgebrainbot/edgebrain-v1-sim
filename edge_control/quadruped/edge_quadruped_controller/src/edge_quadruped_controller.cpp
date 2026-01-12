@@ -222,7 +222,7 @@ namespace edge::control::quadruped
             setupLaunchService();
 
             // Publisher for tracking error
-            tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::Vec12Msg>(
+            tracking_error_tea_pub_ = get_node()->create_publisher<edge_msgs::msg::Vec12Msg>(
                 topic_ns_ + "/tracking_error", 100);
 
             // Publisher for tracking error of DRL student
@@ -317,7 +317,7 @@ namespace edge::control::quadruped
             if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
                 trot->run(time, period, 
                           latest_edge_action_, 
-                          tracking_error_pub_, 
+                          tracking_error_tea_pub_, 
                           tracking_error_stu_pub_,
                           robot_state_pub_,
                           transition_pub_, 
@@ -325,6 +325,7 @@ namespace edge::control::quadruped
                           obstacle_avg_distance_,
                           obstacle_min_distance_,
                           is_goal_reached_);
+                          
             } else {
                 current_state_->run(time, period);
             }

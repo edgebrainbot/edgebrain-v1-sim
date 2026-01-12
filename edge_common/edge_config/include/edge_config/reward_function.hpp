@@ -5,23 +5,27 @@
 #include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
+using namespace edge::ros_interfaces;
 
 namespace edge::config {
 
-static const double I10by10[10][10] = {
-    {1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0},
-    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0}
+static const double P_MAT[12][12] = {
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // x
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // y
+    {0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // z
+    {0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // roll
+    {0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // pitch
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // yaw
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // vx
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // vy
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0,   0.0},     // vz
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0,   0.0},     // wx
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   1.0,   0.0},     // wy
+    {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0}      // wz
 };
 
-Eigen::MatrixXd P_ = Eigen::Map<const Eigen::Matrix<double, 10, 10, Eigen::RowMajor>>(&I10by10[0][0]);
+
+Eigen::MatrixXd P_ = Eigen::Map<const Eigen::Matrix<double, 12, 12, Eigen::RowMajor>>(&P_MAT[0][0]);
 Eigen::MatrixXd I_ = Eigen::MatrixXd::Identity(12, 12);
 
 inline void registerAllRewardFunc() {
@@ -38,33 +42,33 @@ inline void registerAllRewardFunc() {
 
     // ========== Linear Velocity Tracking ==========
     R.registerReward("lin_vel_tracking", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& err = std::any_cast<const Eigen::VectorXd&>(rf.at("err_prev"));
+        const Vector12d& err = std::any_cast<const Vector12d&>(rf.at("err_prev"));
         double e = err(6)*err(6) + err(7)*err(7) + err(8)*err(8);
         return std::exp(-e / 0.2);
     });
 
     // ========== Angular Velocity Tracking ==========
     R.registerReward("ang_vel_tracking", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& err = std::any_cast<const Eigen::VectorXd&>(rf.at("err_prev"));
+        const Vector12d& err = std::any_cast<const Vector12d&>(rf.at("err_prev"));
         double e = err(9)*err(9) + err(10)*err(10) + err(11)*err(11);
         return std::exp(-e / 0.2);
     });
 
     // ========== Orientation Tracking ==========
     R.registerReward("orientation_tracking", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& err = std::any_cast<const Eigen::VectorXd&>(rf.at("err_prev"));
+        const Vector12d& err = std::any_cast<const Vector12d&>(rf.at("err_prev"));
         return -(err(3)*err(3) + err(4)*err(4) + err(5)*err(5));
     });
 
     // ========== Height Tracking ==========
     R.registerReward("height_tracking", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& err = std::any_cast<const Eigen::VectorXd&>(rf.at("err_prev"));
+        const Vector12d& err = std::any_cast<const Vector12d&>(rf.at("err_prev"));
         return -std::abs(err(2));
     });
 
     // ========== Jerky Action ==========
     R.registerReward("jerky_action", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& delta_action = std::any_cast<const Eigen::VectorXd&>(rf.at("delta_action"));
+        const Vector6d& delta_action = std::any_cast<const Vector6d&>(rf.at("delta_action"));
         return -delta_action.squaredNorm();
     });
 
@@ -76,32 +80,29 @@ inline void registerAllRewardFunc() {
 
     // ========== Body Contact ==========
     R.registerReward("body_contact", [](const RewardFactor& rf) {
-        double c = std::any_cast<double>(rf.at("body_contact"));
-        return -c;
+        double body_contact = std::any_cast<double>(rf.at("body_contact"));
+        return -body_contact;
     });
 
     // ========== Energy Consumption ==========
     R.registerReward("energy_consumption", [](const RewardFactor& rf) {
-        double en = std::any_cast<double>(rf.at("energy"));
-        return -en;
+        double energy = std::any_cast<double>(rf.at("energy"));
+        return -energy;
     });
 
     // ========== Upright ==========
     R.registerReward("upright", [](const RewardFactor& rf) {
-        double gz = std::any_cast<double>(rf.at("grav_z"));
-        return gz;
+        double grav_z = std::any_cast<double>(rf.at("grav_z"));
+        return grav_z;
     });
 
     // ========== Lyapunov ==========
     R.registerReward("lyapunov", [](const RewardFactor& rf) {
-        const Eigen::VectorXd& err_prev = std::any_cast<const Eigen::VectorXd&>(rf.at("err_prev"));
-        const Eigen::VectorXd& err_next = std::any_cast<const Eigen::VectorXd&>(rf.at("err_next"));
+        const Vector12d& err_prev = std::any_cast<const Vector12d&>(rf.at("err_prev"));
+        const Vector12d& err_next = std::any_cast<const Vector12d&>(rf.at("err_next"));
         
-        Eigen::VectorXd sp = err_prev.tail(10);
-        Eigen::VectorXd sn = err_next.tail(10);
-        
-        double v1 = sp.transpose() * P_ * sp;
-        double v2 = sn.transpose() * P_ * sn;
+        double v1 = err_prev.transpose() * P_ * err_prev;
+        double v2 = err_next.transpose() * P_ * err_next;
         
         // return v1 - v2;
         return -v2;
@@ -109,9 +110,8 @@ inline void registerAllRewardFunc() {
 
     // ========== Body State ==========
     R.registerReward("body_state", [](const RewardFactor& rf) {
-        const edge::ros_interfaces::Vector12d& state = std::any_cast<const edge::ros_interfaces::Vector12d&>(rf.at("robot_state"));
-        
-        double res = state.transpose() * I_ * state;
+        const Vector12d& state = std::any_cast<const Vector12d&>(rf.at("robot_state"));
+        double res = state.transpose() * P_ * state;
         return -res;
     });
 
@@ -129,8 +129,8 @@ inline void registerAllRewardFunc() {
 
     // ========== Goal Distance ==========
     R.registerReward("goal_distance", [](const RewardFactor& rf) {
-        const Eigen::Matrix<double, 2, 1>& goal = std::any_cast<const Eigen::Matrix<double, 2, 1>&>(rf.at("nav_goal"));
-        const Eigen::Matrix<double, 3, 1>& robot_pos = std::any_cast<const Eigen::Matrix<double, 3, 1>&>(rf.at("robot_pos"));
+        const Vector2d& goal = std::any_cast<const Vector2d&>(rf.at("nav_goal"));
+        const Vector3d& robot_pos = std::any_cast<const Vector3d&>(rf.at("robot_pos"));
         
         double goalX = goal(0);
         double goalY = goal(1);
