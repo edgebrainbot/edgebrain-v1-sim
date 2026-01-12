@@ -54,7 +54,7 @@ class DRLStudentNode(Node):
         
 
         # ========== Initialize Replay Buffer ==========
-        self.batch_size = 51
+        self.batch_size = 512
         replay_buffer_cfg = {
             'student_buf_size': int(1e5),
             'student_prefill_size': self.batch_size,
@@ -127,6 +127,10 @@ class DRLStudentNode(Node):
             'auto_reset_on_fall': True,
         }
         
+        
+        agent_cfg = {
+            'model_save_path': MODEL_PATH,
+        }
         # ⭐ Initialize Distributed Runner
         self.agent = DistributedRunner(
             node=self,
@@ -146,6 +150,8 @@ class DRLStudentNode(Node):
             **ros2_service_name,
             
             **training_cfg,
+            model_save_path=MODEL_PATH,
+            # agent_kwargs=agent_cfg
         )
         
         self.get_logger().info("✅ Distributed Runner initialized")

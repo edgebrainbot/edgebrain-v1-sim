@@ -28,7 +28,7 @@ reward:
   goal_distance: 0.005
 
   # lyapunov: 100
-  body_state: 1
+  body_state: 0.2
 
   # distance_to_wp: 50
   # reach_wp: 100

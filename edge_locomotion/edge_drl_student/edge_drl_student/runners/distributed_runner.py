@@ -71,6 +71,7 @@ class DistributedRunner:
         normalize_reward: bool = True,
 
         auto_reset_on_fall: bool = True,
+        model_save_path: str = 'distributed_drl_model',
         device: str = 'cpu',
         **agent_kwargs
     ):
@@ -97,7 +98,7 @@ class DistributedRunner:
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
         
-        self.model_save_path = agent_kwargs.get('model_save_path', 'distributed_drl_model')
+        self.model_save_path = model_save_path
         
         # Create Normalizers
         if normalize_obs:
@@ -132,6 +133,7 @@ class DistributedRunner:
             replay_buffer=replay_buffer,
             action_bound=action_bound,
             sync_interval=sync_interval,
+            model_save_path=model_save_path,
             device=device,
             **agent_kwargs
         )
@@ -928,7 +930,7 @@ class DistributedRunner:
             
             self.logger.writer.add_scalar('Loss/avg_actor_loss', stats['avg_actor_loss'], update_count)
             self.logger.writer.add_scalar('Loss/avg_critic_loss', stats['avg_critic_loss'], update_count)
-            self.logger.writer.add_scalar('Fall/total_count', fall_stats['fall_count'], update_count)
+            # self.logger.writer.add_scalar('Fall/total_count', fall_stats['fall_count'], update_count)
             
             # Console log
             norm_info = ""
