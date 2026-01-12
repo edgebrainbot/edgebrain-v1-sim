@@ -85,7 +85,6 @@ class DistributedRunner:
         self.device = device
         
         self.batch_size = batch_size
-        
         self.action_frequency = action_frequency
         self.learning_frequency = learning_frequency
         self.policy_blending_weight = policy_blending_weight
@@ -97,6 +96,9 @@ class DistributedRunner:
         
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
+        
+        self.model_save_path = agent_kwargs.get('model_save_path', 'distributed_drl_model')
+        
         # Create Normalizers
         if normalize_obs:
             self.obs_normalizer = RunningMeanStdNormalizer(
@@ -314,7 +316,7 @@ class DistributedRunner:
         # }
         rew_comp: List[EdgeReward] = msg.reward_components
         reward_components = {c.name: c.value for c in rew_comp}
-        
+                
         # ⭐ Update episode with new step and get total reward
         stepwise_total_reward = sum(reward_components.values())
         
@@ -360,13 +362,13 @@ class DistributedRunner:
         # Add to buffer
         t = self.replay_buffer.to_transition(
             obs=obs_norm,
-            action=msg.action,
+            action=msg.action.control_action,
             reward=stepwise_total_reward,
             next_obs=next_obs_norm,
             done=msg.done
         )
         
-        action_mode = ActionMode(msg.action_mode)
+        action_mode = ActionMode(msg.action.action_mode)
 
         # Add transition to the self-learning buffer
         if action_mode == ActionMode.STUDENT:
@@ -381,7 +383,7 @@ class DistributedRunner:
                 self.node.get_logger().info(f"[Transition] Added transition to teacher buffer. Current size: {self.replay_buffer.tea_buf_size}")
         
         else:
-            self.node.get_logger().error(f'Unknown action mode: {msg.action_mode}')
+            self.node.get_logger().error(f'Unknown action mode: {msg.action.action_mode}')
             return
         
         self.transition_count += 1
@@ -654,10 +656,10 @@ class DistributedRunner:
                     self.episode_manager.episode_count
                 )
                 
-                self.node.get_logger().info(
-                    f"📊 Reward normalization updated: "
-                    f"mean={reward_mean:.4f}, std={reward_std:.4f}"
-                )
+                # self.node.get_logger().info(
+                #     f"📊 Reward normalization updated: "
+                #     f"mean={reward_mean:.4f}, std={reward_std:.4f}"
+                # )
         
         # ========== Step 3: Cleanup Episode State ==========
         self.episode_rewards.clear()
@@ -666,16 +668,16 @@ class DistributedRunner:
             self.discounted_return = 0.0
         
         # ========== Step 4: Log Episode Summary ==========
-        self.node.get_logger().info(
-            f"\n{'='*70}\n"
-            f"📊 Episode {self.episode_manager.episode_count} ended\n"
-            f"{'─'*70}\n"
-            f"   Reason:           {reason.value}\n"
-            f"   Total Reward:     {stats['reward']:.2f}\n"
-            f"   Episode Length:   {stats['length']}\n"
-            f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
-            f"{'='*70}"
-        )
+        # self.node.get_logger().info(
+        #     f"\n{'='*70}\n"
+        #     f"📊 Episode {self.episode_manager.episode_count} ended\n"
+        #     f"{'─'*70}\n"
+        #     f"   Reason:           {reason.value}\n"
+        #     f"   Total Reward:     {stats['reward']:.2f}\n"
+        #     f"   Episode Length:   {stats['length']}\n"
+        #     f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
+        #     f"{'='*70}"
+        # )
         
         # ========== Step 5: Call Reset Service ==========
         self.node.get_logger().info(f'🔄 Triggering reset (reason: {reason.value})')
@@ -889,11 +891,10 @@ class DistributedRunner:
         stepwise_total_reward = sum(reward_components.values())
         
         self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, step)
-        self.logger.writer.add_scalar('Stepwise/obstacle_reward', reward_components['obstacle'], step)
-        self.logger.writer.add_scalar('Stepwise/goal_distance_reward', reward_components['goal_distance'], step)
-        self.logger.writer.add_scalar('Stepwise/body_state_reward', reward_components['body_state'], step)
         self.logger.writer.add_scalar('Stepwise/student_action_count', self.episode_manager.stu_action_count, step)
         self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.episode_manager.tea_action_count, step)
+        for name, value in reward_components.items():
+            self.logger.writer.add_scalar(f'Stepwise/{name}_reward', value, step)
     
     def _log_timestep_stats(self, reward_components: Dict[str, float]):
         """Log timestep statistics"""
@@ -901,11 +902,11 @@ class DistributedRunner:
         timestep_total_reward = sum(reward_components.values())
         
         self.logger.writer.add_scalar('Timestep/total_reward', timestep_total_reward, totalstep)
-        self.logger.writer.add_scalar('Timestep/obstacle_reward', reward_components['obstacle'], totalstep)
-        self.logger.writer.add_scalar('Timestep/goal_distance_reward', reward_components['goal_distance'], totalstep)
-        self.logger.writer.add_scalar('Timestep/body_state_reward', reward_components['body_state'], totalstep)
         self.logger.writer.add_scalar('Timestep/student_action_count', self.episode_manager.stu_action_count, totalstep)
         self.logger.writer.add_scalar('Timestep/teacher_action_count', self.episode_manager.tea_action_count, totalstep)
+        for name, value in reward_components.items():
+            self.logger.writer.add_scalar(f'Timestep/{name}_reward', value, totalstep)
+    
     
     def _log_update_metrics(self, losses: Dict[str, float]):
         """Log update metrics"""

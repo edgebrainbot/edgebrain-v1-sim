@@ -54,7 +54,7 @@ class DRLStudentNode(Node):
         
 
         # ========== Initialize Replay Buffer ==========
-        self.batch_size = 512
+        self.batch_size = 51
         replay_buffer_cfg = {
             'student_buf_size': int(1e5),
             'student_prefill_size': self.batch_size,

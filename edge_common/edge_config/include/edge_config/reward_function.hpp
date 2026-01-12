@@ -150,14 +150,14 @@ inline void registerAllRewardFunc() {
         return -(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
     });
 
-    // ========== Teacher Activation Penalty ==========
-    R.registerReward("teacher_activation_penalty", [](const RewardFactor& rf) {
-        bool teacher_penalty = std::any_cast<bool>(rf.at("is_teacher_activated"));
-        return teacher_penalty ? -1.0 : 0.0;
+    // ========== Teacher Activation ==========
+    R.registerReward("teacher_activation", [](const RewardFactor& rf) {
+        bool teacher_activation = std::any_cast<bool>(rf.at("is_teacher_activated"));
+        return teacher_activation ? -1.0 : 0.0;
     });
 
-    // ========== Student Activation Reward ==========
-    R.registerReward("student_activation_reward", [](const RewardFactor& rf) {
+    // ========== Student Activation ==========
+    R.registerReward("student_activation", [](const RewardFactor& rf) {
         bool teacher = std::any_cast<bool>(rf.at("is_teacher_active"));
         return teacher ? 0.0 : 1.0;
     });

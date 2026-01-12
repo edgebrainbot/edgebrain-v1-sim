@@ -493,7 +493,7 @@ class EpisodeManager:
         self.logger.writer.add_scalar('Episode/length', stats.episode_length, episode_id)
         self.logger.writer.add_scalar('Episode/duration', stats.duration, episode_id)
         self.logger.writer.add_scalar('Episode/success', 1.0 if stats.success else 0.0, episode_id)
-        self.logger.writer.add_scalar('Episode/teacher_activation_ratio', stats.teacher_activation_ratio, episode_id)
+        self.logger.writer.add_scalar('Episode/teacher_activation_ratio', stats.activation_ratio, episode_id)
         self.logger.writer.add_scalar('Episode/average_reward', stats.average_reward, episode_id)
         
         # Reward components

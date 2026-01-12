@@ -17,7 +17,7 @@ reward:
   # orientation_tracking: 80
   # height_tracking: 50
   
-  teacher_activation_penalty: 0.1
+  teacher_activation: 0.1
   # student_activation_reward: 0.1
 
   time_travel: 0.01
@@ -28,7 +28,7 @@ reward:
   goal_distance: 0.005
 
   # lyapunov: 100
-  body_state: 0.001
+  body_state: 1
 
   # distance_to_wp: 50
   # reach_wp: 100
