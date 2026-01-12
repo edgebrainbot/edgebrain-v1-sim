@@ -1,6 +1,7 @@
 import abc
 import torch
 import torch.nn as nn
+from typing import Dict
 from collections import deque
 from typing import Union, Tuple, Optional
 
@@ -40,7 +41,7 @@ class BaseNormalizer(abc.ABC):
         """Return state dictionary for saving."""
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: Dict):
         """Load state from dictionary."""
         for k, v in state_dict.items():
             if isinstance(v, torch.Tensor):

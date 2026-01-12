@@ -21,17 +21,20 @@ class VisionProcessor:
                  topic_name: str = '/registered_scan',
                  queue_size: int = 10,
                  device: str = 'cpu', 
-                 feature_dim: int = 24):
+                 feature_dim: int = 24,
+                 print_interval: int = 30):
         """
         Initialize Vision Processor
         
         Args:
             device: torch device
             feature_dim: Vision feature dimension 
+            print_interval: Interval for printing logs
         """
+        self.node = node
         self.device = device
         self.feature_dim = feature_dim
-        self.node = node
+        self.print_interval = print_interval
         
         # Matrix for processing lidar
         self.mat_base_vec = torch.arange(0.1, 144.1, 0.1, dtype=torch.float32).to(device) * 50
@@ -52,12 +55,7 @@ class VisionProcessor:
         self.points = None
         
         # Subscribe to point cloud topic
-        self.subscription = self.node.create_subscription(
-            PointCloud2,
-            topic_name,
-            self.pointcloud_callback,
-            queue_size
-        )
+        self.node.create_subscription(PointCloud2, topic_name, self.pointcloud_callback, queue_size)
         
         self.node.get_logger().info(f'VisionProcessor initialized on topic: {topic_name}')
     
@@ -83,8 +81,8 @@ class VisionProcessor:
                 self.frame_count += 1
                 self.last_process_time = time.time() - start_time
                 
-                # Log info periodically (every 30 frames)
-                if self.frame_count % 30 == 0:
+                # Log info periodically 
+                if self.frame_count % self.print_interval == 0:
                     self.node.get_logger().info(
                         f'[VisionProcessor] Processed frame {self.frame_count} | '
                         f'Points: {len(self.points)} | '

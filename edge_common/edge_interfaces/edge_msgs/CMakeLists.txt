@@ -16,7 +16,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EdgeAction.msg"
   "msg/Vec12Msg.msg"
   "msg/Transition.msg"
-  "msg/Reward.msg"
+  "msg/EdgeReward.msg"
   DEPENDENCIES std_msgs
 )
 

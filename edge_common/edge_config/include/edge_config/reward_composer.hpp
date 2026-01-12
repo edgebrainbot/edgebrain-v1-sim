@@ -1,87 +1,79 @@
 #pragma once
 
-#include <Eigen/Dense>
+#include <any>
 #include <string>
+#include <memory>
 #include <unordered_map>
-#include <yaml-cpp/yaml.h>
-#include <edge_msgs/msg/reward.hpp>
+#include <functional>
+#include <edge_msgs/msg/edge_reward.hpp>
 
-// static const double MATRIX_P[10][10] = {
-//     {140.6434, 0.0,     0.0,     0.0,     0.0,    0.0,    5.3276, 0.0,     0.0,     0.0},
-//     {0.0,     134.7596, 0.0,     0.0,     0.0,    0.0,    0.0,    6.6219, 0.0,     0.0},
-//     {0.0,     0.0,     134.7596, 0.0,     0.0,    0.0,    0.0,    0.0,    6.622,  0.0},
-//     {0.0,     0.0,     0.0,     49.641,  0.0,    0.0,    0.0,    0.0,    0.0,     6.8662},
-//     {0.0,     0.0,     0.0,      0.0,    11.1111,0.0,    0.0,    0.0,    0.0,     0.0},
-//     {0.0,     0.0,     0.0,      0.0,     0.0,   3.3058, 0.0,    0.0,    0.0,     0.0},
-//     {5.3276,  0.0,     0.0,      0.0,     0.0,   0.0,    3.6008, 0.0,    0.0,     0.0},
-//     {0.0,     6.6219,  0.0,      0.0,     0.0,   0.0,    0.0,    3.6394, 0.0,     0.0},
-//     {0.0,     0.0,     6.622,    0.0,     0.0,   0.0,    0.0,    0.0,    3.6394, 0.0},
-//     {0.0,     0.0,     0.0,      0.0,     0.0,   6.8662, 0.0,    0.0,    0.0,     4.3232}
-// };
+namespace edge::config {
 
-static const double MATRIX_P[10][10] = {
-    {1.0,     0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     1.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     1.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     1.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     1.0,    0.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     0.0,    1.0,    0.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     0.0,    0.0,    1.0,    0.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    1.0,    0.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    1.0,    0.0},
-    {0.0,     0.0,     0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    1.0}
-};
+using RewardFactor = std::unordered_map<std::string, std::any>;
 
-class RewardComposer {
+// Abstract base class for reward functions
+class RewardFunction {
 public:
-    RewardComposer(const std::string& yaml_path);
-
-    // Compute total reward (scalar only)
-    edge_msgs::msg::Reward computeTotalReward(
-        const Eigen::VectorXd& err_prev,     // 12D tracking error
-        const Eigen::VectorXd& err_next,     // 12D tracking error next
-        const Eigen::VectorXd& goal,         // 3D goal position
-        const Eigen::VectorXd& vehicle_pos,    // 3D vehicle position
-        const Eigen::VectorXd& state,
-        bool is_teacher_active,
-        double obstacleDisAvgReward
-        // int is_fail,                          // 0 or 1
-        // const Eigen::VectorXd& delta_action, // action_t - action_(t-1)
-        // double forward_speed,
-        // double body_contact,
-        // double energy,
-        // double grav_z                         // projected gravity z
-    );
-
-private:
-    std::unordered_map<std::string, double> scales_;
-    Eigen::MatrixXd P_;   // Lyapunov
-    Eigen::MatrixXd I_;   // Identity
-
-    // Reward funcs return double now
-    double fall_down(int is_fail);
-    double lin_vel_tracking(const Eigen::VectorXd& err);
-    double ang_vel_tracking(const Eigen::VectorXd& err);
-    double orientation_tracking(const Eigen::VectorXd& err);
-    double height_tracking(const Eigen::VectorXd& err);
-    double jerky_action(const Eigen::VectorXd& delta_action);
-    double obstacle_distance(double obstacleDisAvgReward);
-    double forward_speed(double speed);
-    double body_contact(double c);
-    double energy_consumption(double en);
-    double teacher_activation_penalty(bool is_teacher_active);
-    double student_activation_reward(bool is_student_active);
-    double upright(double gz);
-
-    double body_state(const Eigen::VectorXd& state);
-
-    double lyapunov(
-        const Eigen::VectorXd& err_prev,
-        const Eigen::VectorXd& err_next
-    );
-
-    double goal_distance(
-        const Eigen::VectorXd& goal, 
-        const Eigen::VectorXd& vehicle_pos
-    );
+    virtual ~RewardFunction() = default;
+    virtual double compute(const RewardFactor& factors) const = 0;
 };
+
+// Singleton registry for reward functions
+class RewardRegistry {
+private:
+    std::unordered_map<std::string, std::shared_ptr<RewardFunction>> registry_;
+    RewardRegistry() = default;
+
+public:
+    RewardRegistry(const RewardRegistry&) = delete;
+    RewardRegistry& operator=(const RewardRegistry&) = delete;
+
+    static RewardRegistry& instance() {
+        static RewardRegistry inst;
+        return inst;
+    }
+
+    void registerReward(const std::string& name, std::function<double(const RewardFactor&)> fn) {
+        struct LambdaWrapper : RewardFunction {
+            std::function<double(const RewardFactor&)> f;
+            LambdaWrapper(std::function<double(const RewardFactor&)> f_) : f(f_) {}
+            double compute(const RewardFactor& factors) const override { return f(factors); }
+        };
+        registry_[name] = std::make_shared<LambdaWrapper>(fn);
+    }
+
+    std::shared_ptr<RewardFunction> lookupRewardFunc(const std::string& name) const {
+        auto it = registry_.find(name);
+        if (it != registry_.end()) return it->second;
+        return nullptr;
+    }
+
+    size_t size() const { 
+        return registry_.size(); 
+    }
+};
+
+// Composer class to compute total rewards
+class RewardComposer {
+private:
+    std::unordered_map<std::string, double> reward_scales_;
+
+public:
+    explicit RewardComposer(const std::string& yaml_path = "");
+
+    std::vector<edge_msgs::msg::EdgeReward> computeTotalReward(
+        const RewardFactor& factors) const;
+
+    const std::unordered_map<std::string, double>& getRewardScales() const {
+        return reward_scales_;
+    }
+
+    size_t size() const {
+        return reward_scales_.size();
+    }
+};
+
+inline void registerAllRewardFunc();
+
+
+} // namespace edge::config

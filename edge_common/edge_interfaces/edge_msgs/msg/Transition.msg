@@ -2,8 +2,7 @@
 
 std_msgs/Header header
 float64[] obs
-float64[] action
-Reward reward
+EdgeAction action
+EdgeReward[] reward_components
 float64[] next_obs
 bool done
-uint8 action_mode           # 0=STUDENT, 1=TEACHER

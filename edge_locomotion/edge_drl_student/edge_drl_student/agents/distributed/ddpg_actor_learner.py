@@ -135,33 +135,8 @@ class DDPGActorLearner(ActorLearner):
             )
         
         # Sync optimizer states
-        self.acting_agent.actor_optimizer.load_state_dict(
-            self.learning_agent.actor_optimizer.state_dict()
-        )
-        self.acting_agent.critic_optimizer.load_state_dict(
-            self.learning_agent.critic_optimizer.state_dict()
-        )
-        
-        # Actor normalizer
-        if (hasattr(self.learning_agent, 'actor_normalizer') and 
-            self.learning_agent.actor_normalizer is not None):
-            self.acting_agent.actor_normalizer.load_state_dict(
-                self.learning_agent.actor_normalizer.state_dict()
-            )
-        
-        # Critic normalizer
-        if (hasattr(self.learning_agent, 'critic_normalizer') and 
-            self.learning_agent.critic_normalizer is not None):
-            self.acting_agent.critic_normalizer.load_state_dict(
-                self.learning_agent.critic_normalizer.state_dict()
-            )
-        
-        # Reward normalizer
-        if (hasattr(self.learning_agent, 'reward_normalizer') and 
-            self.learning_agent.reward_normalizer is not None):
-            self.acting_agent.reward_normalizer.load_state_dict(
-                self.learning_agent.reward_normalizer.state_dict()
-            )
+        self.acting_agent.actor_optimizer.load_state_dict(self.learning_agent.actor_optimizer.state_dict())
+        self.acting_agent.critic_optimizer.load_state_dict(self.learning_agent.critic_optimizer.state_dict())
         
         # Sync noise state
         if (hasattr(self.learning_agent, 'noise') and 

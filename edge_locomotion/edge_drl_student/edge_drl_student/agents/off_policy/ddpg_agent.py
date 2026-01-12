@@ -1,7 +1,10 @@
 import os
 import torch
 import warnings
+import numpy as np
 import torch.nn as nn
+from typing import Union
+
 from edge_drl_student.agents.off_policy_agent import OffPolicyAgent
 from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
 from edge_drl_student.networks.actor_critic import ActorCritic, ActorNetwork, CriticNetwork
@@ -9,8 +12,7 @@ from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloRe
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.common.normalizer import BaseNormalizer, MinMaxNormalizer, EmpiricalNormalizer
 from edge_drl_student.common.noise import Noise, OUNoise, GaussianNoise
-from typing import Union
-import numpy as np
+
 
 class DDPGAgent(OffPolicyAgent):
     def __init__(self,
@@ -83,10 +85,12 @@ class DDPGAgent(OffPolicyAgent):
     def act(self, obs: torch.Tensor, noise_scale=0.1, explore: bool = True) -> torch.Tensor:
         obs = torch.as_tensor(obs, dtype=torch.float32).to(self.device)
         with torch.no_grad():
-            action = self.actor(obs)
+            action: torch.Tensor = self.actor(obs)
+            
+        # Add exploration noise
         if explore:
             action = action + noise_scale * self.noise(action.shape)
-        action_clipped = torch.clamp(action, -1.0, 1.0)
+        action_clipped = torch.clamp(action, -1.0, 1.0)     # Clip to [-1, 1]
         
         # Return denormalized action
         return self.actor_normalizer.denormalize(action_clipped)
@@ -127,12 +131,16 @@ class DDPGAgent(OffPolicyAgent):
         return actor_loss, critic_loss
         
         
-    def save_models(self, path: str):
+    def save_models(self, path: str=None):
         """
         Save model parameters and optimizer states.
         Args:
             path (str): Directory path to save model files.
         """
+        path = path if path is not None else self.save_path
+        if path is None:
+            warnings.warn("No save path specified for saving models.")
+            return
         os.makedirs(path, exist_ok=True)
         try:
             torch.save(self.actor.state_dict(), os.path.join(path, "actor.pt"))
@@ -153,13 +161,17 @@ class DDPGAgent(OffPolicyAgent):
         except Exception as e:
             warnings.warn(f"Failed to save models: {e}")
 
-    def load_models(self, path: str, strict: bool = True):
+    def load_models(self, path: str=None, strict: bool=True):
         """
         Load model and optimizer parameters.
         Args:
             path (str): Directory where models were saved.
             strict (bool): Whether to enforce strict loading.
         """
+        path = path if path is not None else self.load_path
+        if path is None:
+            warnings.warn("⚠️ No load path specified for loading models.")
+            return
         try:
             self.actor.load_state_dict(torch.load(os.path.join(path, "actor.pt"), map_location=self.device), strict=strict)
             self.critic.load_state_dict(torch.load(os.path.join(path, "critic.pt"), map_location=self.device), strict=strict)

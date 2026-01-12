@@ -8,7 +8,7 @@ import time
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 from edge_drl_student.utils.utils import ResetReason
 from edge_drl_student.common.logger import Logger
 
@@ -35,10 +35,10 @@ class ResetManager:
         │    │  - Manages reset state                 │   │
         │    └──────────────┬─────────────────────────┘   │
         │                   │                             │
-        │    ┌──────────────▼─────────────────────────┐   │
-        │    │  Service Client: /edge/reset/coordinator│  │
-        │    │  - Forwards to Reset Coordinator       │   │
-        │    └──────────────┬─────────────────────────┘   │
+        │    ┌──────────────▼───────────────────────── ┐  │
+        │    │ Service Client: /edge/reset/coordinator │  │
+        │    │  - Forwards to Reset Coordinator        │  │
+        │    └──────────────┬───────────────────────── ┘  │
         └───────────────────┼─────────────────────────────┘
                             │ call /edge/reset/coordinator
                             ▼
@@ -95,17 +95,10 @@ class ResetManager:
         self.coordinator_service_name: str = coordinator_service_name
         
         # ========== Service Server (Receive all reset requests) ==========
-        self.reset_server = node.create_service(
-            Trigger,
-            reset_service_name,
-            self._reset_service_callback
-        )
+        node.create_service(Trigger, reset_service_name, self._reset_service_callback)
         
         # ========== Service Client (Call Reset Coordinator) ==========
-        self.coordinator_client = node.create_client(
-            Trigger,
-            coordinator_service_name
-        )
+        self.coordinator_client = node.create_client(Trigger, coordinator_service_name)
         
         # Statistics
         self.reset_count: int = 0
@@ -113,7 +106,7 @@ class ResetManager:
         self.reset_failure_count: int = 0
         self.is_resetting: bool = False
         
-        # ⭐ Reset reason statistics (using Enum)
+        # Reset reason statistics (using Enum)
         self.reset_reasons: Dict[ResetReason, int] = {
             reason: 0 for reason in ResetReason
         }
@@ -134,7 +127,6 @@ class ResetManager:
         )
     
     # ==================== Service Server Callback ====================
-    
     def _reset_service_callback(
         self,
         request: Trigger.Request,
@@ -169,7 +161,6 @@ class ResetManager:
         return response
     
     # ==================== Internal Reset Methods ====================
-    
     def call_reset_service(
         self, 
         reason: 'ResetReason | str' = ResetReason.UNKNOWN
@@ -212,13 +203,13 @@ class ResetManager:
         """
         if self.is_resetting:
             warning_msg = "Reset already in progress, skipping..."
-            self.node.get_logger().warn(f'⚠️  {warning_msg}')
+            self.node.get_logger().warning(f'⚠️  {warning_msg}')
             return False, warning_msg
         
         self.is_resetting = True
         self.reset_count += 1
         
-        # ⭐ Update reason statistics (using enum as key)
+        # Update reason statistics (using enum as key)
         self.reset_reasons[reason] += 1
         
         self.node.get_logger().info(
@@ -240,7 +231,9 @@ class ResetManager:
             self.node.get_logger().error(f'❌ {error_msg}')
             self.reset_failure_count += 1
             self.is_resetting = False
-            self._log_reset_failure(reason)
+
+            elapsed_time: float = time.time() - reset_start
+            self._log_reset_result(success=False, reason=reason, elapsed_time=elapsed_time)
             return False, error_msg
         
         # Create and send request
@@ -261,7 +254,8 @@ class ResetManager:
                     error_msg = f'Reset Coordinator timeout after {elapsed:.2f}s'
                     self.node.get_logger().error(f'❌ {error_msg}')
                     self.reset_failure_count += 1
-                    self._log_reset_failure(reason)
+                    elapsed_time: float = time.time() - reset_start
+                    self._log_reset_result(success=False, reason=reason, elapsed_time=elapsed_time)
                     self.is_resetting = False
                     return False, error_msg
                 
@@ -283,10 +277,11 @@ class ResetManager:
                 error_msg = 'Reset Coordinator returned None response'
                 self.node.get_logger().error(f'❌ {error_msg}')
                 self.reset_failure_count += 1
-                self._log_reset_failure(reason)
+                self._log_reset_result(success=False, reason=reason, elapsed_time=elapsed_time)
                 self.is_resetting = False
                 return False, error_msg
             
+            # Handle success/failure
             if response.success:
                 self.reset_success_count += 1
                 success_rate = self.reset_success_count / self.reset_count * 100
@@ -301,7 +296,7 @@ class ResetManager:
                     f"   Success Rate: {self.reset_success_count}/{self.reset_count} ({success_rate:.1f}%)\n"
                     f"{'='*70}\n"
                 )
-                self._log_reset_success(elapsed_time, reason)
+                self._log_reset_result(success=True, reason=reason, elapsed_time=elapsed_time)
                 self.is_resetting = False
                 return True, response.message
             else:
@@ -318,15 +313,15 @@ class ResetManager:
                     f"   Success Rate: {self.reset_success_count}/{self.reset_count} ({success_rate:.1f}%)\n"
                     f"{'='*70}\n"
                 )
-                self._log_reset_failure(reason)
+                self._log_reset_result(success=False, reason=reason, elapsed_time=elapsed_time)
                 self.is_resetting = False
                 return False, response.message
                 
         except Exception as e:
             error_msg = f'Exception during Reset Coordinator call: {type(e).__name__}: {str(e)}'
             self.node.get_logger().error(f'❌ {error_msg}')
-            self.reset_failure_count += 1
-            self._log_reset_failure(reason)
+
+            self._log_reset_result(success=False, reason=reason, elapsed_time=elapsed_time)
             self.is_resetting = False
             
             # Print traceback
@@ -338,42 +333,48 @@ class ResetManager:
             
             return False, error_msg
     
-    # ==================== Logging ====================
-    
-    def _log_reset_success(self, elapsed_time: float, reason: ResetReason) -> None:
-        """Log successful reset statistics"""
-        self.logger.writer.add_scalar('Reset/success', 1, self.reset_count)
-        self.logger.writer.add_scalar('Reset/time', elapsed_time, self.reset_count)
-        self.logger.writer.add_scalar(f'Reset/reason_{reason.name.lower()}', 1, self.reset_count)
+    # ====================  Logging  ====================
+    def _log_reset_result(
+        self, 
+        success: bool, 
+        reason: ResetReason,
+        elapsed_time: Optional[float] = None
+    ) -> None:
+        """
+        Log reset result (success or failure)
         
-        success_rate: float = (
-            self.reset_success_count / self.reset_count 
-            if self.reset_count > 0 else 0.0
-        )
+        Args:
+            success: Whether reset was successful
+            reason: Reset reason (ResetReason enum)
+            elapsed_time: Time taken for reset (only for successful resets)
+        
+        Example:
+            >>> # Log success
+            >>> self._log_reset_result(True, ResetReason.EPISODE_DONE, elapsed_time=1.5)
+            >>> 
+            >>> # Log failure
+            >>> self._log_reset_result(False, ResetReason.FALL_DETECTED)
+        """
+        # Log success/failure
+        self.logger.writer.add_scalar('Reset/success', 1 if success else 0, self.reset_count)
+        
+        # Log elapsed time
+        if elapsed_time is not None:
+            self.logger.writer.add_scalar('Reset/time', elapsed_time, self.reset_count)
+        
+        # Log reason
+        # self.logger.writer.add_scalar(f'Reset/reason_{reason.name.lower()}', 1, self.reset_count)
+        
+        # Calculate and log rates
+        success_rate = self.reset_success_count / self.reset_count if self.reset_count > 0 else 0.0
+
         self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
         
         # Log reason counts
         for r, count in self.reset_reasons.items():
-            self.logger.writer.add_scalar(f'Reset/count_{r.name.lower()}', count, self.reset_count)
-    
-    def _log_reset_failure(self, reason: ResetReason) -> None:
-        """Log failed reset statistics"""
-        self.logger.writer.add_scalar('Reset/success', 0, self.reset_count)
-        
-        success_rate: float = (
-            self.reset_success_count / self.reset_count 
-            if self.reset_count > 0 else 0.0
-        )
-        failure_rate: float = (
-            self.reset_failure_count / self.reset_count 
-            if self.reset_count > 0 else 0.0
-        )
-        
-        self.logger.writer.add_scalar('Reset/success_rate', success_rate, self.reset_count)
-        self.logger.writer.add_scalar('Reset/failure_rate', failure_rate, self.reset_count)
+            self.logger.writer.add_scalar(f'Reset/count/{r.name.lower()}', count, self.reset_count)
     
     # ==================== Statistics ====================
-    
     def get_statistics(self) -> Dict[str, any]:
         """
         Get reset statistics
@@ -429,9 +430,7 @@ class ResetManager:
         self.reset_failure_count = 0
         
         # ⭐ Reset all enum-based counters
-        self.reset_reasons = {
-            reason: 0 for reason in ResetReason
-        }
+        self.reset_reasons = {reason: 0 for reason in ResetReason}
         
         self.node.get_logger().info("📊 Reset statistics cleared")
     

@@ -1,143 +1,80 @@
 #!/usr/bin/env python3
-"""
-Distributed Agent Implementation with Observation & Reward Normalization
-"""
 
 import torch
 import time
 import numpy as np
 from rclpy.node import Node
 from dataclasses import dataclass
-from typing import Union, Tuple, Dict, Any, Optional
+from typing import List, Union, Tuple, Dict, Any, Optional
 
 from std_msgs.msg import Bool
-from edge_msgs.msg import Transition, Vec12Msg, EdgeAction
+from std_srvs.srv import Trigger
+from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward
+
 from edge_drl_student.common.logger import Logger
 from edge_drl_student.utils.utils import ActionMode, ResetReason
 from edge_drl_student.common.reset_manager import ResetManager
 from edge_drl_student.common.episode_handler import EpisodeManager
+from edge_drl_student.processor.vision_processor import VisionProcessor
+from edge_drl_student.common.normalizer import EmpiricalNormalizer 
+from edge_drl_student.common.normalizer import RunningMeanStdNormalizer
 from edge_drl_student.agents.distributed.ddpg_actor_learner import DDPGActorLearner
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
-from edge_drl_student.processor.vision_processor import VisionProcessor
-from edge_drl_student.common.normalizer import EmpiricalNormalizer  # ⭐ Import normalizer
 
 
-# ==================== Configuration Classes ====================
+RESIDUAL_GAIN = torch.tensor([
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 150.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    ]) * -0.1
 
-@dataclass
-class TopicConfig:
-    """ROS2 Topic Configuration"""
-    transition: str = 'transition'
-    tracking_error: str = 'tracking_error_stu'
-    action: str = 'drl_student_action'
-    learned_action: str = 'drl_student_learned_action'
-    fall_detection: str = '/edge/is_fall'
-
-
-@dataclass
-class LoopConfig:
-    """Loop Frequency Configuration"""
-    action_frequency: float = 10.0   # Hz
-    learning_frequency: float = 2.0  # Hz
-
-
-@dataclass
-class TrainingConfig:
-    """Training Configuration"""
-    batch_size: int = 512
-    save_interval: int = 500
-    sync_interval: int = 5
-    log_interval: int = 100
-    model_save_path: str = './models'
-
-
-@dataclass
-class ResidualConfig:
-    """Residual Control Configuration"""
-    residual_gain: Optional[torch.Tensor] = None
-    policy_blending_weight: float = 0.3
-    
-    def get_gain(self, act_dim: int, body_state_dim: int, device: str) -> torch.Tensor:
-        """Get residual gain matrix"""
-        if self.residual_gain is None:
-            return torch.eye(act_dim, body_state_dim, device=device)
-        return self.residual_gain.to(device)
-
-
-@dataclass
-class NormalizationConfig:
-    """⭐ Normalization Configuration"""
-    normalize_obs: bool = True
-    normalize_reward: bool = True
-    reward_clip_range: float = 10.0  # Clip normalized reward to [-clip, +clip]
-    obs_clip_range: float = 10.0     # Clip normalized obs to [-clip, +clip]
-
-
-# ==================== Distributed Runner ====================
 
 class DistributedRunner:
     """
-    Distributed DDPG Training System with Normalization
-    
-    Features:
-        ✅ Observation normalization (online mean/std)
-        ✅ Reward normalization (running mean/std per episode)
-        ✅ Composition over inheritance
-        ✅ Clear separation of concerns
-    
-    Example:
-        >>> norm_cfg = NormalizationConfig(
-        ...     normalize_obs=True,
-        ...     normalize_reward=True,
-        ...     reward_clip_range=10.0
-        ... )
-        >>> runner = DistributedRunner(
-        ...     obs_dim=36,
-        ...     act_dim=6,
-        ...     normalization_config=norm_cfg,
-        ...     ...
-        ... )
+    Distributed Runner for interacting with the environment and learning
     """
     
     def __init__(
         self,
+        node: Node,
+        logger: Logger,
         obs_dim: int,
         act_dim: int,
         body_state_dim: int,
         replay_buffer: Union[DualReplayBuffer, CognitiveReplayBuffer],
         action_bound: Union[Tuple[float, float], Tuple[torch.Tensor, torch.Tensor]],
-        node: Node,
-        logger: Logger,
-        device: str = 'cpu',
+        reset_manager: Optional[ResetManager],
+        episode_manager: Optional[EpisodeManager],
+        vision_processor: Optional[VisionProcessor],
+
+        transition_topic: str = 'transition',
+        action_topic: str = 'drl_student_action',
+        tracking_error_topic: str = 'tracking_error_stu',
+        learned_action_topic: str = 'drl_student_learned_action',
+        fall_detection_topic: str = '/edge/is_fall',
+        manual_reset_service: str = '/edge/manual_reset',
+
+        batch_size: int = 512,
+        log_interval: int = 100,
+        sync_interval: int = 5,
+        save_interval: int = 500,
         
-        # Configuration classes
-        topic_config: Optional[TopicConfig] = None,
-        loop_config: Optional[LoopConfig] = None,
-        training_config: Optional[TrainingConfig] = None,
-        residual_config: Optional[ResidualConfig] = None,
-        normalization_config: Optional[NormalizationConfig] = None,  # ⭐ New
+        policy_blending_weight: float = 0.3,
+        action_frequency: float = 10.0,   # Hz
+        learning_frequency: float = 2.0,  # Hz
         
-        # Components
-        vision_processor: Optional[VisionProcessor] = None,
-        episode_manager: Optional[EpisodeManager] = None,
-        reset_manager: Optional[ResetManager] = None,
-        
-        # Options
+        normalize_obs: bool = True,
+        normalize_reward: bool = True,
+
         auto_reset_on_fall: bool = True,
-        
-        # Agent hyperparameters
+        device: str = 'cpu',
         **agent_kwargs
     ):
-        """
-        Initialize Distributed Runner with Normalization
         
-        Args:
-            normalization_config: Normalization configuration
-            ... (other args same as before)
-        """
-        
-        # Store node and logger
         self.node = node
         self.logger = logger
         
@@ -147,17 +84,21 @@ class DistributedRunner:
         self.body_state_dim = body_state_dim
         self.device = device
         
-        # Use default configs if not provided
-        self.topic_cfg = topic_config or TopicConfig()
-        self.loop_cfg = loop_config or LoopConfig()
-        self.train_cfg = training_config or TrainingConfig()
-        self.residual_cfg = residual_config or ResidualConfig()
-        self.norm_cfg = normalization_config or NormalizationConfig()  # ⭐ New
+        self.batch_size = batch_size
         
-        from edge_drl_student.common.normalizer import RunningMeanStdNormalizer
-
-        # ⭐ Create Normalizers
-        if self.norm_cfg.normalize_obs:
+        self.action_frequency = action_frequency
+        self.learning_frequency = learning_frequency
+        self.policy_blending_weight = policy_blending_weight
+        self.residual_gain = RESIDUAL_GAIN.to(device)
+        
+        self.log_interval = log_interval
+        self.sync_interval = sync_interval
+        self.save_interval = save_interval
+        
+        self.normalize_obs = normalize_obs
+        self.normalize_reward = normalize_reward
+        # Create Normalizers
+        if normalize_obs:
             self.obs_normalizer = RunningMeanStdNormalizer(
                 shape=(obs_dim,),
                 device=device
@@ -169,9 +110,9 @@ class DistributedRunner:
             self.obs_normalizer = None
             self.node.get_logger().info("⏸️  Observation normalization disabled")
 
-        if self.norm_cfg.normalize_reward:
+        if normalize_reward:
             self.reward_normalizer = RunningMeanStdNormalizer(
-                shape=(1,),  # 或者 shape=() 如果是标量
+                shape=(1,), 
                 device=device
             )
             self.node.get_logger().info(
@@ -188,8 +129,8 @@ class DistributedRunner:
             act_dim=act_dim,
             replay_buffer=replay_buffer,
             action_bound=action_bound,
+            sync_interval=sync_interval,
             device=device,
-            sync_interval=self.train_cfg.sync_interval,
             **agent_kwargs
         )
         
@@ -199,11 +140,6 @@ class DistributedRunner:
         self.episode_manager = episode_manager
         self.reset_manager = reset_manager
         self.auto_reset_on_fall = auto_reset_on_fall
-        
-        # Setup residual control
-        self.residual_gain = self.residual_cfg.get_gain(act_dim, body_state_dim, device)
-        self.node.get_logger().info(f"Residual Gain:\n{self.residual_gain}")
-        self.policy_blending_weight = self.residual_cfg.policy_blending_weight
         
         # Tracking error state
         self.tracking_error_ = Vec12Msg(data=[0.0] * self.body_state_dim)
@@ -225,37 +161,19 @@ class DistributedRunner:
         self.episode_rewards = []
         
         # ========== ROS2 Publishers ==========
-        self.action_pub = self.node.create_publisher(
-            EdgeAction, 
-            self.topic_cfg.action, 
-            10
-        )
-        self.learned_action_pub = self.node.create_publisher(
-            EdgeAction, 
-            self.topic_cfg.learned_action, 
-            10
-        )
+        self.action_pub = self.node.create_publisher(EdgeAction, action_topic, 10)
+        self.learned_action_pub = self.node.create_publisher(EdgeAction, learned_action_topic, 10)
         
         # ========== ROS2 Subscribers ==========
-        self.transition_sub = self.node.create_subscription(
-            Transition,
-            self.topic_cfg.transition,
-            self.transition_callback,
-            10
-        )
+        self.node.create_subscription(Transition, transition_topic, self.transition_callback, 10)
+        self.node.create_subscription(Vec12Msg,tracking_error_topic, self.tracking_error_callback, 10)
+        self.node.create_subscription(Bool, fall_detection_topic, self.fall_detection_callback, 10)
         
-        self.tracking_error_sub = self.node.create_subscription(
-            Vec12Msg,
-            self.topic_cfg.tracking_error,
-            self.tracking_error_callback,
-            10
-        )
-        
-        self.fall_detection_sub = self.node.create_subscription(
-            Bool,
-            self.topic_cfg.fall_detection,
-            self.fall_detection_callback,
-            10
+        # ========== ROS2 Services ==========
+        self.node.create_service(Trigger, manual_reset_service, self.manual_reset_callback)
+        self.node.get_logger().info(
+            f"✅ Manual reset service created: {manual_reset_service}\n"
+            f"   Usage: ros2 service call {manual_reset_service} std_srvs/srv/Trigger"
         )
         
         # ========== ROS2 Timers (not started yet) ==========
@@ -265,30 +183,22 @@ class DistributedRunner:
         # Log initialization
         self._log_initialization()
     
-    # ==================== Loop Control ====================
     
     def start(self):
         """Start acting and learning loops"""
         if self.action_timer is not None or self.learning_timer is not None:
-            print("⚠️ Loops already started")
+            self.node.get_logger().info("⚠️ Loops already started")
             return
         
-        self.action_timer = self.node.create_timer(
-            1.0 / self.loop_cfg.action_frequency,
-            self.action_loop
-        )
+        self.action_timer = self.node.create_timer(1.0 / self.action_frequency, self.action_loop)
+        self.learning_timer = self.node.create_timer(1.0 / self.learning_frequency, self.learning_loop)
         
-        self.learning_timer = self.node.create_timer(
-            1.0 / self.loop_cfg.learning_frequency,
-            self.learning_loop
-        )
-        
-        print(
+        self.node.get_logger().info(
             f"\n{'='*70}\n"
             f"🚀 Loops started\n"
             f"{'='*70}\n"
-            f"   Action Loop:   {self.loop_cfg.action_frequency}Hz\n"
-            f"   Learning Loop: {self.loop_cfg.learning_frequency}Hz\n"
+            f"   Action Loop:   {self.action_frequency}Hz\n"
+            f"   Learning Loop: {self.learning_frequency}Hz\n"
             f"{'='*70}"
         )
     
@@ -302,10 +212,9 @@ class DistributedRunner:
             self.learning_timer.cancel()
             self.learning_timer = None
         
-        print("🛑 Loops stopped")
+        self.node.get_logger().info("🛑 Loops stopped")
     
     # ==================== ROS2 Callbacks ====================
-    
     def tracking_error_callback(self, msg: Vec12Msg):
         """Tracking error callback"""
         self.tracking_error_ = msg
@@ -327,6 +236,32 @@ class DistributedRunner:
             self.transition_count
         )
     
+    def manual_reset_callback(self, request: Trigger.Request, response: Trigger.Response):
+        """
+        Manual reset service callback
+        
+        Usage:
+            ros2 service call /edge/manual_reset std_srvs/srv/Trigger
+        """
+        self.node.get_logger().info('🔄 Manual reset triggered by service call')
+        
+        if self.reset_manager.is_resetting:
+            response.success = False
+            response.message = 'Reset already in progress, please wait'
+            return response
+        
+        # Handle episode done with MANUAL reason 
+        self._handle_episode_done(success=False, reason=ResetReason.MANUAL)
+        
+        response.success = True
+        response.message = (
+            f'Manual reset successful. '
+            f'Episode #{self.episode_manager.episode_count}.'
+        )
+        
+        return response
+
+    
     def fall_detection_callback(self, msg: Bool) -> None:
         """Fall detection callback with rising edge detection"""
         is_fall: bool = msg.data
@@ -335,29 +270,29 @@ class DistributedRunner:
         if is_fall and not self.last_fall_state:
             self.fall_count += 1
             
-            print(
+            self.node.get_logger().info(
                 f"\n{'='*70}\n"
                 f"⚠️  FALL DETECTED #{self.fall_count}\n"
                 f"{'='*70}"
             )
             
-            self.logger.writer.add_scalar('Fall/total_count', self.fall_count, self.transition_count)
-            
+            # self.logger.writer.add_scalar('Fall/total_count', self.fall_count, self.transition_count)
+
             if self.auto_reset_on_fall:
-                print('🔄 Auto reset triggered by fall detection')
+                self.node.get_logger().info('🔄 Auto reset triggered by fall detection')
                 
                 # ⭐ Handle episode done with FALL_DETECTED reason
-                self._handle_episode_done(reason=ResetReason.FALL_DETECTED)
+                self._handle_episode_done(success=False, reason=ResetReason.FALL_DETECTED)
                 
                 # Update fall state
                 self.last_fall_state = False
                 self.fall_reset_time = time.time()
             else:
-                print('⏸️  Auto reset on fall is disabled')
+                self.node.get_logger().info('⏸️  Auto reset on fall is disabled')
                 self.last_fall_state = is_fall
         
         elif not is_fall and self.last_fall_state:
-            print("✅ Robot recovered from fall state")
+            self.node.get_logger().info("✅ Robot recovered from fall state")
             self.last_fall_state = False
         
         else:
@@ -368,15 +303,17 @@ class DistributedRunner:
     def transition_callback(self, msg: Transition):
         """Transition callback - collect experiences with normalization"""
         if self.reset_manager.is_resetting:
-            print('⏸️  Skipping transition during reset')
+            self.node.get_logger().info('⏸️  Skipping transition during reset')
             return
         
         # Update episode statistics
-        reward_components = {
-            'obstacle': msg.reward.obstacle_reward,
-            'goal_distance': msg.reward.goal_distance_reward,
-            'body_state': msg.reward.body_state_reward
-        }
+        # reward_components = {
+        #     'obstacle': msg.reward.obstacle_reward,
+        #     'goal_distance': msg.reward.goal_distance_reward,
+        #     'body_state': msg.reward.body_state_reward
+        # }
+        rew_comp: List[EdgeReward] = msg.reward_components
+        reward_components = {c.name: c.value for c in rew_comp}
         
         # ⭐ Update episode with new step and get total reward
         stepwise_total_reward = sum(reward_components.values())
@@ -435,13 +372,13 @@ class DistributedRunner:
         if action_mode == ActionMode.STUDENT:
             self.replay_buffer.add_transition(t, action_mode=ActionMode.STUDENT)
             if not self.replay_buffer.stu_buf.is_ready:
-                print(f"[Transition] Added transition to student buffer. Current size: {self.replay_buffer.stu_buf_size}")
+                self.node.get_logger().info(f"[Transition] Added transition to student buffer. Current size: {self.replay_buffer.stu_buf_size}")
             
         # Add transition to the teaching-to-learn buffer
         elif action_mode == ActionMode.TEACHER:
             self.replay_buffer.add_transition(t, action_mode=ActionMode.TEACHER)
             if not self.replay_buffer.tea_buf.is_ready:
-                print(f"[Transition] Added transition to teacher buffer. Current size: {self.replay_buffer.tea_buf_size}")
+                self.node.get_logger().info(f"[Transition] Added transition to teacher buffer. Current size: {self.replay_buffer.tea_buf_size}")
         
         else:
             self.node.get_logger().error(f'Unknown action mode: {msg.action_mode}')
@@ -462,9 +399,9 @@ class DistributedRunner:
                 ResetReason.TIMEOUT if self.episode_manager.is_episode_done()
                 else ResetReason.EPISODE_DONE
             )
-            self._handle_episode_done(reason=reason)
+            success = True if msg.done and reason == ResetReason.EPISODE_DONE else False
+            self._handle_episode_done(success=success, reason=reason)
 
-    
     # ==================== Action Loop ====================
     def compute_output_action(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -548,19 +485,18 @@ class DistributedRunner:
         self.logger.writer.add_scalar('Perf/action_generation_ms', self.action_time * 1000, self.action_count)
         
         # Warn if slow
-        # expected_time = 1.0 / self.loop_cfg.action_frequency
+        # expected_time = 1.0 / self.action_frequency
         # if self.action_time > expected_time * 1.5:
-        #     print(
+        #     self.node.get_logger().info(
         #         f"⚠️ Slow action generation: {self.action_time*1000:.2f}ms "
         #         f"(expected <{expected_time*1000:.2f}ms)"
         #     )
     
     # ==================== Learning Loop ====================
-    
     def learning_loop(self):
         """Learning loop (low frequency)"""
         if self.reset_manager.is_resetting:
-            print('⏸️  Skipping learning during reset')
+            self.node.get_logger().info('⏸️  Skipping learning during reset')
             return
         
         # Log buffer sizes
@@ -569,14 +505,14 @@ class DistributedRunner:
 
         # Check if buffers are ready
         if not self.replay_buffer.stu_buf.is_ready:
-            print(
+            self.node.get_logger().info(
                 f"Student Buffer not ready. "
                 f"Size: {self.replay_buffer.stu_buf_size}/{self.replay_buffer.stu_buf.prefill_size}"
             )
             return
         
         if not self.replay_buffer.tea_buf.is_ready:
-            print(
+            self.node.get_logger().info(
                 f"Teacher Buffer not ready. "
                 f"Size: {self.replay_buffer.tea_buf_size}/{self.replay_buffer.tea_buf.prefill_size}"
             )
@@ -585,7 +521,7 @@ class DistributedRunner:
         learn_start = time.time()
         
         # ⭐ Update policy using actor_learner (auto sync)
-        losses = self.actor_learner.update(batch_size=self.train_cfg.batch_size)
+        losses = self.actor_learner.update(batch_size=self.batch_size)
         
         # Update statistics
         self.total_actor_loss += losses['actor_loss']
@@ -603,7 +539,7 @@ class DistributedRunner:
         self._log_update_metrics(losses)
         
         # Save models periodically
-        if self.actor_learner.update_count % self.train_cfg.save_interval == 0:
+        if self.actor_learner.update_count % self.save_interval == 0:
             self.save_checkpoint()
     
     # ==================== Model Management ====================
@@ -611,7 +547,7 @@ class DistributedRunner:
     def save_checkpoint(self):
         """Save model checkpoint including normalizers"""
         import os
-        save_path = f"{self.train_cfg.model_save_path}_{self.actor_learner.update_count}"
+        save_path = f"{self.model_save_path}_{self.actor_learner.update_count}"
         os.makedirs(save_path, exist_ok=True)
         
         # Save actor-learner models
@@ -635,20 +571,20 @@ class DistributedRunner:
     def save_final_checkpoint(self):
         """Save final model checkpoint"""
         import os
-        save_path = f"{self.train_cfg.model_save_path}_final"
+        save_path = f"{self.model_save_path}_final"
         os.makedirs(save_path, exist_ok=True)
         
         # Save actor-learner models
         self.actor_learner.save_models(save_path)
         
-        # ⭐ Save normalizers
-        if self.obs_normalizer is not None:
+        # Save normalizers
+        if self.obs_normalizer is not None and self.normalize_obs:
             torch.save(
                 self.obs_normalizer.state_dict(),
                 os.path.join(save_path, "obs_normalizer.pt")
             )
         
-        if self.reward_normalizer is not None:
+        if self.reward_normalizer is not None and self.normalize_reward:
             torch.save(
                 self.reward_normalizer.state_dict(),
                 os.path.join(save_path, "reward_normalizer.pt")
@@ -678,7 +614,7 @@ class DistributedRunner:
     
     # ==================== Episode Management ====================
     
-    def _handle_episode_done(self, reason: ResetReason = ResetReason.EPISODE_DONE):
+    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.EPISODE_DONE):
         """
         Handle end of episode: log stats, update normalizers, reset environment
         
@@ -687,10 +623,11 @@ class DistributedRunner:
         """
         
         # ========== Step 1: Log Episode Statistics ==========
-        stats, activation_ratio = self.episode_manager.log_episode_end()
+        stats = self.episode_manager.log_episode_end(success=success, reason=reason)
+        self.episode_manager.reset_episode()    # Reset episode state
         
         # ========== Step 2: Update Reward Normalizer ==========
-        if self.reward_normalizer is not None and self.norm_cfg.normalize_reward:
+        if self.reward_normalizer is not None and self.normalize_reward:
             if len(self.episode_rewards) > 0:
                 episode_rewards_tensor = torch.tensor(
                     self.episode_rewards,
@@ -700,11 +637,11 @@ class DistributedRunner:
                 
                 # Update normalizer with episode rewards
                 for reward in episode_rewards_tensor:
-                    self.reward_normalizer.update('reward', reward.unsqueeze(0))
+                    self.reward_normalizer.update(reward.unsqueeze(0))
                 
                 # Log normalization stats
-                reward_mean = self.reward_normalizer.get_mean('reward').item()
-                reward_std = self.reward_normalizer.get_std('reward').item()
+                reward_mean = self.reward_normalizer.get_stats()['mean']
+                reward_std = self.reward_normalizer.get_stats()['std']
                 
                 self.logger.writer.add_scalar(
                     'Normalization/reward_mean',
@@ -736,7 +673,7 @@ class DistributedRunner:
             f"   Reason:           {reason.value}\n"
             f"   Total Reward:     {stats['reward']:.2f}\n"
             f"   Episode Length:   {stats['length']}\n"
-            f"   Activation Ratio: {activation_ratio:.2%}\n"
+            f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
             f"{'='*70}"
         )
         
@@ -776,13 +713,13 @@ class DistributedRunner:
         return {
             'action_time_ms': self.action_time * 1000,
             'learn_time_ms': self.learn_time * 1000,
-            'action_frequency': self.loop_cfg.action_frequency,
-            'learning_frequency': self.loop_cfg.learning_frequency,
+            'action_frequency': self.action_frequency,
+            'learning_frequency': self.learning_frequency,
         }
     
     def get_network_info(self) -> Dict[str, Any]:
         """Get network information"""
-        def count_parameters(model):
+        def count_parameters(model: torch.nn.Module) -> int:
             return sum(p.numel() for p in model.parameters() if p.requires_grad)
         
         return {
@@ -814,7 +751,7 @@ class DistributedRunner:
         """Get sync statistics"""
         return self.actor_learner.get_sync_stats()
     
-    def get_normalization_stats(self) -> dict:
+    def get_normalization_stats(self) -> Dict[str, Any]:
         """
         Get current normalization statistics
         
@@ -874,10 +811,9 @@ class DistributedRunner:
         # ========== Training Config ==========
         self.node.get_logger().info("\n🎓 Training Configuration:")
         self.node.get_logger().info(
-            f"   Batch Size:           {self.train_cfg.batch_size}\n"
-            # f"   Updates per Step:     {self.train_cfg.updates_per_step}\n"
-            f"   Save Interval:        {self.train_cfg.save_interval}\n"
-            f"   Log Interval:         {self.train_cfg.log_interval}"
+            f"   Batch Size:           {self.batch_size}\n"
+            f"   Save Interval:        {self.save_interval}\n"
+            f"   Log Interval:         {self.log_interval}"
         )
         
         # ========== Actor-Learner Config ==========
@@ -890,8 +826,8 @@ class DistributedRunner:
         # ========== Normalization ==========
         self.node.get_logger().info("\n🔢 Normalization:")
         self.node.get_logger().info(
-            f"   Obs Normalization:    {'Enabled' if self.norm_cfg.normalize_obs else 'Disabled'}\n"
-            f"   Reward Normalization: {'Enabled' if self.norm_cfg.normalize_reward else 'Disabled'}"
+            f"   Obs Normalization:    {'Enabled' if self.normalize_obs else 'Disabled'}\n"
+            f"   Reward Normalization: {'Enabled' if self.normalize_reward else 'Disabled'}"
         )
         
         # Get current normalization statistics
@@ -919,17 +855,6 @@ class DistributedRunner:
                 f"count={reward_stats['count']:.0f}"
             )
         
-        # ========== Residual Policy ==========
-        # if self.residual_cfg.use_residual:
-        #     self.node.get_logger().info("\n🎯 Residual Policy:")
-        #     self.node.get_logger().info(
-        #         f"   Enabled:              True\n"
-        #         f"   Base Policy Type:     {self.residual_cfg.base_policy_type}\n"
-        #         f"   Residual Scale:       {self.residual_cfg.residual_scale}"
-        #     )
-        # else:
-        #     self.node.get_logger().info("\n🎯 Residual Policy:      Disabled")
-        
         # ========== Agent Info ==========
         self.node.get_logger().info("\n🤖 Agent Configuration:")
         agent_info = self.actor_learner.get_agent_info()
@@ -937,7 +862,7 @@ class DistributedRunner:
             self.node.get_logger().info(f"   {key}: {value}")
         
         # ========== Buffer Info ==========
-        self.node.get_logger().info("\n💾 Replay Buffer:")
+        # self.node.get_logger().info("\n💾 Replay Buffer:")
         # self.node.get_logger().info(
         #     f"   Type:                 {type(self.replay_buffer).__name__}\n"
         #     # f"   Capacity:             {self.replay_buffer.capacity}\n"
@@ -958,7 +883,6 @@ class DistributedRunner:
         self.node.get_logger().info("\n" + "="*70 + "\n")
 
 
-    
     def _log_stepwise_stats(self, reward_components: Dict[str, float]):
         """Log stepwise statistics"""
         step = self.episode_manager.current_episode_length
@@ -973,15 +897,15 @@ class DistributedRunner:
     
     def _log_timestep_stats(self, reward_components: Dict[str, float]):
         """Log timestep statistics"""
-        timestep = self.episode_manager.global_steps
+        totalstep = self.episode_manager.total_steps
         timestep_total_reward = sum(reward_components.values())
         
-        self.logger.writer.add_scalar('Timestep/total_reward', timestep_total_reward, timestep)
-        self.logger.writer.add_scalar('Timestep/obstacle_reward', reward_components['obstacle'], timestep)
-        self.logger.writer.add_scalar('Timestep/goal_distance_reward', reward_components['goal_distance'], timestep)
-        self.logger.writer.add_scalar('Timestep/body_state_reward', reward_components['body_state'], timestep)
-        self.logger.writer.add_scalar('Timestep/student_action_count', self.episode_manager.stu_action_count, timestep)
-        self.logger.writer.add_scalar('Timestep/teacher_action_count', self.episode_manager.tea_action_count, timestep)
+        self.logger.writer.add_scalar('Timestep/total_reward', timestep_total_reward, totalstep)
+        self.logger.writer.add_scalar('Timestep/obstacle_reward', reward_components['obstacle'], totalstep)
+        self.logger.writer.add_scalar('Timestep/goal_distance_reward', reward_components['goal_distance'], totalstep)
+        self.logger.writer.add_scalar('Timestep/body_state_reward', reward_components['body_state'], totalstep)
+        self.logger.writer.add_scalar('Timestep/student_action_count', self.episode_manager.stu_action_count, totalstep)
+        self.logger.writer.add_scalar('Timestep/teacher_action_count', self.episode_manager.tea_action_count, totalstep)
     
     def _log_update_metrics(self, losses: Dict[str, float]):
         """Log update metrics"""
@@ -993,7 +917,7 @@ class DistributedRunner:
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)
         
         # Log average statistics
-        if update_count % self.train_cfg.log_interval == 0:
+        if update_count % self.log_interval == 0:
             stats = self.get_agent_stats()
             perf_stats = self.get_performance_stats()
             sync_stats = self.get_sync_stats()
@@ -1003,8 +927,6 @@ class DistributedRunner:
             
             self.logger.writer.add_scalar('Loss/avg_actor_loss', stats['avg_actor_loss'], update_count)
             self.logger.writer.add_scalar('Loss/avg_critic_loss', stats['avg_critic_loss'], update_count)
-            self.logger.writer.add_scalar('Reset/total_count', reset_stats['total'], update_count)
-            self.logger.writer.add_scalar('Reset/success_rate', reset_stats['success_rate'], update_count)
             self.logger.writer.add_scalar('Fall/total_count', fall_stats['fall_count'], update_count)
             
             # Console log
@@ -1014,7 +936,7 @@ class DistributedRunner:
             if 'reward_mean' in norm_stats:
                 norm_info += f"   Reward Mean/Std: {norm_stats['reward_mean']:.4f} / {norm_stats['reward_std']:.4f}\n"
             
-            print(
+            self.node.get_logger().info(
                 f"\n{'='*70}\n"
                 f"📊 Training Statistics (Update #{update_count})\n"
                 f"{'='*70}\n"
@@ -1057,7 +979,6 @@ class DistributedRunner:
             )
     
     # ==================== Utility Methods ====================
-    
     def __repr__(self) -> str:
         """String representation"""
         return (
@@ -1066,11 +987,11 @@ class DistributedRunner:
             f"  act_dim={self.act_dim},\n"
             f"  body_state_dim={self.body_state_dim},\n"
             f"  vision_feature_dim={self.obs_dim - self.body_state_dim},\n"
-            f"  action_freq={self.loop_cfg.action_frequency}Hz,\n"
-            f"  learning_freq={self.loop_cfg.learning_frequency}Hz,\n"
-            f"  sync_interval={self.train_cfg.sync_interval},\n"
-            f"  normalize_obs={self.norm_cfg.normalize_obs},\n"
-            f"  normalize_reward={self.norm_cfg.normalize_reward},\n"
+            f"  action_frequency={self.action_frequency}Hz,\n"
+            f"  learning_frequency={self.learning_frequency}Hz,\n"
+            f"  sync_interval={self.sync_interval},\n"
+            f"  normalize_obs={self.normalize_obs},\n"
+            f"  normalize_reward={self.normalize_reward},\n"
             f"  auto_reset_on_fall={self.auto_reset_on_fall},\n"
             f"  device='{self.device}'\n"
             f")"

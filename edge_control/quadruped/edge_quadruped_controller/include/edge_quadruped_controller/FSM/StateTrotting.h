@@ -1,13 +1,13 @@
-#ifndef STATETROTTING_H
-#define STATETROTTING_H
+#pragma once
+
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
+#include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "controller_common/FSM/FSMState.h"
-#include "edge_config/reward_composer.hpp"
 
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
@@ -25,8 +25,15 @@ namespace edge::control::quadruped
     class Estimator;
 }
 
+namespace edge::config
+{
+    class RewardComposer;
+}
+
+
 using namespace edge::control::quadruped;
 using namespace edge::ros_interfaces;
+using namespace edge::config;
 
 class StateTrotting final : public FSMState {
 
@@ -41,7 +48,7 @@ public:
 
     void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
-             edge_msgs::msg::EdgeAction &latest_accel, bool is_teacher_activated_,
+             edge_msgs::msg::EdgeAction &latest_action_, 
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
@@ -71,7 +78,7 @@ private:
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-                 const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance, bool is_goal_reached);
+                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, bool is_goal_reached);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -90,7 +97,8 @@ private:
     bool checkStepOrNot();
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                            Vector12d& tracking_error, Vector12d& robot_state, uint8_t action_mode,
+                            Vector12d& tracking_error, Vector12d& robot_state, 
+                            const edge_msgs::msg::EdgeAction& latest_action,
                             double obstacleAvgDistance, bool is_goal_reached);
 
     std::shared_ptr<Estimator> &estimator_;
@@ -124,11 +132,13 @@ private:
     Vec12 last_tracking_error_tea_;
     Vec12 curr_tracking_error_tea_;
 
-    Vec12 last_tracking_error_stu_;
-    Vec12 curr_tracking_error_stu_;
+    // Vec12 last_tracking_error_stu_;
+    // Vec12 curr_tracking_error_stu_;
 
-    Vec6 last_edge_action_;
-    Vec6 curr_edge_action_;
+    edge_msgs::msg::EdgeAction last_edge_action_;
+    edge_msgs::msg::EdgeAction curr_edge_action_;
+    Vec6 last_edge_accel_;
+    Vec6 curr_edge_accel_;
 
     bool is_teacher_activated_{false};
 
@@ -154,9 +164,11 @@ private:
     //     gain_update_ = true;
     // }
 
-    Vector12d computeState() const;
-    Vector12d computeTrackingError() const;
-    Vector12d computeDRLStudentGoalState() const;
+    Vector12d getRobotState(bool is_global=true) const;
+    Vector12d getTrackingError() const;
+    Vector12d getDRLStudentGoalState() const;
+    std::vector<double> getObservation() const;
+    std::vector<double> getObservationNext() const;
     
     RewardComposer reward_composer_{""};
 
@@ -165,5 +177,3 @@ private:
     bool gain_update_{false};
 };
 
-
-#endif //STATETROTTING_H

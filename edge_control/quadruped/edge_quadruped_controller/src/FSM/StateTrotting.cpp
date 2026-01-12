@@ -43,12 +43,12 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
 
     // Initialize last tracking error and action
     last_tracking_error_tea_.setZero();
-    last_tracking_error_stu_.setZero();
-
-    last_edge_action_.setZero();
+    // last_tracking_error_stu_.setZero();
+    last_edge_accel_.setZero();
+    
     curr_tracking_error_tea_.setZero();
-    curr_tracking_error_stu_.setZero();
-    curr_edge_action_.setZero();
+    // curr_tracking_error_stu_.setZero();
+    curr_edge_accel_.setZero();
 
 }
 
@@ -66,7 +66,7 @@ void StateTrotting::enter()
 }
 
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
-                        edge_msgs::msg::EdgeAction& latest_accel_, bool is_teacher_activated,
+                        edge_msgs::msg::EdgeAction& latest_action_,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
@@ -75,7 +75,6 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         double obstacleAvgDistance, bool is_goal_reached)
 {
     // Update teacher activation status
-    is_teacher_activated_ = is_teacher_activated;
 
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
@@ -110,7 +109,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_accel_, obstacleAvgDistance, is_goal_reached);
+    calcTau(tracking_error_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action_, obstacleAvgDistance, is_goal_reached);
     calcQQd();
     calcGain();
 }
@@ -202,7 +201,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-    const edge_msgs::msg::EdgeAction& latest_accel_, double obstacleAvgDistance, bool is_goal_reached)
+    const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, bool is_goal_reached)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
@@ -211,9 +210,9 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
         // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
-    Vector12d tracking_error_tea = computeTrackingError();
-    Vector12d robot_state = computeState();
-    Vector12d tracking_error_stu = robot_state - computeDRLStudentGoalState();
+    Vector12d tracking_error_tea = getTrackingError();
+    Vector12d robot_state = getRobotState(true);
+    Vector12d tracking_error_stu = robot_state - getDRLStudentGoalState();
     std::cout << "tracking error: ";
     for (int i = 0; i < 12; i++) {
         std::cout << tracking_error_tea[i] << " ";
@@ -221,12 +220,12 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, tracking_error_tea, tracking_error_stu, latest_accel_.action_mode, obstacleAvgDistance, is_goal_reached);
+    pubTransitionTopic(transition_pub, tracking_error_tea, tracking_error_stu, latest_action_, obstacleAvgDistance, is_goal_reached);
 
     // update last action and tracking error
-    last_edge_action_ = EdgeActionMsgToEigen(latest_accel_);
+    last_edge_action_ = latest_action_;
     last_tracking_error_tea_ = tracking_error_tea;   
-    last_tracking_error_stu_ = tracking_error_stu;
+    // last_tracking_error_stu_ = tracking_error_stu;
 
     auto track_msg = EigenToVec12Msg(tracking_error_tea);
     tracking_error_pub_->publish(track_msg);
@@ -247,7 +246,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
 
     Vec6 accel;
     for (int i = 0; i < 6; i++) {
-        accel(i) = latest_accel_.control_action[i];
+        accel(i) = latest_action_.control_action[i];
     }
     std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
@@ -396,32 +395,35 @@ bool StateTrotting::checkStepOrNot()
 
 // Publish transition topic
 void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                                       Vector12d& tracking_error_tea, Vector12d& tracking_error_stu, uint8_t action_mode,
+                                       Vector12d& tracking_error_tea, Vector12d& tracking_error_stu, 
+                                       const edge_msgs::msg::EdgeAction& latest_action,
                                        double obstacleAvgDistance, bool is_goal_reached)
 {
+    edge::config::RewardFactor reward_factors{
+        {"last_tracking_error", last_tracking_error_tea_},
+        {"current_tracking_error", tracking_error_tea},
+        {"nav_goal", nav_goal_},
+        {"robot_pos", robot_pos_},
+        {"robot_state", tracking_error_stu},
+        {"is_teacher_activated", is_teacher_activated_},
+        {"obstacle_distance_min", obstacleAvgDistance},
+        {"travel_time", 0.5}
+    };
+
     edge_msgs::msg::Transition transition;
     // transition.obs = EigenToVector(last_tracking_error_);
-    transition.obs = EigenToVector(last_tracking_error_stu_);
-    transition.action = EigenToVector(last_edge_action_);
-    transition.reward = reward_composer_.computeTotalReward(
-        last_tracking_error_tea_, 
-        tracking_error_tea,
-        nav_goal_,
-        robot_pos_,
-        tracking_error_stu,
-        is_teacher_activated_,
-        obstacleAvgDistance
-    );
-    // transition.next_obs = EigenToVector(tracking_error);
-    transition.next_obs = EigenToVector(tracking_error_stu);
+    transition.obs = getObservation();
+    transition.action = last_edge_action_;
+    transition.reward_components = reward_composer_.computeTotalReward(reward_factors);
+    transition.next_obs = getObservationNext();
     transition.done = is_goal_reached;
-    transition.action_mode = action_mode;
+
     transition_pub->publish(transition);
     std::cout << "Published to transition topic." << std::endl;
 }
 
 
-Vector12d StateTrotting::computeTrackingError() const
+Vector12d StateTrotting::getTrackingError() const
 {
 
     Vector12d tracking_error = Vector12d::Zero();
@@ -449,16 +451,32 @@ Vector12d StateTrotting::computeTrackingError() const
     return tracking_error;
 }
 
-Vector12d StateTrotting::computeState() const
+
+std::vector<double> StateTrotting::getObservation() const
 {
+    return EigenToVector(last_tracking_error_tea_);   
+}
+
+std::vector<double> StateTrotting::getObservationNext() const
+{
+    return EigenToVector(last_tracking_error_tea_);   
+}
+
+Vector12d StateTrotting::getRobotState(bool is_global/* = true*/) const
+{
+    /**
+    * Get the robot state in either global frame or body frame
+    */
     Vector12d robotState = Vector12d::Zero();
 
-    // Distance to goal
-    double distance = (nav_goal_ - pos_body_.head<2>()).norm();
-    robotState[0] = distance; // Distance to goal
+    // Robot Global Position state (x, y, z)
+    robotState.segment<3>(0) = pos_body_;
 
-    // Robot Position state
-    robotState[2] = pos_body_(2);
+    if (!is_global) {
+        // Convert to body frame (px and py are zero in body frame)
+        robotState[0] = 0.0;
+        robotState[1] = 0.0;
+    }
 
     // Robot Orientation state
     robotState.segment<3>(3) = rotMatToExp(estimator_->getRotation());
@@ -472,7 +490,7 @@ Vector12d StateTrotting::computeState() const
     return robotState;
 }
 
-Vector12d StateTrotting::computeDRLStudentGoalState() const
+Vector12d StateTrotting::getDRLStudentGoalState() const
 {
     Vector12d robotState = Vector12d::Zero();
 

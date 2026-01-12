@@ -210,7 +210,7 @@ namespace edge::control::quadruped
         bool is_goal_reached_ = false;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
-        bool is_teacher_active_ = false;
+
         // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
         // {
         //     latest_accel_ = *msg;
