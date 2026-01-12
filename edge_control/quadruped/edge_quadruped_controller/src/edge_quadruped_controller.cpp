@@ -188,13 +188,21 @@ namespace edge::control::quadruped
             });
 
             // Subscribe to obstacle average distance
-            obstacle_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
+            obstacle_avg_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
                 "/obstacle_avg_distance", 100,
                 [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
             {
                 obstacle_avg_distance_ = msg->data;
                 // std::cout << "Received new obstacle average distance." << std::endl;
                 // std::cout << "obstacle_avg_distance: " << obstacle_avg_distance_ << std::endl;
+            });
+
+            // Subscribe to obstacle minimum distance
+            obstacle_min_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
+                "/obstacle_min_distance", 100,
+                [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
+            {
+                obstacle_min_distance_ = msg->data;
             });
 
             // Subscribe to far_reach_goal_status to update is_goal_reached_
@@ -315,6 +323,7 @@ namespace edge::control::quadruped
                           transition_pub_, 
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
                           obstacle_avg_distance_,
+                          obstacle_min_distance_,
                           is_goal_reached_);
             } else {
                 current_state_->run(time, period);
@@ -327,6 +336,11 @@ namespace edge::control::quadruped
                 next_state_ = getNextState(next_state_name_);
                 RCLCPP_INFO(get_node()->get_logger(), "Switched from %s to %s",
                             current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
+
+                // If switching to trotting state, set last reset time
+                if (auto trot = std::dynamic_pointer_cast<StateTrotting>(next_state_)) {
+                    trot->setLastResetTime(rclcpp::Clock().now());
+                }
             }
         }
         else if (mode_ == FSMMode::CHANGE)

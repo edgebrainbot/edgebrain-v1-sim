@@ -644,6 +644,8 @@ int main(int argc, char** argv)
 
   auto obstacle_avg_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_avg_distance", 50);
 
+  auto obstacle_min_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_min_distance", 50);
+
   nav_msgs::msg::Path path;
 
   #if PLOTPATHSET == 1
@@ -727,6 +729,7 @@ int main(int argc, char** argv)
 
       float obstacleSumDistance = 0.0;   // Cumulative distance to obstacles
       float obstacleAvgDistance = 0.0;   // Average distance to obstacles
+      float obstacleMinDistance = MAX_OBSTACLE_DISTANCE; // Minimum distance to obstacles
 
       pcl::PointXYZI point;
       plannerCloudCrop->clear();
@@ -753,6 +756,9 @@ int main(int argc, char** argv)
 
         // Cumulative obstacle reward based on distance
         obstacleSumDistance += dis;
+        if (dis < obstacleMinDistance) {
+            obstacleMinDistance = dis;
+        }
 
         // Crop points within adjacent range and height limits
         if (dis < adjacentRange && ((point.z > minRelZ && point.z < maxRelZ) || useTerrainAnalysis)) {
@@ -772,10 +778,9 @@ int main(int argc, char** argv)
     //   obstacleReward = -1.0 / obstacleReward;
     //   std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
       obstacle_avg_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleAvgDistance));
-
+      obstacle_min_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleMinDistance));
 
       // TODO: stddev of obstacle distances can be calculated here for more robust reward
-
 
       int boundaryCloudSize = boundaryCloud->points.size();
       std::cout << "Number of boundary points: " << boundaryCloudSize << std::endl;

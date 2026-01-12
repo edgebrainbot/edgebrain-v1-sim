@@ -54,7 +54,7 @@ public:
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-             double obstacleAvgDistance, bool is_goal_reached);
+             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
 
     void exit() override;
 
@@ -62,6 +62,10 @@ public:
     const GaitGenerator& getGaitGenerator() const { return gait_generator_; }
 
     FSMStateName checkChange() override;
+
+    void setLastResetTime(const rclcpp::Time& time) {
+        last_reset_time_ = time;
+    }
 
 private:
 
@@ -78,7 +82,7 @@ private:
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, bool is_goal_reached);
+                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -99,7 +103,7 @@ private:
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                             Vector12d& tracking_error, Vector12d& robot_state, 
                             const edge_msgs::msg::EdgeAction& latest_action,
-                            double obstacleAvgDistance, bool is_goal_reached);
+                            double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
 
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
@@ -139,6 +143,9 @@ private:
     edge_msgs::msg::EdgeAction curr_edge_action_;
     Vec6 last_edge_accel_;
     Vec6 curr_edge_accel_;
+
+    // Reset time
+    rclcpp::Time last_reset_time_;
 
     bool is_teacher_activated_{false};
 

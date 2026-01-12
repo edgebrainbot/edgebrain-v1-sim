@@ -193,7 +193,8 @@ namespace edge::control::quadruped
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
-        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_distance_sub_;
+        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_avg_distance_sub_;
+        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_goal_reached_sub_;
 
         // For reset service
@@ -207,6 +208,7 @@ namespace edge::control::quadruped
         double latest_goal_y_ = 0.0;
 
         double obstacle_avg_distance_ = 0.0;
+        double obstacle_min_distance_ = 0.0;
         bool is_goal_reached_ = false;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
