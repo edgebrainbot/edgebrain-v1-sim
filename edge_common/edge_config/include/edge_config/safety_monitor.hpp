@@ -43,6 +43,10 @@ public:
                         double goal_distance = 0.0);
     bool detectFall(const std::vector<double>& robot_state);
 
+    const std::vector<std::string>& getViolationReasons() const {
+        return violation_reasons_;
+    }
+
 private:
     // ===== Switching Conditions =====
     bool switching_enabled_ = true;

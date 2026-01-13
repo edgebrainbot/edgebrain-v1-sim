@@ -411,6 +411,18 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
 
     auto time_elapsed = (rclcpp::Clock().now() - last_reset_time_).seconds();
 
+    // Check if goal is reached
+    auto dist_to_goal = (nav_goal_ - robot_pos_.head<2>()).norm();
+    double reach_goal_threshold = 0.2;   // reach_goal threshold
+
+    is_goal_reached = is_goal_reached || (dist_to_goal < reach_goal_threshold);
+
+    // Jerk in action
+    auto a1 = EdgeActionMsgToEigen(last_edge_action_);
+    auto a2 = EdgeActionMsgToEigen(latest_action);
+    Vector6d delta_action = a1 - a2;
+
+    // Prepare reward factors
     edge::config::RewardFactor reward_factors{
         {"last_tracking_error", last_tracking_error_tea_},
         {"current_tracking_error", tracking_error_tea},
@@ -420,8 +432,10 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
         {"is_teacher_activated", latest_action.action_mode == 1 ? true : false},
         {"obstacle_distance_avg", obstacleAvgDistance},
         {"obstacle_distance_min", obstacleMinDistance},
-        {"time_elapsed", time_elapsed}
+        {"time_elapsed", time_elapsed},
+        {"delta_action", delta_action}
     };
+
 
     // Create and populate the Transition message
     edge_msgs::msg::Transition transition;
@@ -442,7 +456,6 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
 
 Vector12d StateTrotting::getTrackingError() const
 {
-
     Vector12d tracking_error = Vector12d::Zero();
     
     // Distance to goal
@@ -527,7 +540,7 @@ Vector12d StateTrotting::getDRLStudentGoalState() const
     robotState[1] = nav_goal_(1);
 
     // Robot Position state
-    robotState[2] = 0.35;
+    robotState[2] = 0.325;
 
     // Robot Orientation state
     // robotState.segment<3>(3) = Eigen::Vector3d::Zero();

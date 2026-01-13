@@ -227,7 +227,7 @@ bool SafetyMonitor::detectFall(const std::vector<double>& robot_state)
     double pitch = robot_state[4];   // pitch (index 4)
 
     // Check height drop (critical height threshold)
-    if (height < fall_height_threshold_) {
+    if ((height < fall_height_threshold_) && (height > 1e-6)) {
         is_falling = true;
         fall_reasons_.push_back(
             "height: " + std::to_string(height) + " < " + 

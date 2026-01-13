@@ -22,8 +22,8 @@ class ACTRCognitiveSampler(BaseSampler):
 
     def __init__(self, 
                  replay_buf: SoloReplayBuffer,
-                 obs_weight: float = 0.99,
-                 action_weight: float = 0.01,
+                 obs_weight: float = 0.999,
+                 action_weight: float = 0.001,
                  family_criteria: float = 0.006,
                  family_number: int = 55,
                  memory_decay_factor: float = -0.5,
@@ -101,8 +101,10 @@ class ACTRCognitiveSampler(BaseSampler):
         
         squeezed_obs = torch.sqrt(obs[:,:].square().sum(dim=1))
         squeezed_actions = torch.sqrt(actions[:,:].square().sum(dim=1))
+        
+        print(f"--------------------- ACT-R Sampling Debug Info ---------------------")
         # print(f"squeezed_obs: {squeezed_obs}")
-        #print(f"squeezed_actions: {squeezed_actions}")
+        # print(f"squeezed_actions: {squeezed_actions}")
 
         compacted_tuple = self.obs_weight * squeezed_obs + self.action_weight * squeezed_actions
         # print(f"compacted_item: {compacted_tuple}")
@@ -116,8 +118,8 @@ class ACTRCognitiveSampler(BaseSampler):
         # rewards = torch.softmax(rewards.squeeze(), dim=0)
         
         compacted_tuple *= rewards.squeeze()
-        # print(f"rewards after exp weighting: {rewards.squeeze()}")
-        # print(f"compacted_item after reward weighting: {compacted_tuple}")
+        print(f"rewards after exp weighting: {rewards.squeeze()}")
+        print(f"compacted_item after reward weighting: {compacted_tuple}")
         
         family_ID = (compacted_tuple / self.family_criteria).floor()
         # print(f"family_ID: {family_ID}")

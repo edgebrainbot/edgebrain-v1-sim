@@ -12,11 +12,19 @@ find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
+set(msg_files
   "msg/EdgeAction.msg"
   "msg/Vec12Msg.msg"
   "msg/Transition.msg"
   "msg/EdgeReward.msg"
+)
+set(srv_files
+  "srv/GetSwitchingStats.srv"
+)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  ${srv_files}
   DEPENDENCIES std_msgs
 )
 

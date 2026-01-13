@@ -7,7 +7,6 @@ reward:
   # knee_contact: 5
   # stepping_freq: 0.008
   # com_distance_to_goal_squared: 0.016
-  # jerky_action: -1
   # alive: 10
   # fall_down: 10000
   # body_contact: 100
@@ -17,18 +16,17 @@ reward:
   # orientation_tracking: 80
   # height_tracking: 50
   
-  teacher_activation: 0.1
+  # teacher_activation: 0.1
   # student_activation_reward: 0.1
 
-  time_travel: 0.01
-
+  time_travel: 0.05
   obstacle_min_distance: 0.01
   # obstacle_avg_distance: 0.01
-
   goal_distance: 0.005
 
   # lyapunov: 100
-  body_state: 0.2
+  body_state: 0.5
+  jerky_action: 0.001
 
   # distance_to_wp: 50
   # reach_wp: 100

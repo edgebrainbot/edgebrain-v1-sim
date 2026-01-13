@@ -123,6 +123,6 @@ fall_detection:
   enabled: true
   
   thresholds:
-    height: 0.15      # in meters - critical height drop
-    roll: 0.5         # in radians - critical roll angle
-    pitch: 0.5        # in radians - critical pitch angle
+    height: 0.12      # in meters - critical height drop (below this is a fall)
+    roll: 1.745       # in radians - critical roll angle  (approx 100 degrees)
+    pitch: 1.745      # in radians - critical pitch angle (approx 100 degrees)

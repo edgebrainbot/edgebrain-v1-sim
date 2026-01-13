@@ -111,6 +111,8 @@ bool pathInit = false;
 bool navFwd = true;
 double switchTime = 0;
 
+float minObstacleDist = 100.0;
+
 nav_msgs::msg::Path path;
 rclcpp::Node::SharedPtr nh;
 
@@ -299,6 +301,12 @@ int main(int argc, char** argv)
 
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
+  auto minObstacleSub = nh->create_subscription<std_msgs::msg::Float32>(
+    "/obstacle_min_distance", 5,
+    [](const std_msgs::msg::Float32::ConstSharedPtr msg) {
+      minObstacleDist = msg->data;
+    });
+
   geometry_msgs::msg::TwistStamped cmd_vel;
 //   cmd_vel.header.frame_id = "vehicle";
   cmd_vel.header.frame_id = "base_link";
@@ -426,6 +434,15 @@ int main(int argc, char** argv)
         } else {
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
+
+          // Slow down if minimum distance to obstacle is small (threhold to be determined)
+          double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
+          double safeDistanceThreshold = 0.3; // Placeholder, to be replaced by actual computation
+          if (minObstacleDist < safeDistanceThreshold) {
+            std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
+            cmd_vel.twist.linear.x *= slowDownGain;
+            cmd_vel.twist.linear.y *= slowDownGain;
+          }
         }
         cmd_vel.twist.angular.z = vehicleYawRate;
         
