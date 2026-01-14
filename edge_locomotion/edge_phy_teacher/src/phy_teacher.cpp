@@ -135,6 +135,9 @@ void PhyTeacher::lmiCallback() {
 
     // Prepare and publish action message
     edge_msgs::msg::EdgeAction teacher_action_msg;
+    edge::utils::ActionMode teacher_mode = edge::utils::ActionMode::TEACHER;
+
+    // Compute control gains if teacher is active
     if (teacher_active_) {
         // Compute the action according to the center of the safety patch
         edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
@@ -145,11 +148,11 @@ void PhyTeacher::lmiCallback() {
 
         auto result = kp_term + kd_term;
         teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(result, 
-                                                                        edge::ToMsg(edge::ActionMode::TEACHER));
+                                                                        edge::utils::ToMsg(teacher_mode));
     } else {
         // If teacher is not active, set gains to zero
         teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(edge::ros_interfaces::Vector6d::Zero(),
-                                                                        edge::ToMsg(edge::ActionMode::TEACHER));
+                                                                        edge::utils::ToMsg(teacher_mode));
     }
 
     pub_->publish(teacher_action_msg);

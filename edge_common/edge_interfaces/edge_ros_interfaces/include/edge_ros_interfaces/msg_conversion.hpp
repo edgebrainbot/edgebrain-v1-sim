@@ -86,7 +86,8 @@ inline Eigen::Matrix<double, Rows, Cols> VectorToEigen(const std::vector<double>
  */
 inline edge_msgs::msg::EdgeAction VectorToEdgeActionMsg(const std::vector<double>& data, uint8_t action_mode) {
   edge_msgs::msg::EdgeAction msg;
-  msg.header.stamp = edge::getCurrentROSTime();
+  
+  msg.header.stamp = edge::utils::getCurrentROSTime();
   const size_t n = std::min(msg.control_action.size(), data.size());
   std::copy_n(data.begin(), n, msg.control_action.begin());
   msg.action_mode = action_mode;

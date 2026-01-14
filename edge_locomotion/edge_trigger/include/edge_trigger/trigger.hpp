@@ -11,9 +11,10 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 
 #include "msg_utils.hpp"
-#include "edge_config/safety_monitor.hpp"
-#include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
+#include "edge_msgs/msg/edge_action.hpp"
+#include "edge_msgs/srv/get_switching_stats.hpp"
+#include "edge_config/safety_monitor.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 
@@ -25,34 +26,46 @@ public:
     explicit Trigger(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
+    // Main periodic update loop
+    void updateLoop();
+    bool checkSafety();
+    void updateStatistics(edge::utils::ActionMode new_mode);
+    
+    // Callbacks
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
-    void errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
+    void errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
-    bool checkSafety();
-    void updateLoop();
+    void getStatisticsCallback(
+        const std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Request> request,
+        std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Response> response
+    );
 
     // Cached variables
-    edge::ros_interfaces::Vector12d  last_error_state_;         // last received error state
-    edge::ros_interfaces::Vector12d  last_robot_state_;         // last received robot state
-    edge::ros_interfaces::Vector6d   last_student_action_;      // last received student action
-    edge::ros_interfaces::Vector6d   last_teacher_action_;      // last received teacher action
+    double goal_distance_;                                // last received goal distance
+    double obstacle_distance_;                            // last received distance to obstacle
+    bool is_last_state_safe_;                             // last alert state (is safe or not)
+    bool is_last_state_fall_;                             // last fall state (is fall or not)
+    edge::ros_interfaces::Vector6d   last_stu_action_;    // last received student action
+    edge::ros_interfaces::Vector6d   last_tea_action_;    // last received teacher action
+    edge::ros_interfaces::Vector12d  last_error_state_;   // last received error state
+    edge::ros_interfaces::Vector12d  last_robot_state_;   // last received robot state
 
-    double obstacle_distance_;      // last received distance
-    double goal_distance_;          // last received goal distance
-    bool is_last_state_safe_;       // last alert state (is safe)
-    bool is_last_state_fall_;       // last fall state (is fall)
-    bool print_processing_;         // whether to print processing info
-    bool is_robot_state_initialized_ = false;
+    // Statistical tracking
+    double student_duration_;                              // Student Mode Accumulated Duration (s)
+    double teacher_duration_;                              // Teacher Mode Accumulated Duration (s)
+    uint32_t student_action_count_;                        // Number of actions in Student Mode
+    uint32_t teacher_action_count_;                        // Number of actions in Teacher Mode
+    uint32_t student_switch_count_;                        // Number of switches to Student Mode
+    uint32_t teacher_switch_count_;                        // Number of switches to Teacher Mode
+    rclcpp::Time mode_start_time_;                         // Mode start time
+    edge::utils::ActionMode curr_mode_;                    // Current mode
+    edge::utils::ActionMode last_mode_;                    // Last mode
+    std::map<std::string, uint32_t> switching_reasons_;    // Switching reasons statistics
 
-    // Safety-conditions
-    double update_rate_;
-
-    std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
-
-    // ROS Interfaces
+    // ROS subscribers
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_;
     rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_error_;
@@ -60,10 +73,20 @@ private:
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_obstacle_distance_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_goal_distance_;
 
+    // ROS publishers
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr pub_action_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_alert_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_fall_;
-    rclcpp::TimerBase::SharedPtr timer_;
+
+    // ROS services
+    rclcpp::Service<edge_msgs::srv::GetSwitchingStats>::SharedPtr srv_switching_stats_;
+
+    double update_rate_;        // Update rate (Hz)
+    bool print_processing_;     // whether to print processing info
+    bool is_robot_state_initialized_ = false;       // whether robot state has been initialized
+
+    rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer
+    std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;       // Safety monitor
 };
 
 }  // namespace edge::trigger

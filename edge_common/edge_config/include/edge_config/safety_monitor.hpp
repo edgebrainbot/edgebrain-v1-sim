@@ -47,6 +47,10 @@ public:
         return violation_reasons_;
     }
 
+    const std::vector<std::string>& getFallReasons() const {
+        return fall_reasons_;
+    }
+
 private:
     // ===== Switching Conditions =====
     bool switching_enabled_ = true;
@@ -57,17 +61,17 @@ private:
 
     // ===== Fall Detection =====
     bool fall_detection_enabled_ = false;
-    double fall_height_threshold_ = 0.15;  // meters
-    double fall_roll_threshold_ = 0.5;     // radians
-    double fall_pitch_threshold_ = 0.5;    // radians
+    double fall_height_threshold_ = 0.12;  // meters
+    double fall_roll_threshold_ = 1.0;     // radians
+    double fall_pitch_threshold_ = 1.0;    // radians
     std::vector<std::string> fall_reasons_;
 
     // ===== Private Methods =====
     void loadFromYaml(const std::string& yaml_path);
-    void loadSwitchingConditions(const YAML::Node& root);
-    void loadFallDetection(const YAML::Node& root);
+    void loadSwitchingConfig(const YAML::Node& root);
+    void loadFallDetectionConfig(const YAML::Node& root);
     std::string parseYamlPath(const std::string& user_path);
-    void safetyStatusLogging();
+    void safetyStatusLogging(const std::vector<std::string>& violation_details);
 
     double convertValue(double raw, const std::string& unit);
     void printLoadedRules() const;

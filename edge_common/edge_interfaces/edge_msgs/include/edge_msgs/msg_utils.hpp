@@ -4,7 +4,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 
-namespace edge {
+namespace edge::utils {
 
 enum class ActionMode : uint8_t {
     STUDENT = 0,
@@ -38,4 +38,4 @@ inline builtin_interfaces::msg::Time getCurrentROSTime() {
   return clock.now();
 }
 
-}  // namespace edge
+}  // namespace edge::utils

@@ -77,14 +77,14 @@ void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
 {
     YAML::Node root = YAML::LoadFile(yaml_path);
 
-    loadSwitchingConditions(root);   // Load switching conditions
-    loadFallDetection(root);         // Load fall detection settings
+    loadSwitchingConfig(root);   // Load switching config   
+    loadFallDetectionConfig(root);         // Load fall detection settings
 }
 
 /**
- * Load switching conditions from YAML
+ * Load switching config from YAML
  */
-void SafetyMonitor::loadSwitchingConditions(const YAML::Node& root)
+void SafetyMonitor::loadSwitchingConfig(const YAML::Node& root)
 {
     if (!root["switching"]) {
         throw std::runtime_error("YAML missing 'switching' section");
@@ -154,7 +154,7 @@ void SafetyMonitor::loadSwitchingConditions(const YAML::Node& root)
 /**
  * Load fall detection configuration from YAML
  */
-void SafetyMonitor::loadFallDetection(const YAML::Node& root)
+void SafetyMonitor::loadFallDetectionConfig(const YAML::Node& root)
 {
     if (!root["fall_detection"]) {
         std::cout << "⚠️ YAML missing 'fall_detection' section, fall detection disabled" << std::endl;
@@ -218,7 +218,7 @@ bool SafetyMonitor::detectFall(const std::vector<double>& robot_state)
         throw std::runtime_error("State vector too small in detectFall() - need at least 6 elements");
     }
 
-    fall_reasons_.clear();
+    fall_reasons_.clear();      // Clear previous reasons
     bool is_falling = false;
 
     // Extract state values
@@ -226,40 +226,45 @@ bool SafetyMonitor::detectFall(const std::vector<double>& robot_state)
     double roll = robot_state[3];    // roll (index 3)
     double pitch = robot_state[4];   // pitch (index 4)
 
+    std::vector<std::string> fall_details;
+
     // Check height drop (critical height threshold)
     if ((height < fall_height_threshold_) && (height > 1e-6)) {
         is_falling = true;
-        fall_reasons_.push_back(
-            "height: " + std::to_string(height) + " < " + 
-            std::to_string(fall_height_threshold_) + " m (CRITICAL)"
-        );
+        fall_reasons_.push_back("height");
+
+        std::ostringstream ss;
+        ss << std::fixed << std::setprecision(3) 
+           << "height=" << height << "m (< " << fall_height_threshold_ << "m)";
+        fall_details.push_back(ss.str());
     }
 
     // Check roll angle (critical tilt)
     if (std::abs(roll) > fall_roll_threshold_) {
         is_falling = true;
-        fall_reasons_.push_back(
-            "roll: |" + std::to_string(roll) + "| = " + 
-            std::to_string(std::abs(roll)) + " > " + 
-            std::to_string(fall_roll_threshold_) + " rad (CRITICAL)"
-        );
+        fall_reasons_.push_back("roll");
+        std::ostringstream ss;
+        ss << std::fixed << std::setprecision(3) 
+           << "roll=" << roll << " rad (> " << fall_roll_threshold_ << " rad)";
+        fall_details.push_back(ss.str());
     }
 
     // Check pitch angle (critical tilt)
     if (std::abs(pitch) > fall_pitch_threshold_) {
         is_falling = true;
-        fall_reasons_.push_back(
-            "pitch: |" + std::to_string(pitch) + "| = " + 
-            std::to_string(std::abs(pitch)) + " > " + 
-            std::to_string(fall_pitch_threshold_) + " rad (CRITICAL)"
-        );
+        fall_reasons_.push_back("pitch");
+        std::ostringstream ss;
+        ss << std::fixed << std::setprecision(3) 
+           << "pitch=" << pitch << " rad (> " << fall_pitch_threshold_ << " rad)";
+        fall_details.push_back(ss.str());
     }
 
     // Log fall detection
     if (is_falling) {
-        std::cerr << color("🚨 FALL DETECTED! ", RED) << "Reasons: ";
-        for (const auto& reason : fall_reasons_) {
-            std::cerr << reason << " | ";
+        std::cerr << color("🚨 FALL: ", RED);
+        for (size_t i = 0; i < fall_details.size(); ++i) {
+            std::cerr << fall_details[i];
+            if (i < fall_details.size() - 1) std::cerr << ", ";
         }
         std::cerr << std::endl;
     }
@@ -281,8 +286,10 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
         return true; // If switching is disabled, always return safe
     }
 
-    violation_reasons_.clear();
+    violation_reasons_.clear();     // Clear previous reasons
+    
     bool is_safe = true;
+    std::vector<std::string> violation_details;
 
     for (const auto& r : rules_) {
         // Only check rules matching the specified type
@@ -294,7 +301,8 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
             // Special case: obstacle distance
             if (r.name == "obstacle_distance" && obstacle_distance < r.limit) {
                 is_safe = false;
-                violation_reasons_.push_back(
+                violation_reasons_.push_back("close_to_obstacle");
+                violation_details.push_back(
                     r.name + ": " + std::to_string(obstacle_distance) + " < " + 
                     std::to_string(r.limit) + " (" + r.unit + ")"
                 );
@@ -302,7 +310,8 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
             // Special case: goal distance
             if (r.name == "goal_distance" && goal_distance < r.limit) {
                 is_safe = false;
-                violation_reasons_.push_back(
+                violation_reasons_.push_back("close_to_goal");
+                violation_details.push_back(
                     r.name + ": " + std::to_string(goal_distance) + " < " + 
                     std::to_string(r.limit) + " (" + r.unit + ")"
                 );
@@ -317,7 +326,8 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
             // state is errorState (already contains error/deviation)
             if (std::abs(v) > r.limit) {
                 is_safe = false;
-                violation_reasons_.push_back(
+                violation_reasons_.push_back("violation_" + r.name);
+                violation_details.push_back(
                     r.name + ": |" + std::to_string(v) + "| = " + 
                     std::to_string(std::abs(v)) + " > " + 
                     std::to_string(r.limit) + " (" + r.unit + ")"
@@ -328,7 +338,8 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
             // state is robotState
             if (v <= r.lower || v >= r.upper) {
                 is_safe = false;
-                violation_reasons_.push_back(
+                violation_reasons_.push_back("violation_" + r.name);
+                violation_details.push_back(
                     r.name + ": " + std::to_string(v) + " not in (" + 
                     std::to_string(r.lower) + ", " + std::to_string(r.upper) + ") (" + r.unit + ")"
                 );
@@ -341,17 +352,17 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
     is_last_safe_ = is_curr_safe_;
     is_curr_safe_ = is_safe;
 
-    safetyStatusLogging();
+    safetyStatusLogging(violation_details);
     return is_safe;
 }
 
 // --------------------------------------------------------
-void SafetyMonitor::safetyStatusLogging()
+void SafetyMonitor::safetyStatusLogging(const std::vector<std::string>& violation_details)
 {
     // Logging
     if (!is_curr_safe_) {
         std::string msg = "⚠️ Current System is UNSAFE! Reasons: ";
-        for (auto &r : violation_reasons_) msg += r + " | ";
+        for (auto &r : violation_details) msg += r + " | ";
 
         if (is_last_safe_)
             msg += "System leaving the learning space! Safety Triggered.";
