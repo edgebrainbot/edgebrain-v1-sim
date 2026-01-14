@@ -9,26 +9,20 @@ namespace edge::trigger {
 Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
-    RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
-    
+    // Load parameters
     update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
     print_processing_ = this->declare_parameter<bool>("print_processing", false);
+    is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
 
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
-
-    // Initialize Safety Monitor
-    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
-
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");
+    
     // Initialize statistical tracking variables
-    mode_start_time_ = this->now();
+    resetStats();
 
     // Initialize cached variables
-    is_last_state_safe_ = true;      // initial alert state
-    is_last_state_fall_ = false;     // initial fall state
-    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial error state
-    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial robot state
-    last_stu_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial student action
-    last_tea_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial teacher action
+    resetCachedVariables();
 
     // Subscribers (state, teacher action, student action, obstacle distance)
     sub_error_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
@@ -54,14 +48,24 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     pub_fall_   = this->create_publisher<std_msgs::msg::Bool>("is_fall", 50);
     pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>("terminal_action", 50);
 
-    // Service for switching statistics
-    srv_switching_stats_ = this->create_service<edge_msgs::srv::GetSwitchingStats>(
+    // Service for getting switching statistics
+    srv_get_switching_stats_ = this->create_service<edge_msgs::srv::GetSwitchingStats>(
         "get_switching_stats",
-        std::bind(&Trigger::getStatisticsCallback, this, _1, _2));
+        std::bind(&Trigger::getStatsCallback, this, _1, _2));
+
+    // Service for resetting switching statistics
+    srv_reset_switching_stats_ = this->create_service<edge_msgs::srv::ResetSwitchingStats>(
+        "reset_switching_stats",
+        std::bind(&Trigger::resetStatsCallback, this, _1, _2));
 
     // Timer for periodic update
     auto period = std::chrono::duration<double>(1.0 / update_rate_);
     timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
+
+    // Initialize Safety Monitor
+    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
+
+    RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
 
 }
 
@@ -100,12 +104,32 @@ void Trigger::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
     goal_distance_ = msg->data;
 }
 
-void Trigger::getStatisticsCallback(
-    const std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Request> request,
+void Trigger::resetStatsCallback(
+    const std::shared_ptr<edge_msgs::srv::ResetSwitchingStats::Request> /*request*/,
+    std::shared_ptr<edge_msgs::srv::ResetSwitchingStats::Response> response)
+{
+    try {
+        resetStats();   // Reset the switching statistics
+
+        response->success = true;
+        response->message = "The Trigger's switching statistics have been reset successfully";
+    }
+    catch (const std::exception & e) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to reset switching statistics: %s", e.what());
+        response->success = false;
+        response->message = std::string("Failed to reset switching statistics: ") + e.what();
+    }
+    catch (...) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to reset switching statistics: unknown error");
+        response->success = false;
+        response->message = "Failed to reset switching statistics: unknown error";
+    }
+}
+
+void Trigger::getStatsCallback(
+    const std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Request> /*request*/,
     std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Response> response)
 {
-    (void)request; 
-
     // Fill in switching reasons
     for (const auto& [reason, count] : switching_reasons_) {
         response->switching_reasons.push_back(reason);
@@ -156,8 +180,40 @@ void Trigger::getStatisticsCallback(
     }
 }
 
+void Trigger::resetCachedVariables()
+{
+    goal_distance_ = is_start_with_teacher_ ? 0.0 : MAX_VAL;
+    obstacle_distance_ = is_start_with_teacher_ ? 0.0 : MAX_VAL;
+    is_last_state_fall_ = false;     // initial fall state
+    is_last_state_safe_ = !is_start_with_teacher_;      // initial alert state
+    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial error state
+    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial robot state
+    last_stu_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial student action
+    last_tea_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial teacher action
+}
 
-void Trigger::updateStatistics(edge::utils::ActionMode terminal_mode)
+void Trigger::resetStats()
+{
+    switching_reasons_.clear();
+
+    mode_start_time_ = this->now();
+    
+    student_switch_count_ = 0;
+    teacher_switch_count_ = 0;
+
+    student_action_count_ = 0;
+    teacher_action_count_ = 0;
+
+    student_duration_ = 0.0;
+    teacher_duration_ = 0.0;
+
+    curr_mode_ = is_start_with_teacher_ ? edge::utils::ActionMode::TEACHER 
+                                        : edge::utils::ActionMode::STUDENT;
+    last_mode_ = is_start_with_teacher_ ? edge::utils::ActionMode::TEACHER 
+                                        : edge::utils::ActionMode::STUDENT;
+}
+
+void Trigger::updateStats(edge::utils::ActionMode terminal_mode)
 {
     auto current_time = this->now();
     auto duration = (current_time - mode_start_time_).seconds();
@@ -223,8 +279,8 @@ void Trigger::updateLoop()
                                     ? edge::utils::ActionMode::STUDENT 
                                     : edge::utils::ActionMode::TEACHER;
 
-    // Update statistics
-    updateStatistics(terminal_mode);    
+    // Update switching statistics
+    updateStats(terminal_mode);    
 
     // Decide which action to publish
     if (is_last_state_safe_)

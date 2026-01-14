@@ -11,12 +11,15 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 
 #include "msg_utils.hpp"
+
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_msgs/srv/get_switching_stats.hpp"
 #include "edge_config/safety_monitor.hpp"
+#include "edge_msgs/srv/get_switching_stats.hpp"
+#include "edge_msgs/srv/reset_switching_stats.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
+#define MAX_VAL 100.0
 
 namespace edge::trigger {
 
@@ -26,21 +29,28 @@ public:
     explicit Trigger(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
-    // Main periodic update loop
-    void updateLoop();
-    bool checkSafety();
-    void updateStatistics(edge::utils::ActionMode new_mode);
     
-    // Callbacks
+    void updateLoop();     // Main periodic update loop
+
+    bool checkSafety();    // Check safety for switching
+    void resetStats();     // Reset switching statistics
+    void updateStats(edge::utils::ActionMode);      // Update switching statistics
+    void resetCachedVariables(); // Reset cached variables
+    
+    // ROS2 Callbacks
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
-    void getStatisticsCallback(
+    void getStatsCallback(
         const std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Request> request,
         std::shared_ptr<edge_msgs::srv::GetSwitchingStats::Response> response
+    );
+    void resetStatsCallback(
+        const std::shared_ptr<edge_msgs::srv::ResetSwitchingStats::Request> request,
+        std::shared_ptr<edge_msgs::srv::ResetSwitchingStats::Response> response
     );
 
     // Cached variables
@@ -79,10 +89,12 @@ private:
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_fall_;
 
     // ROS services
-    rclcpp::Service<edge_msgs::srv::GetSwitchingStats>::SharedPtr srv_switching_stats_;
+    rclcpp::Service<edge_msgs::srv::GetSwitchingStats>::SharedPtr srv_get_switching_stats_;
+    rclcpp::Service<edge_msgs::srv::ResetSwitchingStats>::SharedPtr srv_reset_switching_stats_;
 
-    double update_rate_;        // Update rate (Hz)
-    bool print_processing_;     // whether to print processing info
+    double update_rate_;                            // Update rate (Hz)
+    bool print_processing_;                         // whether to print processing info
+    bool is_start_with_teacher_;                    // whether to start with teacher mode
     bool is_robot_state_initialized_ = false;       // whether robot state has been initialized
 
     rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer

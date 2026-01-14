@@ -1,31 +1,38 @@
 import os
-
-import yaml
-from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
+
 def generate_launch_description():
-    
-    # Config file path
+
     trigger_config_path = os.path.join(
         get_package_share_directory('edge_trigger'),
-        'config', 'trigger.yaml'
+        'config',
+        'trigger.yaml'
+    )
+
+    update_rate_arg = DeclareLaunchArgument(
+        'update_rate',
+        default_value='200.0',
+        description='Trigger update rate (Hz)'
+    )
+
+    print_processing_arg = DeclareLaunchArgument(
+        'print_processing',
+        default_value='false',
+        description='Print processing logs'
     )
     
-    if not os.path.exists(trigger_config_path):
-        raise FileNotFoundError(f"Config file not found: {trigger_config_path}")
+    start_with_teacher_arg = DeclareLaunchArgument(
+        'start_with_teacher',
+        default_value='true',
+        description='Start in teacher mode if true, else start in student mode. \
+            Starting mode is important for safety.'
+    )
 
-    # Declare launch arguments
-    # update_rate_arg = DeclareLaunchArgument(
-    #     'update_rate',
-    #     default_value='100.0',
-    #     description='Frequency (Hz) of the trigger loop'
-    # )
-
-    # Create node
     trigger_node = Node(
         package='edge_trigger',
         executable='trigger',
@@ -33,10 +40,20 @@ def generate_launch_description():
         name='trigger',
         output='screen',
         parameters=[
-            trigger_config_path
+            trigger_config_path,        # Load default config from YAML
+            {
+                # Override parameters with launch arguments
+                'update_rate': LaunchConfiguration('update_rate'),
+                'print_processing': LaunchConfiguration('print_processing'),
+                'start_with_teacher': LaunchConfiguration('start_with_teacher'),
+            }
         ]
     )
-    
+
     return LaunchDescription([
+        update_rate_arg,
+        print_processing_arg,
+        start_with_teacher_arg,
+        
         trigger_node,
     ])
