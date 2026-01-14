@@ -101,7 +101,6 @@ private:
     bool checkStepOrNot();
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                            Vector12d& tracking_error, Vector12d& robot_state, 
                             const edge_msgs::msg::EdgeAction& latest_action,
                             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
 
@@ -136,8 +135,8 @@ private:
     Vec12 last_tracking_error_tea_;
     Vec12 curr_tracking_error_tea_;
 
-    Vec12 last_tracking_error_stu_;
-    Vec12 curr_tracking_error_stu_;
+    Vec12 last_robot_state_;
+    Vec12 curr_robot_state_;
 
     edge_msgs::msg::EdgeAction last_edge_action_;
     edge_msgs::msg::EdgeAction curr_edge_action_;
