@@ -137,6 +137,8 @@ class DualReplayBuffer(BaseBuffer):
 
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size
+        if stu_batch_size < 0:
+            raise RuntimeError("Negative student batch size encountered.")
         
         stu_batch = self.stu_buf.sample(stu_batch_size) if stu_batch_size > 0 else None
         tea_batch = self.tea_buf.sample(tea_batch_size) if tea_batch_size > 0 else None

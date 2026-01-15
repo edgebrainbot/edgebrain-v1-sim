@@ -51,10 +51,9 @@ class DRLStudentNode(Node):
         # ========== Initialize Logger ==========
         self.logger = Logger(log_dir=LOG_PATH, device=self.device)
         self.get_logger().info(f"📊 Logger initialized: {LOG_PATH}")
-        
 
         # ========== Initialize Replay Buffer ==========
-        self.batch_size = 10
+        self.batch_size = 100
         replay_buffer_cfg = {
             'student_buf_size': int(1e5),
             'student_prefill_size': self.batch_size,

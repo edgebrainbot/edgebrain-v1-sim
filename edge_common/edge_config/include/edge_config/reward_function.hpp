@@ -36,8 +36,8 @@ inline void registerAllRewardFunc() {
 
     // ========== Fall Down ==========
     R.registerReward("fall_down", [](const RewardFactor& rf) {
-        int is_fail = std::any_cast<int>(rf.at("is_fail"));
-        return -static_cast<double>(is_fail);
+        bool is_fall = std::any_cast<bool>(rf.at("is_fall"));
+        return is_fall ? 1.0 : 0.0;
     });
 
     // ========== Linear Velocity Tracking ==========
@@ -166,6 +166,12 @@ inline void registerAllRewardFunc() {
     R.registerReward("time_travel", [](const RewardFactor& rf) {
         double travelTime = std::any_cast<double>(rf.at("time_elapsed"));
         return -std::log(travelTime + 1.0);
+    });
+
+    // =========== Reach Goal ==========
+    R.registerReward("reach_goal", [](const RewardFactor& rf) {
+        bool reached = std::any_cast<bool>(rf.at("is_goal_reached"));
+        return reached ? 1.0 : 0.0;
     });
 
     std::cout << "[Registry] Total registered: " << R.size() << "\n";

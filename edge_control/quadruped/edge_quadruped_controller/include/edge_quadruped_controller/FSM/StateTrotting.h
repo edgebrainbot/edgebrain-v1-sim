@@ -54,7 +54,7 @@ public:
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
+             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
     void exit() override;
 
@@ -82,7 +82,7 @@ private:
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
-                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
+                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -102,7 +102,7 @@ private:
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                             const edge_msgs::msg::EdgeAction& latest_action,
-                            double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached);
+                            double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;

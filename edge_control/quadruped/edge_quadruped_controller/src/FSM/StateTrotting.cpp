@@ -72,7 +72,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-                        double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached)
+                        double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
     // Update teacher activation status
 
@@ -109,7 +109,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached);
+    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
     calcQQd();
     calcGain();
 }
@@ -201,7 +201,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-    const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached)
+    const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
@@ -220,7 +220,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached);
+    pubTransitionTopic(transition_pub, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
 
     // update last action and tracking error and robot state
     last_edge_action_ = latest_action_;
@@ -396,7 +396,8 @@ bool StateTrotting::checkStepOrNot()
 // Publish transition topic
 void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                                        const edge_msgs::msg::EdgeAction& latest_action,
-                                       double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached)
+                                       double obstacleAvgDistance, double obstacleMinDistance, 
+                                       bool is_goal_reached, bool is_fall)
 {
     // Skip the first call after reset to avoid bad data
     static bool first_call = true;
@@ -430,7 +431,9 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
         {"obstacle_distance_avg", obstacleAvgDistance},
         {"obstacle_distance_min", obstacleMinDistance},
         {"time_elapsed", time_elapsed},
-        {"delta_action", delta_action}
+        {"delta_action", delta_action},
+        {"is_fall", is_fall},
+        {"is_goal_reached", is_goal_reached}
     };
 
 

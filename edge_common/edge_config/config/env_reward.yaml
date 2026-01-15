@@ -8,7 +8,7 @@ reward:
   # stepping_freq: 0.008
   # com_distance_to_goal_squared: 0.016
   # alive: 10
-  # fall_down: 10000
+
   # body_contact: 100
   # energy_consumption: 0.05
   # lin_vel_tracking: 5
@@ -28,6 +28,5 @@ reward:
   body_state: 0.5
   jerky_action: 0.001
 
-  # distance_to_wp: 50
-  # reach_wp: 100
-  # reach_goal: 500
+  fall_down: 10000
+  reach_goal: 500

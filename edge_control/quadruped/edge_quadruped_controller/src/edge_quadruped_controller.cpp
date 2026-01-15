@@ -175,6 +175,14 @@ namespace edge::control::quadruped
                 }
             });
 
+            // Subscribe to fall status
+            is_fall_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
+                topic_ns_ + "/is_fall", 100,
+                [this](const std_msgs::msg::Bool::SharedPtr msg) -> void
+            {
+                is_fall_ = msg->data;
+            });
+
             // Subscribe to goal point
             goal_sub_ = get_node()->create_subscription<geometry_msgs::msg::PointStamped>(
                 "/goal_point", 100,
@@ -324,7 +332,8 @@ namespace edge::control::quadruped
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
                           obstacle_avg_distance_,
                           obstacle_min_distance_,
-                          is_goal_reached_);
+                          is_goal_reached_,
+                          is_fall_);
                           
             } else {
                 current_state_->run(time, period);
