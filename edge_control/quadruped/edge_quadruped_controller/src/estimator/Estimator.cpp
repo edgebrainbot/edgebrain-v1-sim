@@ -359,12 +359,12 @@ void Estimator::publishOdometryAndTf()
 }
 
 
-Vec34 Estimator::getFeetPosGlobal() const
+Vec34 Estimator::getFeetPosInWorldFrame() const
 {
     return feet_pos_global_kine_;
 }
 
-Vec34 Estimator::getFeetVelGlobal() const
+Vec34 Estimator::getFeetVelInWorldFrame() const
 {
     return feet_vel_global_kine_;
 }

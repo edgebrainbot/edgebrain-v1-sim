@@ -20,6 +20,7 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
                                 robot_model_(ctrl_component.robot_model_),
                                 balance_ctrl_(ctrl_component.balance_ctrl_),
                                 phase_scheduler_(ctrl_component.phase_scheduler_),
+                                ctrl_component_(ctrl_component),
                                 gait_generator_(ctrl_component),
                                 swing_gains_(swing_gains),
                                 stable_gains_(stable_gains),
@@ -54,8 +55,12 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
 
 void StateTrotting::enter()
 {
-    pcd_ = estimator_->getPosition();
-    pcd_(2) = -estimator_->getFeetPos2Body()(2, 0);
+    // pcd_ = estimator_->getPosition();
+    // pcd_(2) = -estimator_->getFeetPosInBodyFrame()(2, 0);
+    pcd_.setZero();  // Reset x,y to zero at the beginning of trotting
+    pcd_(2) = 0.3; // Set a default height 0.3m at the beginning
+    std::cout << "Enter Trotting State. Pcd initialized to: " << pcd_.transpose() << std::endl;
+
     v_cmd_body_.setZero();
     yaw_cmd_ = estimator_->getYaw();
     Rd = rotz(yaw_cmd_);
@@ -307,7 +312,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;
 
     Vec34 force_feet_global =
-        -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPos2Body(), phase_scheduler_->contact_);
+        -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPosInBodyFrame(), phase_scheduler_->contact_);
 
     Vec34 pos_feet_global = estimator_->getFeetPos();
     Vec34 vel_feet_global = estimator_->getFeetVel();
@@ -440,7 +445,7 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
     // Create and populate the Transition message
     edge_msgs::msg::Transition transition;
     transition.obs = getObservation();
-    transition.action = last_edge_action_;
+    transition.action = getNominalDRLAction();
     transition.reward_components = reward_composer_.computeTotalReward(reward_factors);
     transition.next_obs = getObservationNext();
     transition.done = is_goal_reached;
@@ -461,7 +466,7 @@ Vector12d StateTrotting::getTrackingError() const
     // tracking_error[0] = dist_to_goal(0);  // X position error to goal
     // tracking_error[1] = dist_to_goal(1);  // Y position error to goal
 
-    // Height Position error
+    // Height Position error  
     tracking_error[2] = pos_error_(2);
 
     // Orientation error
@@ -487,6 +492,21 @@ std::vector<double> StateTrotting::getObservationNext() const
 {
     Vector12d curr_base_observation =  getDRLStudentGoalState() - curr_robot_state_;
     return EigenToVector(curr_base_observation);
+}
+
+edge_msgs::msg::EdgeAction StateTrotting::getNominalDRLAction() const
+{
+    /**
+     * Calculate DRL action by removing residual effect from teacher action
+     * nominal_drl_action = terminal_action - residual_gain @ tracking_error
+     */
+    auto last_residual_action = ctrl_component_.residual_gain_ * last_tracking_error_tea_;
+    auto nominal_drl_action = EdgeActionMsgToEigen(last_edge_action_) - last_residual_action;
+
+    // std::cout << "last residual action: " << last_residual_action.transpose() << std::endl;
+    // std::cout << "nominal drl action: " << nominal_drl_action.transpose() << std::endl;
+
+    return EigenToEdgeActionMsg(nominal_drl_action, last_edge_action_.action_mode);
 }
 
 Vector12d StateTrotting::getRobotState(bool is_global/* = true*/) const
@@ -525,7 +545,7 @@ Vector12d StateTrotting::getDRLStudentGoalState() const
     robotState[1] = nav_goal_(1);
 
     // Robot Position state
-    robotState[2] = 0.325;
+    robotState[2] = 0.3; // Set a default height 0.3m
 
     // Robot Orientation state
     // robotState.segment<3>(3) = Eigen::Vector3d::Zero();

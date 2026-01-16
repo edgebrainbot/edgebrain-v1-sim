@@ -51,6 +51,7 @@ class DistributedRunner:
         episode_manager: Optional[EpisodeManager],
         vision_processor: Optional[VisionProcessor],
 
+        residual_gain: torch.Tensor = RESIDUAL_GAIN,
         transition_topic: str = 'transition',
         action_topic: str = 'drl_student_action',
         tracking_error_topic: str = 'tracking_error_stu',
@@ -89,7 +90,9 @@ class DistributedRunner:
         self.action_frequency = action_frequency
         self.learning_frequency = learning_frequency
         self.policy_blending_weight = policy_blending_weight
-        self.residual_gain = RESIDUAL_GAIN.to(device)
+        self.residual_gain = residual_gain.to(device)
+        
+        self.node.get_logger().info(f"Residual Gain Matrix:\n{self.residual_gain}")
         
         self.log_interval = log_interval
         self.sync_interval = sync_interval

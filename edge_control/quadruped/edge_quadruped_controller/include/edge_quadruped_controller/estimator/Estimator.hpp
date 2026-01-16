@@ -82,20 +82,19 @@ public:
      */
     Vec34 getFeetVel()
     {
-        // Vec34 feet_vel_body2 = robot_model_->getFeetVelInBodyFrame();
-        // Vec34 feet_vel_world2;
-        // for (int i(0); i < 4; ++i)
-        // {
-        //     feet_vel_world2.col(i) = feet_vel_body2.col(i) + getVelocity();
-        // }
-        // std::cout << "feet_vel_world2 (origin): " << std::endl << feet_vel_world2 << std::endl;
+        Vec34 feet_vel_body = robot_model_->getFeetVelInBodyFrame();
         Vec34 feet_vel_world;
-        Vec34 foot_vel_body = robot_model_->getFeetVelInBodyFrame();
-        Vec34 foot_pos_body = robot_model_->getFeetPosInBodyFrame();
-        for (int i = 0; i < 4; ++i) {
-            feet_vel_world.col(i) = rotation_ * (foot_vel_body.col(i) + skew(gyro_) * 
-                                    foot_pos_body.col(i)) + getVelocity();
+        for (int i(0); i < 4; ++i)
+        {
+            feet_vel_world.col(i) = feet_vel_body.col(i) + getVelocity();
         }
+        // Vec34 feet_vel_world;
+        // Vec34 foot_vel_body = robot_model_->getFeetVelInBodyFrame();
+        // Vec34 foot_pos_body = robot_model_->getFeetPosInBodyFrame();
+        // for (int i = 0; i < 4; ++i) {
+        //     feet_vel_world.col(i) = rotation_ * (foot_vel_body.col(i) + skew(gyro_) * 
+        //                             foot_pos_body.col(i)) + getVelocity();
+        // }
 
         // std::cout << "feet_vel_world: " << std::endl << feet_vel_world << std::endl;
         return feet_vel_world;
@@ -103,16 +102,15 @@ public:
 
     /**
      * Get the estimated foot position in body frame (similar to original estimator)
-     * @return foot positions relative to body in global coordinate frame
+     * @return foot positions relative to body in world coordinate frame
      *
-     * 重要说明：
-     * - 返回的是相对于机体的足端位置，但方向已经转换到全局坐标系
-     * - 这些位置用于状态估计，不是绝对的世界坐标
-     * - 原版实现：只做旋转变换，不做位置偏移
+     * The importance notice：
+     * - Returned foot positions are relative to the robot body frame
+     * - This is different from the original implementation which returns foot positions in world frame
      */
-    Vec34 getFeetPos2Body()
+    Vec34 getFeetPosInBodyFrame()
     {
-        // 将 (12,1) 向量转换为 (3,4) 矩阵格式
+        // Transform the vectorized foot positions to a 3x4 matrix
         Vec34 feet_pos_body_matrix;
         for (int i = 0; i < 4; ++i)
         {
@@ -144,16 +142,16 @@ public:
     }
 
     /**
-     * Get foot positions in global coordinate frame (similar to original estimator)
-     * @return foot positions in global coordinate frame
+     * Get foot positions in world frame (similar to original estimator)
+     * @return foot positions in world frame
      */
-    [[nodiscard]] Vec34 getFeetPosGlobal() const;
+    [[nodiscard]] Vec34 getFeetPosInWorldFrame() const;
 
     /**
-     * Get foot velocities in global coordinate frame (similar to original estimator)
-     * @return foot velocities in global coordinate frame
+     * Get foot velocities in world frame (similar to original estimator)
+     * @return foot velocities in world frame
      */
-    [[nodiscard]] Vec34 getFeetVelGlobal() const;
+    [[nodiscard]] Vec34 getFeetVelInWorldFrame() const;
 
     void update();
     void reset();
@@ -189,13 +187,13 @@ private:
     Eigen::Matrix<double, 3, 3> Cu; // The covariance of system input u
 
     // Output Measurement
-    Eigen::Matrix<double, 12, 1> feet_pos_body_; // The feet positions to body, in the global coordinate
-    Eigen::Matrix<double, 12, 1> feet_vel_body_; // The feet velocity to body, in the global coordinate
-    Eigen::Matrix<double, 4, 1> feet_h_; // The Height of each foot, in the global coordinate
+    Eigen::Matrix<double, 12, 1> feet_pos_body_; // The feet positions to body, in the world frame
+    Eigen::Matrix<double, 12, 1> feet_vel_body_; // The feet velocity to body, in the world frame
+    Eigen::Matrix<double, 4, 1> feet_h_; // The Height of each foot, in the world frame
 
-    // Global coordinate foot positions (similar to original _feetPosGlobalKine)
-    Vec34 feet_pos_global_kine_; // Foot positions in global coordinate frame
-    Vec34 feet_vel_global_kine_; // Foot velocities in global coordinate frame
+    // World frame foot positions (similar to original _feetPosGlobalKine)
+    Vec34 feet_pos_global_kine_; // Foot positions in world frame
+    Vec34 feet_vel_global_kine_; // Foot velocities in world frame
     Vec4 phase_;
     VecInt4 contact_;
 

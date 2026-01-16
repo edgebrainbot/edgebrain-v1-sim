@@ -40,12 +40,25 @@ class DRLStudentNode(Node):
         
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         
+        self.declare_parameters(
+            namespace="",
+            parameters=[
+                ("MATRIX_P", rclpy.Parameter.Type.DOUBLE_ARRAY),
+                ("IDENTITY_MAT", rclpy.Parameter.Type.DOUBLE_ARRAY),
+                ("SAFETY_ENVELOPE_P", rclpy.Parameter.Type.DOUBLE_ARRAY),
+                ("RESIDUAL_GAIN", rclpy.Parameter.Type.DOUBLE_ARRAY),
+                ("DEFAULT_KP", rclpy.Parameter.Type.DOUBLE_ARRAY),
+                ("DEFAULT_KD", rclpy.Parameter.Type.DOUBLE_ARRAY),
+            ]
+        )
+        
+        RESIDUAL_GAIN = self.get_parameter("RESIDUAL_GAIN").value
+        
         # ========== Dimensions ==========
+        self.act_dim = 6
         self.body_state_dim = 12
         self.vision_feature_dim = 24
         self.obs_dim = self.body_state_dim + self.vision_feature_dim
-        self.act_dim = 6
-        
         self.get_logger().info(f"📐 Dimensions: obs_dim={self.obs_dim}, act_dim={self.act_dim}")
         
         # ========== Initialize Logger ==========
@@ -143,6 +156,9 @@ class DRLStudentNode(Node):
             vision_processor=self.vision_processor,
             replay_buffer=self.buffer,
             action_bound=action_bound,
+            
+            residual_gain=torch.tensor(RESIDUAL_GAIN, device=self.device).reshape(
+                self.act_dim, self.body_state_dim),
             
             **ros2_topic_name,
             **ros2_service_name,

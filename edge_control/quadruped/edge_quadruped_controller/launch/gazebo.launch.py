@@ -9,6 +9,7 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 
 
 def launch_setup(context, *args, **kwargs):
@@ -62,6 +63,13 @@ def launch_setup(context, *args, **kwargs):
         world_file_name  
     ])
 
+    physical_model_config = PathJoinSubstitution([
+        FindPackageShare('edge_config'),
+        'config',
+        'physical_model.yaml'
+    ])
+
+    print("this is:" + physical_model_config.perform(context))
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),
@@ -115,8 +123,15 @@ def launch_setup(context, *args, **kwargs):
     edge_quadruped_controller = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["edge_quadruped_controller", "--controller-manager", "/controller_manager"],
-        parameters=[{'use_sim_time': True}],
+        arguments=[
+            "edge_quadruped_controller",
+            "--controller-manager", "/controller_manager",
+            "--param-file", physical_model_config.perform(context)
+        ],
+        parameters=[
+            {'use_sim_time': True},
+            # physical_model_config
+        ],
         remappings=[('odom', 'odom_sim')],
     )
 

@@ -97,6 +97,7 @@ namespace edge::control::quadruped
             gait_height_ = auto_declare<double>("gait_height", gait_height_);
             RCLCPP_INFO(get_node()->get_logger(), "Gait Height: %.3f m", gait_height_);
 
+            // Controller manager update rate
             get_node()->get_parameter("update_rate", ctrl_interfaces_.frequency_);
             RCLCPP_INFO(get_node()->get_logger(), "Controller Manager Update Rate: %d Hz", ctrl_interfaces_.frequency_);
 
@@ -134,6 +135,36 @@ namespace edge::control::quadruped
         const rclcpp_lifecycle::State& /*previous_state*/)
     {
         try {
+            // Load RESIDUAL_GAIN from physical_model.yaml (already loaded via --param-file)
+            // Check if parameter exists and get it
+            std::vector<double> residual_gain_vec;
+            if (get_node()->has_parameter("RESIDUAL_GAIN")) {
+                residual_gain_vec = get_node()->get_parameter("RESIDUAL_GAIN").as_double_array();
+            } else {
+                RCLCPP_WARN(get_node()->get_logger(), "RESIDUAL_GAIN parameter not found, using zero matrix");
+                residual_gain_vec.clear();
+            }
+            
+            // Validate parameter size (should be 72 for 6x12 matrix)
+            if (residual_gain_vec.empty()) {
+                RCLCPP_WARN(get_node()->get_logger(), "RESIDUAL_GAIN parameter is empty, using zero matrix");
+                ctrl_component_.residual_gain_ = Eigen::MatrixXd::Zero(6, 12);
+            } else if (residual_gain_vec.size() != 72) {
+                RCLCPP_ERROR(get_node()->get_logger(), "RESIDUAL_GAIN size mismatch: expected 72, got %zu", residual_gain_vec.size());
+                return controller_interface::CallbackReturn::ERROR;
+            } else {
+                // Convert to Eigen matrix (6x12) and store in ctrl_component_
+                ctrl_component_.residual_gain_ = Eigen::MatrixXd(6, 12);
+                for (int i = 0; i < 6; i++) {
+                    for (int j = 0; j < 12; j++) {
+                        ctrl_component_.residual_gain_(i, j) = residual_gain_vec[i * 12 + j];
+                        RCLCPP_DEBUG(get_node()->get_logger(), "RESIDUAL_GAIN[%d][%d] = %.6f", i, j, ctrl_component_.residual_gain_(i, j));
+                    }
+                }
+                RCLCPP_INFO(get_node()->get_logger(), "Loaded RESIDUAL_GAIN matrix (6x12) from parameter file");
+                std::cout << "Loaded RESIDUAL_GAIN matrix (6x12):\n" << ctrl_component_.residual_gain_ << std::endl;    
+
+            }
 
             // Subscribe to "control input"
             control_input_sub_ = get_node()->create_subscription<control_input_msgs::msg::Inputs>(

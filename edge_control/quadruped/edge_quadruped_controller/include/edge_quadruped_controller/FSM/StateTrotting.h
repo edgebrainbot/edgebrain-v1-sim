@@ -109,6 +109,7 @@ private:
     std::shared_ptr<QuadrupedModel> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
     std::shared_ptr<PhaseScheduler> &phase_scheduler_;
+    CtrlComponent &ctrl_component_;
 
     GaitGenerator gait_generator_;
 
@@ -176,6 +177,12 @@ private:
     Vector12d getDRLStudentGoalState() const;
     std::vector<double> getObservation() const;
     std::vector<double> getObservationNext() const;
+    
+    /**
+     * Get Nominal DRL action by removing residual effect from teacher action
+     * @return DRL action message (terminal_action - residual_gain * tracking_error)
+     */
+    edge_msgs::msg::EdgeAction getNominalDRLAction() const;
     
     RewardComposer reward_composer_{""};
 

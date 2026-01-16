@@ -1,12 +1,15 @@
+import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
-import os
+from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
-    # config_path = os.path.join(
-    #     os.getenv('AMENT_PREFIX_PATH', '').split(':')[0],
-    #     'share', 'edge_drl_student', 'config', 'hyperparams.yaml'
-    # )
+    # Get the path to the parameter file
+    physical_model_file = os.path.join(
+        get_package_share_directory('edge_config'),
+        'config',
+        'physical_model.yaml'
+    )
 
     return LaunchDescription([
         Node(
@@ -15,6 +18,6 @@ def generate_launch_description():
             name='drl_student',
             namespace='edge',
             output='screen',
-            # parameters=[config_path]
+            parameters=[physical_model_file]
         )
     ])

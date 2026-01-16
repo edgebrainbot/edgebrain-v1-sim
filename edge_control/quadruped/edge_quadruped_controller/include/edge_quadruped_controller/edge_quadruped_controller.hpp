@@ -106,7 +106,6 @@ namespace edge::control::quadruped
         std::string command_prefix_;
         std::vector<std::string> imu_interface_types_;
 
-
         // FR FL RR RL
         std::vector<double> stand_pos_ = {
             0.0, 0.67, -1.3,
