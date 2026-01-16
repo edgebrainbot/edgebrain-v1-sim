@@ -1,6 +1,6 @@
 #include <utility>
 #include <edge_quadruped_controller/control/CtrlComponent.h>
-#include <edge_quadruped_controller/control/Estimator.h>
+#include <edge_quadruped_controller/estimator/Estimator.hpp>
 #include <edge_quadruped_controller/gait/PhaseScheduler.h>
 #include "edge_quadruped_controller/gait/GaitGenerator.h"
 

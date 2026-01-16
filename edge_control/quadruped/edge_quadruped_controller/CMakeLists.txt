@@ -47,7 +47,7 @@ add_library(${PROJECT_NAME} SHARED
 
   src/robot_model/QuadrupedModel.cpp
 
-  src/control/Estimator.cpp
+  src/estimator/Estimator.cpp
   src/control/LowPassFilter.cpp
   src/control/BalanceCtrl.cpp
 

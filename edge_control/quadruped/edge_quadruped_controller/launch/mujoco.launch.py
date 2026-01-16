@@ -154,7 +154,7 @@ def generate_launch_description():
 
     use_real_robot = DeclareLaunchArgument(
         'use_real_robot',
-        default_value='true',
+        default_value='false',
         description='Whether to use real robot or not'
     )
     

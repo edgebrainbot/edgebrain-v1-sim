@@ -55,12 +55,13 @@ void QuadrupedModel::initializeFromURDF(const std::string& urdf_path)
             mass_ += inertia.mass();
         }
 
-        // Compute center of mass and inertia tensor at zero position
+        // Compute center of mass and inertia tensor when q is zero position
         Vec12 q_zero = Vec12::Zero();
         pinocchio::forwardKinematics(model_, data_, q_zero);
 
-        // Compute overall center of mass
+        // Compute overall center of mass in body frame
         com_offset_body_ = pinocchio::centerOfMass(model_, data_, q_zero);
+
         // Compute inertia tensor at center of mass using CCRBA algorithm
         const Vec12 v_zero = Vec12::Zero();
         pinocchio::ccrba(model_, data_, q_zero, v_zero);
@@ -332,7 +333,7 @@ Vec3 QuadrupedModel::calcLegFK(const Vec3& q_leg, int leg_index) const
     double c23 = c2 * c3 - s2 * s3;
     double s23 = s2 * c3 + c2 * s3;
 
-    // Unitree The original forward kinematics formula (hip coordinate system)
+    // Unitree original forward kinematics formula (hip coordinate system)
     Vec3 p_ee_hip;
     p_ee_hip(0) = l3 * s23 + l2 * s2;
     p_ee_hip(1) = -l3 * s1 * c23 + l1 * c1 - l2 * c2 * s1;

@@ -1,9 +1,7 @@
-#include "edge_quadruped_controller/FSM/StateBalanceTest.h"
-
-#include <edge_quadruped_controller/edge_quadruped_controller.hpp>
-
-#include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/gait/PhaseScheduler.h"
+#include "edge_quadruped_controller/FSM/StateBalanceTest.h"
+#include "edge_quadruped_controller/utils/math/mathTools.h"
+#include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 
 StateBalanceTest::StateBalanceTest(CtrlInterfaces& ctrl_interfaces,
                                    CtrlComponent& ctrl_component,

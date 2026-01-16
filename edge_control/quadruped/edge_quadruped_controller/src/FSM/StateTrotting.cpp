@@ -4,7 +4,7 @@
 #include "edge_quadruped_controller/FSM/StateTrotting.h"
 #include <edge_quadruped_controller/utils/math/mathTools.h>
 #include <edge_quadruped_controller/control/CtrlComponent.h>
-#include <edge_quadruped_controller/control/Estimator.h>
+#include <edge_quadruped_controller/estimator/Estimator.hpp>
 #include <edge_quadruped_controller/gait/PhaseScheduler.h>
 
 using namespace edge::control::quadruped;
@@ -29,7 +29,7 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
     Kdp = Vec3(20, 20, 20).asDiagonal();
     kp_w_ = 780;
     Kd_w_ = Vec3(70, 70, 70).asDiagonal();
-    Kp_swing_ = Vec3(400, 400, 400).asDiagonal();
+    Kp_swing_ = Vec3(200, 200, 200).asDiagonal();
     Kd_swing_ = Vec3(10, 10, 10).asDiagonal();
 
     // v_x_limit_ << -0.5, 0.5;
@@ -75,7 +75,6 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
     // Update teacher activation status
-
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
 
@@ -169,6 +168,7 @@ void StateTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
     v_cmd_body_ << vx_in, vy_in, 0.0;
 
     d_yaw_cmd_ = wz_in;
+
     // 滤波
     d_yaw_cmd_ = 0.9 * d_yaw_cmd_past_ + (1 - 0.9) * d_yaw_cmd_;
     d_yaw_cmd_past_ = d_yaw_cmd_;

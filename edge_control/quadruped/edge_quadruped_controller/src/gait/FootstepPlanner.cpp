@@ -1,7 +1,7 @@
 #include "edge_quadruped_controller/gait/FootstepPlanner.hpp"
 
 #include <edge_quadruped_controller/control/CtrlComponent.h>
-#include <edge_quadruped_controller/control/Estimator.h>
+#include <edge_quadruped_controller/estimator/Estimator.hpp>
 
 namespace edge::control::quadruped
 {

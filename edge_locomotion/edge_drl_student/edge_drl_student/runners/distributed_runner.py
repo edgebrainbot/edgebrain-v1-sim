@@ -149,8 +149,8 @@ class DistributedRunner:
         self.tracking_error_ = Vec12Msg(data=[0.0] * self.body_state_dim)
         
         # Fall detection state
-        self.last_fall_state: bool = False
         self.fall_count: int = 0
+        self.last_fall_state: bool = False
         self.fall_reset_time: float = 0.0
         
         # Statistics
@@ -392,7 +392,7 @@ class DistributedRunner:
         self.episode_manager.update(reward_components, action_mode)
         
         # Log stepwise statistics
-        self._log_stepwise_stats(reward_components)
+        # self._log_stepwise_stats(reward_components)
         
         # Log timestep statistics
         self._log_timestep_stats(reward_components)

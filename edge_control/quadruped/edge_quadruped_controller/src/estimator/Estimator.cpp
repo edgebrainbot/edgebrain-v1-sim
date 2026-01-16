@@ -2,13 +2,13 @@
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <pinocchio/spatial/se3.hpp>
 
-#include "edge_quadruped_controller/control/Estimator.h"
+#include "edge_quadruped_controller/estimator/Estimator.hpp"
 #include "edge_quadruped_controller/gait/PhaseScheduler.h"
 #include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
 #include "edge_quadruped_controller/control/CtrlComponent.h"
-#include <pinocchio/spatial/se3.hpp>
 
 #include "controller_common/CtrlInterfaces.h"
 
@@ -22,8 +22,8 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
       phase_scheduler_(ctrl_component.phase_scheduler_),
       node_(node)
 {
-    g_ << 0, 0, -9.81;
-    dt_ = 1.0 / ctrl_interfaces.frequency_;
+    g_ << 0, 0, -9.81;      // gravity vector
+    dt_ = 1.0 / ctrl_interfaces.frequency_;     // delta time
     std::cout << "dt: " << dt_ << std::endl;
     large_variance_ = 100;
 

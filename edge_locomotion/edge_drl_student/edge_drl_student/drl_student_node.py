@@ -126,7 +126,6 @@ class DRLStudentNode(Node):
             'auto_reset_on_fall': True,
         }
         
-        
         agent_cfg = {
             'model_save_path': MODEL_PATH,
         }

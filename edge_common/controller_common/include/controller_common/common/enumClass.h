@@ -30,9 +30,9 @@ enum class FSMMode
 
 enum class FrameType
 {
-    BODY,
     HIP,
-    GLOBAL
+    BODY,
+    WORLD
 };
 
 enum class PhaseStatus

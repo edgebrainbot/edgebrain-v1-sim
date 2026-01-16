@@ -1,11 +1,13 @@
 #pragma once
 
 #include <memory>
-#include "LowPassFilter.h"
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include "edge_quadruped_controller/control/LowPassFilter.h"
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
+#include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/robot_model/QuadrupedModel.hpp"
 
 struct CtrlInterfaces;
@@ -33,8 +35,8 @@ public:
     ~Estimator() = default;
 
     /**
-     * Get the estimated robot central position
-     * @return robot central position
+     * Get the estimated robot central position in world frame
+     * @return robot centriodal position (CoM position)
      */
     Vec3 getPosition()
     {
@@ -42,8 +44,8 @@ public:
     }
 
     /**
-     * Get the estimated robot central velocity
-     * @return robot central velocity
+     * Get the estimated robot central velocity in world frame
+     * @return robot centriodal velocity (CoM velocity)
      */
     Vec3 getVelocity()
     {
@@ -80,12 +82,23 @@ public:
      */
     Vec34 getFeetVel()
     {
-        Vec34 feet_vel = robot_model_->getFeetVelInBodyFrame();
-        for (int i(0); i < 4; ++i)
-        {
-            feet_vel.col(i) += getVelocity();
+        // Vec34 feet_vel_body2 = robot_model_->getFeetVelInBodyFrame();
+        // Vec34 feet_vel_world2;
+        // for (int i(0); i < 4; ++i)
+        // {
+        //     feet_vel_world2.col(i) = feet_vel_body2.col(i) + getVelocity();
+        // }
+        // std::cout << "feet_vel_world2 (origin): " << std::endl << feet_vel_world2 << std::endl;
+        Vec34 feet_vel_world;
+        Vec34 foot_vel_body = robot_model_->getFeetVelInBodyFrame();
+        Vec34 foot_pos_body = robot_model_->getFeetPosInBodyFrame();
+        for (int i = 0; i < 4; ++i) {
+            feet_vel_world.col(i) = rotation_ * (foot_vel_body.col(i) + skew(gyro_) * 
+                                    foot_pos_body.col(i)) + getVelocity();
         }
-        return feet_vel;
+
+        // std::cout << "feet_vel_world: " << std::endl << feet_vel_world << std::endl;
+        return feet_vel_world;
     };
 
     /**
