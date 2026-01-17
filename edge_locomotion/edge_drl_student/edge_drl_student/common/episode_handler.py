@@ -170,6 +170,7 @@ class EpisodeManager:
         
         # ========== Episode State ==========
         self.episode_count: int = 0
+        self.success_episode_count: int = 0
         self.current_episode_length: int = 0
         self.current_episode_reward: float = 0.0
         self.current_episode_start_time: float = 0.0
@@ -508,6 +509,11 @@ class EpisodeManager:
         # Action counts
         self.logger.writer.add_scalar('Episode/student_action_count', stats.student_action_count, episode_id)
         self.logger.writer.add_scalar('Episode/teacher_action_count', stats.teacher_action_count, episode_id)
+    
+        if stats.success:
+            self.logger.writer.add_scalar('SuccessEpisodes/length', stats.episode_length, self.success_episode_count)
+            self.success_episode_count += 1
+
     
     def _print_episode_summary(self) -> None:
         """Print episode summary to console"""
