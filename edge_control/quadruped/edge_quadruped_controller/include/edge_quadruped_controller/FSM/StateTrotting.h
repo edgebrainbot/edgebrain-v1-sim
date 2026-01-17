@@ -179,10 +179,10 @@ private:
     std::vector<double> getObservationNext() const;
     
     /**
-     * Get Nominal DRL action by removing residual effect from teacher action
+     * Get Learned DRL action by removing residual effect from teacher action
      * @return DRL action message (terminal_action - residual_gain * tracking_error)
      */
-    edge_msgs::msg::EdgeAction getNominalDRLAction() const;
+    edge_msgs::msg::EdgeAction getLearnedDRLAction() const;
     
     RewardComposer reward_composer_{""};
 

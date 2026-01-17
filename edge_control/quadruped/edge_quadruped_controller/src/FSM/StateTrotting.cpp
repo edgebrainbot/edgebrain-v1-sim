@@ -71,7 +71,7 @@ void StateTrotting::enter()
 }
 
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
-                        edge_msgs::msg::EdgeAction& latest_action_,
+                        edge_msgs::msg::EdgeAction& latest_action,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
@@ -113,7 +113,7 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
     calcQQd();
     calcGain();
 }
@@ -206,7 +206,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-    const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
+    const edge_msgs::msg::EdgeAction& latest_action, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
@@ -225,12 +225,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, latest_action_, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
-
-    // update last action and tracking error and robot state
-    last_edge_action_ = latest_action_;
-    last_tracking_error_tea_ = curr_tracking_error_tea_;  
-    last_robot_state_ = curr_robot_state_;
+    pubTransitionTopic(transition_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
 
     auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
     tracking_error_tea_pub_->publish(track_msg);
@@ -251,7 +246,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
 
     Vec6 accel;
     for (int i = 0; i < 6; i++) {
-        accel(i) = latest_action_.control_action[i];
+        accel(i) = latest_action.control_action[i];
     }
     std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
@@ -267,6 +262,8 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     accel(5) = saturation(accel(5), Vec2(-20, 20));
 
     std::cout << "acc command: " << accel.transpose() << std::endl;
+
+    edge_msgs::msg::EdgeAction latest_action_saturated = EigenToEdgeActionMsg(accel, latest_action.action_mode);
 
     Vec3 dd_pcd = accel.segment(0, 3);
     Vec3 d_wbd = accel.segment(3, 3);
@@ -329,6 +326,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
 
     Vec34 force_feet_body_ = G2B_RotMat * force_feet_global;
 
+    // Send torque command
     for (int i = 0; i < 4; i++)
     {
         Vec3 torque = robot_model_->calcTorque(force_feet_body_.col(i), i);
@@ -337,6 +335,11 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
             ctrl_interfaces_.joint_torque_command_interface_[i * 3 + j].get().set_value(torque(j));
         }
     }
+
+    // update last action and tracking error and robot state
+    last_edge_action_ = latest_action_saturated;
+    last_tracking_error_tea_ = curr_tracking_error_tea_;  
+    last_robot_state_ = curr_robot_state_;
 }
 
 void StateTrotting::calcQQd()
@@ -441,11 +444,10 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
         {"is_goal_reached", is_goal_reached}
     };
 
-
     // Create and populate the Transition message
     edge_msgs::msg::Transition transition;
     transition.obs = getObservation();
-    transition.action = getNominalDRLAction();
+    transition.action = getLearnedDRLAction();
     transition.reward_components = reward_composer_.computeTotalReward(reward_factors);
     transition.next_obs = getObservationNext();
     transition.done = is_goal_reached;
@@ -494,19 +496,19 @@ std::vector<double> StateTrotting::getObservationNext() const
     return EigenToVector(curr_base_observation);
 }
 
-edge_msgs::msg::EdgeAction StateTrotting::getNominalDRLAction() const
+edge_msgs::msg::EdgeAction StateTrotting::getLearnedDRLAction() const
 {
     /**
      * Calculate DRL action by removing residual effect from teacher action
-     * nominal_drl_action = terminal_action - residual_gain @ tracking_error
+     * learned_drl_action = terminal_action - residual_gain @ tracking_error
      */
     auto last_residual_action = ctrl_component_.residual_gain_ * last_tracking_error_tea_;
-    auto nominal_drl_action = EdgeActionMsgToEigen(last_edge_action_) - last_residual_action;
+    auto learned_drl_action = EdgeActionMsgToEigen(last_edge_action_) - last_residual_action;
 
     // std::cout << "last residual action: " << last_residual_action.transpose() << std::endl;
-    // std::cout << "nominal drl action: " << nominal_drl_action.transpose() << std::endl;
+    // std::cout << "learned drl action: " << learned_drl_action.transpose() << std::endl;
 
-    return EigenToEdgeActionMsg(nominal_drl_action, last_edge_action_.action_mode);
+    return EigenToEdgeActionMsg(learned_drl_action, last_edge_action_.action_mode);
 }
 
 Vector12d StateTrotting::getRobotState(bool is_global/* = true*/) const

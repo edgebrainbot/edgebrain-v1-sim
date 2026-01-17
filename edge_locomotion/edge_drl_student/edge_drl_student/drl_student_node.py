@@ -119,9 +119,9 @@ class DRLStudentNode(Node):
         
         ros2_topic_name = {
             'transition_topic': '/edge/transition',
-            'action_topic': '/edge/drl_student_action',
+            'drl_action_topic': '/edge/drl_student_action',
             'tracking_error_topic': '/edge/tracking_error_stu',
-            'learned_action_topic': '/edge/drl_student_learned_action',
+            'drl_learned_action_topic': '/edge/drl_student_learned_action',
             'fall_detection_topic': '/edge/is_fall',
         }
         

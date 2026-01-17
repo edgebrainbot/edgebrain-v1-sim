@@ -53,9 +53,9 @@ class DistributedRunner:
 
         residual_gain: torch.Tensor = RESIDUAL_GAIN,
         transition_topic: str = 'transition',
-        action_topic: str = 'drl_student_action',
+        drl_action_topic: str = 'drl_student_action',
         tracking_error_topic: str = 'tracking_error_stu',
-        learned_action_topic: str = 'drl_student_learned_action',
+        drl_learned_action_topic: str = 'drl_student_learned_action',
         fall_detection_topic: str = '/edge/is_fall',
         manual_reset_service: str = '/edge/manual_reset',
 
@@ -168,8 +168,8 @@ class DistributedRunner:
         self.episode_rewards = []
         
         # ========== ROS2 Publishers ==========
-        self.action_pub = self.node.create_publisher(EdgeAction, action_topic, 10)
-        self.learned_action_pub = self.node.create_publisher(EdgeAction, learned_action_topic, 10)
+        self.drl_action_pub = self.node.create_publisher(EdgeAction, drl_action_topic, 10)
+        self.drl_learned_action_pub = self.node.create_publisher(EdgeAction, drl_learned_action_topic, 10)
         
         # ========== ROS2 Subscribers ==========
         self.node.create_subscription(Transition, transition_topic, self.transition_callback, 10)
@@ -415,8 +415,8 @@ class DistributedRunner:
         Compute output action with residual control and observation normalization
         
         Returns:
-            output_action: Final action to send to robot [act_dim]
-            drl_action: Pure DRL action (for logging) [act_dim]
+            drl_student_action: Final action to send to robot [act_dim]
+            learned_action: Pure learned action [act_dim]
         """
         # Get current observation
         observation = torch.cat((
@@ -452,14 +452,14 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            drl_action = policy_action + self.policy_blending_weight * blended_action
+            learned_action = policy_action + self.policy_blending_weight * blended_action
         else:
-            drl_action = policy_action
+            learned_action = policy_action
         
         # Final output action
-        output_action = drl_action + residual_action
+        drl_student_action = learned_action + residual_action
         
-        return output_action, drl_action
+        return drl_student_action, learned_action
     
     def action_loop(self):
         """Action generation loop (high frequency)"""
@@ -469,21 +469,21 @@ class DistributedRunner:
         action_start = time.time()
         
         # Compute actions
-        output_action, drl_action = self.compute_output_action()
+        drl_student_action, learned_action = self.compute_output_action()
         
-        # Publish output action
-        edge_action_msg = EdgeAction()
-        edge_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_action_msg.control_action = output_action.detach().cpu().numpy().flatten().astype(np.float64)
-        edge_action_msg.action_mode = ActionMode.STUDENT.value
-        self.action_pub.publish(edge_action_msg)
-        
-        # Publish learned action
+        # Publish drl-student action
         edge_drl_action_msg = EdgeAction()
         edge_drl_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_drl_action_msg.control_action = drl_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_drl_action_msg.control_action = drl_student_action.detach().cpu().numpy().flatten().astype(np.float64)
         edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
-        self.learned_action_pub.publish(edge_drl_action_msg)
+        self.drl_action_pub.publish(edge_drl_action_msg)
+        
+        # Publish learned action
+        edge_policy_action_msg = EdgeAction()
+        edge_policy_action_msg.header.stamp = self.node.get_clock().now().to_msg()
+        edge_policy_action_msg.control_action = learned_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_policy_action_msg.action_mode = ActionMode.STUDENT.value
+        self.drl_learned_action_pub.publish(edge_policy_action_msg)
         
         self.action_count += 1
         self.action_time = time.time() - action_start
