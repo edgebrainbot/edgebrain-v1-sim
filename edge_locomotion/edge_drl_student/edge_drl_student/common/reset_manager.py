@@ -35,10 +35,10 @@ class ResetManager:
         │    │  - Manages reset state                 │   │
         │    └──────────────┬─────────────────────────┘   │
         │                   │                             │
-        │    ┌──────────────▼───────────────────────── ┐  │
-        │    │ Service Client: /edge/reset/coordinator │  │
-        │    │  - Forwards to Reset Coordinator        │  │
-        │    └──────────────┬───────────────────────── ┘  │
+        │    ┌──────────────▼─────────────────────────┐   │
+        │    │ Service Client: /edge/reset/coordinator│   │
+        │    │  - Forwards to Reset Coordinator       │   │
+        │    └──────────────┬─────────────────────────┘   │
         └───────────────────┼─────────────────────────────┘
                             │ call /edge/reset/coordinator
                             ▼

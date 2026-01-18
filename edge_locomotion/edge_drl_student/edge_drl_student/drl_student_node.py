@@ -120,7 +120,7 @@ class DRLStudentNode(Node):
         ros2_topic_name = {
             'transition_topic': '/edge/transition',
             'drl_action_topic': '/edge/drl_student_action',
-            'tracking_error_topic': '/edge/tracking_error_stu',
+            'tracking_error_topic': '/edge/tracking_error',
             'drl_learned_action_topic': '/edge/drl_student_learned_action',
             'fall_detection_topic': '/edge/is_fall',
         }
@@ -222,13 +222,13 @@ class DRLStudentNode(Node):
             f"   Total Episodes:      {global_stats['episode_count']}\n"
             f"   Total Steps:         {global_stats['total_steps']}\n"
             f"   Success Rate:        {global_stats['success_rate']:.2%}\n"
-            f"   Avg Reward:          {global_stats['average_reward']:.2f}\n"
+            f"   Avg Return:          {global_stats['average_return']:.2f}\n"
             f"   Avg Length:          {global_stats['average_length']:.1f}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
             f"🔄 Resets:\n"
             f"   Total Resets:        {reset_stats['total']}\n"
             f"   Success Rate:        {reset_stats['success_rate']:.2%}\n"
-            f"   Episode Done:        {reset_stats['reasons']['episode_done']}\n"
+            f"   Task Done:           {reset_stats['reasons']['task_done']}\n"
             f"   Fall Detected:       {reset_stats['reasons']['fall_detected']}\n"
             f"   Timeout:             {reset_stats['reasons']['timeout']}\n"
             f"   Manual:              {reset_stats['reasons']['manual']}\n"

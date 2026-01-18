@@ -21,34 +21,33 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, Optional, List
 from edge_drl_student.common.logger import Logger
-from edge_drl_student.utils.utils import ActionMode
+from edge_drl_student.utils.utils import ActionMode, ResetReason
 
 # ==================== Episode Statistics ====================
 @dataclass
 class EpisodeStats:
     """
     Episode Statistics Data Class
-    
     Attributes:
         episode_id: Episode number
-        total_reward: Total reward accumulated
+        episode_return: Total return accumulated
         episode_length: Number of steps
-        success: Whether episode was successful
-        reason: Episode termination reason
-        duration: Episode duration in seconds
-        reward_components: Dictionary of reward components
+        episode_is_success: Whether episode was successful (task done)
+        episode_end_reason: Episode termination reason
+        episode_duration: Episode duration in seconds
         student_action_count: Number of student actions
         teacher_action_count: Number of teacher actions
+        reward_components: Dictionary of reward components
     """
     episode_id: int
-    total_reward: float
+    episode_return: float
     episode_length: int
-    success: bool
-    reason: str
-    duration: float
-    reward_components: Dict[str, float] = field(default_factory=dict)
+    episode_duration: float
+    episode_is_success: bool
+    episode_end_reason: ResetReason
     student_action_count: int = 0
     teacher_action_count: int = 0
+    reward_components: Dict[str, float] = field(default_factory=dict)
     
     @property
     def activation_ratio(self) -> float:
@@ -57,21 +56,21 @@ class EpisodeStats:
         return self.teacher_action_count / total if total > 0 else 0.0
     
     @property
-    def average_reward(self) -> float:
+    def average_step_reward(self) -> float:
         """Average reward per step"""
-        return self.total_reward / self.episode_length if self.episode_length > 0 else 0.0
+        return self.episode_return / self.episode_length if self.episode_length > 0 else 0.0
     
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
         return {
             'episode_id': self.episode_id,
-            'total_reward': self.total_reward,
+            'episode_return': self.episode_return,
             'episode_length': self.episode_length,
-            'success': self.success,
-            'reason': self.reason,
-            'duration': self.duration,
+            'episode_is_success': self.episode_is_success,
+            'episode_end_reason': str(self.episode_end_reason),
+            'episode_duration': self.episode_duration,
             'activation_ratio': self.activation_ratio,
-            'average_reward': self.average_reward,
+            'average_step_reward': self.average_step_reward,
             'reward_components': self.reward_components,
             'student_action_count': self.student_action_count,
             'teacher_action_count': self.teacher_action_count,
@@ -98,7 +97,7 @@ class EpisodeManager:
         │                                                 │
         │  ┌──────────────────────────────────────────┐   │
         │  │  Statistics Tracking                     │   │
-        │  │  - Total reward                          │   │
+        │  │  - Total return                          │   │
         │  │  - Reward components                     │   │
         │  │  - Episode length                        │   │
         │  │  - Action counts                         │   │
@@ -107,7 +106,7 @@ class EpisodeManager:
         │                                                 │
         │  ┌──────────────────────────────────────────┐   │
         │  │  Moving Statistics                       │   │
-        │  │  - Moving average reward                 │   │
+        │  │  - Moving average return                 │   │
         │  │  - Moving average length                 │   │
         │  │  - Success rate                          │   │
         │  └──────────────────────────────────────────┘   │
@@ -139,7 +138,7 @@ class EpisodeManager:
         ...         'goal_distance': 0.5,
         ...         'body_state': -0.05
         ...     }
-        ...     total_reward = manager.update_step(reward_components)
+        ...     episode_return = manager.update_step(reward_components)
         ...     manager.increment_action_count(is_student=True)
         ...     
         ...     if done:
@@ -147,15 +146,15 @@ class EpisodeManager:
         >>> 
         >>> # End episode
         >>> stats, activation_ratio = manager.log_episode_end()
-        >>> print(f"Episode {stats['episode_id']} done: {stats['reward']:.2f}")
+        >>> print(f"Episode {stats['episode_id']} done: {stats['episode_return']:.2f}")
     """
     
     def __init__(
         self,
         logger: Logger,
+        log_interval: int = 10,
         max_episode_length: int = 1000,
         training_episode: int = 10000,
-        log_interval: int = 10,
         moving_average_window: int = 100,
     ) -> None:
         """
@@ -167,41 +166,38 @@ class EpisodeManager:
             config: Episode configuration (default: EpisodeConfig())
         """
         self.logger: Logger = logger
-        
-        # ========== Episode State ==========
-        self.episode_count: int = 0
-        self.success_episode_count: int = 0
-        self.current_episode_length: int = 0
-        self.current_episode_reward: float = 0.0
-        self.current_episode_start_time: float = 0.0
 
+        # ========== Configuration ==========
         self.log_interval: int = log_interval
-        self.max_episode_length: int = max_episode_length
         self.training_episode: int = training_episode
+        self.max_episode_length: int = max_episode_length
         self.moving_average_window: int = moving_average_window
         
-        # ========== Reward Components Tracking ==========
+        # ========== Current Episode State ==========
+        self.stu_action_count: int = 0
+        self.tea_action_count: int = 0
+        self.current_episode_length: int = 0
+        self.current_episode_return: float = 0.0
+        self.current_episode_start_time: float = 0.0
         self.current_reward_components: Dict[str, float] = {}
         self.cumulative_reward_components: Dict[str, float] = {}
         
-        # ========== Action Counting ==========
-        self.stu_action_count: int = 0
-        self.tea_action_count: int = 0
+        # ========== Global Episode State ==========
+        self.total_steps: int = 0
+        self.total_return: float = 0.0
+        self.success_count: int = 0
+        self.failure_count: int = 0
+        self.timeout_count: int = 0
+        self.episode_count: int = 0
+        self.success_episode_count: int = 0
         
         # ========== Episode History ==========
         self.episode_history: List[EpisodeStats] = []
         
         # ========== Moving Statistics ==========
-        self.reward_window: deque = deque(maxlen=self.moving_average_window)
+        self.return_window: deque = deque(maxlen=self.moving_average_window)
         self.length_window: deque = deque(maxlen=self.moving_average_window)
         self.success_window: deque = deque(maxlen=self.moving_average_window)
-        
-        # ========== Global Statistics ==========
-        self.total_steps: int = 0
-        self.total_reward: float = 0.0
-        self.success_count: int = 0
-        self.failure_count: int = 0
-        self.timeout_count: int = 0
         
         print(f"\n{'='*70}\n"
               f"✅ Episode Manager initialized\n"
@@ -223,17 +219,13 @@ class EpisodeManager:
             >>> manager.reset_episode()
             >>> # Current episode is reset
         """
-        self.current_episode_length = 0
-        self.current_episode_reward = 0.0
-        self.current_episode_start_time = time.time()
-        
-        # Reset reward components
-        self.current_reward_components = {}
-        self.cumulative_reward_components = {}
-        
-        # Reset action counts
         self.stu_action_count = 0
         self.tea_action_count = 0
+        self.current_episode_length = 0
+        self.current_episode_return = 0.0
+        self.current_episode_start_time = time.time()
+        self.current_reward_components = {}
+        self.cumulative_reward_components = {}
         
         print(
             f"\n{'='*70}\n"
@@ -263,13 +255,13 @@ class EpisodeManager:
         """
         
         # Calculate total reward
-        total_reward = sum(reward_components.values())
+        total_step_reward = sum(reward_components.values())
         
-        # Update episode state
-        self.current_episode_length += 1
-        self.current_episode_reward += total_reward
+        # Update episode state and global statistics
         self.total_steps += 1
-        self.total_reward += total_reward
+        self.current_episode_length += 1
+        self.total_return += total_step_reward
+        self.current_episode_return += total_step_reward
         
         # Update reward components
         self.current_reward_components = reward_components.copy()
@@ -300,6 +292,7 @@ class EpisodeManager:
         else:
             raise ValueError(f"Unknown ActionMode: {action_mode}")
     
+    
     def is_episode_done(self) -> bool:
         """
         Check if episode should end (timeout)
@@ -312,6 +305,7 @@ class EpisodeManager:
             ...     manager.log_episode_end()
         """
         return self.current_episode_length >= self.max_episode_length
+    
     
     def should_continue_training(self) -> bool:
         """
@@ -329,7 +323,8 @@ class EpisodeManager:
         """
         return self.episode_count < self.training_episode
 
-    def log_episode_end(self, success: Optional[bool], reason: str = 'unknown') -> Dict:
+
+    def log_episode_end(self, success: Optional[bool], reason: ResetReason=None) -> EpisodeStats:
         """
         End episode and log statistics
         
@@ -338,12 +333,12 @@ class EpisodeManager:
             reason: Episode termination reason
         
         Returns:
-            Dict: Episode statistics dictionary
+            EpisodeStats: Episode statistics dataclass instance
         
         Example:
             >>> stats = manager.log_episode_end(
             ...     success=True,
-            ...     reason='goal_reached'
+            ...     reason=ResetReason.TIMEOUT
             ... )
             >>> print(f"Episode reward: {stats['reward']:.2f}")
             >>> print(f"Activation ratio: {stats['activation_ratio']:.2%}")
@@ -352,14 +347,14 @@ class EpisodeManager:
         # Calculate episode duration
         episode_duration = time.time() - self.current_episode_start_time
         
-        # Auto-detect reason if unknown
-        if reason == 'unknown':
+        # Auto-detect reason if not provided
+        if reason is None:
             if self.is_episode_done():
-                reason = 'timeout'
+                reason = ResetReason.TIMEOUT
             elif success:
-                reason = 'success'
+                reason = ResetReason.TASK_DONE
             else:
-                reason = 'failure'
+                reason = ResetReason.UNKNOWN
         
         # Update global statistics
         if success:
@@ -367,27 +362,27 @@ class EpisodeManager:
         else:
             self.failure_count += 1
         
-        if reason == 'timeout':
+        if reason == ResetReason.TIMEOUT:
             self.timeout_count += 1
         
         # Create episode stats
         stats = EpisodeStats(
             episode_id=self.episode_count,
-            total_reward=self.current_episode_reward,
+            episode_return=self.current_episode_return,
             episode_length=self.current_episode_length,
-            success=success,
-            reason=reason,
-            duration=episode_duration,
-            reward_components=self.cumulative_reward_components.copy(),
+            episode_duration=episode_duration,
+            episode_is_success=success,
+            episode_end_reason=reason,
             student_action_count=self.stu_action_count,
             teacher_action_count=self.tea_action_count,
+            reward_components=self.cumulative_reward_components.copy(),
         )
         
         # Add to history
         self.episode_history.append(stats)
         
         # Update moving statistics
-        self.reward_window.append(self.current_episode_reward)
+        self.return_window.append(self.current_episode_return)
         self.length_window.append(self.current_episode_length)
         self.success_window.append(1.0 if success else 0.0)
         
@@ -401,19 +396,21 @@ class EpisodeManager:
         # Increment episode count
         self.episode_count += 1
         
-        return stats.to_dict()
+        return stats
     
     # ==================== Statistics ====================
+    @property
+    def moving_average_return(self) -> float:
+        """Get moving average return"""
+        return np.mean(self.return_window) if len(self.return_window) > 0 else 0.0
     
-    def get_moving_average_reward(self) -> float:
-        """Get moving average reward"""
-        return np.mean(self.reward_window) if len(self.reward_window) > 0 else 0.0
-    
-    def get_moving_average_length(self) -> float:
+    @property
+    def moving_average_length(self) -> float:
         """Get moving average episode length"""
         return np.mean(self.length_window) if len(self.length_window) > 0 else 0.0
     
-    def get_success_rate(self) -> float:
+    @property
+    def moving_average_success_rate(self) -> float:
         """Get success rate (0.0 to 1.0)"""
         return np.mean(self.success_window) if len(self.success_window) > 0 else 0.0
     
@@ -425,27 +422,27 @@ class EpisodeManager:
             Dict: Global statistics including:
                 - episode_count: Total episodes
                 - total_steps: Total steps across all episodes
-                - total_reward: Total reward across all episodes
+                - total_return: Total return across all episodes
                 - success_count: Number of successful episodes
                 - failure_count: Number of failed episodes
                 - timeout_count: Number of timeout episodes
                 - success_rate: Overall success rate
-                - average_reward: Average reward per episode
+                - average_return: Average return per episode
                 - average_length: Average episode length
         """
         return {
             'episode_count': self.episode_count,
             'total_steps': self.total_steps,
-            'total_reward': self.total_reward,
+            'total_return': self.total_return,
             'success_count': self.success_count,
             'failure_count': self.failure_count,
             'timeout_count': self.timeout_count,
             'success_rate': self.success_count / self.episode_count if self.episode_count > 0 else 0.0,
-            'average_reward': self.total_reward / self.episode_count if self.episode_count > 0 else 0.0,
+            'average_return': self.total_return / self.episode_count if self.episode_count > 0 else 0.0,
             'average_length': self.total_steps / self.episode_count if self.episode_count > 0 else 0.0,
-            'moving_average_reward': self.get_moving_average_reward(),
-            'moving_average_length': self.get_moving_average_length(),
-            'moving_average_success_rate': self.get_success_rate(),
+            'moving_average_return': self.moving_average_return,
+            'moving_average_length': self.moving_average_length,
+            'moving_average_success_rate': self.moving_average_success_rate,
         }
     
     def get_current_episode_info(self) -> Dict:
@@ -460,12 +457,12 @@ class EpisodeManager:
     
         return {
             'episode_id': self.episode_count,
-            'length': self.current_episode_length,
-            'reward': self.current_episode_reward,
-            'duration': time.time() - self.current_episode_start_time,
+            'episode_length': self.current_episode_length,
+            'episode_return': self.current_episode_return,
+            'episode_duration': time.time() - self.current_episode_start_time,
             'student_action_count': self.stu_action_count,
             'teacher_action_count': self.tea_action_count,
-            'teacher_activation_ratio': teacher_activation_ratio,
+            'activation_ratio': teacher_activation_ratio,
             'reward_components': self.cumulative_reward_components.copy(),
         }
     
@@ -490,28 +487,29 @@ class EpisodeManager:
         episode_id = stats.episode_id
         
         # Episode metrics
-        self.logger.writer.add_scalar('Episode/reward', stats.total_reward, episode_id)
+        self.logger.writer.add_scalar('Episode/return', stats.episode_return, episode_id)
         self.logger.writer.add_scalar('Episode/length', stats.episode_length, episode_id)
-        self.logger.writer.add_scalar('Episode/duration', stats.duration, episode_id)
-        self.logger.writer.add_scalar('Episode/success', 1.0 if stats.success else 0.0, episode_id)
-        self.logger.writer.add_scalar('Episode/teacher_activation_ratio', stats.activation_ratio, episode_id)
-        self.logger.writer.add_scalar('Episode/average_reward', stats.average_reward, episode_id)
+        self.logger.writer.add_scalar('Episode/duration', stats.episode_duration, episode_id)
+        self.logger.writer.add_scalar('Episode/success', 1.0 if stats.episode_is_success else 0.0, episode_id)
+        self.logger.writer.add_scalar('Episode/activation_ratio', stats.activation_ratio, episode_id)
+        self.logger.writer.add_scalar('Episode/average_step_reward', stats.average_step_reward, episode_id)
+        # self.logger.writer.add_scalar('Episode/average_length', stats.average_length, episode_id)
         
         # Reward components
         for component, value in stats.reward_components.items():
-            self.logger.writer.add_scalar(f'Episode/reward_{component}', value, episode_id)
+            self.logger.writer.add_scalar(f'Episode/reward/{component}', value, episode_id)
         
         # Moving averages
-        self.logger.writer.add_scalar('Episode/moving_avg_reward', self.get_moving_average_reward(), episode_id)
-        self.logger.writer.add_scalar('Episode/moving_avg_length', self.get_moving_average_length(), episode_id)    
-        self.logger.writer.add_scalar('Episode/success_rate', self.get_success_rate(), episode_id)  
+        self.logger.writer.add_scalar('Episode/moving_avg_return', self.moving_average_return, episode_id)
+        self.logger.writer.add_scalar('Episode/moving_avg_length', self.moving_average_length, episode_id)    
+        self.logger.writer.add_scalar('Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
         
         # Action counts
         self.logger.writer.add_scalar('Episode/student_action_count', stats.student_action_count, episode_id)
         self.logger.writer.add_scalar('Episode/teacher_action_count', stats.teacher_action_count, episode_id)
-    
-        if stats.success:
-            self.logger.writer.add_scalar('SuccessEpisodes/length', stats.episode_length, self.success_episode_count)
+        # self.logger.writer.add_scalar('Episode/end_reason', str(stats.episode_end_reason), episode_id)
+        if stats.episode_is_success:
+            self.logger.writer.add_scalar('Episode/success_ep_length', stats.episode_length, self.success_episode_count)
             self.success_episode_count += 1
 
     
@@ -525,12 +523,12 @@ class EpisodeManager:
             f"{'='*70}\n"
             f"Episodes: {global_stats['episode_count']}\n"
             f"  Total Steps:         {global_stats['total_steps']}\n"
-            f"  Total Reward:        {global_stats['total_reward']:.2f}\n"
-            f"  Average Reward:      {global_stats['average_reward']:.2f}\n"
+            f"  Total Return:        {global_stats['total_return']:.2f}\n"
+            f"  Average Return:      {global_stats['average_return']:.2f}\n"
             f"  Average Length:      {global_stats['average_length']:.1f}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
             f"Moving Statistics (Window: {self.moving_average_window}):\n"
-            f"  Avg Reward:          {global_stats['moving_average_reward']:.2f}\n"
+            f"  Avg Return:          {global_stats['moving_average_return']:.2f}\n"
             f"  Avg Length:          {global_stats['moving_average_length']:.1f}\n"
             f"  Success Rate:        {global_stats['moving_average_success_rate']:.2%}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
@@ -550,9 +548,9 @@ class EpisodeManager:
             f"\n{'='*70}\n"
             f"📍 Current Episode {info['episode_id']}\n"
             f"{'='*70}\n"
-            f"Length:              {info['length']}\n"
-            f"Reward:              {info['reward']:.2f}\n"
-            f"Duration:            {info['duration']:.2f}s\n"
+            f"Episode Length:      {info['episode_length']}\n"
+            f"Episode Return:      {info['episode_return']:.2f}\n"
+            f"Episode Duration:    {info['episode_duration']:.2f}s\n"
             f"Student Actions:     {info['student_action_count']}\n"
             f"Teacher Actions:     {info['teacher_action_count']}\n"
             f"Teacher Activation Ratio:    {info['teacher_activation_ratio']:.2%}\n"
@@ -570,12 +568,12 @@ class EpisodeManager:
     def reset_statistics(self) -> None:
         """Reset all statistics (keep episode history)"""
         self.total_steps = 0
-        self.total_reward = 0.0
+        self.total_return = 0.0
         self.success_count = 0
         self.failure_count = 0
         self.timeout_count = 0
         
-        self.reward_window.clear()
+        self.return_window.clear()
         self.length_window.clear()
         self.success_window.clear()
         
@@ -594,6 +592,6 @@ class EpisodeManager:
             f"  episode_count={global_stats['episode_count']},\n"
             f"  total_steps={global_stats['total_steps']},\n"
             f"  success_rate={global_stats['success_rate']:.2%},\n"
-            f"  moving_avg_reward={global_stats['moving_average_reward']:.2f},\n"
+            f"  moving_avg_return={global_stats['moving_average_return']:.2f},\n"
             f")"
         )

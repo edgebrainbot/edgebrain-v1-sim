@@ -18,12 +18,12 @@ class ResetReason(enum.Enum):
         >>> print(reason.name)  # 'FALL_DETECTED'
         >>> print(reason.value)  # 1
     """
-    EPISODE_DONE = 0
-    FALL_DETECTED = 1
-    MANUAL = 2
-    TIMEOUT = 3
-    EXTERNAL = 4
-    UNKNOWN = 5
+    MANUAL = 0
+    UNKNOWN = 1
+    TIMEOUT = 2
+    EXTERNAL = 3
+    TASK_DONE = 4
+    FALL_DETECTED = 5
     
     @classmethod
     def from_string(cls, reason_str: str) -> 'ResetReason':
@@ -40,11 +40,11 @@ class ResetReason(enum.Enum):
             >>> reason = ResetReason.from_string('fall_detected')
             >>> assert reason == ResetReason.FALL_DETECTED
             >>> 
-            >>> reason = ResetReason.from_string('EPISODE_DONE')
-            >>> assert reason == ResetReason.EPISODE_DONE
+            >>> reason = ResetReason.from_string('TASK_DONE')
+            >>> assert reason == ResetReason.TASK_DONE
         """
         reason_map = {
-            'episode_done': cls.EPISODE_DONE,
+            'task_done': cls.TASK_DONE,
             'fall_detected': cls.FALL_DETECTED,
             'manual': cls.MANUAL,
             'timeout': cls.TIMEOUT,

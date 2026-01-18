@@ -173,7 +173,7 @@ class DistributedRunner:
         
         # ========== ROS2 Subscribers ==========
         self.node.create_subscription(Transition, transition_topic, self.transition_callback, 10)
-        self.node.create_subscription(Vec12Msg,tracking_error_topic, self.tracking_error_callback, 10)
+        self.node.create_subscription(Vec12Msg, tracking_error_topic, self.tracking_error_callback, 10)
         self.node.create_subscription(Bool, fall_detection_topic, self.fall_detection_callback, 10)
         
         # ========== ROS2 Services ==========
@@ -227,21 +227,9 @@ class DistributedRunner:
         self.tracking_error_ = msg
         
         tracking_errors = torch.tensor(msg.data, dtype=torch.float32)
-        self.logger.writer.add_scalar(
-            'TrackingError/mean',
-            torch.mean(torch.abs(tracking_errors)),
-            self.transition_count
-        )
-        self.logger.writer.add_scalar(
-            'TrackingError/max',
-            torch.max(torch.abs(tracking_errors)),
-            self.transition_count
-        )
-        self.logger.writer.add_scalar(
-            'TrackingError/std',
-            torch.std(tracking_errors),
-            self.transition_count
-        )
+        self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
+        self.logger.writer.add_scalar('Control/tracking_error/max', torch.max(torch.abs(tracking_errors)), self.transition_count)
+        self.logger.writer.add_scalar('Control/tracking_error/std', torch.std(tracking_errors), self.transition_count)
     
     def manual_reset_callback(self, request: Trigger.Request, response: Trigger.Response):
         """
@@ -308,7 +296,10 @@ class DistributedRunner:
     
     # ==================== Transition Callback ====================
     def transition_callback(self, msg: Transition):
-        """Transition callback - collect experiences with normalization"""
+        """Transition callback - collect experiences with normalization. 
+           ...
+           Also update episode statistics (interaction-level, not learning)
+        """
         if self.reset_manager.is_resetting:
             self.node.get_logger().info('⏸️  Skipping transition during reset')
             return
@@ -362,8 +353,6 @@ class DistributedRunner:
             obs_norm = observation
             next_obs_norm = next_observation
         
-        # Normalize reward (will be done at episode end)
-        
         # Add to buffer
         t = self.replay_buffer.to_transition(
             obs=obs_norm,
@@ -391,8 +380,10 @@ class DistributedRunner:
             self.node.get_logger().error(f'Unknown action mode: {msg.action.action_mode}')
             return
         
-        self.transition_count += 1
-        self.episode_manager.update(reward_components, action_mode)
+        self.transition_count += 1      # Increment transition count
+        
+        # Update episode stats
+        self.episode_manager.update(reward_components, action_mode)     
         
         # Log stepwise statistics
         # self._log_stepwise_stats(reward_components)
@@ -404,9 +395,9 @@ class DistributedRunner:
         if msg.done or self.episode_manager.is_episode_done():
             reason = (
                 ResetReason.TIMEOUT if self.episode_manager.is_episode_done()
-                else ResetReason.EPISODE_DONE
+                else ResetReason.TASK_DONE
             )
-            success = True if msg.done and reason == ResetReason.EPISODE_DONE else False
+            success = True if msg.done and reason == ResetReason.TASK_DONE else False
             self._handle_episode_done(success=success, reason=reason)
 
     # ==================== Action Loop ====================
@@ -507,8 +498,8 @@ class DistributedRunner:
             return
         
         # Log buffer sizes
-        self.logger.writer.add_scalar('Buffer/student_size', self.replay_buffer.stu_buf_size, self.actor_learner.update_count)
-        self.logger.writer.add_scalar('Buffer/teacher_size', self.replay_buffer.tea_buf_size, self.actor_learner.update_count)
+        self.logger.writer.add_scalar('Learn/buffer_size/student', self.replay_buffer.stu_buf_size, self.actor_learner.update_count)
+        self.logger.writer.add_scalar('Learn/buffer_size/teacher', self.replay_buffer.tea_buf_size, self.actor_learner.update_count)
 
         # Check if buffers are ready
         if not self.replay_buffer.stu_buf.is_ready:
@@ -621,12 +612,12 @@ class DistributedRunner:
     
     # ==================== Episode Management ====================
     
-    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.EPISODE_DONE):
+    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE):
         """
         Handle end of episode: log stats, update normalizers, reset environment
         
         Args:
-            reason: Reset reason (EPISODE_DONE, FALL_DETECTED, TIMEOUT, etc.)
+            reason: Reset reason (TASK_DONE, FALL_DETECTED, TIMEOUT, etc.)
         """
         
         # ========== Step 1: Log Episode Statistics ==========
@@ -650,16 +641,8 @@ class DistributedRunner:
                 reward_mean = self.reward_normalizer.get_stats()['mean']
                 reward_std = self.reward_normalizer.get_stats()['std']
                 
-                self.logger.writer.add_scalar(
-                    'Normalization/reward_mean',
-                    reward_mean,
-                    self.episode_manager.episode_count
-                )
-                self.logger.writer.add_scalar(
-                    'Normalization/reward_std',
-                    reward_std,
-                    self.episode_manager.episode_count
-                )
+                self.logger.writer.add_scalar('Learn/reward_norm/mean', reward_mean, self.episode_manager.episode_count)
+                self.logger.writer.add_scalar('Learn/reward_norm/std', reward_std, self.episode_manager.episode_count)
                 
                 # self.node.get_logger().info(
                 #     f"📊 Reward normalization updated: "
@@ -896,10 +879,10 @@ class DistributedRunner:
         stepwise_total_reward = sum(reward_components.values())
         
         self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, step)
-        self.logger.writer.add_scalar('Stepwise/student_action_count', self.episode_manager.stu_action_count, step)
-        self.logger.writer.add_scalar('Stepwise/teacher_action_count', self.episode_manager.tea_action_count, step)
+        self.logger.writer.add_scalar('Stepwise/count/student_action', self.episode_manager.stu_action_count, step)
+        self.logger.writer.add_scalar('Stepwise/count/teacher_action', self.episode_manager.tea_action_count, step)
         for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Stepwise/{name}_reward', value, step)
+            self.logger.writer.add_scalar(f'Stepwise/reward/{name}', value, step)
     
     def _log_timestep_stats(self, reward_components: Dict[str, float]):
         """Log timestep statistics"""
@@ -907,10 +890,10 @@ class DistributedRunner:
         timestep_total_reward = sum(reward_components.values())
         
         self.logger.writer.add_scalar('Timestep/total_reward', timestep_total_reward, totalstep)
-        self.logger.writer.add_scalar('Timestep/student_action_count', self.episode_manager.stu_action_count, totalstep)
-        self.logger.writer.add_scalar('Timestep/teacher_action_count', self.episode_manager.tea_action_count, totalstep)
+        self.logger.writer.add_scalar('Timestep/count/student_action', self.episode_manager.stu_action_count, totalstep)
+        self.logger.writer.add_scalar('Timestep/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
         for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Timestep/{name}_reward', value, totalstep)
+            self.logger.writer.add_scalar(f'Timestep/reward/{name}', value, totalstep)
     
     
     def _log_update_metrics(self, losses: Dict[str, float]):
@@ -918,8 +901,14 @@ class DistributedRunner:
         update_count = self.actor_learner.update_count
         
         # Log losses
-        self.logger.writer.add_scalar('Loss/actor_loss', losses['actor_loss'], update_count)
-        self.logger.writer.add_scalar('Loss/critic_loss', losses['critic_loss'], update_count)
+        self.logger.writer.add_scalar('Learn/loss/actor', losses['actor_loss'], update_count)
+        self.logger.writer.add_scalar('Learn/loss/critic', losses['critic_loss'], update_count)
+        
+        # Log learning_rate
+        self.logger.writer.add_scalar('Learn/learning_rate/actor', self.actor_learner.learning_agent.actor_optimizer.param_groups[0]['lr'], update_count)
+        self.logger.writer.add_scalar('Learn/learning_rate/critic', self.actor_learner.learning_agent.critic_optimizer.param_groups[0]['lr'], update_count)
+        
+        # Log performance
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)
         
         # Log average statistics
@@ -931,8 +920,8 @@ class DistributedRunner:
             fall_stats = self.get_fall_stats()
             norm_stats = self.get_normalization_stats()
             
-            self.logger.writer.add_scalar('Loss/avg_actor_loss', stats['avg_actor_loss'], update_count)
-            self.logger.writer.add_scalar('Loss/avg_critic_loss', stats['avg_critic_loss'], update_count)
+            self.logger.writer.add_scalar('Learn/moving_avg_loss/actor', stats['avg_actor_loss'], update_count)
+            self.logger.writer.add_scalar('Learn/moving_avg_loss/critic', stats['avg_critic_loss'], update_count)
             # self.logger.writer.add_scalar('Fall/total_count', fall_stats['fall_count'], update_count)
             
             # Console log
@@ -969,7 +958,7 @@ class DistributedRunner:
                 f"🔄 Reset Statistics:\n"
                 f"   Total Resets:    {reset_stats['total']}\n"
                 f"   Success Rate:    {reset_stats['success_rate']:.1%}\n"
-                f"   Episode Done:    {reset_stats['reasons']['episode_done']}\n"
+                f"   Task Done:       {reset_stats['reasons']['task_done']}\n"
                 f"   Fall Detected:   {reset_stats['reasons']['fall_detected']}\n"
                 f"   Timeout:         {reset_stats['reasons']['timeout']}\n"
                 f"   External:        {reset_stats['reasons']['external']}\n"
