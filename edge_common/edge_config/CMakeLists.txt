@@ -35,9 +35,9 @@ ament_target_dependencies(${PROJECT_NAME}
   edge_ros_interfaces
 )
 
-add_executable(virtual_safety_indicator_node src/virtual_safety_indicator_node.cpp)
-ament_target_dependencies(virtual_safety_indicator_node
-  rclcpp std_msgs visualization_msgs
+add_executable(virtual_status_indicator_node src/virtual_status_indicator_node.cpp)
+ament_target_dependencies(virtual_status_indicator_node
+  rclcpp std_msgs visualization_msgs edge_msgs
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -55,7 +55,7 @@ install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 
-install(TARGETS virtual_safety_indicator_node
+install(TARGETS virtual_status_indicator_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

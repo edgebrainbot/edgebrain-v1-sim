@@ -154,11 +154,11 @@ def generate_launch_description():
         # }.items()
     )
 
-    # === Virtual Safety Indicator Node ===
-    virtual_safety_indicator_node = Node(
+    # === Virtual Status Indicator Node ===
+    virtual_status_indicator_node = Node(
         package='edge_config',
-        executable='virtual_safety_indicator_node',
-        name='virtual_safety_indicator',
+        executable='virtual_status_indicator_node',
+        name='virtual_status_indicator',
         output='screen',
         parameters=[{
             'use_sim_time': True,
@@ -222,7 +222,7 @@ def generate_launch_description():
         phy_teacher_launch,
         # drl_student_launch,
         trigger_launch,
-        virtual_safety_indicator_node,
+        virtual_status_indicator_node,
         
         # navigation_launch,
         publish_goal_point,

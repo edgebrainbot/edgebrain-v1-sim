@@ -273,9 +273,12 @@ Visualization Manager:
       Name: Goalpoint
       Namespaces:
         clear_nodes: true
+        free_goal: true
         free_odom_position: true
         last_nav_node: true
+        original_goal: true
         out_contour: true
+        waypoint: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -321,7 +324,7 @@ Visualization Manager:
       Enabled: true
       Name: GlobalPath
       Namespaces:
-        {}
+        global_path: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -363,7 +366,10 @@ Visualization Manager:
       Enabled: true
       Name: ViewpointExtend
       Namespaces:
-        {}
+        corner_direct: true
+        extend_viewpoint: true
+        origin_viewpoint: true
+        raytracing_line: true
       Topic:
         Depth: 5
         Durability Policy: Volatile

@@ -1,5 +1,6 @@
-trigger:
+/edge/trigger:
   ros__parameters:
-    update_rate: 200.0           # trigger update rate in Hz
-    print_processing: false      # whether to print processing
-    start_with_teacher: true     # whether to start with teacher mode
+    update_rate: 500.0              # trigger update rate in Hz
+    print_processing: false         # whether to print processing
+    start_with_teacher: true        # whether to start with teacher mode
+    trigger_source: -1               # trigger source, options: -1 -- none, 0 -- student, 1 -- teacher

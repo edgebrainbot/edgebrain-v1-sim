@@ -93,6 +93,7 @@ private:
     rclcpp::Service<edge_msgs::srv::ResetSwitchingStats>::SharedPtr srv_reset_switching_stats_;
 
     double update_rate_;                            // Update rate (Hz)
+    int trigger_source_;                            // trigger source: -1 -- none, 0 -- student, 1 -- teacher
     bool print_processing_;                         // whether to print processing info
     bool is_start_with_teacher_;                    // whether to start with teacher mode
     bool is_robot_state_initialized_ = false;       // whether robot state has been initialized

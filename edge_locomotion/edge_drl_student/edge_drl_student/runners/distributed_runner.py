@@ -908,6 +908,9 @@ class DistributedRunner:
         self.logger.writer.add_scalar('Learn/learning_rate/actor', self.actor_learner.learning_agent.actor_optimizer.param_groups[0]['lr'], update_count)
         self.logger.writer.add_scalar('Learn/learning_rate/critic', self.actor_learner.learning_agent.critic_optimizer.param_groups[0]['lr'], update_count)
         
+        # Log noise
+        self.logger.writer.add_scalar('Learn/noise_scale', self.actor_learner.acting_agent.noise, update_count)
+        
         # Log performance
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)
         

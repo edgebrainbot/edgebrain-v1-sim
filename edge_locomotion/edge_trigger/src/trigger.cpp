@@ -10,10 +10,14 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
     // Load parameters
+    trigger_source_ = this->declare_parameter<int>("trigger_source", -1);
     update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
     print_processing_ = this->declare_parameter<bool>("print_processing", false);
     is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
 
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
+        (trigger_source_ == 1) ? "teacher" :
+        (trigger_source_ == 0) ? "student" : "none");
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");
@@ -273,26 +277,39 @@ void Trigger::updateLoop()
         RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_last_state_safe_ ? "true" : "false");
     }
 
-    // Determine terminal mode based on safety status
+    // Determine terminal action and mode
+    edge::utils::ActionMode terminal_mode;
     edge_msgs::msg::EdgeAction terminal_action;
-    edge::utils::ActionMode terminal_mode = is_last_state_safe_ 
-                                    ? edge::utils::ActionMode::STUDENT 
-                                    : edge::utils::ActionMode::TEACHER;
+    
+    // Determine terminal mode (override or safety-based)
+    if (trigger_source_ == 0) {
+        terminal_mode = edge::utils::ActionMode::STUDENT;
+    }
+    else if (trigger_source_ == 1) {
+        terminal_mode = edge::utils::ActionMode::TEACHER;
+    }
+    else {
+        terminal_mode = is_last_state_safe_ ? edge::utils::ActionMode::STUDENT
+                                            : edge::utils::ActionMode::TEACHER;
+    }
 
-    // Update switching statistics
-    updateStats(terminal_mode);    
-
-    // Decide which action to publish
-    if (is_last_state_safe_)
-        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_stu_action_, 
+    // Prepare terminal action message
+    if (terminal_mode == edge::utils::ActionMode::STUDENT) {
+        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_stu_action_,
                                                                     edge::utils::ToMsg(terminal_mode));
-    else
+    }
+    else {
         terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_tea_action_, 
                                                                     edge::utils::ToMsg(terminal_mode));
+    }
+
+    // Update switching statistics
+    updateStats(terminal_mode);
+
     // Publish terminal action
     pub_action_->publish(terminal_action);
 
-    // Publish alert status
+    // Publish alert status (still report safety evaluation)
     std_msgs::msg::Bool alert_msg;
     alert_msg.data = is_last_state_safe_;
     pub_alert_->publish(alert_msg);

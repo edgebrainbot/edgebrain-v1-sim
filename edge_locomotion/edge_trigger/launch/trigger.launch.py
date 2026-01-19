@@ -16,7 +16,7 @@ def generate_launch_description():
 
     update_rate_arg = DeclareLaunchArgument(
         'update_rate',
-        default_value='200.0',
+        default_value='500.0',
         description='Trigger update rate (Hz)'
     )
 
@@ -32,6 +32,12 @@ def generate_launch_description():
         description='Start in teacher mode if true, else start in student mode. \
             Starting mode is important for safety.'
     )
+    
+    trigger_source_arg = DeclareLaunchArgument(
+        'trigger_source',
+        default_value='-1',
+        description='Trigger action source: -1 -- none, 0 -- student, 1 -- teacher'
+    )
 
     trigger_node = Node(
         package='edge_trigger',
@@ -46,6 +52,7 @@ def generate_launch_description():
                 'update_rate': LaunchConfiguration('update_rate'),
                 'print_processing': LaunchConfiguration('print_processing'),
                 'start_with_teacher': LaunchConfiguration('start_with_teacher'),
+                'trigger_source': LaunchConfiguration('trigger_source'),
             }
         ]
     )
@@ -54,6 +61,7 @@ def generate_launch_description():
         update_rate_arg,
         print_processing_arg,
         start_with_teacher_arg,
+        trigger_source_arg,
         
         trigger_node,
     ])
