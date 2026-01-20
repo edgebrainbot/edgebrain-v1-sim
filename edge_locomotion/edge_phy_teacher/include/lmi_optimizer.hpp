@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef LMI_OPTIMIZER_HPP
 #define LMI_OPTIMIZER_HPP
 

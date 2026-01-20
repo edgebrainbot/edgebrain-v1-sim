@@ -1,8 +1,11 @@
-// phy_teacher.cpp
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
+#include "phy_teacher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "phy_teacher.hpp"
 
 namespace edge::phy_teacher {
   

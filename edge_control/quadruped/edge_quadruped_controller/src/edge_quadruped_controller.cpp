@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
@@ -69,9 +74,9 @@ namespace edge::control::quadruped
             // Topic namespace
             topic_ns_ = auto_declare<std::string>("topic_namespace", "edge");
 
-            // Base name
-            // odom_frame_id_ = auto_declare<std::string>("odom_frame_id", "odom");
-            // base_frame_id_ = auto_declare<std::string>("base_frame_id", "base_link");
+            // Frame name
+            odom_frame_id_ = auto_declare<std::string>("odom_frame_id", "odom");
+            base_frame_id_ = auto_declare<std::string>("base_frame_id", "base_link");
 
             // Joint names and interface types
             joint_names_ = auto_declare<std::vector<std::string>>("joints", joint_names_);
@@ -111,7 +116,8 @@ namespace edge::control::quadruped
             // Initialize reset time
             last_reset_time_ = get_node()->now();
 
-            ctrl_component_.estimator_ = std::make_shared<Estimator>(ctrl_interfaces_, ctrl_component_, get_node());
+            ctrl_component_.estimator_ = std::make_shared<Estimator>(ctrl_interfaces_, ctrl_component_, 
+                                                                     odom_frame_id_, base_frame_id_, get_node());
             ctrl_component_.balance_ctrl_ = std::make_shared<BalanceCtrl>(ctrl_component_.robot_model_);
 
             ctrl_component_.phase_scheduler_ = std::make_shared<PhaseScheduler>(

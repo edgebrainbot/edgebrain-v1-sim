@@ -1,7 +1,11 @@
-#include "edge_quadruped_controller/gait/PhaseScheduler.h"
-#include "controller_common/FSM/FSMState.h"
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <iostream>
+#include "edge_quadruped_controller/gait/PhaseScheduler.h"
+#include "controller_common/FSM/FSMState.h"
 
 namespace edge::control::quadruped
 {

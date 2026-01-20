@@ -35,6 +35,9 @@ edge_quadruped_controller:
   ros__parameters:
     topic_namespace: "edge"
 
+    odom_frame_id: "leg_odom"
+    base_frame_id: "base_link"
+
     gait_height: 0.06
     update_rate: 450  # Hz
     robot_name: "go2"

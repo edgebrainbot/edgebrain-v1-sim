@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
 #include "control/CtrlComponent.h"
@@ -104,6 +109,8 @@ namespace edge::control::quadruped
 
         std::string imu_name_;
         std::string command_prefix_;
+        std::string odom_frame_id_;
+        std::string base_frame_id_;
         std::vector<std::string> imu_interface_types_;
 
         // FR FL RR RL
@@ -202,7 +209,6 @@ namespace edge::control::quadruped
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr launch_service_;
         rclcpp::Time last_reset_time_;  // last reset time for debounce protection
         double reset_cooldown_{1.0};  // reset cooldown duration in seconds
-
 
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;

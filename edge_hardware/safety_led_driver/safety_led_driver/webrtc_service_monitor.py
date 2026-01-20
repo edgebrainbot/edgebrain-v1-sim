@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
+import time
 import rclpy
 from rclpy.node import Node
 import asyncio
 import Jetson.GPIO as GPIO
-import time
+
 from go2_webrtc_driver.constants import RTC_TOPIC
 from go2_webrtc_driver.webrtc_driver import Go2WebRTCConnection, WebRTCConnectionMethod
 

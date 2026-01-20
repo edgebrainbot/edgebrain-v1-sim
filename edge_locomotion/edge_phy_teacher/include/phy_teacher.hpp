@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef PHY_TEACHER_HPP
 #define PHY_TEACHER_HPP
 

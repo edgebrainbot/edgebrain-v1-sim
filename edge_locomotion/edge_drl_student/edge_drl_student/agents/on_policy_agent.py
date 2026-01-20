@@ -1,9 +1,14 @@
-# on_policy_agent.py
-from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import Optional
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import torch.nn as nn
+from typing import Optional
+from __future__ import annotations
+from abc import ABC, abstractmethod
+
 from base_agent import BaseAgent
 from edge_drl_student.memory.buffers.on_policy.rollout_buffer import RolloutBuffer
 

@@ -1,3 +1,8 @@
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List
@@ -82,7 +87,8 @@ class BaseBuffer(ABC):
         self.device = device
         self.buf_name = name
         
-        self.sampler: BaseSampler = sampler or UniformSampler(buffer_size)
+        self.sampler: BaseSampler = sampler or UniformSampler(buffer_size=buffer_size, 
+                                                              random_seed=42, device=device)
         if hasattr(self.sampler, "set_buffer_size"):
             self.sampler.set_buffer_size(buffer_size)
 
@@ -92,7 +98,7 @@ class BaseBuffer(ABC):
         Add one transition into the buffer.
         Typically called at every environment step.
 
-        Subclasses may extend arguments, e.g.:
+        Subclasses may extend arguments, e.g.:</|endoftext|>
         - SoloReplayBuffer.add_transition(transition)
         - DualReplayBuffer.add_transition(transition, action_mode)
         """

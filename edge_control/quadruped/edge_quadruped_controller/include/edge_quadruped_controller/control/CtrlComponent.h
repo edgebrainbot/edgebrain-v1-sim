@@ -1,10 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
+#include <Eigen/Dense>
 #include "edge_quadruped_controller/control/BalanceCtrl.h"
 #include "edge_quadruped_controller/gait/PhaseScheduler.h"
 #include "edge_quadruped_controller/estimator/Estimator.hpp"
 #include "edge_quadruped_controller/robot_model/QuadrupedModel.hpp"
-#include <Eigen/Dense>
 
 namespace edge::control::quadruped
 {

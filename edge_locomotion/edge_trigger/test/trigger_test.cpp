@@ -1,9 +1,15 @@
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/bool.hpp"
-#include "edge_msgs/msg/vec12_msg.hpp"
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <random>
 #include <vector>
 #include <chrono>
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/bool.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
+
 
 using namespace std::chrono_literals;
 

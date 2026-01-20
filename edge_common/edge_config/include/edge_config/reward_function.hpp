@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
 #include <cmath>
@@ -37,7 +42,7 @@ inline void registerAllRewardFunc() {
     // ========== Fall Down ==========
     R.registerReward("fall_down", [](const RewardFactor& rf) {
         bool is_fall = std::any_cast<bool>(rf.at("is_fall"));
-        return is_fall ? 1.0 : 0.0;
+        return is_fall ? -1.0 : 0.0;
     });
 
     // ========== Linear Velocity Tracking ==========

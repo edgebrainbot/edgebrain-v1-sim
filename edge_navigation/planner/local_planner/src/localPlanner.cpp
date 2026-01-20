@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <iostream>
+
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
 #include "rclcpp/clock.hpp"
@@ -31,11 +32,12 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "rmw/types.h"
+#include "rmw/qos_profiles.h"
 #include "message_filters/subscriber.h"
 #include "message_filters/synchronizer.h"
 #include "message_filters/sync_policies/approximate_time.h"
-#include "rmw/types.h"
-#include "rmw/qos_profiles.h"
+
 
 using namespace std;
 
@@ -156,12 +158,10 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
   vehicleX = odom->pose.pose.position.x - cos(yaw) * sensorOffsetX + sin(yaw) * sensorOffsetY;
   vehicleY = odom->pose.pose.position.y - sin(yaw) * sensorOffsetX - cos(yaw) * sensorOffsetY;
   vehicleZ = odom->pose.pose.position.z;
-
 }
 
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
-{
-  
+{ 
   std::cout << "---------- laserCloudHandler called ---------" << std::endl;
   if (!useTerrainAnalysis) {
     laserCloud->clear();

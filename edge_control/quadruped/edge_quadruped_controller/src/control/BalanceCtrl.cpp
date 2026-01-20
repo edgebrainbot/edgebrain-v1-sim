@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "../utils/quadProgpp/QuadProg++.hh"
 #include "edge_quadruped_controller/control/BalanceCtrl.h"
 

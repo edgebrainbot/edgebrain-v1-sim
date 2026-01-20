@@ -1,7 +1,12 @@
-from abc import ABC, abstractmethod
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import torch.nn as nn
 from typing import Type, Union
+from abc import ABC, abstractmethod
 from .base_network import BaseNetwork
 
 class MLP(BaseNetwork):

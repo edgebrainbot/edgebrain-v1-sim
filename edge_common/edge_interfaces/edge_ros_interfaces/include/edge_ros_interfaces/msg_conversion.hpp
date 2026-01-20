@@ -1,16 +1,9 @@
-#pragma once
-/**
- * @file conversions.hpp
- * @brief Unified conversion utilities between Eigen, std::vector, and ROS 2 message types.
- *
- * This header provides high-performance inline conversions between:
- *  - Eigen matrices/vectors (for control/optimization)
- *  - std::vector<double> (for parameters, YAML, serialization)
- *  - ROS message types (Action, TrackingError)
- *
- * The goal is to provide a consistent interface for real-time controllers
- * and runtime-learning nodes while maintaining header-only efficiency.
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
  */
+
+#pragma once
 
 #include <Eigen/Dense>
 #include <vector>

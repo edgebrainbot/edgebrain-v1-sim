@@ -1,3 +1,8 @@
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import time
 import torch
 import numpy as np
@@ -63,7 +68,7 @@ class ACTRCognitiveSampler(BaseSampler):
             valid_size (int): Number of valid transitions currently stored.
 
         Returns:
-            np.ndarray[int]: Randomly sampled indices.
+            torch.Tensor: Randomly sampled indices.
         """
         if valid_size <= 0:
             raise ValueError("Cannot fetch from an empty buffer.")

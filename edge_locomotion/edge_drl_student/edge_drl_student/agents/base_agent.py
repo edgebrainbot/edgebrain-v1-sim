@@ -1,9 +1,12 @@
-# base_agent.py
-from __future__ import annotations
-from abc import ABC, abstractmethod
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import torch.nn as nn
-
+from __future__ import annotations
+from abc import ABC, abstractmethod
 
 class BaseAgent(ABC):
     """

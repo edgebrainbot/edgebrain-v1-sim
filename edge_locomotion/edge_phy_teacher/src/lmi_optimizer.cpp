@@ -1,4 +1,8 @@
-// lmi_optimize.cpp
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <iostream>
 #include <iomanip>
 #include "lmi_optimizer.hpp"

@@ -22,11 +22,11 @@ reward:
   time_travel: 0.05
   obstacle_min_distance: 0.01
   # obstacle_avg_distance: 0.01
-  goal_distance: 0.005
+  goal_distance: 0.05
 
   # lyapunov: 100
   body_state: 0.5
-  jerky_action: 0.001
+  jerky_action: 0.0001
 
   fall_down: 10000
   reach_goal: 500

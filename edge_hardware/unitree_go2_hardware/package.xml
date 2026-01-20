@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>The ros2_control hardware interface for Unitree GO2 robot</description>
   <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <depend>rclcpp</depend>
   <depend>hardware_interface</depend>

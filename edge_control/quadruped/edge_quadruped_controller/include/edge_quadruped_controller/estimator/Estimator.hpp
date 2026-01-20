@@ -1,4 +1,9 @@
-#pragma once
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+ #pragma once
 
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
@@ -28,8 +33,8 @@ struct CtrlComponent;
 class Estimator
 {
 public:
-    explicit Estimator(CtrlInterfaces& ctrl_interfaces, 
-                       CtrlComponent& ctrl_component,
+    explicit Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_component,
+                       std::string odom_frame_id, std::string base_frame_id,
                        std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node);
 
     ~Estimator() = default;

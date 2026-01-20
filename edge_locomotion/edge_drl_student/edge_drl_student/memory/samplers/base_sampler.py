@@ -1,7 +1,11 @@
-# edge_drl_student/storage/samplers/base_sampler.py
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
+import torch
 from __future__ import annotations
 from abc import ABC, abstractmethod
-import numpy as np
 
 
 class BaseSampler(ABC):
@@ -16,7 +20,7 @@ class BaseSampler(ABC):
         
 
     @abstractmethod
-    def fetch(self, batch_size: int, valid_size: int) -> np.ndarray:
+    def fetch(self, batch_size: int, valid_size: int) -> torch.Tensor:
         """
         Fetch a batch of sample indices from the buffer.
 
@@ -25,13 +29,13 @@ class BaseSampler(ABC):
             valid_size (int): Number of valid transitions currently in the buffer.
 
         Returns:
-            np.ndarray[int]: Sampled indices.
+            torch.Tensor: Sampled indices.
         """
         raise NotImplementedError
     
 
     @abstractmethod
-    def update(self, indices: np.ndarray, **kwargs):
+    def update(self, indices: torch.Tensor, **kwargs):
         """
         Optionally update sampler state (e.g., priorities).
         For uniform samplers, this can be a no-op.

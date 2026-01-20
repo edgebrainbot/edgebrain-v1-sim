@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import os
+import time
 import rclpy
+import subprocess
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from std_srvs.srv import Empty, Trigger
 from pathlib import Path  
-import subprocess
-import time
 
 
 class ResetCoordinatorNode(Node):
@@ -149,10 +154,9 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info('✅ Ready to receive reset requests on /edge/reset/coordinator')
         self.get_logger().info('=' * 70)
 
-    
-    def edge_reset_callback(self, request, response):
+    def edge_reset_callback(self, request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
         """Main reset service callback"""
-        self.get_logger().error("===== RESET CALLBACK ENTERED =====")
+        self.get_logger().info("===== RESET CALLBACK ENTERED =====")
 
         self.get_logger().info('')
         self.get_logger().info('═' * 70)

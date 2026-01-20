@@ -1,3 +1,8 @@
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import numpy as np
 from dataclasses import asdict

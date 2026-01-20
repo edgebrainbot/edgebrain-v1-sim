@@ -24,13 +24,15 @@ controller_manager:
 
 edge_quadruped_controller:
   ros__parameters:
+    update_rate: 400  # Hz
     topic_namespace: "edge"
 
     imu_name: "imu_sensor"
-    base_name: "base_link"
+
+    odom_frame_id: "leg_odom"
+    base_frame_id: "base_link"
 
     gait_height: 0.06
-    update_rate: 400  # Hz
     robot_name: "go2"
     down_pos:
       - -0.01

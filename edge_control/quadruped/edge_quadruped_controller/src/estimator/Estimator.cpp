@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <rclcpp_lifecycle/lifecycle_publisher.hpp>
@@ -16,6 +21,7 @@ namespace edge::control::quadruped
 {
 
 Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_component,
+                     std::string odom_frame_id, std::string base_frame_id,
                      std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
     : ctrl_interfaces_(ctrl_interfaces),
       robot_model_(ctrl_component.robot_model_),
@@ -155,8 +161,8 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
     low_pass_filters_[2] = std::make_shared<LowPassFilter>(dt_, 3.0);
 
     // Initialize ROS2 components
-    odom_frame_id_ = "leg_odom";
-    base_frame_id_ = "base_link";
+    odom_frame_id_ = odom_frame_id;
+    base_frame_id_ = base_frame_id;
 
     // Create odometry publisher
     odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 10);

@@ -1,3 +1,8 @@
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import csv
 import torch
 import pickle
@@ -25,7 +30,7 @@ class SoloReplayBuffer(BaseBuffer):
                  name: str = "SoloReplayBuffer",
                  device: Optional[str] = 'cpu'):
         if sampler is None:
-            sampler = UniformSampler(buffer_size)
+            sampler = UniformSampler(buffer_size, random_seed=42, device=device)
             
         super().__init__(buffer_size, prefill_size, sampler, name, device=device)
 

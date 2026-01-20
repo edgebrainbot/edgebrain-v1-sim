@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"

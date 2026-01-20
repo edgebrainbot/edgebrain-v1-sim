@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
 """
 External Force Application Node - Supports Impulse and Pulse Forces
 """

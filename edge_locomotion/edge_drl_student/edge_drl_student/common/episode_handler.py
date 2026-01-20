@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 """
 Episode Manager Module
 Manages episode lifecycle, statistics, and logging for RL training
@@ -502,14 +507,14 @@ class EpisodeManager:
         # Moving averages
         self.logger.writer.add_scalar('Episode/moving_avg_return', self.moving_average_return, episode_id)
         self.logger.writer.add_scalar('Episode/moving_avg_length', self.moving_average_length, episode_id)    
-        self.logger.writer.add_scalar('Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
+        # self.logger.writer.add_scalar('Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
         
         # Action counts
-        self.logger.writer.add_scalar('Episode/student_action_count', stats.student_action_count, episode_id)
-        self.logger.writer.add_scalar('Episode/teacher_action_count', stats.teacher_action_count, episode_id)
+        self.logger.writer.add_scalar('Episode/action_count/student', stats.student_action_count, episode_id)
+        self.logger.writer.add_scalar('Episode/action_count/teacher', stats.teacher_action_count, episode_id)
         # self.logger.writer.add_scalar('Episode/end_reason', str(stats.episode_end_reason), episode_id)
         if stats.episode_is_success:
-            self.logger.writer.add_scalar('Episode/success_ep_length', stats.episode_length, self.success_episode_count)
+            self.logger.writer.add_scalar('Episode/length_success', stats.episode_length, self.success_episode_count)
             self.success_episode_count += 1
 
     

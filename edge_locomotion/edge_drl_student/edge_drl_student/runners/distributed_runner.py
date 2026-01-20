@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
 
 import torch
 import time
@@ -781,7 +785,6 @@ class DistributedRunner:
 
     
     # ==================== Logging ====================
-    
     def _log_initialization(self):
         """Log initialization information"""
         
@@ -909,7 +912,7 @@ class DistributedRunner:
         self.logger.writer.add_scalar('Learn/learning_rate/critic', self.actor_learner.learning_agent.critic_optimizer.param_groups[0]['lr'], update_count)
         
         # Log noise
-        self.logger.writer.add_scalar('Learn/noise_scale', self.actor_learner.acting_agent.noise, update_count)
+        # self.logger.writer.add_scalar('Learn/noise_scale', self.actor_learner.acting_agent.noise, update_count)
         
         # Log performance
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)

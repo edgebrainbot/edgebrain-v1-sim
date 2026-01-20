@@ -1,3 +1,8 @@
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import numpy as np
 from dataclasses import asdict
@@ -33,7 +38,8 @@ class DualReplayBuffer(BaseBuffer):
                  ) -> None:
 
         if sampler is None:
-            sampler = UniformSampler(max(student_buf_size, teacher_buf_size))
+            sampler = UniformSampler(buffer_size=max(student_buf_size, teacher_buf_size), 
+                                     random_seed=42, device=device)
 
         self.student_buf_size = student_buf_size       
         self.teacher_buf_size = teacher_buf_size        

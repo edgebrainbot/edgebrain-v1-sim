@@ -1,7 +1,10 @@
-# off_policy_agent.py
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import torch.nn as nn
-
 
 from .base_agent import BaseAgent
 from edge_drl_student.memory.buffers.base_buffer import TransitionBatch

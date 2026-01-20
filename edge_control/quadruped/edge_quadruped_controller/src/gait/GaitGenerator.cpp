@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <utility>
 #include <edge_quadruped_controller/control/CtrlComponent.h>
 #include <edge_quadruped_controller/estimator/Estimator.hpp>

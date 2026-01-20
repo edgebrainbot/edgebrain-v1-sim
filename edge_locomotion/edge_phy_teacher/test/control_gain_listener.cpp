@@ -1,4 +1,9 @@
-#include <memory>
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+ #include <memory>
 #include <vector>
 #include <rclcpp/rclcpp.hpp>
 #include "lmi_optimizer.hpp"

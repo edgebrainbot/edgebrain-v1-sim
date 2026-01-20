@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "unitree_go2_hardware/crc32.hpp"
 #include "unitree_go2_hardware/go2_hardware_interface.hpp"
 

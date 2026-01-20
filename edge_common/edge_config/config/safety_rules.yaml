@@ -70,14 +70,14 @@ switching:
     wx:
       type: relative
       index: 9
-      limit: 5.0
+      limit: 20.0
       unit: deg/s
     
     # pitch_rate limit in degrees per second (relative mode)
     wy:
       type: relative
       index: 10
-      limit: 5.0
+      limit: 20.0
       unit: deg/s
 
     # angular velocity limit in radians per second (relative mode)
@@ -124,5 +124,5 @@ fall_detection:
   
   thresholds:
     height: 0.10      # in meters - critical height drop (below this is a fall)
-    roll: 1.745       # in radians - critical roll angle  (approx 100 degrees)
-    pitch: 1.745      # in radians - critical pitch angle (approx 100 degrees)
+    roll: 2.356       # in radians - critical roll angle  (approx 135 degrees)
+    pitch: 2.356      # in radians - critical pitch angle (approx 135 degrees)

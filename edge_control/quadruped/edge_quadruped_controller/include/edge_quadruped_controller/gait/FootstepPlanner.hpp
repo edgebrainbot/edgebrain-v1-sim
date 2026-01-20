@@ -1,6 +1,11 @@
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef FOOTSTEPPLANNER_HPP
 #define FOOTSTEPPLANNER_HPP
+
 #include <memory>
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
 
