@@ -90,7 +90,7 @@ ament_export_dependencies(${dependencies})
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
 install(
-  DIRECTORY launch
+  DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}/
 )
 

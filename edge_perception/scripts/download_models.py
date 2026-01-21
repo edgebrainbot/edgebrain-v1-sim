@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Download and convert pretrained segmentation models to ONNX format.
-Automatically saves to edge_perception/model/ directory.
+Automatically saves to edge_perception/models/ directory.
 """
 
 import argparse
@@ -125,10 +125,10 @@ Example:
                         help='Model to download (default: lraspp_mobilenet)')
     parser.add_argument('--output', type=str, default='',
                         help='Output path (default: auto-detect edge_perception/models/segmentation.onnx)')
-    parser.add_argument('--width', type=int, default=640,
-                        help='Input width (default: 640)')
-    parser.add_argument('--height', type=int, default=360,
-                        help='Input height (default: 360)')
+    parser.add_argument('--width', type=int, default=1280,
+                        help='Input width (default: 1280)')
+    parser.add_argument('--height', type=int, default=720,
+                        help='Input height (default: 720)')
     parser.add_argument('--list', action='store_true',
                         help='List available models and exit')
     
@@ -145,7 +145,7 @@ Example:
     if not args.output:
         script_dir = Path(__file__).parent
         pkg_dir = script_dir.parent
-        output_path = pkg_dir / 'models' / 'segmentation.onnx'
+        output_path = pkg_dir / 'models' / f'{args.model}_w{args.width}_h{args.height}_segmentation.onnx'
     else:
         output_path = Path(args.output)
     

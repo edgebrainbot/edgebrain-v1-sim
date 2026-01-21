@@ -17,7 +17,7 @@ setup(
     ],
     install_requires=['setuptools', 'numpy'],
     zip_safe=True,
-    maintainer='edgebot',
+    maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
     description='Semantic segmentation projection onto point clouds for Jetson.',
     license='Apache-2.0',
@@ -28,7 +28,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'semantic_seg_node = edge_perception.semantic_seg_node:main',
+            'semantic_segment_node = edge_perception.semantic_segment_node:main',
+            'instance_segment_node = edge_perception.instance_segment_node:main',
         ],
     },
 )

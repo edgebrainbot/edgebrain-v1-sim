@@ -14,7 +14,7 @@ def generate_launch_description():
     # -----------------------------
     use_rviz = DeclareLaunchArgument("use_rviz", default_value="true")
     world_name = DeclareLaunchArgument("world_name", default_value="unity")
-    vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.366")
+    vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.30")
     sensorOffsetX = DeclareLaunchArgument("sensorOffsetX", default_value="0.0")
     sensorOffsetY = DeclareLaunchArgument("sensorOffsetY", default_value="0.0")
     cameraOffsetZ = DeclareLaunchArgument("cameraOffsetZ", default_value="0.0")
@@ -38,9 +38,9 @@ def generate_launch_description():
         ],
     )
 
-    # -----------------------------
-    # local_planner include
-    # -----------------------------
+    # --------------
+    # local_planner 
+    # --------------
     local_planner_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([
@@ -58,9 +58,9 @@ def generate_launch_description():
         }.items()
     )
 
-    # -----------------------------
-    # terrain_analysis include
-    # -----------------------------
+    # -----------------
+    # terrain_analysis
+    # -----------------
     terrain_analysis_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([
@@ -73,9 +73,9 @@ def generate_launch_description():
         }.items()
     )
 
-    # -----------------------------
-    # terrain_analysis_ext include
-    # -----------------------------
+    # ---------------------
+    # terrain_analysis_ext 
+    # ---------------------
     terrain_analysis_ext_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([
@@ -89,9 +89,9 @@ def generate_launch_description():
         }.items()
     )
 
-    # -----------------------------
-    # sensor_scan_generation include
-    # -----------------------------
+    # -----------------------
+    # sensor_scan_generation
+    # -----------------------
     sensor_scan_generation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([
@@ -104,9 +104,9 @@ def generate_launch_description():
         }.items()
     )
 
-    # -----------------------------
-    # visualization_tools include
-    # -----------------------------
+    # --------------------
+    # visualization_tools
+    # --------------------
     visualization_tools_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([
@@ -120,9 +120,9 @@ def generate_launch_description():
         }.items()
     )
 
-    # -----------------------------
-    # far_planner include
-    # -----------------------------
+    # ------------
+    # far_planner
+    # ------------
     far_planner_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
         PathJoinSubstitution([

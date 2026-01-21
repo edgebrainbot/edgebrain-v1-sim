@@ -90,7 +90,7 @@ install(
 )
 
 install(
-        DIRECTORY launch rviz
+        DIRECTORY launch rviz config
         DESTINATION share/${PROJECT_NAME}/
 )
 

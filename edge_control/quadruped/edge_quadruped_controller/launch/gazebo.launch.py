@@ -1,25 +1,26 @@
 import os
 import xacro
+
 from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch_ros.substitutions import FindPackageShare
+from launch import LaunchContext, LaunchDescription
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
+from ament_index_python.packages import get_package_share_directory
 
-
-def launch_setup(context, *args, **kwargs):
+def launch_setup(context: LaunchContext, *args, **kwargs):
     
     robot_name = context.launch_configurations['robot']
     init_height = context.launch_configurations['height']
     world_file_name = context.launch_configurations['world']
     use_rviz = context.launch_configurations['use_rviz']
     
-    pkg_description = f"{robot_name}_description"
     pkg_gazebo = "edge_gazebo"
+    pkg_controller = "edge_quadruped_controller"
+    pkg_description = f"{robot_name}_description"
     
     # Set GAZEBO model path
     model_resource_path = os.path.join(get_package_share_directory(pkg_gazebo), "models")
@@ -37,6 +38,13 @@ def launch_setup(context, *args, **kwargs):
         print(f"Available packages can be checked with: ros2 pkg list | grep {robot_name}")
         raise e
 
+    # Load controller configuration
+    controller_config_path = os.path.join(
+        get_package_share_directory(pkg_controller), 
+        'config', 
+        'controller_gazebo.yaml'
+    )
+
     xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
     
     if not os.path.exists(xacro_file):
@@ -45,9 +53,14 @@ def launch_setup(context, *args, **kwargs):
     
     print(f"Using robot description file: {xacro_file}")
     
-    robot_description = xacro.process_file(xacro_file, mappings={'GAZEBO': 'true'}).toxml()
+    # Process xacro file and include controller config
+    robot_description = xacro.process_file(
+        xacro_file, 
+        mappings={'GAZEBO': 'true', 
+                  'CONTROLLER_CONFIG': controller_config_path}
+    ).toxml()
 
-    rviz_config_file = os.path.join(get_package_share_directory("edge_quadruped_controller"), "rviz", "quadruped.rviz")
+    rviz_config_file = os.path.join(get_package_share_directory(pkg_controller), "rviz", "quadruped.rviz")
 
     rviz = Node(
         package='rviz2',
@@ -71,7 +84,6 @@ def launch_setup(context, *args, **kwargs):
         'physical_model.yaml'
     ])
 
-    print("this is:" + physical_model_config.perform(context))
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             [PathJoinSubstitution([FindPackageShare('ros_gz_sim'),

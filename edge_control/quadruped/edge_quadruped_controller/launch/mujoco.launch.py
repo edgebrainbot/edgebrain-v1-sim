@@ -1,17 +1,18 @@
 import os
 
 import xacro
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
-from launch.event_handlers import OnProcessExit
-from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch import LaunchContext, LaunchDescription
 from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
+from ament_index_python.packages import get_package_share_directory
 
 
-def launch_setup(context, *args, **kwargs):
+
+def launch_setup(context: LaunchContext, *args, **kwargs):
     namespace = "edge"
     
     robot_name = context.launch_configurations['robot']
@@ -21,6 +22,7 @@ def launch_setup(context, *args, **kwargs):
     use_rviz = context.launch_configurations['use_rviz']
     
     package_description = f"{robot_name}_description"
+    package_controller = "edge_quadruped_controller"
     
     try:
         pkg_path = os.path.join(get_package_share_directory(package_description))
@@ -46,15 +48,17 @@ def launch_setup(context, *args, **kwargs):
         }
     ).toxml()
 
+    # Select controller config based on whether using real robot or simulation
+    config_file = "controller_real.yaml" if use_real_robot == 'true' else "controller_sim.yaml"
     robot_controllers = PathJoinSubstitution(
         [
-            FindPackageShare(package_description),
+            FindPackageShare(package_controller),
             "config",
-            "robot_control.yaml",
+            config_file,
         ]
     )
 
-    rviz_config_file = os.path.join(get_package_share_directory("edge_quadruped_controller"), "rviz", "quadruped.rviz")
+    rviz_config_file = os.path.join(get_package_share_directory(package_controller), "rviz", "quadruped.rviz")
 
     rviz = Node(
         package='rviz2',

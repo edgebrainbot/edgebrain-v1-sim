@@ -1,31 +1,34 @@
 import os
 
 import xacro
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
+from launch_ros.actions import Node
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import PathJoinSubstitution
-from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchContext, LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
 
 
-def launch_setup(context, *args, **kwargs):
+
+def launch_setup(context: LaunchContext, *args, **kwargs):
     package_description = context.launch_configurations['pkg_description']
-    pkg_path = os.path.join(get_package_share_directory(package_description))
+    pkg_description_path = os.path.join(get_package_share_directory(package_description))
 
-    xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')
+    xacro_file = os.path.join(pkg_description_path, 'xacro', 'robot.xacro')
     robot_description = xacro.process_file(xacro_file).toxml()
+    
+    package_hardware_go2 = context.launch_configurations['pkg_hardware_go2']
 
     robot_controllers = PathJoinSubstitution(
         [
-            FindPackageShare(package_description),
+            FindPackageShare(package_hardware_go2),
             "config",
             "robot_control.yaml",
         ]
     )
 
-    rviz_config_file = os.path.join(get_package_share_directory(package_description), "rviz", "visualize_urdf.rviz")
+    rviz_config_file = os.path.join(pkg_description_path, "rviz", "visualize_urdf.rviz")
 
     rviz = Node(
         package='rviz2',
@@ -94,7 +97,15 @@ def generate_launch_description():
         description='package for robot description'
     )
 
+    pkg_hardware_go2 = DeclareLaunchArgument(
+        'pkg_hardware_go2',
+        default_value='unitree_go2_hardware',
+        description='package for go2 hardware interface'
+    )
+
     return LaunchDescription([
         pkg_description,
+        pkg_hardware_go2,
+        
         OpaqueFunction(function=launch_setup),
     ])

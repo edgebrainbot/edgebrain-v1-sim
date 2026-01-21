@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:include filename="$(find gz_quadruped_hardware)/xacro/foot_force_sensor.xacro"/>
+  
+  <!-- The controller configuration file -->
+  <xacro:arg name="CONTROLLER_CONFIG" default=""/>
+
   <ros2_control name="GazeboSystem" type="system">
     <hardware>
       <plugin>gz_quadruped_hardware/GazeboSimSystem</plugin>
@@ -172,7 +176,7 @@
 
   <gazebo>
     <plugin filename="gz_quadruped_hardware-system" name="gz_quadruped_hardware::GazeboSimQuadrupedPlugin">
-      <parameters>$(find edge_gazebo)/config/gazebo.yaml</parameters>
+      <parameters>$(arg CONTROLLER_CONFIG)</parameters>
     </plugin>
     <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
     <!-- <plugin filename="gz-sim-forcetorque-system" name="gz::sim::systems::ForceTorque"/> -->

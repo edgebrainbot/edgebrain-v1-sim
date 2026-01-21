@@ -9,7 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 
 install(
-    DIRECTORY models xacro worlds config scripts
+    DIRECTORY models xacro worlds scripts
     DESTINATION share/${PROJECT_NAME}/
 )
 

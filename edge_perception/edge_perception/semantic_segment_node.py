@@ -14,16 +14,12 @@ from image_geometry import PinholeCameraModel
 import message_filters
 import tf2_ros
 from tf2_ros import TransformException
-
-try:
-    import onnxruntime as ort
-except ImportError:  # pragma: no cover
-    ort = None
+import onnxruntime as ort
 
 
-class SemanticSegNode(Node):
+class SemanticSegmentNode(Node):
     def __init__(self) -> None:
-        super().__init__('semantic_seg_node')
+        super().__init__('semantic_segment_node')
         self.declare_parameter('model_path', '')
         self.declare_parameter('image_topic', '/camera/image')
         self.declare_parameter('camera_info_topic', '/camera/camera_info')
@@ -273,7 +269,7 @@ class SemanticSegNode(Node):
 
 def main(args=None) -> None:
     rclpy.init(args=args)
-    node = SemanticSegNode()
+    node = SemanticSegmentNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
