@@ -13,11 +13,11 @@ from typing import Union
 
 from edge_drl_student.agents.off_policy_agent import OffPolicyAgent
 from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
+from edge_drl_student.common.noise import Noise, OUNoise, GaussianNoise
 from edge_drl_student.networks.actor_critic import ActorCritic, ActorNetwork, CriticNetwork
 from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.common.normalizer import BaseNormalizer, MinMaxNormalizer, EmpiricalNormalizer
-from edge_drl_student.common.noise import Noise, OUNoise, GaussianNoise
 
 
 class DDPGAgent(OffPolicyAgent):

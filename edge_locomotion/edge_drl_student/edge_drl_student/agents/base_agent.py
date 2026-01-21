@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # ============================================================================
 
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
-from __future__ import annotations
 from abc import ABC, abstractmethod
 
 class BaseAgent(ABC):

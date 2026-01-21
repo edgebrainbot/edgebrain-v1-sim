@@ -7,10 +7,10 @@ from launch.actions import (
     RegisterEventHandler,
 )
 from launch_ros.actions import Node
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnProcessExit
+from launch_ros.substitutions import FindPackageShare
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 
 
 def generate_launch_description():
@@ -29,8 +29,13 @@ def generate_launch_description():
         description="Robot name (e.g. go2, go1, a1)"
     )
 
-    namespace = LaunchConfiguration("namespace")
+    use_global_rviz_arg = DeclareLaunchArgument(
+        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
+    )
+    
     robot = LaunchConfiguration("robot")
+    namespace = LaunchConfiguration("namespace")
+    use_global_rviz = LaunchConfiguration("use_global_rviz")
 
     # ------------------------
     # Locomotion Control Layer
@@ -47,7 +52,9 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-            "robot": robot
+            "robot": robot,
+            "use_sim_time": "true",
+            "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
         }.items()
     )
     
@@ -121,8 +128,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         # -- Launch Arguments --
-        namespace_arg,
         robot_arg,
+        namespace_arg,
+        use_global_rviz_arg,
         
         # -- Launch Components --
         controller_launch,

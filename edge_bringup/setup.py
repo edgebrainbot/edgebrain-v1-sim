@@ -3,6 +3,7 @@ from setuptools import find_packages, setup
 
 package_name = 'edge_bringup'
 launch_files = glob.glob('launch/*.launch.py')
+rviz_files = glob.glob('rviz/*.rviz')
 
 setup(
     name=package_name,
@@ -13,13 +14,14 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', launch_files),
+        ('share/' + package_name + '/rviz', rviz_files),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
     description='Bringup package for the Edge system with unified namespace',
-    license='TODO: License declaration',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

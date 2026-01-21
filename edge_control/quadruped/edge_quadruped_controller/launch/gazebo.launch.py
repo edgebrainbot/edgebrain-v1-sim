@@ -3,6 +3,7 @@ import os
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import PathJoinSubstitution
@@ -13,9 +14,11 @@ from launch.substitutions import LaunchConfiguration
 
 
 def launch_setup(context, *args, **kwargs):
+    
     robot_name = context.launch_configurations['robot']
     init_height = context.launch_configurations['height']
     world_file_name = context.launch_configurations['world']
+    use_rviz = context.launch_configurations['use_rviz']
     
     pkg_description = f"{robot_name}_description"
     pkg_gazebo = "edge_gazebo"
@@ -54,7 +57,8 @@ def launch_setup(context, *args, **kwargs):
         name='rviz_robot_go2',
         output='screen',
         arguments=["-d", rviz_config_file],
-        parameters=[{'use_sim_time': True}]
+        parameters=[{'use_sim_time': True}],
+        condition=IfCondition(use_rviz)
     )
     
     world_file = PathJoinSubstitution([
@@ -216,10 +220,17 @@ def generate_launch_description():
         default_value='obstacle_course.world',
         description='World file name (including .world extension)'
     )
+    
+    use_rviz = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='true',
+        description='Whether to launch RViz'
+    )
 
     return LaunchDescription([
         robot_name,
         height,
         world_file_name,
+        use_rviz,
         OpaqueFunction(function=launch_setup),
     ])

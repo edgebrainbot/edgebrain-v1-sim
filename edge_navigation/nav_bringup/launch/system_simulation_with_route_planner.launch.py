@@ -12,6 +12,7 @@ def generate_launch_description():
     # -----------------------------
     #      Declare Arguments 
     # -----------------------------
+    use_rviz = DeclareLaunchArgument("use_rviz", default_value="true")
     world_name = DeclareLaunchArgument("world_name", default_value="unity")
     vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.366")
     sensorOffsetX = DeclareLaunchArgument("sensorOffsetX", default_value="0.0")
@@ -89,28 +90,6 @@ def generate_launch_description():
     )
 
     # -----------------------------
-    # vehicle_simulator include
-    # -----------------------------
-    vehicle_simulator_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-        PathJoinSubstitution([
-            FindPackageShare("vehicle_simulator"),
-            "launch",
-            "vehicle_simulator.launch.py"
-        ])),
-        launch_arguments={
-        "vehicleHeight": LaunchConfiguration("vehicleHeight"),
-        "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
-        "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
-        "vehicleX": LaunchConfiguration("vehicleX"),
-        "vehicleY": LaunchConfiguration("vehicleY"),
-        "terrainZ": LaunchConfiguration("terrainZ"),
-        "vehicleYaw": LaunchConfiguration("vehicleYaw"),
-        "use_sim_time": "true",
-        }.items()
-    )
-
-    # -----------------------------
     # sensor_scan_generation include
     # -----------------------------
     sensor_scan_generation_launch = IncludeLaunchDescription(
@@ -142,40 +121,6 @@ def generate_launch_description():
     )
 
     # -----------------------------
-    # ros_tcp_endpoint
-    # -----------------------------
-    endpoint_node = Node(
-        package="ros_tcp_endpoint",
-        executable="default_server_endpoint",
-        name="endpoint",
-        output="screen",
-        parameters=[
-        {"ROS_IP": "0.0.0.0"},
-        {"ROS_TCP_PORT": 10000},
-        {"use_sim_time": True},
-        ]
-    )
-
-    # -----------------------------
-    # sim_image_repub (vehicle_simulator)
-    # -----------------------------
-    sim_image_repub_node = Node(
-        package="vehicle_simulator",
-        executable="sim_image_repub",
-        name="sim_image_repub",
-        output="screen",
-        parameters=[
-        {"camera_in_topic": "/camera/image/compressed"},
-        {"camera_raw_out_topic": "/camera/image/raw"},
-        {"sem_in_topic": "/camera/semantic_image/compressed"},
-        {"sem_raw_out_topic": "/camera/semantic_image/raw"},
-        {"depth_in_topic": "/camera/depth/compressed"},
-        {"depth_raw_out_topic": "/camera/depth/raw"},
-        {"use_sim_time": True}
-        ],
-    )
-
-    # -----------------------------
     # far_planner include
     # -----------------------------
     far_planner_launch = IncludeLaunchDescription(
@@ -188,6 +133,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             "use_sim_time": "true",
+            "use_rviz": LaunchConfiguration("use_rviz"),
         }.items()
     )
 
@@ -195,6 +141,7 @@ def generate_launch_description():
     # Final LaunchDescription
     # -----------------------------
     return LaunchDescription([
+        use_rviz,
         world_name,
         vehicleHeight,
         sensorOffsetX,
@@ -210,10 +157,8 @@ def generate_launch_description():
         local_planner_launch,
         terrain_analysis_launch,
         terrain_analysis_ext_launch,
-        vehicle_simulator_launch,
         sensor_scan_generation_launch,
         visualization_tools_launch,
-        endpoint_node,
-        sim_image_repub_node,
+
         far_planner_launch,
     ])

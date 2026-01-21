@@ -45,7 +45,7 @@ class UniformSampler(BaseSampler):
             raise ValueError(
                 f"valid_size ({valid_size}) cannot exceed buffer_size ({self.buffer_size})."
             )
-
+        # Sample with replacement
         indices = torch.randint(0, valid_size, (batch_size,), generator=self.rng, device=self.device)
         return indices
 

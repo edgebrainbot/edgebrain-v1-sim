@@ -1,5 +1,6 @@
 import yaml
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -12,6 +13,9 @@ def generate_launch_description():
     return LaunchDescription([
         # SetParameter(name='use_sim_time', value='false'),
         DeclareLaunchArgument('config', default_value='default'),
+        DeclareLaunchArgument('use_rviz', default_value='true', description='Whether to launch RViz'),
+
+        # DeclareLaunchArgument('config', default_value='matterport'),
 
         Node(
             package='far_planner',
@@ -51,6 +55,7 @@ def generate_launch_description():
             parameters=[{'use_sim_time': True}],
             output='screen',
             respawn=False,
+            condition=IfCondition(LaunchConfiguration('use_rviz'))
         ),
 
         # Including another launch file
