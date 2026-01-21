@@ -7,15 +7,18 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchD
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
+from launch.conditions import IfCondition
 from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
     namespace = "edge"
+    
     robot_name = context.launch_configurations['robot']
     use_real_robot = context.launch_configurations['use_real_robot']
     network_interface = context.launch_configurations['network_interface']
     dds_domain_id = context.launch_configurations['dds_domain_id']
+    use_rviz = context.launch_configurations['use_rviz']
     
     package_description = f"{robot_name}_description"
     
@@ -59,8 +62,10 @@ def launch_setup(context, *args, **kwargs):
         name='rviz_robot_go2',
         namespace=namespace,
         output='screen',
-        arguments=["-d", rviz_config_file]
+        arguments=["-d", rviz_config_file],
+        condition=IfCondition(use_rviz)
     )
+    
 
     robot_state_publisher = Node(
         package='robot_state_publisher',
@@ -169,11 +174,18 @@ def generate_launch_description():
         default_value='0',
         description='DDS domain ID for communication'
     )
+    
+    use_rviz = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='true',
+        description='Whether to launch RViz'
+    )
 
     return LaunchDescription([
         robot_name,
         use_real_robot,
         network_interface,
         dds_domain_id,
+        use_rviz,
         OpaqueFunction(function=launch_setup),
     ])

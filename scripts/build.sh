@@ -106,17 +106,20 @@ BUILD_ARGS="--symlink-install"
 echo "⚙️ Starting builds under workspace: $WORKSPACE_DIR"
 echo "------------------------------------------------------------"
 
-echo "🔹 [1/4] Building edge_bringup..."
+echo "🔹 [1/5] Building edge_bringup..."
 colcon build --packages-up-to edge_bringup ${BUILD_ARGS}
 
-echo "🔹 [2/4] Building edge_quadruped_controller..."
+echo "🔹 [2/5] Building edge_quadruped_controller..."
 colcon build --packages-up-to edge_quadruped_controller ${BUILD_ARGS}
 
-echo "🔹 [3/4] Building edge_interfaces..."
+echo "🔹 [3/5] Building edge_interfaces..."
 colcon build --base-paths src/edge-brain-go2/edge_common/edge_interfaces ${BUILD_ARGS}
 
-echo "🔹 [4/4] Building edge_navigation..."
+echo "🔹 [4/5] Building edge_navigation..."
 colcon build --base-paths src/edge-brain-go2/edge_navigation ${BUILD_ARGS}
+
+echo "🔹 [5/5] Building edge_perception..."
+colcon build --base-paths src/edge-brain-go2/edge_perception ${BUILD_ARGS}
 
 echo "------------------------------------------------------------"
 echo "✅ All builds completed successfully in: $WORKSPACE_DIR"
