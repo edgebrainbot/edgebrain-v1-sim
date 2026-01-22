@@ -34,7 +34,7 @@ class DDPGAgent(OffPolicyAgent):
                  critic_normalizer: BaseNormalizer = None,
                  actor_lr=1e-5,
                  critic_lr=1e-4,
-                 gamma=0.99,
+                 gamma=0.9,
                  tau=0.005,
                  noise: Noise = None,
                  model_load_path: str = None,
@@ -81,12 +81,28 @@ class DDPGAgent(OffPolicyAgent):
         # Print model summary
         self.print_model_summary()
 
+    def train_mode(self):
+        """Set networks to training mode."""
+        self.actor.train()
+        self.critic.train()
+        self.target_actor.train()
+        self.target_critic.train()
+        
+    def eval_mode(self):
+        """Set networks to evaluation mode."""
+        self.actor.eval()
+        self.critic.eval()
+        self.target_actor.eval()
+        self.target_critic.eval()
+
     def to(self, device: str = None):
+        """Transfer networks to specified device."""
         device = torch.device(device) if device is not None else self.device
         self.actor.to(device)
         self.critic.to(device)
         self.target_actor.to(device)
         self.target_critic.to(device)
+        self.device = device
         
     def act(self, obs: torch.Tensor, noise_scale=0.1, explore: bool = True) -> torch.Tensor:
         obs = torch.as_tensor(obs, dtype=torch.float32).to(self.device)

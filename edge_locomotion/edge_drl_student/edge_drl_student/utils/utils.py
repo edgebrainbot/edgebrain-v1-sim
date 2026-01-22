@@ -7,14 +7,58 @@ import enum
 import numpy as np
 
 class ActionMode(enum.Enum):
+    """Action Mode Enumeration"""
     STUDENT = 0
     TEACHER = 1
     UNCERTAIN = 2
     
+class DRLMode(enum.Enum):
+    """ DRL Mode Enumeration"""
+    TRAIN = 0
+    EVAL = 1
+    TEST = 2
+    
+    @classmethod
+    def from_string(cls, mode_str: str) -> 'DRLMode':
+        """
+        Convert string to DRLMode enum
+        
+        Args:
+            mode_str: Mode string (case-insensitive)
+            
+        Returns:
+            DRLMode: Corresponding enum value
+            
+        Example:
+            >>> mode = DRLMode.from_string('train')
+            >>> assert mode == DRLMode.TRAIN
+            >>> 
+            >>> mode = DRLMode.from_string('EVAL')
+            >>> assert mode == DRLMode.EVAL
+        """
+        mode_map = {
+            'train': cls.TRAIN,
+            'eval': cls.EVAL,
+            'test': cls.TEST,
+        }
+        
+        # Try exact match first
+        if mode_str in mode_map:
+            return mode_map[mode_str]
+        
+        # Try case-insensitive match
+        mode_lower = mode_str.lower()
+        if mode_lower in mode_map:
+            return mode_map[mode_lower]
+        
+        # Try enum name match
+        try:
+            return cls[mode_str.upper()]
+        except KeyError:
+            return cls.TRAIN
     
 class ResetReason(enum.Enum):
-    """
-    Reset Reason Enumeration
+    """Reset Reason Enumeration
     
     Defines all possible reasons for triggering a reset.
     

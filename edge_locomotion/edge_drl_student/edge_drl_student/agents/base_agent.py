@@ -20,6 +20,16 @@ class BaseAgent(ABC):
 
     # Abstract interfaces
     @abstractmethod
+    def train_mode(self):
+        """Set networks to training mode."""
+        pass
+        
+    @abstractmethod
+    def eval_mode(self):
+        """Set networks to evaluation mode."""
+        pass
+    
+    @abstractmethod
     def act(self, obs: torch.Tensor, explore: bool = True) -> torch.Tensor:
         """Select action given observation."""
         pass

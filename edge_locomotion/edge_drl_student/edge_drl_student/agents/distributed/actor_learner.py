@@ -259,8 +259,8 @@ class ActorLearner(ABC):
         self.total_sync_time += sync_time
         self.sync_count += 1
         
-        # Log to console (every 10 syncs)
-        if self.sync_count % 10 == 0:
+        # Log to console (every sync_interval syncs)
+        if self.sync_count % self.sync_interval == 0:
             avg_sync_time = self.total_sync_time / self.sync_count
             print(
                 f"🔄 Sync #{self.sync_count}: "

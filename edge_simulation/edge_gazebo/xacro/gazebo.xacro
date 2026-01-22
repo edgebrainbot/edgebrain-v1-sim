@@ -33,8 +33,7 @@
     </xacro:d435>
 
     <!-- Camera Sensors -->
-    <xacro:camera link_name="front_camera" topic="camera/image" 
-      camera_info_topic="camera/camera_info" rate="30"/>
+    <xacro:camera link_name="front_camera" topic="camera/image" camera_info_topic="camera/camera_info" rate="30"/>
 
     <!-- LiDAR Sensor -->
     <gazebo reference="lidar_link">
@@ -52,10 +51,10 @@
               <max_angle>4.8869</max_angle>
             </horizontal>
             <vertical>
-              <samples>16</samples>
+              <samples>4</samples>
               <resolution>1</resolution>
-              <min_angle>-0.0261799</min_angle>
-              <max_angle>0.0261799</max_angle>
+              <min_angle>0.0061799</min_angle>
+              <max_angle>0.0461799</max_angle>
             </vertical>
           </scan>
           <range>

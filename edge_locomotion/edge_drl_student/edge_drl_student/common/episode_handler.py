@@ -26,7 +26,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, Optional, List
 from edge_drl_student.common.logger import Logger
-from edge_drl_student.utils.utils import ActionMode, ResetReason
+from edge_drl_student.utils.utils import ActionMode, DRLMode, ResetReason
 
 # ==================== Episode Statistics ====================
 @dataclass
@@ -158,6 +158,7 @@ class EpisodeManager:
         self,
         logger: Logger,
         log_interval: int = 10,
+        eval_during_train: bool = False,
         max_episode_length: int = 1000,
         training_episode: int = 10000,
         moving_average_window: int = 100,
@@ -168,7 +169,11 @@ class EpisodeManager:
         Args:
             node: ROS2 node instance
             logger: Logger instance
-            config: Episode configuration (default: EpisodeConfig())
+            log_interval: Episodes between console logs (default: 10)
+            eval_during_train: Whether to evaluate during training (default: False)
+            max_episode_length: Maximum steps per episode (default: 1000)
+            training_episode: Total training episodes (default: 10000)
+            moving_average_window: Window size for moving averages (default: 100)
         """
         self.logger: Logger = logger
 
@@ -177,6 +182,12 @@ class EpisodeManager:
         self.training_episode: int = training_episode
         self.max_episode_length: int = max_episode_length
         self.moving_average_window: int = moving_average_window
+
+        if eval_during_train:
+            self.eval_count: int = 0
+            self.eval_return: float = 0.0
+            self.eval_during_train: bool = True
+
         
         # ========== Current Episode State ==========
         self.stu_action_count: int = 0
@@ -328,8 +339,8 @@ class EpisodeManager:
         """
         return self.episode_count < self.training_episode
 
-
-    def log_episode_end(self, success: Optional[bool], reason: ResetReason=None) -> EpisodeStats:
+    
+    def log_episode_end(self, success: Optional[bool], reason: ResetReason=None, mode=DRLMode.TRAIN) -> EpisodeStats:
         """
         End episode and log statistics
         
@@ -492,29 +503,29 @@ class EpisodeManager:
         episode_id = stats.episode_id
         
         # Episode metrics
-        self.logger.writer.add_scalar('Episode/return', stats.episode_return, episode_id)
-        self.logger.writer.add_scalar('Episode/length', stats.episode_length, episode_id)
-        self.logger.writer.add_scalar('Episode/duration', stats.episode_duration, episode_id)
-        self.logger.writer.add_scalar('Episode/success', 1.0 if stats.episode_is_success else 0.0, episode_id)
-        self.logger.writer.add_scalar('Episode/activation_ratio', stats.activation_ratio, episode_id)
-        self.logger.writer.add_scalar('Episode/average_step_reward', stats.average_step_reward, episode_id)
-        # self.logger.writer.add_scalar('Episode/average_length', stats.average_length, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/return', stats.episode_return, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/length', stats.episode_length, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/duration', stats.episode_duration, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/success', 1.0 if stats.episode_is_success else 0.0, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/activation_ratio', stats.activation_ratio, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/average_step_reward', stats.average_step_reward, episode_id)
+        # self.logger.writer.add_scalar('Train-Episode/average_length', stats.average_length, episode_id)
         
         # Reward components
         for component, value in stats.reward_components.items():
-            self.logger.writer.add_scalar(f'Episode/reward/{component}', value, episode_id)
+            self.logger.writer.add_scalar(f'Train-Episode/reward/{component}', value, episode_id)
         
         # Moving averages
-        self.logger.writer.add_scalar('Episode/moving_avg_return', self.moving_average_return, episode_id)
-        self.logger.writer.add_scalar('Episode/moving_avg_length', self.moving_average_length, episode_id)    
-        # self.logger.writer.add_scalar('Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
+        self.logger.writer.add_scalar('Train-Episode/moving_avg_return', self.moving_average_return, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/moving_avg_length', self.moving_average_length, episode_id)    
+        # self.logger.writer.add_scalar('Train-Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
         
         # Action counts
-        self.logger.writer.add_scalar('Episode/action_count/student', stats.student_action_count, episode_id)
-        self.logger.writer.add_scalar('Episode/action_count/teacher', stats.teacher_action_count, episode_id)
-        # self.logger.writer.add_scalar('Episode/end_reason', str(stats.episode_end_reason), episode_id)
+        self.logger.writer.add_scalar('Train-Episode/action_count/student', stats.student_action_count, episode_id)
+        self.logger.writer.add_scalar('Train-Episode/action_count/teacher', stats.teacher_action_count, episode_id)
+        # self.logger.writer.add_scalar('Train-Episode/end_reason', str(stats.episode_end_reason), episode_id)
         if stats.episode_is_success:
-            self.logger.writer.add_scalar('Episode/length_success', stats.episode_length, self.success_episode_count)
+            self.logger.writer.add_scalar('Train-Episode/length_success', stats.episode_length, self.success_episode_count)
             self.success_episode_count += 1
 
     

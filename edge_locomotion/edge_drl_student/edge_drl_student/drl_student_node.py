@@ -103,6 +103,7 @@ class DRLStudentNode(Node):
             logger=self.logger,
             max_episode_length=int(5e4),
             training_episode=10000,
+            eval_during_train=True,
             moving_average_window=100
         )
         
@@ -142,6 +143,7 @@ class DRLStudentNode(Node):
             'normalize_obs': True,
             'normalize_reward': True,
             'auto_reset_on_fall': True,
+            'eval_during_training': True,
         }
         
         agent_cfg = {

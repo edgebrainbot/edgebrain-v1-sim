@@ -24,7 +24,7 @@ def generate_launch_description():
         "world_name", default_value="obstacle_course.world", description="Gazebo world name"
     )
     use_global_rviz_arg = DeclareLaunchArgument(
-        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
+        "use_global_rviz", default_value="false", description="Use global RViz (integrated) or not"
     )
     reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
     reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")

@@ -4,8 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # ============================================================================
 
-import torch
+import os
 import time
+import torch
 import numpy as np
 from rclpy.node import Node
 from dataclasses import dataclass
@@ -16,7 +17,7 @@ from std_srvs.srv import Trigger
 from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward
 
 from edge_drl_student.common.logger import Logger
-from edge_drl_student.utils.utils import ActionMode, ResetReason
+from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode
 from edge_drl_student.common.reset_manager import ResetManager
 from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
@@ -76,6 +77,7 @@ class DistributedRunner:
         normalize_reward: bool = True,
 
         auto_reset_on_fall: bool = True,
+        eval_during_training: bool = False,
         model_save_path: str = 'distributed_drl_model',
         device: str = 'cpu',
         **agent_kwargs
@@ -98,9 +100,11 @@ class DistributedRunner:
         
         self.node.get_logger().info(f"Residual Gain Matrix:\n{self.residual_gain}")
         
+        # Training settings
         self.log_interval = log_interval
         self.sync_interval = sync_interval
         self.save_interval = save_interval
+        self.eval_during_training = eval_during_training
         
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
@@ -308,12 +312,11 @@ class DistributedRunner:
             self.node.get_logger().info('⏸️  Skipping transition during reset')
             return
         
-        # Update episode statistics
-        # reward_components = {
-        #     'obstacle': msg.reward.obstacle_reward,
-        #     'goal_distance': msg.reward.goal_distance_reward,
-        #     'body_state': msg.reward.body_state_reward
-        # }
+        # if self.eval_during_training and self.episode_manager.is_evaluation_episode:
+        #     self.node.get_logger().info('⏸️  Skipping transition processing during evaluation episode')
+        #     return
+        
+        # Extract reward components
         rew_comp: List[EdgeReward] = msg.reward_components
         reward_components = {c.name: c.value for c in rew_comp}
                 
@@ -389,11 +392,11 @@ class DistributedRunner:
         # Update episode stats
         self.episode_manager.update(reward_components, action_mode)     
         
-        # Log stepwise statistics
-        # self._log_stepwise_stats(reward_components)
+        # Log solo stepwise statistics
+        # self._log_solo_stepwise_stats(reward_components)
         
-        # Log timestep statistics
-        self._log_timestep_stats(reward_components)
+        # Log stepwise statistics
+        self._log_stepwise_stats(reward_components)
         
         # Check episode done
         if msg.done or self.episode_manager.is_episode_done():
@@ -405,14 +408,20 @@ class DistributedRunner:
             self._handle_episode_done(success=success, reason=reason)
 
     # ==================== Action Loop ====================
-    def compute_output_action(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def compute_output_action(self, mode: DRLMode) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Compute output action with residual control and observation normalization
+        Args:
+            mode: DRLMode enum value ('train' or 'eval')
         
         Returns:
             drl_student_action: Final action to send to robot [act_dim]
             learned_action: Pure learned action [act_dim]
         """
+        
+        # Determine if exploration noise should be added
+        explore = (mode == DRLMode.TRAIN) and not isinstance(self.replay_buffer, CognitiveReplayBuffer)
+        
         # Get current observation
         observation = torch.cat((
             torch.tensor(
@@ -433,7 +442,7 @@ class DistributedRunner:
         policy_action = self.actor_learner.acting_agent.act(
             obs=obs_norm.unsqueeze(0),
             noise_scale=0.1,
-            explore=True
+            explore=explore
         ).squeeze(0)
         
         # Compute residual action
@@ -461,10 +470,17 @@ class DistributedRunner:
         if self.reset_manager.is_resetting:
             return
         
+        run_mode = DRLMode.TRAIN
+        
+        # if self.eval_during_training and self.episode_manager.is_evaluation_episode:
+        #     self.node.get_logger().info('⏸️  Skipping action generation during evaluation episode')
+        #     run_mode = DRLMode.EVAL
+        #     return
+        
         action_start = time.time()
         
         # Compute actions
-        drl_student_action, learned_action = self.compute_output_action()
+        drl_student_action, learned_action = self.compute_output_action(mode=run_mode)
         
         # Publish drl-student action
         edge_drl_action_msg = EdgeAction()
@@ -523,19 +539,13 @@ class DistributedRunner:
         learn_start = time.time()
         
         # ⭐ Update policy using actor_learner (auto sync)
-        losses = self.actor_learner.update(batch_size=self.batch_size)
+        losses: Dict[str, float] = self.actor_learner.update(batch_size=self.batch_size)
+        
         
         # Update statistics
         self.total_actor_loss += losses['actor_loss']
         self.total_critic_loss += losses['critic_loss']
         self.learn_time = time.time() - learn_start
-        
-        # Log sync if it happened
-        if 'sync_time' in losses:
-            self.node.get_logger().info(
-                f"🔄 [Sync #{self.actor_learner.sync_count}] "
-                f"Parameters synchronized in {losses['sync_time']*1000:.2f}ms"
-            )
         
         # Log metrics
         self._log_update_metrics(losses)
@@ -545,12 +555,9 @@ class DistributedRunner:
             self.save_checkpoint()
     
     # ==================== Model Management ====================
-    
     def save_checkpoint(self):
         """Save model checkpoint including normalizers"""
-        import os
-        save_path = f"{self.model_save_path}_{self.actor_learner.update_count}"
-        os.makedirs(save_path, exist_ok=True)
+        save_path = f"{self.model_save_path}/ep_{self.actor_learner.update_count}"
         
         # Save actor-learner models
         self.actor_learner.save_models(save_path)
@@ -573,7 +580,7 @@ class DistributedRunner:
     def save_final_checkpoint(self):
         """Save final model checkpoint"""
         import os
-        save_path = f"{self.model_save_path}_final"
+        save_path = f"{self.model_save_path}/ep_final"
         os.makedirs(save_path, exist_ok=True)
         
         # Save actor-learner models
@@ -876,7 +883,7 @@ class DistributedRunner:
         self.node.get_logger().info("\n" + "="*70 + "\n")
 
 
-    def _log_stepwise_stats(self, reward_components: Dict[str, float]):
+    def _log_solo_stepwise_stats(self, reward_components: Dict[str, float]):
         """Log stepwise statistics"""
         step = self.episode_manager.current_episode_length
         stepwise_total_reward = sum(reward_components.values())
@@ -887,17 +894,27 @@ class DistributedRunner:
         for name, value in reward_components.items():
             self.logger.writer.add_scalar(f'Stepwise/reward/{name}', value, step)
     
-    def _log_timestep_stats(self, reward_components: Dict[str, float]):
-        """Log timestep statistics"""
+    def _log_stepwise_stats(self, reward_components: Dict[str, float]):
+        """Log stepwise statistics"""
         totalstep = self.episode_manager.total_steps
-        timestep_total_reward = sum(reward_components.values())
+        stepwise_total_reward = sum(reward_components.values())
         
-        self.logger.writer.add_scalar('Timestep/total_reward', timestep_total_reward, totalstep)
-        self.logger.writer.add_scalar('Timestep/count/student_action', self.episode_manager.stu_action_count, totalstep)
-        self.logger.writer.add_scalar('Timestep/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
+        self.logger.writer.add_scalar('Train-Stepwise/total_reward', stepwise_total_reward, totalstep)
+        self.logger.writer.add_scalar('Train-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
+        self.logger.writer.add_scalar('Train-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
         for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Timestep/reward/{name}', value, totalstep)
+            self.logger.writer.add_scalar(f'Train-Stepwise/reward/{name}', value, totalstep)
     
+    def _log_evaluation_stats(self, reward_components: Dict[str, float]):
+        """Log evaluation statistics"""
+        totalstep = self.episode_manager.total_steps
+        stepwise_total_reward = sum(reward_components.values())
+        
+        self.logger.writer.add_scalar('Eval-Stepwise/total_reward', stepwise_total_reward, totalstep)
+        self.logger.writer.add_scalar('Eval-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
+        self.logger.writer.add_scalar('Eval-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
+        for name, value in reward_components.items():
+            self.logger.writer.add_scalar(f'Eval-Stepwise/reward/{name}', value, totalstep)
     
     def _log_update_metrics(self, losses: Dict[str, float]):
         """Log update metrics"""
@@ -914,8 +931,19 @@ class DistributedRunner:
         # Log noise
         # self.logger.writer.add_scalar('Learn/noise_scale', self.actor_learner.acting_agent.noise, update_count)
         
-        # Log performance
+        # Log learning performance
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)
+        
+        # Log sync count
+        # self.logger.writer.add_scalar('Learn/sync_count', self.actor_learner.sync_count, update_count)
+        
+        # Log sync time if it happened
+        if 'sync_time' in losses:
+            self.logger.writer.add_scalar('Perf/parameter_sync_ms', losses['sync_time'] * 1000, self.actor_learner.sync_count)
+            self.node.get_logger().info(
+                f"🔄 [Sync #{self.actor_learner.sync_count}] "
+                f"Parameters synchronized in {losses['sync_time']*1000:.2f}ms"
+            )
         
         # Log average statistics
         if update_count % self.log_interval == 0:
