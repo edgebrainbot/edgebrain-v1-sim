@@ -72,6 +72,9 @@ void StateTrotting::enter()
 
     ctrl_interfaces_.control_inputs_.command = 0;
     gait_generator_.restart();
+    
+    // Reset step counter for episode tracking
+    step_count_ = 0;
 }
 
 void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
@@ -83,6 +86,9 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
                         double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
+    // Increment step counter
+    ++step_count_;
+    
     // Update teacher activation status
     pos_body_ = estimator_->getPosition();
     vel_body_ = estimator_->getVelocity();
@@ -411,14 +417,12 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
                                        double obstacleAvgDistance, double obstacleMinDistance, 
                                        bool is_goal_reached, bool is_fall)
 {
-    // Skip the first call after reset to avoid bad data
-    static bool first_call = true;
-    if (first_call) {
-        first_call = false;
+    // Skip the first few steps after reset to avoid bad data
+    if (step_count_ <= 1) {
         return;
     }
 
-    auto time_elapsed = (rclcpp::Clock().now() - last_reset_time_).seconds();
+    double time_elapsed = step_count_;  // Use step count as time proxy
 
     // Check if goal is reached
     auto dist_to_goal = (nav_goal_ - robot_pos_.head<2>()).norm();

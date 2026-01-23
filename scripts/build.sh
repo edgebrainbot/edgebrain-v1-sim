@@ -113,7 +113,7 @@ echo "🔹 [2/5] Building edge_quadruped_controller..."
 colcon build --packages-up-to edge_quadruped_controller ${BUILD_ARGS}
 
 echo "🔹 [3/5] Building edge_interfaces..."
-colcon build --base-paths src/edge-brain-go2/edge_common/edge_interfaces ${BUILD_ARGS}
+colcon build --base-paths src/edge-brain-go2/edge_interfaces ${BUILD_ARGS}
 
 echo "🔹 [4/5] Building edge_navigation..."
 colcon build --base-paths src/edge-brain-go2/edge_navigation ${BUILD_ARGS}

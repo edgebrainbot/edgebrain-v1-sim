@@ -114,7 +114,7 @@ namespace edge::control::quadruped
             RCLCPP_INFO(get_node()->get_logger(), "Reset Cooldown: %.2f s", reset_cooldown_);
 
             // Initialize reset time
-            last_reset_time_ = get_node()->now();
+            last_reset_timestep_ = 0;
 
             ctrl_component_.estimator_ = std::make_shared<Estimator>(ctrl_interfaces_, ctrl_component_, 
                                                                      odom_frame_id_, base_frame_id_, get_node());

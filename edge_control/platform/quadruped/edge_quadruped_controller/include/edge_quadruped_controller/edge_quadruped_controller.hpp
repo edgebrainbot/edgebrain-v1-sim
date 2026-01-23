@@ -207,7 +207,7 @@ namespace edge::control::quadruped
         // For reset service
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr launch_service_;
-        rclcpp::Time last_reset_time_;  // last reset time for debounce protection
+        int last_reset_timestep_;  // last reset time for debounce protection
         double reset_cooldown_{1.0};  // reset cooldown duration in seconds
 
         double latest_goal_x_ = 0.0;

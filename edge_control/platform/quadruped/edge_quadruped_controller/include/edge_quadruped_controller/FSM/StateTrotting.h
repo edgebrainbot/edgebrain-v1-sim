@@ -153,6 +153,9 @@ private:
     // Reset time
     rclcpp::Time last_reset_time_;
 
+    // Step counter for statistical tracking
+    int step_count_{0};
+
     bool is_teacher_activated_{false};
 
     // Gain parameters
