@@ -37,7 +37,7 @@ class EpisodeStats:
         episode_id: Episode number
         episode_return: Total return accumulated
         episode_length: Number of steps
-        episode_is_success: Whether episode was successful (task done)
+        episode_is_valid: Whether episode was valid (task done)
         episode_end_reason: Episode termination reason
         episode_duration: Episode duration in seconds
         student_action_count: Number of student actions
@@ -48,7 +48,7 @@ class EpisodeStats:
     episode_return: float
     episode_length: int
     episode_duration: float
-    episode_is_success: bool
+    episode_is_valid: bool
     episode_end_reason: ResetReason
     student_action_count: int = 0
     teacher_action_count: int = 0
@@ -71,7 +71,7 @@ class EpisodeStats:
             'episode_id': self.episode_id,
             'episode_return': self.episode_return,
             'episode_length': self.episode_length,
-            'episode_is_success': self.episode_is_success,
+            'episode_is_valid': self.episode_is_valid,
             'episode_end_reason': str(self.episode_end_reason),
             'episode_duration': self.episode_duration,
             'activation_ratio': self.activation_ratio,
@@ -205,7 +205,7 @@ class EpisodeManager:
         self.failure_count: int = 0
         self.timeout_count: int = 0
         self.episode_count: int = 0
-        self.success_episode_count: int = 0
+        self.valid_episode_count: int = 0
         
         # ========== Episode History ==========
         self.episode_history: List[EpisodeStats] = []
@@ -524,9 +524,10 @@ class EpisodeManager:
         self.logger.writer.add_scalar('Train-Episode/action_count/student', stats.student_action_count, episode_id)
         self.logger.writer.add_scalar('Train-Episode/action_count/teacher', stats.teacher_action_count, episode_id)
         # self.logger.writer.add_scalar('Train-Episode/end_reason', str(stats.episode_end_reason), episode_id)
-        if stats.episode_is_success:
-            self.logger.writer.add_scalar('Train-Episode/length_success', stats.episode_length, self.success_episode_count)
-            self.success_episode_count += 1
+        
+        if stats.episode_is_valid:
+            self.logger.writer.add_scalar('Train-Episode/length_valid', stats.episode_length, self.valid_episode_count)
+            self.valid_episode_count += 1
 
     
     def _print_episode_summary(self) -> None:

@@ -42,6 +42,8 @@ private:
     bool print_process_time_ = false;
     edge::ros_interfaces::Vector12d  error_state_;          // received error state
     edge::ros_interfaces::Vector12d  patch_center_;         // Center of the safety patch
+    edge::ros_interfaces::Vector6d   curr_action_;          // Current action sent
+    edge::ros_interfaces::Vector6d   last_action_;          // Last action sent
 
     lmi::LMIOptimizer lmi_optimizer_;
 

@@ -24,6 +24,8 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     teacher_enable_      = this->declare_parameter<bool>("teacher_enable", true);
     teaching_to_learn_   = this->declare_parameter<bool>("teaching_to_learn", true);
     trigger_type_        = this->declare_parameter<std::string>("trigger_type", "event");
+    curr_action_         = edge::ros_interfaces::Vector6d::Zero();
+    last_action_         = edge::ros_interfaces::Vector6d::Zero();
 
     // Initialize Safety Monitor
     safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
@@ -140,6 +142,8 @@ void PhyTeacher::lmiCallback() {
     edge_msgs::msg::EdgeAction teacher_action_msg;
     edge::utils::ActionMode teacher_mode = edge::utils::ActionMode::TEACHER;
 
+
+
     // Compute control gains if teacher is active
     if (teacher_active_) {
         // Compute the action according to the center of the safety patch
@@ -149,15 +153,15 @@ void PhyTeacher::lmiCallback() {
         auto kp_term = lmi_optimizer_.default_F_kp * error_from_patch.head(6);
         auto kd_term = lmi_optimizer_.default_F_kd * error_from_patch.tail(6);
 
-        auto result = kp_term + kd_term;
-        teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(result, 
-                                                                        edge::utils::ToMsg(teacher_mode));
+        curr_action_ = kp_term + kd_term;
+
     } else {
-        // If teacher is not active, set gains to zero
-        teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(edge::ros_interfaces::Vector6d::Zero(),
-                                                                        edge::utils::ToMsg(teacher_mode));
+        // If teacher is not active, maintain last action
+        curr_action_ = last_action_;
     }
 
+    teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(curr_action_, 
+                                                                    edge::utils::ToMsg(teacher_mode));
     pub_->publish(teacher_action_msg);
 
     // if (print_process_time_) {
@@ -167,6 +171,7 @@ void PhyTeacher::lmiCallback() {
     // }
 
     got_msg_ = false;   // Reset flag until next message is received
+    last_action_ = curr_action_;        // Update last action
 }
 
 } // namespace edge::phy_teacher
