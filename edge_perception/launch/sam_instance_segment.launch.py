@@ -8,7 +8,7 @@ import os
 
 def generate_launch_description():
     pkg_dir = get_package_share_directory('edge_perception')
-    default_model_path = os.path.join(pkg_dir, 'models', 'lraspp_mobilenet_w1280_h720_segmentation.onnx')
+    default_model_path = os.path.join(pkg_dir, 'models', 'sam_vit_b_01ec64.pth')
 
     return LaunchDescription([
         DeclareLaunchArgument('model_path', default_value=default_model_path, description='Path to ONNX instance segmentation model'),
@@ -21,9 +21,9 @@ def generate_launch_description():
         DeclareLaunchArgument('input_height', default_value='720'),
         Node(
             package='edge_perception',
-            executable='instance_segment_node',
+            executable='sam_instance_segment_node',
             namespace='edge',
-            name='instance_segment_node',
+            name='sam_instance_segment_node',
             output='screen',
             parameters=[{
                 'model_path': LaunchConfiguration('model_path'),

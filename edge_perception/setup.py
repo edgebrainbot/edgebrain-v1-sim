@@ -28,6 +28,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'sam_instance_segment_node = edge_perception.segmentation.instance_segment.sam_instance_seg_node:main',
+            'yolo_instance_segment_node = edge_perception.segmentation.instance_segment.yolo_instance_seg_node:main',
             'semantic_segment_node = edge_perception.semantic_segment_node:main',
             'instance_segment_node = edge_perception.instance_segment_node:main',
         ],

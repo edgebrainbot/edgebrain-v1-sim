@@ -142,8 +142,6 @@ void PhyTeacher::lmiCallback() {
     edge_msgs::msg::EdgeAction teacher_action_msg;
     edge::utils::ActionMode teacher_mode = edge::utils::ActionMode::TEACHER;
 
-
-
     // Compute control gains if teacher is active
     if (teacher_active_) {
         // Compute the action according to the center of the safety patch

@@ -165,13 +165,18 @@ ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 ENV PYTHONPATH=/usr/lib/python3/dist-packages:/home/edgebot/ros2_ws/install/lib/python3.10/site-packages
 
 
-# ---------- [8] Build ROS2 Workspace ----------
+# ---------- [8] Install PyTorch GPU for JetPack 6.2 ----------
+# reference: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+RUN pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu126
+
+
+# ---------- [9] Build ROS2 Workspace ----------
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     cd ${ROS2_WS_PATH} && colcon build --packages-up-to edge_quadruped_controller --symlink-install || true
 
 
-# ---------- [9] Entrypoint ----------
+# ---------- [10] Entrypoint ----------
 COPY ./docker/entrypoint.sh /entrypoint.sh
 # RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
