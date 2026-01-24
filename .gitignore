@@ -7,9 +7,10 @@ __pycache__/
 .DS_Store
 logs/
 temp/
-models
+models/
 !edge_simulation/edge_gazebo/models/
-!edge_perception/models/README.md
+checkpoints/
+!edge_perception/checkpoints/README.md
 isaacgym/
 unitree_rl_gym/
 *.conf

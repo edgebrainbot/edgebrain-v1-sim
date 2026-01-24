@@ -6,7 +6,6 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
-
 def generate_launch_description():
     pkg_dir = get_package_share_directory('edge_perception')
     default_model_path = os.path.join(pkg_dir, 'models', 'lraspp_mobilenet_w1280_h720_segmentation.onnx')
