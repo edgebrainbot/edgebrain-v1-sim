@@ -5,7 +5,7 @@ package_name = 'edge_perception'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='1.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -16,11 +16,11 @@ setup(
         ('share/' + package_name + '/scripts', glob('scripts/*.py')),
         ('share/' + package_name + '/config', glob('config/*.yaml')),
     ],
-    install_requires=['setuptools', 'numpy', 'torch', 'opencv-python', 'cv_bridge', 'segment_anything'],
+    install_requires=['setuptools', 'numpy', 'torch', 'opencv-python', 'cv_bridge', 'segment_anything', 'transformers'],
     zip_safe=True,
     maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
-    description='Instance and Semantic segmentation projection onto point clouds for Jetson.',
+    description='Instance/Semantic/Panoptic segmentation projection onto point clouds for Jetson.',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -31,6 +31,7 @@ setup(
         'console_scripts': [
             'semantic_segment_node = edge_perception.segmentation.semantic_segment.semantic_segment_node:main',
             'instance_segment_node = edge_perception.segmentation.instance_segment.instance_segment_node:main',
+            'panoptic_segment_node = edge_perception.segmentation.panoptic_segment.panoptic_segment_node:main',
         ],
     },
 )

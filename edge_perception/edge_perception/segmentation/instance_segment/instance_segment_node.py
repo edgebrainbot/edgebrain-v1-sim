@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import os
 import cv2
 import yaml
@@ -12,8 +18,9 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from rclpy.qos import QoSProfile, ReliabilityPolicy, QoSHistoryPolicy
 
-from edge_perception.segmentation.instance_segment.algorithms.model_generator import ModelGenerator
-from edge_perception.segmentation.instance_segment.visualizer.instance_visualizer import InstanceVisualizer
+from edge_perception.visualization.visualizer import MaskVisualizer
+from edge_perception.segmentation.instance_segment.algorithm import ModelGenerator
+
 
 class InstanceSegmentNode(Node):
     def __init__(self):
@@ -57,7 +64,7 @@ class InstanceSegmentNode(Node):
         self.get_logger().info(f'Using device: {self.device}')
 
         # ---------------- Visualizer ----------------        
-        self.visualizer = InstanceVisualizer()
+        self.visualizer = MaskVisualizer()
 
         # ---------------- Select Algorithm ----------------
         self.model_generator = ModelGenerator(**self.model_cfg, device=self.device)

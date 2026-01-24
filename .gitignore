@@ -11,6 +11,8 @@ models/
 !edge_simulation/edge_gazebo/models/
 checkpoints/
 !edge_perception/checkpoints/README.md
+onnx_exports/
+raw_checkpoints/
 isaacgym/
 unitree_rl_gym/
 *.conf

@@ -12,8 +12,8 @@ def generate_launch_description():
 
     declare_model_arg = DeclareLaunchArgument(
         'model_name',
-        # default_value='sam_vit_b', 
-        default_value='yolo', 
+        default_value='sam_vit_b', 
+        # default_value='yolo', 
         description='Name of the model to use from models.yaml'
     )
     

@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import torch
 import numpy as np
 from typing import List
@@ -6,11 +12,11 @@ from ultralytics.engine.results import Results
 
 from ultralytics import YOLO
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
-from edge_perception.segmentation.instance_segment.utils.instance_mask import InstanceMask
+from edge_perception.visualization.mask import MaskBlob
 
 class SegmentModel(ABC):
     @abstractmethod
-    def infer(self, image_rgb: np.ndarray) -> List[InstanceMask]:
+    def infer(self, image_rgb: np.ndarray) -> List[MaskBlob]:
         pass
 
 class ModelGenerator:
@@ -33,11 +39,11 @@ class SAMWrapper(SegmentModel):
 
         self.generator = SamAutomaticMaskGenerator(sam, **kwargs)
 
-    def infer(self, image_rgb: np.ndarray) -> list[InstanceMask]:
+    def infer(self, image_rgb: np.ndarray) -> list[MaskBlob]:
         sam_masks = self.generator.generate(image_rgb)
 
         return [
-            InstanceMask(
+            MaskBlob(
                 mask=m["segmentation"],
                 score=m.get("predicted_iou", 1.0),
                 instance_id=i
@@ -54,7 +60,7 @@ class YOLOWrapper(SegmentModel):
         self.conf = kwargs.get('confidence_threshold')
         self.iou = kwargs.get('iou_threshold')
 
-    def infer(self, image_rgb: np.ndarray) -> list[InstanceMask]:
+    def infer(self, image_rgb: np.ndarray) -> list[MaskBlob]:
         # Ultralytics YOLO handles preprocessing internally - pass numpy array directly
         infer_kwargs = {"verbose": False}
         # if self.conf is not None:
@@ -73,7 +79,7 @@ class YOLOWrapper(SegmentModel):
         
         for i in range(masks.shape[0]):
             instance_masks.append(
-                InstanceMask(
+                MaskBlob(
                     mask=masks[i].cpu().numpy().astype(bool),
                     score=float(scores[i].cpu().numpy()),
                     instance_id=i

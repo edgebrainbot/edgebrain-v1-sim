@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import cv2
 import numpy as np
 from typing import List
@@ -5,10 +11,7 @@ from typing import List
 from dataclasses import dataclass
 from typing import Optional
 
-from edge_perception.segmentation.instance_segment.utils.instance_mask import InstanceMask
-
-
-class InstanceVisualizer:
+class MaskVisualizer:
 
     def __init__(self, alpha=0.4):
         self.alpha = alpha

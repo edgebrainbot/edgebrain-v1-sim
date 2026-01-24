@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, TimerAction, ExecuteProcess, OpaqueFunction
