@@ -197,7 +197,7 @@ def generate_launch_description():
         actions.append(phy_teacher_launch)
         # actions.append(drl_student_launch)
         actions.append(trigger_launch)
-        actions.append(navigation_launch)
+        # actions.append(navigation_launch)
 
         # Other nodes can be launched after the above are set up
         actions.extend([

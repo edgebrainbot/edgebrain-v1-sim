@@ -5,7 +5,7 @@
 # ============================================================================
 
 """
-DRL Student Node - Clean and Simplified
+DRL Student Node
 """
 
 import os
@@ -88,7 +88,9 @@ class DRLStudentNode(Node):
         else:
             raise ValueError(f"Unsupported RUN type: {RUN}")
         self.get_logger().info(f"✅ Replay buffer initialized: {RUN}")
-        
+                
+        eval_interval = 5 # Evaluate every N episodes during training
+                
         # Vision Processor
         self.vision_processor = VisionProcessor(
             node=self,
@@ -101,9 +103,11 @@ class DRLStudentNode(Node):
         # Episode Manager        
         self.episode_manager = EpisodeManager(
             logger=self.logger,
-            max_episode_length=int(5e4),
+            # max_episode_length=int(5e4),
+            max_episode_length=int(1e4),
             training_episode=10000,
             eval_during_train=True,
+            eval_interval=eval_interval,
             moving_average_window=100
         )
         
@@ -136,14 +140,13 @@ class DRLStudentNode(Node):
         }
         
         training_cfg = {
-            'batch_size': self.batch_size,
             'log_interval': 100,
             'sync_interval': 5,
-            'save_interval': 500,
             'normalize_obs': True,
             'normalize_reward': True,
             'auto_reset_on_fall': True,
-            'eval_during_training': True,
+            'batch_size': self.batch_size,
+            'save_interval': 500,
         }
         
         agent_cfg = {
@@ -187,7 +190,7 @@ class DRLStudentNode(Node):
         self.get_logger().info("🛑 Shutting down DRL Student Node...")
         
         # Stop agent loops
-        self.agent.stop()
+        self.agent.shutdown()
         
         # Save final checkpoint
         self.agent.save_final_checkpoint()

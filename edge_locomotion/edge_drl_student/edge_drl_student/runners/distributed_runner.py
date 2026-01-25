@@ -77,7 +77,6 @@ class DistributedRunner:
         normalize_reward: bool = True,
 
         auto_reset_on_fall: bool = True,
-        eval_during_training: bool = False,
         model_save_path: str = 'distributed_drl_model',
         device: str = 'cpu',
         **agent_kwargs
@@ -104,7 +103,6 @@ class DistributedRunner:
         self.log_interval = log_interval
         self.sync_interval = sync_interval
         self.save_interval = save_interval
-        self.eval_during_training = eval_during_training
         
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
@@ -207,6 +205,8 @@ class DistributedRunner:
         
         self.action_timer = self.node.create_timer(1.0 / self.action_frequency, self.action_loop)
         self.learning_timer = self.node.create_timer(1.0 / self.learning_frequency, self.learning_loop)
+        self.is_action_running = True
+        self.is_learning_running = True
         
         self.node.get_logger().info(
             f"\n{'='*70}\n"
@@ -217,8 +217,18 @@ class DistributedRunner:
             f"{'='*70}"
         )
     
-    def stop(self):
-        """Stop acting and learning loops"""
+    def pause(self):
+        """Pause acting and learning loops"""
+        self.pause_action_loop()
+        self.pause_learning_loop()
+        
+    def resume(self):
+        """Resume acting and learning loops"""
+        self.resume_action_loop()
+        self.resume_learning_loop()
+    
+    def shutdown(self):
+        """Shutdown acting and learning loops"""
         if self.action_timer is not None:
             self.action_timer.cancel()
             self.action_timer = None
@@ -227,7 +237,7 @@ class DistributedRunner:
             self.learning_timer.cancel()
             self.learning_timer = None
         
-        self.node.get_logger().info("🛑 Loops stopped")
+        self.node.get_logger().info("🛑 Loops shutdown")
     
     # ==================== ROS2 Callbacks ====================
     def tracking_error_callback(self, msg: Vec12Msg):
@@ -253,15 +263,16 @@ class DistributedRunner:
             response.message = 'Reset already in progress, please wait'
             return response
         
+        ep_mode = self.episode_manager.episode_mode
+        
         # Handle episode done with MANUAL reason 
-        self._handle_episode_done(success=False, reason=ResetReason.MANUAL)
+        self._handle_episode_done(success=False, reason=ResetReason.MANUAL, ep_mode=ep_mode)
         
         response.success = True
         response.message = (
             f'Manual reset successful. '
-            f'Episode #{self.episode_manager.episode_count}.'
+            f'Episode #{self.episode_manager.episode_count_train}.'
         )
-        
         return response
 
     
@@ -284,8 +295,10 @@ class DistributedRunner:
             if self.auto_reset_on_fall:
                 self.node.get_logger().info('🔄 Auto reset triggered by fall detection')
                 
+                ep_mode = self.episode_manager.episode_mode
+                
                 # ⭐ Handle episode done with FALL_DETECTED reason
-                self._handle_episode_done(success=False, reason=ResetReason.FALL_DETECTED)
+                self._handle_episode_done(success=False, reason=ResetReason.FALL_DETECTED, ep_mode=ep_mode)
                 
                 # Update fall state
                 self.last_fall_state = False
@@ -302,30 +315,18 @@ class DistributedRunner:
             self.last_fall_state = is_fall
 
     
-    # ==================== Transition Callback ====================
-    def transition_callback(self, msg: Transition):
-        """Transition callback - collect experiences with normalization. 
-           ...
-           Also update episode statistics (interaction-level, not learning)
+    # ==================== Transition Processing ====================
+    def _process_transition(self, msg: Transition, stepwise_total_reward: float) -> bool:
         """
-        if self.reset_manager.is_resetting:
-            self.node.get_logger().info('⏸️  Skipping transition during reset')
-            return
+        Process transition: create observations, normalize, and store in buffer
         
-        # if self.eval_during_training and self.episode_manager.is_evaluation_episode:
-        #     self.node.get_logger().info('⏸️  Skipping transition processing during evaluation episode')
-        #     return
-        
-        # Extract reward components
-        rew_comp: List[EdgeReward] = msg.reward_components
-        reward_components = {c.name: c.value for c in rew_comp}
-                
-        # ⭐ Update episode with new step and get total reward
-        stepwise_total_reward = sum(reward_components.values())
-        
-        # ⭐ Accumulate episode rewards (for reward normalization)
-        self.episode_rewards.append(stepwise_total_reward)
-        
+        Args:
+            msg: Transition message from environment
+            stepwise_total_reward: Total reward for this step
+            
+        Returns:
+            success: Whether processing and storing transition was successful
+        """
         # Create observation (body_state + vision_feature)
         observation = torch.cat((
             torch.tensor(
@@ -345,9 +346,8 @@ class DistributedRunner:
             self.vision_processor.get_current_features()
         ), dim=0)
         
-        # ⭐ Normalize observations
+        # Normalize observations
         if self.obs_normalizer is not None:
-            
             # Update normalizer statistics
             self.obs_normalizer.update(observation)
             self.obs_normalizer.update(next_observation)
@@ -355,12 +355,11 @@ class DistributedRunner:
             # Normalize observations
             obs_norm = self.obs_normalizer.normalize(observation)
             next_obs_norm = self.obs_normalizer.normalize(next_observation)
-            
         else:
             obs_norm = observation
             next_obs_norm = next_observation
         
-        # Add to buffer
+        # Create transition
         t = self.replay_buffer.to_transition(
             obs=obs_norm,
             action=msg.action.control_action,
@@ -370,42 +369,97 @@ class DistributedRunner:
         )
         
         action_mode = ActionMode(msg.action.action_mode)
-
-        # Add transition to the self-learning buffer
+        
+        # Add transition to the appropriate buffer
         if action_mode == ActionMode.STUDENT:
             self.replay_buffer.add_transition(t, action_mode=ActionMode.STUDENT)
             if not self.replay_buffer.stu_buf.is_ready:
-                self.node.get_logger().info(f"[Transition] Added transition to student buffer. Current size: {self.replay_buffer.stu_buf_size}")
-            
-        # Add transition to the teaching-to-learn buffer
+                self.node.get_logger().info(
+                    f"[Transition] Added to student buffer. "
+                    f"Size: {self.replay_buffer.stu_buf_size}"
+                )
         elif action_mode == ActionMode.TEACHER:
             self.replay_buffer.add_transition(t, action_mode=ActionMode.TEACHER)
             if not self.replay_buffer.tea_buf.is_ready:
-                self.node.get_logger().info(f"[Transition] Added transition to teacher buffer. Current size: {self.replay_buffer.tea_buf_size}")
-        
+                self.node.get_logger().info(
+                    f"[Transition] Added to teacher buffer. "
+                    f"Size: {self.replay_buffer.tea_buf_size}"
+                )
         else:
             self.node.get_logger().error(f'Unknown action mode: {msg.action.action_mode}')
+            return False
+        
+        return True
+    
+    # ==================== Transition Callback ====================
+    def transition_callback(self, msg: Transition):
+        """Transition callback - collect experiences with normalization. 
+           ...
+           Also update episode statistics (interaction-level, not learning)
+        """
+        
+        # Reset handling
+        if self.reset_manager.is_resetting:
+            self.node.get_logger().info('⏸️  Skipping transition during reset')
+            
+            if self.is_learning_running:
+                self.node.get_logger().info('⏸️  Learning loop paused during reset')
+                self.pause_learning_loop()
+            
+            if self.is_action_running:
+                self.node.get_logger().info('⏸️  Action loop paused during reset')
+                self.pause_action_loop()
+            
             return
+        else:
+            if self.episode_manager.episode_mode == DRLMode.EVAL:
+                self.node.get_logger().info('⏸️  Skipping transition during evaluation episode')
+                self.pause_learning_loop()
+                
+            else:
+                if not self.is_learning_running:
+                    self.node.get_logger().info('▶️ Resuming learning loop after reset')
+                    self.resume_learning_loop()
+                
+                if not self.is_action_running:
+                    self.node.get_logger().info('▶️ Resuming action loop after reset')
+                    self.resume_action_loop()
         
-        self.transition_count += 1      # Increment transition count
+        # Extract reward components
+        rew_comp: List[EdgeReward] = msg.reward_components
+        reward_components = {c.name: c.value for c in rew_comp}
+                
+        # Calculate stepwise total reward
+        stepwise_total_reward = sum(reward_components.values())
         
-        # Update episode stats
-        self.episode_manager.update(reward_components, action_mode)     
+        # Accumulate episode rewards (for reward normalization)
+        self.episode_rewards.append(stepwise_total_reward)
         
-        # Log solo stepwise statistics
-        # self._log_solo_stepwise_stats(reward_components)
+        # Determine ep_mode and action_mode
+        ep_mode = self.episode_manager.episode_mode
+        action_mode = ActionMode(msg.action.action_mode)
+        
+        # Process transition and store in buffer (if in training mode) 
+        if ep_mode == DRLMode.TRAIN:
+            is_success = self._process_transition(msg, stepwise_total_reward)
+            if is_success:
+                self.transition_count += 1
+            print(f"Processed transition #{self.transition_count}")
+            
+        # Update episode stats (training mode)
+        self.episode_manager.update(reward_components, action_mode, ep_mode) 
         
         # Log stepwise statistics
-        self._log_stepwise_stats(reward_components)
+        self._log_stepwise_stats(reward_components, ep_mode)
         
         # Check episode done
-        if msg.done or self.episode_manager.is_episode_done():
+        if msg.done or self.episode_manager.is_episode_done:
             reason = (
-                ResetReason.TIMEOUT if self.episode_manager.is_episode_done()
+                ResetReason.TIMEOUT if self.episode_manager.is_episode_done
                 else ResetReason.TASK_DONE
             )
             success = True if msg.done and reason == ResetReason.TASK_DONE else False
-            self._handle_episode_done(success=success, reason=reason)
+            self._handle_episode_done(success=success, reason=reason, ep_mode=ep_mode)
 
     # ==================== Action Loop ====================
     def compute_output_action(self, mode: DRLMode) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -467,15 +521,16 @@ class DistributedRunner:
     
     def action_loop(self):
         """Action generation loop (high frequency)"""
-        if self.reset_manager.is_resetting:
+        
+        if not self.is_action_running:
+            self.node.get_logger().info('⏸️  Action loop is paused')
             return
         
         run_mode = DRLMode.TRAIN
         
-        # if self.eval_during_training and self.episode_manager.is_evaluation_episode:
-        #     self.node.get_logger().info('⏸️  Skipping action generation during evaluation episode')
-        #     run_mode = DRLMode.EVAL
-        #     return
+        if self.episode_manager.episode_mode == DRLMode.EVAL:
+            self.node.get_logger().info('ActionLoop: Evaluation episode - switching to EVAL mode')
+            run_mode = DRLMode.EVAL
         
         action_start = time.time()
         
@@ -513,8 +568,8 @@ class DistributedRunner:
     # ==================== Learning Loop ====================
     def learning_loop(self):
         """Learning loop (low frequency)"""
-        if self.reset_manager.is_resetting:
-            self.node.get_logger().info('⏸️  Skipping learning during reset')
+        if not self.is_learning_running:
+            self.node.get_logger().info('⏸️  Learning loop is paused')
             return
         
         # Log buffer sizes
@@ -548,16 +603,20 @@ class DistributedRunner:
         self.learn_time = time.time() - learn_start
         
         # Log metrics
-        self._log_update_metrics(losses)
+        self._log_learning_metrics(losses)
         
         # Save models periodically
         if self.actor_learner.update_count % self.save_interval == 0:
             self.save_checkpoint()
     
     # ==================== Model Management ====================
-    def save_checkpoint(self):
+    def save_checkpoint(self, suffix: str = ''):
         """Save model checkpoint including normalizers"""
-        save_path = f"{self.model_save_path}/ep_{self.actor_learner.update_count}"
+        
+        if suffix:
+            suffix = f"_{suffix}"
+        
+        save_path = f"{self.model_save_path}/update_count_{self.actor_learner.update_count}{suffix}"
         
         # Save actor-learner models
         self.actor_learner.save_models(save_path)
@@ -580,7 +639,7 @@ class DistributedRunner:
     def save_final_checkpoint(self):
         """Save final model checkpoint"""
         import os
-        save_path = f"{self.model_save_path}/ep_final"
+        save_path = f"{self.model_save_path}/update_count_final"
         os.makedirs(save_path, exist_ok=True)
         
         # Save actor-learner models
@@ -622,8 +681,8 @@ class DistributedRunner:
         self.node.get_logger().info(f"✅ Models and normalizers loaded from {load_path}")
     
     # ==================== Episode Management ====================
-    
-    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE):
+
+    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE, ep_mode: DRLMode = DRLMode.TRAIN):
         """
         Handle end of episode: log stats, update normalizers, reset environment
         
@@ -631,11 +690,15 @@ class DistributedRunner:
             reason: Reset reason (TASK_DONE, FALL_DETECTED, TIMEOUT, etc.)
         """
         
-        # ========== Step 1: Log Episode Statistics ==========
-        stats = self.episode_manager.log_episode_end(success=success, reason=reason)
+        if ep_mode == DRLMode.EVAL:
+            self.node.get_logger().info("Evaluation episode ended, saving checkpoint...")
+            self.save_checkpoint(suffix='eval')
+        
+        # Log episode end and get stats
+        stats = self.episode_manager.log_episode_end(success=success, reason=reason, ep_mode=ep_mode)
         self.episode_manager.reset_episode()    # Reset episode state
         
-        # ========== Step 2: Update Reward Normalizer ==========
+        # Update reward normalizer
         if self.reward_normalizer is not None and self.normalize_reward:
             if len(self.episode_rewards) > 0:
                 episode_rewards_tensor = torch.tensor(
@@ -652,15 +715,15 @@ class DistributedRunner:
                 reward_mean = self.reward_normalizer.get_stats()['mean']
                 reward_std = self.reward_normalizer.get_stats()['std']
                 
-                self.logger.writer.add_scalar('Learn/reward_norm/mean', reward_mean, self.episode_manager.episode_count)
-                self.logger.writer.add_scalar('Learn/reward_norm/std', reward_std, self.episode_manager.episode_count)
+                self.logger.writer.add_scalar('Learn/reward_norm/mean', reward_mean, self.episode_manager.episode_count_train)
+                self.logger.writer.add_scalar('Learn/reward_norm/std', reward_std, self.episode_manager.episode_count_train)
                 
                 # self.node.get_logger().info(
                 #     f"📊 Reward normalization updated: "
                 #     f"mean={reward_mean:.4f}, std={reward_std:.4f}"
                 # )
         
-        # ========== Step 3: Cleanup Episode State ==========
+        # Clear episode rewards
         self.episode_rewards.clear()
         
         if hasattr(self, 'discounted_return'):
@@ -669,7 +732,7 @@ class DistributedRunner:
         # ========== Step 4: Log Episode Summary ==========
         # self.node.get_logger().info(
         #     f"\n{'='*70}\n"
-        #     f"📊 Episode {self.episode_manager.episode_count} ended\n"
+        #     f"📊 Episode {self.episode_manager.episode_count_train} ended\n"
         #     f"{'─'*70}\n"
         #     f"   Reason:           {reason.value}\n"
         #     f"   Total Reward:     {stats['reward']:.2f}\n"
@@ -678,7 +741,7 @@ class DistributedRunner:
         #     f"{'='*70}"
         # )
         
-        # ========== Step 5: Call Reset Service ==========
+        # Call reset service
         self.node.get_logger().info(f'🔄 Triggering reset (reason: {reason.value})')
         success, message = self.reset_manager.call_reset_service(reason)
         
@@ -874,7 +937,7 @@ class DistributedRunner:
         # ========== Training Status ==========
         self.node.get_logger().info("\n📈 Training Status:")
         self.node.get_logger().info(
-            f"   Episode Count:        {self.episode_manager.episode_count}\n"
+            f"   Episode Count:        {self.episode_manager.episode_count_train}\n"
             # f"   Total Steps:          {self.episode_manager.total_steps}\n"
             f"   Update Count:         {self.actor_learner.update_count}\n"
             f"   Sync Count:           {self.actor_learner.sync_count}"
@@ -882,42 +945,39 @@ class DistributedRunner:
         
         self.node.get_logger().info("\n" + "="*70 + "\n")
 
-
-    def _log_solo_stepwise_stats(self, reward_components: Dict[str, float]):
+    # def _log_solo_stepwise_stats(self, reward_components: Dict[str, float]):
+    #     """Log stepwise statistics"""
+    #     step = self.episode_manager.current_episode_length
+    #     stepwise_total_reward = sum(reward_components.values())
+        
+    #     self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, step)
+    #     self.logger.writer.add_scalar('Stepwise/count/student_action', self.episode_manager.stu_action_count, step)
+    #     self.logger.writer.add_scalar('Stepwise/count/teacher_action', self.episode_manager.tea_action_count, step)
+    #     for name, value in reward_components.items():
+    #         self.logger.writer.add_scalar(f'Stepwise/reward/{name}', value, step)
+    
+    def _log_stepwise_stats(self, reward_components: Dict[str, float], mode=DRLMode.TRAIN):
         """Log stepwise statistics"""
-        step = self.episode_manager.current_episode_length
+        
+        if mode == DRLMode.TRAIN:
+            totalstep = self.episode_manager.total_steps
+        elif mode == DRLMode.EVAL and self.episode_manager.eval_during_train:
+            totalstep = self.episode_manager.eval_steps
+        else:
+            raise ValueError(f"Invalid mode for logging stepwise stats: {mode}")
         stepwise_total_reward = sum(reward_components.values())
         
-        self.logger.writer.add_scalar('Stepwise/total_reward', stepwise_total_reward, step)
-        self.logger.writer.add_scalar('Stepwise/count/student_action', self.episode_manager.stu_action_count, step)
-        self.logger.writer.add_scalar('Stepwise/count/teacher_action', self.episode_manager.tea_action_count, step)
-        for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Stepwise/reward/{name}', value, step)
-    
-    def _log_stepwise_stats(self, reward_components: Dict[str, float]):
-        """Log stepwise statistics"""
-        totalstep = self.episode_manager.total_steps
-        stepwise_total_reward = sum(reward_components.values())
+        mode_str = mode.name.capitalize()
         
-        self.logger.writer.add_scalar('Train-Stepwise/total_reward', stepwise_total_reward, totalstep)
-        self.logger.writer.add_scalar('Train-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
-        self.logger.writer.add_scalar('Train-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
+        self.logger.writer.add_scalar(f'{mode_str}-Stepwise/total_reward', stepwise_total_reward, totalstep)
+        self.logger.writer.add_scalar(f'{mode_str}-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
+        self.logger.writer.add_scalar(f'{mode_str}-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
         for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Train-Stepwise/reward/{name}', value, totalstep)
+            self.logger.writer.add_scalar(f'{mode_str}-Stepwise/reward/{name}', value, totalstep)
     
-    def _log_evaluation_stats(self, reward_components: Dict[str, float]):
-        """Log evaluation statistics"""
-        totalstep = self.episode_manager.total_steps
-        stepwise_total_reward = sum(reward_components.values())
-        
-        self.logger.writer.add_scalar('Eval-Stepwise/total_reward', stepwise_total_reward, totalstep)
-        self.logger.writer.add_scalar('Eval-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
-        self.logger.writer.add_scalar('Eval-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)
-        for name, value in reward_components.items():
-            self.logger.writer.add_scalar(f'Eval-Stepwise/reward/{name}', value, totalstep)
     
-    def _log_update_metrics(self, losses: Dict[str, float]):
-        """Log update metrics"""
+    def _log_learning_metrics(self, losses: Dict[str, float]):
+        """Log learning metrics"""
         update_count = self.actor_learner.update_count
         
         # Log losses
@@ -1006,6 +1066,26 @@ class DistributedRunner:
                 f"   Teacher Size:    {len(self.replay_buffer.tea_buf)}/{self.replay_buffer.tea_buf.capacity}\n"
                 f"{'='*70}"
             )
+    
+    def pause_action_loop(self):
+        """Pause action loop"""
+        self.is_action_running = False
+        self.node.get_logger().info("⏸️  Action loop paused")
+        
+    def resume_action_loop(self):
+        """Resume action loop"""
+        self.is_action_running = True
+        self.node.get_logger().info("▶️  Action loop resumed")
+        
+    def pause_learning_loop(self):
+        """Pause learning loop"""
+        self.is_learning_running = False
+        self.node.get_logger().info("⏸️  Learning loop paused")
+        
+    def resume_learning_loop(self):
+        """Resume learning loop"""
+        self.is_learning_running = True
+        self.node.get_logger().info("▶️  Learning loop resumed")
     
     # ==================== Utility Methods ====================
     def __repr__(self) -> str:

@@ -35,9 +35,10 @@ class EpisodeStats:
     Episode Statistics Data Class
     Attributes:
         episode_id: Episode number
+        episode_mode: DRLMode (TRAIN or EVAL)
         episode_return: Total return accumulated
-        episode_length: Number of steps
-        episode_is_valid: Whether episode was valid (task done)
+        episode_length: Number of total steps
+        episode_is_success: Whether the episode was successful (task done)
         episode_end_reason: Episode termination reason
         episode_duration: Episode duration in seconds
         student_action_count: Number of student actions
@@ -45,10 +46,11 @@ class EpisodeStats:
         reward_components: Dictionary of reward components
     """
     episode_id: int
+    episode_mode: DRLMode
     episode_return: float
     episode_length: int
     episode_duration: float
-    episode_is_valid: bool
+    episode_is_success: bool
     episode_end_reason: ResetReason
     student_action_count: int = 0
     teacher_action_count: int = 0
@@ -71,7 +73,7 @@ class EpisodeStats:
             'episode_id': self.episode_id,
             'episode_return': self.episode_return,
             'episode_length': self.episode_length,
-            'episode_is_valid': self.episode_is_valid,
+            'episode_is_success': self.episode_is_success,
             'episode_end_reason': str(self.episode_end_reason),
             'episode_duration': self.episode_duration,
             'activation_ratio': self.activation_ratio,
@@ -159,6 +161,7 @@ class EpisodeManager:
         logger: Logger,
         log_interval: int = 10,
         eval_during_train: bool = False,
+        eval_interval: int = 500,
         max_episode_length: int = 1000,
         training_episode: int = 10000,
         moving_average_window: int = 100,
@@ -171,6 +174,7 @@ class EpisodeManager:
             logger: Logger instance
             log_interval: Episodes between console logs (default: 10)
             eval_during_train: Whether to evaluate during training (default: False)
+            eval_interval: Episodes between evaluations during training (default: 500)
             max_episode_length: Maximum steps per episode (default: 1000)
             training_episode: Total training episodes (default: 10000)
             moving_average_window: Window size for moving averages (default: 100)
@@ -183,12 +187,12 @@ class EpisodeManager:
         self.max_episode_length: int = max_episode_length
         self.moving_average_window: int = moving_average_window
 
-        if eval_during_train:
-            self.eval_count: int = 0
-            self.eval_return: float = 0.0
-            self.eval_during_train: bool = True
+        # ========== Evaluation Settings ==========
+        self.eval_steps: int = 0
+        self.eval_count: int = 0
+        self.eval_interval: int = eval_interval
+        self.eval_during_train: bool = eval_during_train
 
-        
         # ========== Current Episode State ==========
         self.stu_action_count: int = 0
         self.tea_action_count: int = 0
@@ -204,8 +208,10 @@ class EpisodeManager:
         self.success_count: int = 0
         self.failure_count: int = 0
         self.timeout_count: int = 0
-        self.episode_count: int = 0
-        self.valid_episode_count: int = 0
+        self.episode_global_idx: int = 0  # Overall episode index
+        self.episode_count_train: int = 0  # Training episodes completed
+        self.episode_count_eval: int = 0   # Evaluation episodes completed
+        self.success_episode_count: int = 0
         
         # ========== Episode History ==========
         self.episode_history: List[EpisodeStats] = []
@@ -214,6 +220,7 @@ class EpisodeManager:
         self.return_window: deque = deque(maxlen=self.moving_average_window)
         self.length_window: deque = deque(maxlen=self.moving_average_window)
         self.success_window: deque = deque(maxlen=self.moving_average_window)
+        self.success_step_reward_window: deque = deque(maxlen=self.moving_average_window)
         
         print(f"\n{'='*70}\n"
               f"✅ Episode Manager initialized\n"
@@ -245,11 +252,11 @@ class EpisodeManager:
         
         print(
             f"\n{'='*70}\n"
-            f"🔄 Episode {self.episode_count} reset\n"
+            f"🔄 Episode {self.total_episode_count} reset\n"
             f"{'='*70}"
         )
     
-    def update(self, reward_components: Dict[str, float], action_mode: ActionMode):
+    def update(self, reward_components: Dict[str, float], action_mode: ActionMode, ep_mode: DRLMode = DRLMode.TRAIN) -> float:
         """
         Update episode with new step
         
@@ -274,9 +281,15 @@ class EpisodeManager:
         total_step_reward = sum(reward_components.values())
         
         # Update episode state and global statistics
-        self.total_steps += 1
+        if ep_mode == DRLMode.TRAIN:
+            self.total_steps += 1
+            self.total_return += total_step_reward
+        elif ep_mode == DRLMode.EVAL:
+            self.eval_steps += 1
+        else:
+            raise ValueError(f"Unknown DRLMode: {ep_mode}")
+
         self.current_episode_length += 1
-        self.total_return += total_step_reward
         self.current_episode_return += total_step_reward
         
         # Update reward components
@@ -307,8 +320,13 @@ class EpisodeManager:
             self.tea_action_count += 1
         else:
             raise ValueError(f"Unknown ActionMode: {action_mode}")
+
+    @property
+    def total_episode_count(self) -> int:
+        """Total episode count (TRAIN + EVAL) for backward compatibility"""
+        return self.episode_count_train + self.episode_count_eval
     
-    
+    @property
     def is_episode_done(self) -> bool:
         """
         Check if episode should end (timeout)
@@ -317,12 +335,34 @@ class EpisodeManager:
             bool: True if episode length exceeds max_episode_length
         
         Example:
-            >>> if manager.is_episode_done():
+            >>> if manager.is_episode_done:
             ...     manager.log_episode_end()
         """
         return self.current_episode_length >= self.max_episode_length
     
+    @property
+    def episode_mode(self) -> DRLMode:
+        """
+        Get current episode mode (TRAIN or EVAL)
+        
+        Returns:
+            DRLMode: Current episode mode
+        
+        Example:
+            >>> mode = manager.episode_mode()
+            >>> print(f"Current episode mode: {mode.name}")
+        """
+        return DRLMode.EVAL if self.is_eval_episode else DRLMode.TRAIN
     
+    @property
+    def is_eval_episode(self) -> bool:
+        """Check if current episode should be evaluation"""
+        if not self.eval_during_train:
+            return False
+
+        return self.episode_global_idx % self.eval_interval == 0
+    
+    @property
     def should_continue_training(self) -> bool:
         """
         Check if training should continue
@@ -331,16 +371,16 @@ class EpisodeManager:
             bool: True if more episodes should be trained
         
         Example:
-            >>> while manager.should_continue_training():
+            >>> while manager.should_continue_training:
             ...     # Run episode
             ...     manager.update(...)
             ...     if done:
             ...         manager.log_episode_end(...)
         """
-        return self.episode_count < self.training_episode
+        return self.episode_count_train < self.training_episode
 
     
-    def log_episode_end(self, success: Optional[bool], reason: ResetReason=None, mode=DRLMode.TRAIN) -> EpisodeStats:
+    def log_episode_end(self, success: Optional[bool], reason: ResetReason=None, ep_mode=DRLMode.TRAIN) -> EpisodeStats:
         """
         End episode and log statistics
         
@@ -381,9 +421,10 @@ class EpisodeManager:
         if reason == ResetReason.TIMEOUT:
             self.timeout_count += 1
         
-        # Create episode stats
+        # Create episode statistics
         stats = EpisodeStats(
-            episode_id=self.episode_count,
+            episode_mode=ep_mode,
+            episode_id=self.episode_count_train if ep_mode == DRLMode.TRAIN else self.episode_count_eval,
             episode_return=self.current_episode_return,
             episode_length=self.current_episode_length,
             episode_duration=episode_duration,
@@ -397,20 +438,31 @@ class EpisodeManager:
         # Add to history
         self.episode_history.append(stats)
         
-        # Update moving statistics
-        self.return_window.append(self.current_episode_return)
-        self.length_window.append(self.current_episode_length)
-        self.success_window.append(1.0 if success else 0.0)
+        # Update moving statistics (TRAIN only)
+        if ep_mode == DRLMode.TRAIN:
+            self.return_window.append(self.current_episode_return)
+            self.length_window.append(self.current_episode_length)
+            self.success_window.append(1.0 if success else 0.0)
+            
+            # Track average step reward only for successful TRAIN episodes
+            if success:
+                self.success_step_reward_window.append(stats.average_step_reward)
+                self.success_episode_count += 1
         
         # Log to TensorBoard
         self._log_episode_to_tensorboard(stats)
         
-        # Console log (every N episodes)
-        if self.episode_count % self.log_interval == 0:
+        # Console log (TRAIN episodes only)
+        if ep_mode == DRLMode.TRAIN and self.episode_count_train % self.log_interval == 0:
             self._print_episode_summary()
         
-        # Increment episode count
-        self.episode_count += 1
+        # Increment respective counters
+        if ep_mode == DRLMode.TRAIN:
+            self.episode_count_train += 1
+        else:
+            self.episode_count_eval += 1
+        
+        self.episode_global_idx += 1
         
         return stats
     
@@ -430,49 +482,35 @@ class EpisodeManager:
         """Get success rate (0.0 to 1.0)"""
         return np.mean(self.success_window) if len(self.success_window) > 0 else 0.0
     
+    @property
+    def moving_average_success_step_reward(self) -> float:
+        """Get moving average step reward for successful episodes only"""
+        return np.mean(self.success_step_reward_window) if len(self.success_step_reward_window) > 0 else 0.0
+    
     def get_global_statistics(self) -> Dict:
-        """
-        Get global statistics
-        
-        Returns:
-            Dict: Global statistics including:
-                - episode_count: Total episodes
-                - total_steps: Total steps across all episodes
-                - total_return: Total return across all episodes
-                - success_count: Number of successful episodes
-                - failure_count: Number of failed episodes
-                - timeout_count: Number of timeout episodes
-                - success_rate: Overall success rate
-                - average_return: Average return per episode
-                - average_length: Average episode length
-        """
+        """Get global statistics (TRAIN episodes only)"""
         return {
-            'episode_count': self.episode_count,
+            'episode_count': self.episode_count_train,
             'total_steps': self.total_steps,
             'total_return': self.total_return,
             'success_count': self.success_count,
             'failure_count': self.failure_count,
             'timeout_count': self.timeout_count,
-            'success_rate': self.success_count / self.episode_count if self.episode_count > 0 else 0.0,
-            'average_return': self.total_return / self.episode_count if self.episode_count > 0 else 0.0,
-            'average_length': self.total_steps / self.episode_count if self.episode_count > 0 else 0.0,
+            'success_rate': self.success_count / self.episode_count_train if self.episode_count_train > 0 else 0.0,
+            'average_return': self.total_return / self.episode_count_train if self.episode_count_train > 0 else 0.0,
+            'average_length': self.total_steps / self.episode_count_train if self.episode_count_train > 0 else 0.0,
             'moving_average_return': self.moving_average_return,
             'moving_average_length': self.moving_average_length,
             'moving_average_success_rate': self.moving_average_success_rate,
         }
     
     def get_current_episode_info(self) -> Dict:
-        """
-        Get current episode information
-        
-        Returns:
-            Dict: Current episode state
-        """
+        """Get current episode information"""
         total_actions = self.stu_action_count + self.tea_action_count
         teacher_activation_ratio = self.tea_action_count / total_actions if total_actions > 0 else 0.0
     
         return {
-            'episode_id': self.episode_count,
+            'episode_id': self.episode_count_train,
             'episode_length': self.current_episode_length,
             'episode_return': self.current_episode_return,
             'episode_duration': time.time() - self.current_episode_start_time,
@@ -501,33 +539,35 @@ class EpisodeManager:
     def _log_episode_to_tensorboard(self, stats: EpisodeStats) -> None:
         """Log episode statistics to TensorBoard"""
         episode_id = stats.episode_id
+        mode_str = stats.episode_mode.name.capitalize()   # Train or Eval
         
         # Episode metrics
-        self.logger.writer.add_scalar('Train-Episode/return', stats.episode_return, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/length', stats.episode_length, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/duration', stats.episode_duration, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/success', 1.0 if stats.episode_is_success else 0.0, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/activation_ratio', stats.activation_ratio, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/average_step_reward', stats.average_step_reward, episode_id)
-        # self.logger.writer.add_scalar('Train-Episode/average_length', stats.average_length, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/return', stats.episode_return, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/length', stats.episode_length, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/duration', stats.episode_duration, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/success', 1.0 if stats.episode_is_success else 0.0, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/activation_ratio', stats.activation_ratio, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/average_step_reward', stats.average_step_reward, episode_id)
+        # self.logger.writer.add_scalar(f'{mode_str}-Episode/average_length', stats.average_length, episode_id)
         
         # Reward components
         for component, value in stats.reward_components.items():
-            self.logger.writer.add_scalar(f'Train-Episode/reward/{component}', value, episode_id)
+            self.logger.writer.add_scalar(f'{mode_str}-Episode/reward/{component}', value, episode_id)
         
         # Moving averages
-        self.logger.writer.add_scalar('Train-Episode/moving_avg_return', self.moving_average_return, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/moving_avg_length', self.moving_average_length, episode_id)    
-        # self.logger.writer.add_scalar('Train-Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/moving_avg_return', self.moving_average_return, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/moving_avg_length', self.moving_average_length, episode_id)    
+        # self.logger.writer.add_scalar(f'{mode_str}-Episode/moving_avg_success_rate', self.moving_average_success_rate, episode_id)  
         
         # Action counts
-        self.logger.writer.add_scalar('Train-Episode/action_count/student', stats.student_action_count, episode_id)
-        self.logger.writer.add_scalar('Train-Episode/action_count/teacher', stats.teacher_action_count, episode_id)
-        # self.logger.writer.add_scalar('Train-Episode/end_reason', str(stats.episode_end_reason), episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/action_count/student', stats.student_action_count, episode_id)
+        self.logger.writer.add_scalar(f'{mode_str}-Episode/action_count/teacher', stats.teacher_action_count, episode_id)
+        # self.logger.writer.add_scalar(f'{mode_str}-Episode/end_reason', str(stats.episode_end_reason), episode_id)
         
-        if stats.episode_is_valid:
-            self.logger.writer.add_scalar('Train-Episode/length_valid', stats.episode_length, self.valid_episode_count)
-            self.valid_episode_count += 1
+        # Success-based metrics
+        if stats.episode_is_success and stats.episode_mode == DRLMode.TRAIN:
+            self.logger.writer.add_scalar(f'{mode_str}-Episode/success_step_reward', stats.average_step_reward, self.success_episode_count - 1)
+            self.logger.writer.add_scalar(f'{mode_str}-Episode/moving_avg_success_step_reward', self.moving_average_success_step_reward, self.success_episode_count - 1)
 
     
     def _print_episode_summary(self) -> None:
@@ -593,6 +633,7 @@ class EpisodeManager:
         self.return_window.clear()
         self.length_window.clear()
         self.success_window.clear()
+        self.success_step_reward_window.clear()
         
         print("📊 Episode statistics reset")
     
