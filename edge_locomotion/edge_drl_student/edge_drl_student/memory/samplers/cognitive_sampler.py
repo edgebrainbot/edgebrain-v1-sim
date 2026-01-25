@@ -107,7 +107,7 @@ class ACTRCognitiveSampler(BaseSampler):
         squeezed_obs = torch.sqrt(obs[:,:].square().sum(dim=1))
         squeezed_actions = torch.sqrt(actions[:,:].square().sum(dim=1))
         
-        print(f"--------------------- ACT-R Sampling Debug Info ---------------------")
+        # print(f"--------------------- ACT-R Sampling Debug Info ---------------------")
         # print(f"squeezed_obs: {squeezed_obs}")
         # print(f"squeezed_actions: {squeezed_actions}")
 
@@ -178,7 +178,7 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"cog_sum: {cog_sum}")
         
         topk_values, topk_ids = torch.topk(cog_ranking, batch_size)
-        batch_samples = self.replay_buf.get_samples(topk_ids)
+        batch_samples = self.replay_buf.gather(topk_ids)
         
         # print(f"topk_values: {topk_values}")
         # print(f"topk_ids: {topk_ids}")
@@ -186,7 +186,6 @@ class ACTRCognitiveSampler(BaseSampler):
         blending_topk_ids = topk_ids[:self.blending_size]
         blending_topk_values = topk_values[:self.blending_size]  
         
-
         temperature = torch.tensor(0.5, device=self.device)
         blending_topk_values = torch.softmax(blending_topk_values / temperature, dim=-1)
         # print(f"topk_values after softmax: {topk_values}")
@@ -252,17 +251,16 @@ if __name__ == "__main__":
     print(f"Student Buffer Size: {dual_buf.stu_buf_size}")
     print(f"Teacher Buffer Size: {dual_buf.tea_buf_size}")
     
-    
     time_idx = torch.arange(1, dual_buf.stu_buf.size+1, device="cuda:0")
-    print(f"time_idx: {time_idx}")
+    # print(f"time_idx: {time_idx}")
     
     
     obs = dual_buf.stu_buf.obs[:dual_buf.stu_buf.size]
     actions = dual_buf.stu_buf.actions[:dual_buf.stu_buf.size]
     rewards = dual_buf.stu_buf.rewards[:dual_buf.stu_buf.size]
-    print(f"obs: {obs}")
-    print(f"actions: {actions}")
-    print(f"rewards: {rewards}")
+    # print(f"obs: {obs}")
+    # print(f"actions: {actions}")
+    # print(f"rewards: {rewards}")
     
     # origin_obs = obs[:,:].square().sum(dim=1)
     # origin_actions = actions[:,:].square().sum(dim=1)

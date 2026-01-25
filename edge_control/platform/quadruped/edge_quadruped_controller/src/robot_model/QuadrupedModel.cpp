@@ -316,7 +316,6 @@ Mat3 QuadrupedModel::getJacobian(const Vec3& q_leg, int leg_index) const
 
 // ========== Implementation of the core kinematics ==========
 
-
 Vec3 QuadrupedModel::calcLegFK(const Vec3& q_leg, int leg_index) const
 {
     // Confirm side sign

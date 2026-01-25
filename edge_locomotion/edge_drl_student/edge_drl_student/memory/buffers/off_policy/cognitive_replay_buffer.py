@@ -23,6 +23,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
                  student_prefill_size: int,
                  teacher_buf_size: int, 
                  teacher_prefill_size: int,
+                 stu_blending_weight: float = 0.1,
+                 tea_blending_weight: float = 0.9,
                  obs_dim: int = 12,
                  action_dim: int = 6,
                  device: str = "cpu",
@@ -49,8 +51,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             device=device
         )
         
-        self.stu_blending_weight = 0.1
-        self.tea_blending_weight = 0.9
+        self.stu_blending_weight = stu_blending_weight
+        self.tea_blending_weight = tea_blending_weight
         
         print("Initialized CognitiveReplayBuffer with cognitive samplers for both student and teacher buffers.")
 
@@ -115,9 +117,9 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         stu_dict = asdict(stu_batch) if stu_batch is not None else None
         tea_dict = asdict(tea_batch) if tea_batch is not None else None
         
-        if tea_batch_size == 1:
-            print(f"tea_batch: {tea_batch}")
-            print(f"tea_dict: {tea_dict}")
+        # if tea_batch_size == 1:
+        #     print(f"tea_batch: {tea_batch}")
+        #     print(f"tea_dict: {tea_dict}")
 
         # Merge two batches safely
         merged_dict = {}

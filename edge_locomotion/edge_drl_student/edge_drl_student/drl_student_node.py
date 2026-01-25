@@ -5,7 +5,7 @@
 # ============================================================================
 
 """
-DRL Student Node
+DRL Student Node for Edge Locomotion
 """
 
 import os
@@ -32,8 +32,8 @@ TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 PROJECT_NAME = f"drl_student_{RUN}_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, "models", PROJECT_NAME)
-LOG_PATH = os.path.join(CURRENT_DIR, "logs", PROJECT_NAME)
+MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/models", PROJECT_NAME)
+LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", PROJECT_NAME)
 
 torch.set_printoptions(sci_mode=False)
 
@@ -72,19 +72,36 @@ class DRLStudentNode(Node):
 
         # ========== Initialize Replay Buffer ==========
         self.batch_size = 100
-        replay_buffer_cfg = {
-            'student_buf_size': int(1e5),
-            'student_prefill_size': self.batch_size,
-            'teacher_buf_size': int(1e5),
-            'teacher_prefill_size': 50,
-            'obs_dim': self.obs_dim,
-            'action_dim': self.act_dim,
-            'device': self.device
-        }
+        stu_buf_size = int(1e5)
+        tea_buf_size = int(1e5)
+        teacher_prefill_size = 50  # Pre-fill teacher buffer with some PHY data
+        stu_blending_weight = 0.1
+        tea_blending_weight = 0.9
+
         if RUN == 'dual':
-            self.buffer = DualReplayBuffer(**replay_buffer_cfg)
+            dual_replay_buffer_cfg = {
+                'student_buf_size': stu_buf_size,
+                'student_prefill_size': self.batch_size,
+                'teacher_buf_size': tea_buf_size,
+                'teacher_prefill_size': teacher_prefill_size,
+                'obs_dim': self.obs_dim,
+                'action_dim': self.act_dim,
+                'device': self.device
+            }
+            self.buffer = DualReplayBuffer(**dual_replay_buffer_cfg)
         elif RUN == 'cognitive':
-            self.buffer = CognitiveReplayBuffer(**replay_buffer_cfg)
+            cog_replay_buffer_cfg = {
+                'student_buf_size': stu_buf_size,
+                'student_prefill_size': self.batch_size,
+                'teacher_buf_size': tea_buf_size,
+                'teacher_prefill_size': teacher_prefill_size,
+                'stu_blending_weight': stu_blending_weight,
+                'tea_blending_weight': tea_blending_weight,
+                'obs_dim': self.obs_dim,
+                'action_dim': self.act_dim,
+                'device': self.device
+            }
+            self.buffer = CognitiveReplayBuffer(**cog_replay_buffer_cfg)
         else:
             raise ValueError(f"Unsupported RUN type: {RUN}")
         self.get_logger().info(f"✅ Replay buffer initialized: {RUN}")
