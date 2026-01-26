@@ -32,8 +32,10 @@ TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 PROJECT_NAME = f"drl_student_{RUN}_{TIMESTAMP}"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/models", PROJECT_NAME)
+
 LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", PROJECT_NAME)
+MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/checkpoints", PROJECT_NAME)
+BUFFER_PATH = os.path.join(CURRENT_DIR, "outputs/buffers", PROJECT_NAME)
 
 torch.set_printoptions(sci_mode=False)
 
@@ -74,7 +76,7 @@ class DRLStudentNode(Node):
         self.batch_size = 100
         stu_buf_size = int(1e5)
         tea_buf_size = int(1e5)
-        teacher_prefill_size = 50  # Pre-fill teacher buffer with some PHY data
+        teacher_prefill_size = 50  # Pre-fill size for teacher buffer
         stu_blending_weight = 0.1
         tea_blending_weight = 0.9
 
@@ -164,13 +166,15 @@ class DRLStudentNode(Node):
             'auto_reset_on_fall': True,
             'batch_size': self.batch_size,
             'save_interval': 500,
+            'model_save_path': MODEL_PATH,
+            'buffer_save_path': BUFFER_PATH,
         }
         
         agent_cfg = {
             'model_save_path': MODEL_PATH,
         }
         # ⭐ Initialize Distributed Runner
-        self.agent = DistributedRunner(
+        self.runner = DistributedRunner(
             node=self,
             logger=self.logger,
             device=self.device,
@@ -191,14 +195,13 @@ class DRLStudentNode(Node):
             **ros2_service_name,
             
             **training_cfg,
-            model_save_path=MODEL_PATH,
             # agent_kwargs=agent_cfg
         )
         
         self.get_logger().info("✅ Distributed Runner initialized")
         
         # ⭐ Start agent loops
-        self.agent.start()
+        self.runner.start()
         
         self.get_logger().info("🚀 DRL Student Node is up and running!")
     
@@ -207,10 +210,10 @@ class DRLStudentNode(Node):
         self.get_logger().info("🛑 Shutting down DRL Student Node...")
         
         # Stop agent loops
-        self.agent.shutdown()
+        self.runner.shutdown()
         
         # Save final checkpoint
-        self.agent.save_final_checkpoint()
+        self.runner.save_final_checkpoint()
         
         # Print final statistics
         self._print_final_statistics()
@@ -219,11 +222,11 @@ class DRLStudentNode(Node):
     
     def _print_final_statistics(self):
         """Print final statistics"""
-        stats = self.agent.get_agent_stats()
-        perf_stats = self.agent.get_performance_stats()
-        sync_stats = self.agent.get_sync_stats()
-        reset_stats = self.agent.get_reset_stats()
-        fall_stats = self.agent.get_fall_stats()
+        stats = self.runner.agent_stats
+        perf_stats = self.runner.performance_stats
+        sync_stats = self.runner.sync_stats
+        reset_stats = self.runner.reset_stats
+        fall_stats = self.runner.fall_stats
         global_stats = self.episode_manager.get_global_statistics()
         
         self.get_logger().info(
@@ -232,7 +235,7 @@ class DRLStudentNode(Node):
             f"{'='*70}\n"
             f"🎓 Training:\n"
             f"   Total Updates:       {stats['update_count']}\n"
-            f"   Total Syncs:         {self.agent.actor_learner.sync_count}\n"
+            f"   Total Syncs:         {self.runner.actor_learner.sync_count}\n"
             f"   Total Transitions:   {stats['transition_count']}\n"
             f"   Total Actions:       {stats['action_count']}\n"
             f"─────────────────────────────────────────────────────────────────────\n"

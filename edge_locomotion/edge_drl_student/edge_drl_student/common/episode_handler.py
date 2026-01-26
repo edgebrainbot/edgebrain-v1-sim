@@ -360,6 +360,9 @@ class EpisodeManager:
         if not self.eval_during_train:
             return False
 
+        if self.episode_global_idx == 0:
+            return False
+
         return self.episode_global_idx % self.eval_interval == 0
     
     @property

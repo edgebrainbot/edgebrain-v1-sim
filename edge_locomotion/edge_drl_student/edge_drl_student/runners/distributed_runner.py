@@ -6,6 +6,7 @@
 
 import os
 import time
+
 import torch
 import numpy as np
 from rclpy.node import Node
@@ -16,13 +17,14 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward
 
+from edge_drl_student.common.noise import OUNoise
 from edge_drl_student.common.logger import Logger
-from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode
 from edge_drl_student.common.reset_manager import ResetManager
+from edge_drl_student.common.normalizer import EmpiricalNormalizer 
 from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
-from edge_drl_student.common.normalizer import EmpiricalNormalizer 
 from edge_drl_student.common.normalizer import RunningMeanStdNormalizer
+from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode
 from edge_drl_student.agents.distributed.ddpg_actor_learner import DDPGActorLearner
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
@@ -78,6 +80,8 @@ class DistributedRunner:
 
         auto_reset_on_fall: bool = True,
         model_save_path: str = 'distributed_drl_model',
+        buffer_save_path: str = 'distributed_drl_buffer',
+        
         device: str = 'cpu',
         **agent_kwargs
     ):
@@ -108,6 +112,7 @@ class DistributedRunner:
         self.normalize_reward = normalize_reward
         
         self.model_save_path = model_save_path
+        self.buffer_save_path = buffer_save_path
         
         # Create Normalizers
         if normalize_obs:
@@ -495,7 +500,6 @@ class DistributedRunner:
         # Get policy action from actor_learner's acting_agent (using normalized obs)
         policy_action = self.actor_learner.acting_agent.act(
             obs=obs_norm.unsqueeze(0),
-            noise_scale=0.1,
             explore=explore
         ).squeeze(0)
         
@@ -596,7 +600,6 @@ class DistributedRunner:
         # ⭐ Update policy using actor_learner (auto sync)
         losses: Dict[str, float] = self.actor_learner.update(batch_size=self.batch_size)
         
-        
         # Update statistics
         self.total_actor_loss += losses['actor_loss']
         self.total_critic_loss += losses['critic_loss']
@@ -608,6 +611,17 @@ class DistributedRunner:
         # Save models periodically
         if self.actor_learner.update_count % self.save_interval == 0:
             self.save_checkpoint()
+    
+    # ==================== Buffer Management ====================
+    def save_buffer_contents(self, save_path: str):
+        """Save replay buffer contents to disk"""
+        self.replay_buffer.dump(f"{self.buffer_save_path}/{save_path}")
+        self.node.get_logger().info(f"💾 Replay buffers saved to {save_path}")
+    
+    def load_buffer_contents(self, load_path: str):
+        """Load replay buffer contents from disk"""
+        self.replay_buffer.load(f"{self.buffer_save_path}/{load_path}")
+        self.node.get_logger().info(f"✅ Replay buffers loaded from {load_path}")
     
     # ==================== Model Management ====================
     def save_checkpoint(self, suffix: str = ''):
@@ -635,6 +649,7 @@ class DistributedRunner:
             )
         
         self.node.get_logger().info(f"💾 Models and normalizers saved to {save_path}")
+    
     
     def save_final_checkpoint(self):
         """Save final model checkpoint"""
@@ -681,7 +696,6 @@ class DistributedRunner:
         self.node.get_logger().info(f"✅ Models and normalizers loaded from {load_path}")
     
     # ==================== Episode Management ====================
-
     def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE, ep_mode: DRLMode = DRLMode.TRAIN):
         """
         Handle end of episode: log stats, update normalizers, reset environment
@@ -752,8 +766,8 @@ class DistributedRunner:
 
     
     # ==================== Statistics ====================
-    
-    def get_agent_stats(self) -> Dict[str, Any]:
+    @property
+    def agent_stats(self) -> Dict[str, Any]:
         """Get agent statistics"""
         if self.actor_learner.update_count == 0:
             return {
@@ -772,7 +786,8 @@ class DistributedRunner:
             'action_count': self.action_count,
         }
     
-    def get_performance_stats(self) -> Dict[str, Any]:
+    @property
+    def performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics"""
         return {
             'action_time_ms': self.action_time * 1000,
@@ -781,7 +796,8 @@ class DistributedRunner:
             'learning_frequency': self.learning_frequency,
         }
     
-    def get_network_info(self) -> Dict[str, Any]:
+    @property
+    def network_info(self) -> Dict[str, Any]:
         """Get network information"""
         def count_parameters(model: torch.nn.Module) -> int:
             return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -799,7 +815,8 @@ class DistributedRunner:
             ),
         }
     
-    def get_fall_stats(self) -> Dict[str, Any]:
+    @property
+    def fall_stats(self) -> Dict[str, Any]:
         """Get fall detection statistics"""
         return {
             'fall_count': self.fall_count,
@@ -807,15 +824,18 @@ class DistributedRunner:
             'auto_reset_on_fall': self.auto_reset_on_fall,
         }
     
-    def get_reset_stats(self) -> Dict[str, Any]:
+    @property
+    def reset_stats(self) -> Dict[str, Any]:
         """Get reset statistics"""
         return self.reset_manager.get_statistics()
     
-    def get_sync_stats(self) -> Dict[str, Any]:
+    @property
+    def sync_stats(self) -> Dict[str, Any]:
         """Get sync statistics"""
         return self.actor_learner.get_sync_stats()
     
-    def get_normalization_stats(self) -> Dict[str, Any]:
+    @property
+    def normalization_stats(self) -> Dict[str, Any]:
         """
         Get current normalization statistics
         
@@ -985,11 +1005,15 @@ class DistributedRunner:
         self.logger.writer.add_scalar('Learn/loss/critic', losses['critic_loss'], update_count)
         
         # Log learning_rate
-        self.logger.writer.add_scalar('Learn/learning_rate/actor', self.actor_learner.learning_agent.actor_optimizer.param_groups[0]['lr'], update_count)
-        self.logger.writer.add_scalar('Learn/learning_rate/critic', self.actor_learner.learning_agent.critic_optimizer.param_groups[0]['lr'], update_count)
+        actor_lr = self.actor_learner.learning_agent.actor_optimizer.param_groups[0]['lr']
+        critic_lr = self.actor_learner.learning_agent.critic_optimizer.param_groups[0]['lr']
+        self.logger.writer.add_scalar('Learn/learning_rate/actor', actor_lr, update_count)
+        self.logger.writer.add_scalar('Learn/learning_rate/critic', critic_lr, update_count)
         
         # Log noise
-        # self.logger.writer.add_scalar('Learn/noise_scale', self.actor_learner.acting_agent.noise, update_count)
+        if isinstance(self.actor_learner.acting_agent.noise, OUNoise):
+            sigma = self.actor_learner.acting_agent.noise.sigma
+            self.logger.writer.add_scalar('Learn/noise_sigma', sigma, update_count)
         
         # Log learning performance
         self.logger.writer.add_scalar('Perf/learn_ms', self.learn_time * 1000, update_count)
@@ -1007,12 +1031,12 @@ class DistributedRunner:
         
         # Log average statistics
         if update_count % self.log_interval == 0:
-            stats = self.get_agent_stats()
-            perf_stats = self.get_performance_stats()
-            sync_stats = self.get_sync_stats()
-            reset_stats = self.get_reset_stats()
-            fall_stats = self.get_fall_stats()
-            norm_stats = self.get_normalization_stats()
+            stats = self.agent_stats
+            perf_stats = self.performance_stats
+            sync_stats = self.sync_stats
+            reset_stats = self.reset_stats
+            fall_stats = self.fall_stats
+            norm_stats = self.normalization_stats
             
             self.logger.writer.add_scalar('Learn/moving_avg_loss/actor', stats['avg_actor_loss'], update_count)
             self.logger.writer.add_scalar('Learn/moving_avg_loss/critic', stats['avg_critic_loss'], update_count)

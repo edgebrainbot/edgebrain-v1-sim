@@ -14,8 +14,9 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from typing import Tuple, Dict, Optional
-from edge_drl_student.utils.utils import ResetReason
 from edge_drl_student.common.logger import Logger
+from edge_drl_student.utils.utils import ResetReason
+
 
 
 class ResetManager:

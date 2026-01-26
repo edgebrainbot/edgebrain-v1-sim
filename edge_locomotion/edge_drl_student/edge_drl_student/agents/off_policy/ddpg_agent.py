@@ -32,8 +32,11 @@ class DDPGAgent(OffPolicyAgent):
                  critic_hidden_dims: tuple = (256, 256, 256),
                  critic_activation_fn: type[nn.Module] = nn.ReLU,
                  critic_normalizer: BaseNormalizer = None,
-                 actor_lr=1e-5,
-                 critic_lr=1e-4,
+                 use_adaptive_lr: bool = True,
+                 actor_decay_gamma: float = 0.9995,
+                 critic_decay_gamma: float = 0.999,
+                 actor_lr=1e-4,
+                 critic_lr=3e-4,
                  gamma=0.9,
                  tau=0.005,
                  noise: Noise = None,
@@ -52,6 +55,16 @@ class DDPGAgent(OffPolicyAgent):
         # Optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+        
+        # Learning rate schedulers
+        if use_adaptive_lr:
+            self.actor_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                self.actor_optimizer, gamma=actor_decay_gamma
+            )
+            self.critic_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                self.critic_optimizer, gamma=critic_decay_gamma
+            )
+        self.use_adaptive_lr = use_adaptive_lr
         
         # Normalizers
         if actor_normalizer is None:
@@ -104,15 +117,17 @@ class DDPGAgent(OffPolicyAgent):
         self.target_critic.to(device)
         self.device = device
         
-    def act(self, obs: torch.Tensor, noise_scale=0.1, explore: bool = True) -> torch.Tensor:
+    def act(self, obs: torch.Tensor, explore: bool = True) -> torch.Tensor:
         obs = torch.as_tensor(obs, dtype=torch.float32).to(self.device)
         with torch.no_grad():
             action: torch.Tensor = self.actor(obs)
             
         # Add exploration noise
         if explore:
-            action = action + noise_scale * self.noise(action.shape)
-        action_clipped = torch.clamp(action, -1.0, 1.0)     # Clip to [-1, 1]
+            action += self.noise(action.shape)
+            
+        # Clip action to [-1, 1] for valid range
+        action_clipped = torch.clamp(action, -1.0, 1.0)  
         
         # Return denormalized action
         return self.actor_normalizer.denormalize(action_clipped)
@@ -145,6 +160,13 @@ class DDPGAgent(OffPolicyAgent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+        
+        # Update learning rate schedulers
+        if self.use_adaptive_lr:
+            self.actor_lr_scheduler.step()
+            self.critic_lr_scheduler.step()
+            
+        self.noise.step()   # update noise process if needed
 
         self._soft_update(self.target_critic, self.critic, self.tau)
         self._soft_update(self.target_actor, self.actor, self.tau)
