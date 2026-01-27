@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <chrono>
 #include <iostream>
+#include <signal.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <cstdio>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
@@ -162,7 +166,7 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
 
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
 { 
-  std::cout << "---------- laserCloudHandler called ---------" << std::endl;
+//   std::cout << "---------- laserCloudHandler called ---------" << std::endl;
   if (!useTerrainAnalysis) {
     laserCloud->clear();
     pcl::fromROSMsg(*laserCloud2, *laserCloud);
@@ -171,7 +175,7 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
     laserCloudCrop->clear();
     int laserCloudSize = laserCloud->points.size();
 
-    std::cout << "---------- Received laser cloud with size: ---------" << laserCloudSize << std::endl;
+    // std::cout << "---------- Received laser cloud with size: ---------" << laserCloudSize << std::endl;
     // pubLaserCloudSize->publish(std_msgs::msg::Float32().set__data(float(laserCloudSize)));
 
     for (int i = 0; i < laserCloudSize; i++) {
@@ -184,9 +188,9 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
       /// TODO: send to drl-student for processing as input
       // laserCloudStudent->push_back(point);
 
-      std::cout << "laserCloudSize: " << laserCloudSize << std::endl;
-      std::cout << "Original point: (" << pointX << ", " << pointY << ", " << pointZ << ")" << std::endl;
-      std::cout << "intensity: " << point.intensity << std::endl;
+    //   std::cout << "laserCloudSize: " << laserCloudSize << std::endl;
+    //   std::cout << "Original point: (" << pointX << ", " << pointY << ", " << pointZ << ")" << std::endl;
+    //   std::cout << "intensity: " << point.intensity << std::endl;
 
       float dis = sqrt((pointX - vehicleX) * (pointX - vehicleX) + (pointY - vehicleY) * (pointY - vehicleY));
       if (dis < adjacentRange) {
@@ -526,9 +530,28 @@ void readCorrespondences()
   fclose(filePtr);
 }
 
+void segvHandler(int sig)
+{
+  void *callstack[32];
+  int frames = backtrace(callstack, 32);
+
+  fprintf(stderr, "\n====================\n");
+  fprintf(stderr, "[FATAL] Caught signal %d (SIGSEGV)\n", sig);
+  fprintf(stderr, "[FATAL] Stack trace:\n");
+
+  backtrace_symbols_fd(callstack, frames, STDERR_FILENO);
+
+  fprintf(stderr, "====================\n");
+
+  // exit program
+  _exit(1);
+}
+
+
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
+  signal(SIGSEGV, segvHandler);   // Register segv signal handler
   nh = rclcpp::Node::make_shared("localPlanner");
 
   nh->declare_parameter<std::string>("pathFolder", pathFolder);
@@ -723,7 +746,7 @@ int main(int argc, char** argv)
       float sinVehicleYaw = sin(vehicleYaw);
       float cosVehicleYaw = cos(vehicleYaw);
 
-
+      std::cout << "Debugging plannerCloud processing..." << std::endl;
       #define MAX_OBSTACLE_DISTANCE 1000
       float safety_condition_obstacle = MAX_OBSTACLE_DISTANCE;
 
@@ -733,23 +756,25 @@ int main(int argc, char** argv)
 
       pcl::PointXYZI point;
       plannerCloudCrop->clear();
-      int plannerCloudSize = std::max(1, (int)plannerCloud->points.size());  
-      std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
+      int plannerCloudSize = plannerCloud->points.size();
+    //   int plannerCloudSize = std::max(1, (int)plannerCloud->points.size());  
+    //   std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
       
       // Publish global goal distance for monitoring
       goal_distance_pub_->publish(std_msgs::msg::Float32().set__data(
         sqrt((globalGoalX - vehicleX) * (globalGoalX - vehicleX) + (globalGoalY - vehicleY) * (globalGoalY - vehicleY)))
       );
 
+      std::cout << "Processing planner cloud points..." << std::endl;
       for (int i = 0; i < plannerCloudSize; i++) {
         float pointX1 = plannerCloud->points[i].x - vehicleX;
         float pointY1 = plannerCloud->points[i].y - vehicleY;
         float pointZ1 = plannerCloud->points[i].z - vehicleZ;
 
-
         point.x = pointX1 * cosVehicleYaw + pointY1 * sinVehicleYaw;
         point.y = -pointX1 * sinVehicleYaw + pointY1 * cosVehicleYaw;
         point.z = pointZ1;
+
         point.intensity = plannerCloud->points[i].intensity;
 
         float dis = sqrt(point.x * point.x + point.y * point.y);
@@ -768,13 +793,21 @@ int main(int argc, char** argv)
           if (dis < safety_condition_obstacle) {
               safety_condition_obstacle = dis;
           }
-          std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
+        //   std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
           pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
         }
       }
 
-      // Average obstacle reward
-      obstacleAvgDistance = obstacleSumDistance / float(plannerCloudSize);
+      // Dealing with the case when plannerCloudSize is zero
+      if (plannerCloudSize > 0) {
+          obstacleAvgDistance = obstacleSumDistance / float(plannerCloudSize);
+      } else {
+        // When there are no points, set average distance to a large value
+        obstacleAvgDistance = MAX_OBSTACLE_DISTANCE;
+        std::cout << "Warning: No points in plannerCloud, using default obstacle distance" << std::endl;
+      }
+
+        // Average obstacle reward
     //   obstacleReward = -1.0 / obstacleReward;
     //   std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
       obstacle_avg_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleAvgDistance));
@@ -783,7 +816,7 @@ int main(int argc, char** argv)
       // TODO: stddev of obstacle distances can be calculated here for more robust reward
 
       int boundaryCloudSize = boundaryCloud->points.size();
-      std::cout << "Number of boundary points: " << boundaryCloudSize << std::endl;
+    //   std::cout << "Number of boundary points: " << boundaryCloudSize << std::endl;
       for (int i = 0; i < boundaryCloudSize; i++) {
         point.x = ((boundaryCloud->points[i].x - vehicleX) * cosVehicleYaw 
                 + (boundaryCloud->points[i].y - vehicleY) * sinVehicleYaw);
@@ -807,7 +840,7 @@ int main(int argc, char** argv)
       }
 
       int addedObstaclesSize = addedObstacles->points.size();
-      std::cout << "Number of added obstacles: " << addedObstaclesSize << std::endl;
+    //   std::cout << "Number of added obstacles: " << addedObstaclesSize << std::endl;
 
       for (int i = 0; i < addedObstaclesSize; i++) {
         point.x = ((addedObstacles->points[i].x - vehicleX) * cosVehicleYaw 
@@ -869,7 +902,7 @@ int main(int argc, char** argv)
         float diameter = sqrt(vehicleLength / 2.0 * vehicleLength / 2.0 + vehicleWidth / 2.0 * vehicleWidth / 2.0);
         float angOffset = atan2(vehicleWidth, vehicleLength) * 180.0 / PI;
         int plannerCloudCropSize = plannerCloudCrop->points.size();
-        std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
+        // std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
         for (int i = 0; i < plannerCloudCropSize; i++) {
           float x = plannerCloudCrop->points[i].x / pathScale;
           float y = plannerCloudCrop->points[i].y / pathScale;

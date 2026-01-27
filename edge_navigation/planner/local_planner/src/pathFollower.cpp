@@ -130,9 +130,9 @@ void odomHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odomIn)
   vehiclePitch = pitch;
   vehicleYaw = yaw;
 
-  std::cout << "odom roll: " << roll * 180.0 / PI << ", pitch: " << pitch * 180.0 / PI << ", yaw: " << yaw * 180.0 / PI << std::endl;
-  std::cout << "odom position x: " << odomIn->pose.pose.position.x << ", y: " << odomIn->pose.pose.position.y << ", z: " << odomIn->pose.pose.position.z << std::endl;
-  std::cout << "sensor offset x: " << sensorOffsetX << ", y: " << sensorOffsetY << std::endl;
+//   std::cout << "odom roll: " << roll * 180.0 / PI << ", pitch: " << pitch * 180.0 / PI << ", yaw: " << yaw * 180.0 / PI << std::endl;
+//   std::cout << "odom position x: " << odomIn->pose.pose.position.x << ", y: " << odomIn->pose.pose.position.y << ", z: " << odomIn->pose.pose.position.z << std::endl;
+//   std::cout << "sensor offset x: " << sensorOffsetX << ", y: " << sensorOffsetY << std::endl;
 
   vehicleX = odomIn->pose.pose.position.x - cos(yaw) * sensorOffsetX + sin(yaw) * sensorOffsetY;
   vehicleY = odomIn->pose.pose.position.y - sin(yaw) * sensorOffsetX - cos(yaw) * sensorOffsetY;
@@ -412,13 +412,13 @@ int main(int argc, char** argv)
         vehicleSpeed = 0;
         vehicleYawRate = 0;
       }
-      std::cout << "***********************************************" << std::endl;
-      std::cout << "pathPointID: " << pathPointID << std::endl;
-      std::cout << "endDis: " << endDis << std::endl;
-      std::cout << "dis: " << dis << std::endl;
-      std::cout << "dirDiff: " << dirDiff << std::endl;
-      std::cout << "vehicleSpeed: " << vehicleSpeed << std::endl;
-      std::cout << "safetyStop: " << safetyStop << std::endl;
+    //   std::cout << "***********************************************" << std::endl;
+    //   std::cout << "pathPointID: " << pathPointID << std::endl;
+    //   std::cout << "endDis: " << endDis << std::endl;
+    //   std::cout << "dis: " << dis << std::endl;
+    //   std::cout << "dirDiff: " << dirDiff << std::endl;
+    //   std::cout << "vehicleSpeed: " << vehicleSpeed << std::endl;
+    //   std::cout << "safetyStop: " << safetyStop << std::endl;
       if ((safetyStop & 1) > 0 && vehicleSpeed > 0) vehicleSpeed = 0;
       if ((safetyStop & 2) > 0 && vehicleSpeed < 0) vehicleSpeed = 0;
       if ((safetyStop & 4) > 0 && vehicleYawRate > 0) vehicleYawRate = 0;

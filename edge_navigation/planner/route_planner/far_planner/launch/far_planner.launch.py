@@ -2,33 +2,40 @@ import yaml
 from launch import LaunchDescription
 from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node, SetParameter
 from ament_index_python.packages import get_package_share_directory
-from launch.substitutions import PythonExpression
 import launch_ros
 
 def generate_launch_description():
+    # Far Planner config file path
+    config_file = PathJoinSubstitution([
+        get_package_share_directory('far_planner'),
+        'config',
+        [LaunchConfiguration('config'), '.yaml']
+    ])
+    
+    # RViz 
+    rviz_config = PathJoinSubstitution([
+        get_package_share_directory('far_planner'),
+        'rviz',
+        [LaunchConfiguration('config'), '.rviz']
+    ])
+    
     return LaunchDescription([
         # SetParameter(name='use_sim_time', value='false'),
-        DeclareLaunchArgument('config', default_value='default'),
+        DeclareLaunchArgument('config', default_value='default', description='Configuration file for RViz and Far Planner'),
         DeclareLaunchArgument('use_rviz', default_value='true', description='Whether to launch RViz'),
 
         # DeclareLaunchArgument('config', default_value='matterport'),
-
         Node(
             package='far_planner',
             executable='far_planner',
             name='far_planner',
             output='screen',
             parameters=[
-                PythonExpression([
-                '"', 
-                get_package_share_directory('far_planner'), 
-                '/config/', 
-                LaunchConfiguration('config'), 
-                '.yaml"']),
+                config_file,
                 {'use_sim_time': True}
             ],
             remappings=[
@@ -44,14 +51,7 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             name='far_rviz',
-            arguments=['-d', 
-                PythonExpression([
-                '"', 
-                get_package_share_directory('far_planner'), 
-                '/rviz/', 
-                LaunchConfiguration('config'), 
-                '.rviz"'])
-            ],
+            arguments=['-d', rviz_config],
             parameters=[{'use_sim_time': True}],
             output='screen',
             respawn=False,

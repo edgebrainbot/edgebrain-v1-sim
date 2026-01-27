@@ -778,6 +778,7 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
   planner_viz_.VizPointCloud(surround_free_debug_, FARUtil::surround_free_cloud_);
   planner_viz_.VizPointCloud(surround_obs_debug_,  FARUtil::surround_obs_cloud_);
   planner_viz_.VizPointCloud(terrain_height_pub_, terrain_height_ptr_);
+  
   // visualize map grid
   PointStack neighbor_centers, occupancy_centers;
   map_handler_.GetNeighborCeilsCenters(neighbor_centers);

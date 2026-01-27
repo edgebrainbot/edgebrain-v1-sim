@@ -116,7 +116,7 @@ echo "🔹 [3/5] Building edge_interfaces..."
 colcon build --base-paths src/edge-brain-go2/edge_interfaces ${BUILD_ARGS}
 
 echo "🔹 [4/5] Building edge_navigation..."
-colcon build --base-paths src/edge-brain-go2/edge_navigation ${BUILD_ARGS}
+colcon build --base-paths src/edge-brain-go2/edge_navigation ${BUILD_ARGS} 
 
 echo "🔹 [5/5] Building edge_perception..."
 colcon build --base-paths src/edge-brain-go2/edge_perception ${BUILD_ARGS}

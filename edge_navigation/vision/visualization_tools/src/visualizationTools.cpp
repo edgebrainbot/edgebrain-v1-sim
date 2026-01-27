@@ -164,8 +164,14 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
     return;
   }
 
+  // Debugging
+  std::cout << "Visualization Tools Debugging-----------------------" << std::endl;
+
+
   laserCloud->clear();
   pcl::fromROSMsg(*laserCloudIn, *laserCloud);
+
+  std::cout << "Visualization Tools Debugging2-----------------------" << std::endl;
 
   *exploredVolumeCloud += *laserCloud;
 

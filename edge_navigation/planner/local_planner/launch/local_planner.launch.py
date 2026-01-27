@@ -4,6 +4,8 @@ from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
+from launch.event_handlers import OnProcessExit
+from launch.actions import RegisterEventHandler, Shutdown
 
 
 def generate_launch_description():
@@ -173,6 +175,12 @@ def generate_launch_description():
     return LaunchDescription(
         args + [
             local_planner_node,
+            # RegisterEventHandler(
+            #     event_handler=OnProcessExit(
+            #         target_action=local_planner_node,
+            #         on_exit=[path_follower_node],
+            #     )
+            # ),
             path_follower_node,
             static_tf_sensor_vehicle,
             static_tf_sensor_camera,
