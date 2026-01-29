@@ -9,25 +9,25 @@ usage() {
 Usage: $0 [OPTIONS]
 
 Options:
-    -w, --workspace DIR    Specify the ROS 2 workspace directory (ros2_ws*)
-    -h, --help            Show this help message
+    -w, --workspace DIR         Specify the ROS 2 workspace directory (default: edge_ws*)
+    -h, --help                  Show this help message
 
 Example:
-    $0                              # Auto-detect workspace
-    $0 -w /path/to/ros2_ws         # Specify workspace manually
-    $0 --workspace ~/ros2_ws_dev   # Using long option
+    $0                             # Auto-detect workspace
+    $0 -w /path/to/edge_ws         # Specify workspace manually
+    $0 --workspace ~/edge_ws_dev   # Using long option
 EOF
     exit 0
 }
 
 # ==========================================
-# 🔍 Auto-detect ros2_ws*
+# 🔍 Auto-detect workspace (default: edge_ws*)  
 # ==========================================
-find_ros2_ws_root() {
+find_workspace_root() {
     local dir="$1"
     while [[ "$dir" != "/" ]]; do
         local base=$(basename "$dir")
-        if [[ $base == ros2_ws* ]]; then
+        if [[ $base == edge_ws* ]]; then
             echo "$dir"
             return 0
         fi
@@ -67,10 +67,10 @@ if [[ -n "$WORKSPACE_DIR" ]]; then
         exit 1
     fi
     
-    # Verify it's a ros2_ws* directory
+    # Verify it's a edge_ws* directory
     base=$(basename "$WORKSPACE_DIR")
-    if [[ $base != ros2_ws* ]]; then
-        echo "⚠️  Warning: Directory name '$base' doesn't match pattern 'ros2_ws*'"
+    if [[ $base != edge_ws* ]]; then
+        echo "⚠️  Warning: Directory name '$base' doesn't match pattern 'edge_ws*'"
         read -p "Continue anyway? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -82,10 +82,10 @@ if [[ -n "$WORKSPACE_DIR" ]]; then
 else
     # Auto-detect workspace
     SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    WORKSPACE_DIR=$(find_ros2_ws_root "$SCRIPT_PATH")
+    WORKSPACE_DIR=$(find_workspace_root "$SCRIPT_PATH")
     
     if [[ -z "$WORKSPACE_DIR" ]]; then
-        echo "❌ Error: Could not find any directory named 'ros2_ws*' above $SCRIPT_PATH"
+        echo "❌ Error: Could not find any directory named 'edge_ws*' above $SCRIPT_PATH"
         echo "💡 Tip: Use -w option to specify workspace manually"
         exit 1
     fi

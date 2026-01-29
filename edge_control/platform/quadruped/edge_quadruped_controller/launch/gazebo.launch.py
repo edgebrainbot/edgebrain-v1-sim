@@ -42,7 +42,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     controller_config_path = os.path.join(
         get_package_share_directory(pkg_controller), 
         'config', 
-        'controller_gazebo.yaml'
+        'controller_sim.yaml'
     )
 
     xacro_file = os.path.join(pkg_path, 'xacro', 'robot.xacro')

@@ -10,7 +10,7 @@ ARG UBUNTU_VERSION=22.04
 FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
-      version="v0.0.1" \
+      version="v1.0.0" \
       description="System for ROS2 Humble + CUDA 12.6 + PyTorch" \
       license="Apache-2.0"
 

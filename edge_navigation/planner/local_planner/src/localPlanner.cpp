@@ -530,6 +530,7 @@ void readCorrespondences()
   fclose(filePtr);
 }
 
+// Segmentation fault signal handler
 void segvHandler(int sig)
 {
   void *callstack[32];
@@ -551,7 +552,7 @@ void segvHandler(int sig)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  signal(SIGSEGV, segvHandler);   // Register segv signal handler
+//   signal(SIGSEGV, segvHandler);   // Register segv signal handler
   nh = rclcpp::Node::make_shared("localPlanner");
 
   nh->declare_parameter<std::string>("pathFolder", pathFolder);

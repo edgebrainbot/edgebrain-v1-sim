@@ -486,3 +486,32 @@ void GraphPlanner::UpdateFreeTerrainGrid(const Point3D& center,
         }
     }
 }
+
+float GraphPlanner::GetMinObstacleDistance(const Point3D& odom_position)
+{
+    if (current_graph_.empty() || odom_node_ptr_ == NULL) {
+        RCLCPP_WARN(nh_->get_logger(), "GP: Graph or odom node is not initialized, cannot calculate obstacle distance.");
+        return FARUtil::kINF;
+    }
+
+    float min_distance = FARUtil::kINF;
+    
+    // Iterate through all boundary nodes in the graph
+    for (const auto& node_ptr : current_graph_) {
+        if (!node_ptr->is_boundary) continue; // Only check boundary (obstacle) nodes
+        
+        // Calculate distance from robot to this obstacle node
+        const float distance = (odom_position - node_ptr->position).norm();
+        
+        // Update minimum distance
+        if (distance < min_distance) {
+            min_distance = distance;
+        }
+    }
+    
+    if (FARUtil::IsDebug && min_distance != FARUtil::kINF) {
+        RCLCPP_INFO_STREAM(nh_->get_logger(), "GP: Minimum obstacle distance = " << min_distance);
+    }
+    
+    return min_distance;
+}

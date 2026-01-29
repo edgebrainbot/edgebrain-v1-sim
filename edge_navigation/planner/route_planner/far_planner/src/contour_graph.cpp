@@ -5,7 +5,6 @@
  */
 
 
-
 #include "far_planner/contour_graph.h"
 #include "far_planner/intersection.h"
 

@@ -12,7 +12,8 @@ from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, RegisterEventHandler, Shutdown
+from launch.event_handlers import OnProcessExit
 
 def generate_launch_description():
 
@@ -29,7 +30,7 @@ def generate_launch_description():
         "world_name", default_value="obstacle_course.world", description="Gazebo world name"
     )
     use_global_rviz_arg = DeclareLaunchArgument(
-        "use_global_rviz", default_value="false", description="Use global RViz (integrated) or not"
+        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
     )
     reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
     reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")
@@ -186,28 +187,6 @@ def generate_launch_description():
         condition=IfCondition(use_global_rviz)
     )
 
-    # ------------------------
-    # Launch in sequence using OpaqueFunction
-    # ------------------------
-    def launch_sequence(context, *args, **kwargs):
-        actions = []
-
-        # The following launches depend on each other and must be in order
-        actions.append(controller_launch)
-        actions.append(phy_teacher_launch)
-        # actions.append(drl_student_launch)
-        actions.append(trigger_launch)
-        # actions.append(navigation_launch)
-
-        # Other nodes can be launched after the above are set up
-        actions.extend([
-            virtual_status_indicator_node,
-            publish_goal_point,
-            gz_reset_handler_node,
-            global_rviz_node
-        ])
-        return actions
-
     return LaunchDescription([
         # launch arguments
         set_sim_time,
@@ -219,6 +198,15 @@ def generate_launch_description():
         reset_position_z_arg,
         use_global_rviz_arg,
 
-        # Launch in sequence using OpaqueFunction
-        OpaqueFunction(function=launch_sequence)
+        # -- Launch Components --
+        controller_launch,
+        phy_teacher_launch,
+        # drl_student_launch,
+        trigger_launch,
+        navigation_launch,
+        
+        virtual_status_indicator_node,
+        publish_goal_point,
+        gz_reset_handler_node,
+        global_rviz_node
     ])

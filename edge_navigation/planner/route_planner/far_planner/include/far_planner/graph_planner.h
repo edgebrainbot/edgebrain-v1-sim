@@ -245,6 +245,13 @@ Point3D GetOriginNodePos(const bool& is_adjusted_z) const {
     }
 }
 
+/**
+ * @brief Calculate minimum obstacle distance from robot to boundary nodes in the graph
+ * @param odom_position current robot odometry position
+ * @return minimum distance to obstacle (boundary nodes)
+ */
+float GetMinObstacleDistance(const Point3D& odom_position);
+
 };
 
 #endif
