@@ -10,6 +10,7 @@ logs/
 temp/
 models/
 !edge_simulation/edge_gazebo/models/
+!edge_simulation/gz_interfaces/gz_quadruped_playground/models/
 checkpoints/
 !edge_perception/checkpoints/README.md
 onnx_exports/

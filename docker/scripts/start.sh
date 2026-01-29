@@ -6,4 +6,4 @@ docker run -it --rm \
   --ipc host \
   -e DISPLAY=$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  edge-brain:humble
+  edge-brain-go2
