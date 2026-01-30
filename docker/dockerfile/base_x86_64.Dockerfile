@@ -1,6 +1,6 @@
-# ======================================================
-# Edge-Brain ROS2 Base Image for Jetson / x86 GPU
-# ======================================================
+# =========================================================
+# Edge-Brain ROS2 Base Image for x86_64 Platform with CUDA
+# =========================================================
 
 # ------------ Arguments ------------
 ARG CUDA_VERSION=12.6.0
@@ -12,7 +12,7 @@ FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
       version="v2.0.0" \
-      description="ROS2 Humble + CUDA 12.6 + Robotics Libraries" \
+      description="X86_64 Platform: ROS2 Humble + CUDA 12.6 + Robotics Libraries" \
       license="Apache-2.0"
 
 
@@ -149,18 +149,12 @@ RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && \
     sudo make install
+    
 
+# ------------ PyTorch + torchvision + torchaudio ------------
+RUN pip3 install --upgrade pip && \
+    pip3 install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
 
-# ----------- Install PyTorch and toolboxs for JetPack 6.2 -------------
-# reference: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-# download source: https://download.pytorch.org/whl/torch/
-WORKDIR ${HOME_PATH}
-RUN mkdir torch_libs && cd torch_libs && \
-    wget https://nvidia.box.com/shared/static/mp164asf3sceb570wvjsrezk1p4ftj8t.whl -O torch-2.3.0-cp310-cp310-linux_aarch64.whl && \
-    wget https://nvidia.box.com/shared/static/xpr06qe6ql3l6rj22cu3c45tz1wzi36p.whl -O torchvision-0.18.0a0+6043bc2-cp310-cp310-linux_aarch64.whl && \
-    wget https://nvidia.box.com/shared/static/9agsjfee0my4sxckdpuk9x9gt8agvjje.whl -O torchaudio-2.3.0+952ea74-cp310-cp310-linux_aarch64.whl && \
-    pip3 install torch-2.3.0-cp310-cp310-linux_aarch64.whl torchvision-0.18.0a0+6043bc2-cp310-cp310-linux_aarch64.whl torchaudio-2.3.0+952ea74-cp310-cp310-linux_aarch64.whl
-    # cd .. && rm -rf torch_libs
 
 # ------------ Set Paths ------------
 RUN echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ${HOME_PATH}/.bashrc
@@ -175,19 +169,6 @@ RUN echo 'export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH' >> ${HOME_PATH
 RUN echo '###########################################################' >> ${HOME_PATH}/.bashrc
 
 
-# ------------ Set CUDA ENV ------------
-# ENV PATH=/usr/local/cuda-12.6/bin:${PATH} \
-#     LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:${LD_LIBRARY_PATH}
-
-
-# # ------------ Set Pinocchio ENV ------------
-# ENV PATH=/usr/local/bin:${PATH} \
-#     PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH} \
-#     LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} \
-#     PYTHONPATH=/usr/local/lib/python2.7/site-packages:${PYTHONPATH} \
-#     CMAKE_PREFIX_PATH=/usr/local:${CMAKE_PREFIX_PATH}
-
-
 # ------------ Set Other ENV ------------
 ENV ROS_DOMAIN_ID=0
 ENV ROS_DISTRO=${ROS_DISTRO}
@@ -195,16 +176,3 @@ ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 ENV PYTHONPATH=/usr/lib/python3/dist-packages:${ROS2_WS_PATH}/install/lib/python3.10/site-packages
-
-
-# # ----------- Build ROS2 Workspace -------------
-# SHELL ["/bin/bash", "-c"]
-# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-#     cd ${ROS2_WS_PATH} && colcon build --packages-up-to edge_quadruped_controller --symlink-install || true
-
-
-# # ----------- Entrypoint -------------
-# COPY ./docker/entrypoint.sh /entrypoint.sh
-# # RUN chmod +x /entrypoint.sh
-# ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
-# CMD ["bash"]

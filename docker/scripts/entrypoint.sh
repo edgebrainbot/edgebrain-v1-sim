@@ -24,6 +24,7 @@ else
 fi
 
 # ---------- [3] Load User Workspace ----------
+USERNAME=$(whoami)
 ROS_WS="/home/${USERNAME}/edge_ws"
 if [ -f "${ROS_WS}/install/setup.bash" ]; then
     echo "🚀 Sourcing workspace: ${ROS_WS}/install/setup.bash"
