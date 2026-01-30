@@ -157,7 +157,10 @@ RUN pip3 install --upgrade pip && \
     pip3 install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 \
     --index-url https://download.pytorch.org/whl/arm64/torch_stable.html
 
+
 # ------------ Set Paths ------------
+RUN echo '' >> ${HOME_PATH}/.bashrc
+RUN echo '################## Add CUDA Library ##################' >> ${HOME_PATH}/.bashrc
 RUN echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ${HOME_PATH}/.bashrc
 RUN echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH' >> ${HOME_PATH}/.bashrc
 RUN echo '' >> ${HOME_PATH}/.bashrc

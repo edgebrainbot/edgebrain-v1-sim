@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# ---------- [1] Environment Initialization ----------
+# ---------- Environment Initialization ----------
 # Set locale (avoid ROS2 locale warning)
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
@@ -15,7 +15,12 @@ export QT_X11_NO_MITSHM=1
 export NVIDIA_VISIBLE_DEVICES=all
 export NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
 
-# ---------- [2] Load ROS2 Environment ----------
+# Terminal colors
+echo '' >> ~/.bashrc
+echo "export PS1='\[\e[37;40m\]\[\e[1m\][\u\[\e[33;40m\]@\[\e[31;40m\]\H\[\e[35;40m\]:\[\e[36;40m\]\W\[\e[37;40m\]]\[\e[34;40m\]<\d \t>\[\e[0m\]$'" >> ~/.bashrc
+
+
+# ---------- Load ROS2 Environment ----------
 if [ -f "/opt/ros/${ROS_DISTRO}/setup.bash" ]; then
     echo "🧠 Sourcing /opt/ros/${ROS_DISTRO}/setup.bash"
     source "/opt/ros/${ROS_DISTRO}/setup.bash"
@@ -23,7 +28,7 @@ else
     echo "⚠️  ROS2 environment not found at /opt/ros/${ROS_DISTRO}"
 fi
 
-# ---------- [3] Load User Workspace ----------
+# ---------- Load User Workspace ----------
 USERNAME=$(whoami)
 ROS_WS="/home/${USERNAME}/edge_ws"
 if [ -f "${ROS_WS}/install/setup.bash" ]; then
@@ -33,28 +38,31 @@ else
     echo "ℹ️  Workspace not built yet (no install/setup.bash found)"
 fi
 
-# ---------- [4] Enable bash completion & ROS2 autocompletion ----------
+# ---------- Enable bash completion & ROS2 autocompletion ----------
 if [ -f /etc/bash_completion ]; then
     source /etc/bash_completion
 fi
+echo "" >> ~/.bashrc
 echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
 [ -f "${ROS_WS}/install/setup.bash" ] && echo "source ${ROS_WS}/install/setup.bash" >> ~/.bashrc
 
-# ---------- [5] VIM settings ----------
+
+# ---------- VIM settings ----------
 echo "set number" >> ~/.vimrc
 echo "syntax on" >> ~/.vimrc
 echo "set tabstop=4" >> ~/.vimrc
 echo "set ignorecase" >> ~/.vimrc
 echo "set encoding=utf-8" >> ~/.vimrc
 
-# ---------- [6] Environment Prompt ----------
+
+# ---------- Environment Prompt ----------
 echo "✅ Edge-Brain container ready."
 echo "   ROS_DISTRO: ${ROS_DISTRO}"
 echo "   Workspace : ${ROS_WS}"
 echo "   GPU       : ${NVIDIA_VISIBLE_DEVICES}"
 echo "---------------------------------------------"
 
-# ---------- [7] Execute User Command ----------
+# ---------- Execute User Command ----------
 # If no arguments are provided, start a bash shell
 if [ $# -eq 0 ]; then
     exec bash

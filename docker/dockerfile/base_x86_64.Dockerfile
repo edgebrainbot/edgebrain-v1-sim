@@ -157,6 +157,8 @@ RUN pip3 install --upgrade pip && \
 
 
 # ------------ Set Paths ------------
+RUN echo '' >> ${HOME_PATH}/.bashrc
+RUN echo '################## Add CUDA Library ##################' >> ${HOME_PATH}/.bashrc
 RUN echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ${HOME_PATH}/.bashrc
 RUN echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH' >> ${HOME_PATH}/.bashrc
 RUN echo '' >> ${HOME_PATH}/.bashrc

@@ -3,7 +3,9 @@
 # ======================================================
 
 # ------------ Base Image ------------
-FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+# FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
+FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0
+
 LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
       version="v2.0.0" \
       description="Nvidia Jetson: ROS2 Humble + CUDA 12.6 + Robotics Libraries" \
@@ -40,7 +42,7 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-rosdep python3-rosinstall python3-vcstool python3-colcon-common-extensions \
-    ros-${ROS_DISTRO}-ros-base ros-${ROS_DISTRO}-backward-ros ros-${ROS_DISTRO}-common-interfaces \
+    ros-${ROS_DISTRO}-desktop ros-${ROS_DISTRO}-backward-ros ros-${ROS_DISTRO}-common-interfaces \
     ros-${ROS_DISTRO}-ros2-control ros-${ROS_DISTRO}-ros2-controllers ros-${ROS_DISTRO}-octomap \
     ros-${ROS_DISTRO}-octomap-msgs \
     ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
@@ -114,8 +116,7 @@ RUN git clone https://github.com/legubiao/unitree_mujoco.git && \
 
 # ------------ Build eigenpy ------------
 RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-    libboost-python-dev \
-    python3-dev \
+    libboost-python-dev python3-dev python3-scipy \
     libboost-filesystem-dev \
     libboost-system-dev \
     libboost-thread-dev \
@@ -130,8 +131,11 @@ RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
 
 # ------------ Build Coal ------------
 RUN sudo apt update && \
-    sudo apt install -y cmake libeigen3-dev libboost-all-dev python3-dev python3-pip && \
-    git clone --recursive https://github.com/coal-library/coal.git && \
+    sudo apt install -y cmake libeigen3-dev libboost-all-dev python3-dev \
+    python3-pip libassimp-dev \
+    && sudo rm -rf /var/lib/apt/lists/*
+
+RUN git clone --recursive https://github.com/coal-library/coal.git && \
     cd coal && git checkout devel && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
@@ -176,6 +180,8 @@ RUN mkdir torch_libs && cd torch_libs && \
     # cd .. && rm -rf torch_libs
 
 # ------------ Set Paths ------------
+RUN echo '' >> ${HOME_PATH}/.bashrc
+RUN echo '################## Add CUDA Library ##################' >> ${HOME_PATH}/.bashrc
 RUN echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ${HOME_PATH}/.bashrc
 RUN echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH' >> ${HOME_PATH}/.bashrc
 RUN echo '' >> ${HOME_PATH}/.bashrc

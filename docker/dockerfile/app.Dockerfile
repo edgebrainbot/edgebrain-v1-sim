@@ -6,7 +6,7 @@
 
 # ------------ Build Arguments ------------
 ARG PLATFORM
-ARG BASE_IMAGE
+ARG BASE_IMAGE=edge-brain-base
 
 FROM ${BASE_IMAGE}
 
@@ -30,15 +30,19 @@ RUN --mount=type=ssh \
 # ------------ Ignition Gazebo ------------
 RUN apt-get update && apt-get install -y lsb-release gnupg && \
     curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
+        tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null && \
     apt-get update && apt-get install -y ignition-fortress
 
     
 # ------------ Other ROS2 Dependencies ------------
-RUN apt update && apt install -y ros-${ROS_DISTRO}-image-geometry ros-${ROS_DISTRO}-vision-msgs \
-    ros-${ROS_DISTRO}-cv-bridge ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions \
+RUN apt update && apt install -y ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions \
     ros-${ROS_DISTRO}-xacro ros-${ROS_DISTRO}-ros-gz-bridge ros-${ROS_DISTRO}-ros-gz-sim \
     ros-${ROS_DISTRO}-ros-gz-interfaces
+
+
+# ------------ Python Dependencies ------------
+RUN pip3 install transforms3d ultralytics cv-bridge opencv-python numpy==1.26.1 segment-anything
 
 
 # ------------ Checkout branch as user ------------
