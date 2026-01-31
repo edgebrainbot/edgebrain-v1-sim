@@ -50,8 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-ros2-control ros-${ROS_DISTRO}-ros2-controllers ros-${ROS_DISTRO}-octomap \
     ros-${ROS_DISTRO}-octomap-msgs \
     ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
-    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
-    ros-${ROS_DISTRO}-rmw-connextdds
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp 
 
 RUN rosdep init || true && rosdep update
 
