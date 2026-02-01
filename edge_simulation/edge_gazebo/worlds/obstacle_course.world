@@ -3,7 +3,7 @@
   <world name='obstacle_course'>
     
     <frame name='world_offset'>
-      <pose relative_to='world'>4 0 0 0 0 0</pose>
+      <pose relative_to='world'>6 0 0 0 0 0</pose>
     </frame>
 
     <physics name="1ms" type="ignored">
@@ -108,14 +108,14 @@
     <!-- Construction barrel -->
     <include>
       <uri>model://external/construction_barrel</uri>
-      <pose relative_to='world_offset'>3.96847 0.977565 0 0 0 0</pose>
+      <pose relative_to='world_offset'>-3.26847 -2.977565 0 0 0 0</pose>
       <name>construction_barrel</name>
     </include>
 
     <!-- Construction cone -->
     <include>
       <uri>model://external/construction_cone</uri>
-      <pose relative_to='world_offset'>7.912 0.977565 0 0 0 0</pose>
+      <pose relative_to='world_offset'>-2.96847 2.677565 0 0 0 0</pose>
       <name>construction_cone</name>
     </include>
 
@@ -129,34 +129,35 @@
     <!-- Cubic Groove -->
     <include>
       <uri>model://constructed/cubic_groove</uri>
-      <pose relative_to='world_offset'>1 2 0 0 0 0</pose>
+      <pose relative_to='world_offset'>-1 4 0 0 0 0</pose>
       <name>cubic_groove</name>
     </include>
 
     <!-- Triangular Groove -->
     <include>
       <uri>model://constructed/triangular_groove</uri>
-      <pose relative_to='world_offset'>-1.5 -2.2 0 0 0 0</pose>
+      <pose relative_to='world_offset'>-2.5 -3.8 0 0 0 0</pose>
       <name>triangular_groove</name>
     </include>
 
     <!-- Cross Wall - light gray/off-white -->
     <include>
       <uri>model://constructed/cross_wall</uri>
-      <pose relative_to='world_offset'>-3 2.8 0 0 0 0</pose>
+      <pose relative_to='world_offset'>-4 4.8 0 0 0 0</pose>
       <name>cross_wall</name>
     </include>
 
     <!-- Doorway Wall -->
     <include>
       <uri>model://constructed/doorway_wall</uri>
-      <pose relative_to='world_offset'>0.5 -1.5 0 0 0 1.</pose>
+      <pose relative_to='world_offset'>0.8 0 0 0 0 1.</pose>
       <name>doorway_wall</name>
     </include>
 
+    <!-- Doorway Wall 2 -->
     <include>
       <uri>model://constructed/doorway_wall</uri>
-      <pose relative_to='world_offset'>-2.5 .5 0 0 0 -2.35</pose>
+      <pose relative_to='world_offset'>-5.5 0.5 0 0 0 -2.8</pose>
       <name>doorway_wall2</name>
     </include>
 
@@ -164,37 +165,38 @@
     <include>
       <uri>model://constructed/table</uri>
       <name>table</name>
-      <pose relative_to='world_offset'>-6.74248 -5.832954 0 0 0 1.57</pose>
+      <pose relative_to='world_offset'>-8.04248 -3.932954 0 0 0 1.57</pose>
     </include>
 
-    <!-- Cylinder -->
+    <!-- Cylinder Large -->
     <include>
       <uri>model://shaped/cylinder_large</uri>
       <name>cylinder_large</name>
-      <pose relative_to='world_offset'>-0.5 -1.5 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>0 -1.5 0.5 0 0 0</pose>
       <static>true</static>
     </include>
 
-    <!-- Cuboid -->
+    <!-- Cuboid Medium -->
     <include>
       <uri>model://shaped/cuboid_medium</uri>
       <name>cuboid_medium</name>
-      <pose relative_to='world_offset'>2.5 -6 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>2.5 -5 0.5 0 0 0</pose>
       <static>true</static>
     </include>
 
-    <!-- Cubic -->
+    <!-- Cubic Medium -->
     <include>
       <uri>model://shaped/cubic_medium</uri>
       <name>cubic_medium</name>
-      <pose relative_to='world_offset'>-0.5 -5.25 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>-0.5 -7.25 0.5 0 0 0</pose>
       <static>true</static>
     </include>
 
+    <!-- Cylinder Medium -->
     <include>
       <uri>model://shaped/cylinder_medium</uri>
       <name>cylinder_medium</name>
-      <pose relative_to='world_offset'>-2. 2.8 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>-2. 6.3 0.5 0 0 0</pose>
       <static>true</static>
     </include>
 
