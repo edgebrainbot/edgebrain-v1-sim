@@ -40,6 +40,9 @@ class SafetyMonitor
 {
 public:
     explicit SafetyMonitor(const std::string& yaml_path="");
+    
+    void setDebugMode(bool enable) { debug_mode_ = enable; }
+    bool isDebugMode() const { return debug_mode_; }
 
     // type: RELATIVE (state=errorState) or ABSOLUTE (state=robotState)
     bool evaluateSafety(RuleType ruleType,
@@ -57,6 +60,8 @@ public:
     }
 
 private:
+    bool debug_mode_ = false;       // Debug mode flag
+
     // ===== Switching Conditions =====
     bool switching_enabled_ = true;
     std::vector<SafetyRule> rules_;
@@ -73,6 +78,7 @@ private:
 
     // ===== Private Methods =====
     void loadFromYaml(const std::string& yaml_path);
+    void loadDebugConfig(const YAML::Node& root);
     void loadSwitchingConfig(const YAML::Node& root);
     void loadFallDetectionConfig(const YAML::Node& root);
     std::string parseYamlPath(const std::string& user_path);

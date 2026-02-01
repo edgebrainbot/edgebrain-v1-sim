@@ -10,6 +10,12 @@
 #include "edge_config/safety_monitor.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
+#define SM_DEBUG(msg) \
+    do { if (debug_mode_) { std::cout << msg << std::endl; } } while (0)
+
+#define SM_DEBUG_ERR(msg) \
+    do { if (debug_mode_) { std::cerr << msg << std::endl; } } while (0)
+
 
 // ANSI colors
 static const std::string CYAN  = "\033[36m";
@@ -81,9 +87,20 @@ std::string SafetyMonitor::parseYamlPath(const std::string& user_path)
 void SafetyMonitor::loadFromYaml(const std::string& yaml_path)
 {
     YAML::Node root = YAML::LoadFile(yaml_path);
-
+    loadDebugConfig(root);        // Load debug config
     loadSwitchingConfig(root);   // Load switching config   
     loadFallDetectionConfig(root);         // Load fall detection settings
+}
+
+/**
+ * Load debug config from YAML
+ */
+void SafetyMonitor::loadDebugConfig(const YAML::Node& root)
+{
+    if (root["debug"] && root["debug"]["enabled"]) {
+        debug_mode_ = root["debug"]["enabled"].as<bool>();
+        SM_DEBUG("Debug mode enabled via YAML");
+    }
 }
 
 /**
@@ -266,12 +283,11 @@ bool SafetyMonitor::detectFall(const std::vector<double>& robot_state)
 
     // Log fall detection
     if (is_falling) {
-        std::cerr << color("🚨 FALL: ", RED);
+        SM_DEBUG_ERR(color("🚨 FALL: ", RED));
         for (size_t i = 0; i < fall_details.size(); ++i) {
-            std::cerr << fall_details[i];
-            if (i < fall_details.size() - 1) std::cerr << ", ";
+            SM_DEBUG_ERR(fall_details[i] + (i < fall_details.size() - 1 ? ", " : ""));
         }
-        std::cerr << std::endl;
+        SM_DEBUG_ERR(""); // newline
     }
 
     return is_falling;
@@ -374,12 +390,12 @@ void SafetyMonitor::safetyStatusLogging(const std::vector<std::string>& violatio
         else
             msg += "System still outside the learning space.";
 
-        std::cerr << msg << std::endl;
+        SM_DEBUG_ERR(msg);
     } else {
         if (!is_last_safe_) {
-            std::cout << "✅ System returned to the learning space." << std::endl;
+            SM_DEBUG("✅ System returned to the learning space.");
         } else {
-            std::cout << "✅ System remains within the learning space." << std::endl;
+            SM_DEBUG("✅ System remains within the learning space.");
         }
     }
 }

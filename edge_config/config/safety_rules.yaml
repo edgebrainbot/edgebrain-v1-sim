@@ -17,6 +17,9 @@
 #    - unit: unit for display/conversion
 # =========================================================
 
+debug:
+  enabled: false   # set to true to enable debug logging
+
 switching:
   enabled: true
   conditions:

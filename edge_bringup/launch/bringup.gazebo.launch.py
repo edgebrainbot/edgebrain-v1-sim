@@ -130,7 +130,7 @@ def generate_launch_description():
         package='edge_config',
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
-        output='screen',
+        # output='screen',
         parameters=[{'use_sim_time': True}]
     )
 
@@ -144,7 +144,7 @@ def generate_launch_description():
                 'geometry_msgs/msg/PointStamped',
                 f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'
             ],
-            output='screen'
+            # output='screen'
         )]
     )
 

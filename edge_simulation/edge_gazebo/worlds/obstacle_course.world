@@ -99,10 +99,24 @@
     </model>
 
     <!-- Room walls model -->
-    <include>
+    <!-- <include>
       <uri>model://constructed/enclosing_wall</uri>
       <pose relative_to='world_offset'>0.000564 -0.000118 0 0 0 0</pose>   
       <name>enclosing_wall</name>
+    </include> -->
+
+    <!-- Construction barrel -->
+    <include>
+      <uri>model://external/construction_barrel</uri>
+      <pose relative_to='world_offset'>3.96847 0.977565 0 0 0 0</pose>
+      <name>construction_barrel</name>
+    </include>
+
+    <!-- Construction cone -->
+    <include>
+      <uri>model://external/construction_cone</uri>
+      <pose relative_to='world_offset'>7.912 0.977565 0 0 0 0</pose>
+      <name>construction_cone</name>
     </include>
 
     <!-- Bookshelf model -->
