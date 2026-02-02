@@ -62,7 +62,7 @@ class ResetManager:
         ...     reset_timeout=20.0,
         ...     logger=logger,
         ...     reset_service_name='/edge/reset',
-        ...     coordinator_service_name='/edge/reset/gz_handler',
+        ...     gz_reset_service_name='/edge/reset/gz_handler',
         ... )
         >>> 
         >>> # Agent calls internally with enum
@@ -199,7 +199,7 @@ class ResetManager:
     
     def _perform_reset(self, reason: ResetReason) -> Tuple[bool, str]:
         """
-        Perform reset by calling Reset Coordinator
+        Perform reset by calling Gz Reset Handler service
         
         Args:
             reason: Reset reason (ResetReason enum)
@@ -223,7 +223,7 @@ class ResetManager:
             f"🔄 [Reset #{self.reset_count}] Starting reset sequence\n"
             f"{'─'*70}\n"
             f"   Reason: {reason.name} ({reason.value})\n"
-            f"   Target: {self.coordinator_service_name}\n"
+            f"   Target: {self.gz_reset_service_name}\n"
             f"   Timeout: {self.reset_timeout}s\n"
             f"{'='*70}"
         )
@@ -493,7 +493,7 @@ class ResetManager:
         return (
             f"ResetManager(\n"
             f"  server='{self.reset_service_name}',\n"
-            f"  coordinator='{self.coordinator_service_name}',\n"
+            f"  gz_reset_handler='{self.gz_reset_service_name}',\n"
             f"  timeout={self.reset_timeout}s,\n"
             f"  statistics={stats}\n"
             f")"

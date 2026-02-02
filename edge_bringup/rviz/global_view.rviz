@@ -177,7 +177,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: true
       Max Color: 255; 255; 255
       Max Intensity: 0.10000000149011612
@@ -198,7 +198,7 @@ Visualization Manager:
         Value: /terrain_map
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: false
       Autocompute Value Bounds:
@@ -211,7 +211,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: true
       Max Color: 255; 255; 255
       Max Intensity: 0.20000000298023224
@@ -232,7 +232,7 @@ Visualization Manager:
         Value: /terrain_map_ext
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz_default_plugins/Path
@@ -717,5 +717,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1476
-  X: 690
+  X: 444
   Y: 74
