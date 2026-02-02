@@ -1,6 +1,5 @@
+#pragma once
 
-#ifndef STATEFREESTAND_H
-#define STATEFREESTAND_H
 #include "edge_quadruped_controller/control/CtrlComponent.h"
 #include "edge_quadruped_controller/robot_model/QuadrupedModel.hpp"
 #include "controller_common/FSM/FSMState.h"
@@ -14,12 +13,12 @@ namespace edge::control::quadruped
 
 using namespace edge::control::quadruped;
 
-class StateFreeStand final : public FSMState {
+class FSMFreeStand final : public FSMState {
 public:
-    StateFreeStand(CtrlInterfaces &ctrl_interfaces,
-                   CtrlComponent &ctrl_component,
-                   const double kp,
-                   const double kd);
+    FSMFreeStand(CtrlInterfaces &ctrl_interfaces,
+                 CtrlComponent &ctrl_component,
+                 const double kp,
+                 const double kd);
 
     void enter() override;
 
@@ -46,11 +45,8 @@ private:
     Vec3 fr_init_pos_;           // 初始机身位置（类似_initVecOX）
     Vec34 init_foot_pos_;    // 初始足端位置（类似_initVecXP）
     
-    // 私有方法
     void calc_body_target(double row, double pitch, double yaw, double height);
     Vec34 calcOP(double row, double pitch, double yaw, double height);  // 对应原版_calcOP
     
 
 };
-
-#endif //STATEFREESTAND_H

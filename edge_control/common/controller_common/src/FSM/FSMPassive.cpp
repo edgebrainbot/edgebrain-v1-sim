@@ -1,15 +1,15 @@
-#include "controller_common/FSM/StatePassive.h"
+#include "controller_common/FSM/FSMPassive.h"
 
 #include <iostream>
 
-StatePassive::StatePassive(CtrlInterfaces& ctrl_interfaces) : FSMState(
-    FSMStateName::PASSIVE, "passive", ctrl_interfaces)
+FSMPassive::FSMPassive(CtrlInterfaces& ctrl_interfaces) : FSMState(
+    FSMStateName::PASSIVE, "FSM Passive", ctrl_interfaces)
 {
 }
 
-void StatePassive::enter()
+void FSMPassive::enter()
 {
-    std::cerr << "Entering Passive State" << std::endl;
+    std::cerr << "Entering FSM Passive State" << std::endl;
     for (auto i : ctrl_interfaces_.joint_torque_command_interface_)
     {
         i.get().set_value(0);
@@ -33,15 +33,15 @@ void StatePassive::enter()
     ctrl_interfaces_.control_inputs_.command = 0;
 }
 
-void StatePassive::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
+void FSMPassive::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
 {
 }
 
-void StatePassive::exit()
+void FSMPassive::exit()
 {
 }
 
-FSMStateName StatePassive::checkChange()
+FSMStateName FSMPassive::checkChange()
 {
     if (ctrl_interfaces_.control_inputs_.command == 2)
     {

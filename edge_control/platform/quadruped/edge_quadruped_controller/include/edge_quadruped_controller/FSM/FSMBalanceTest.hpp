@@ -1,5 +1,4 @@
-#ifndef STATEBALANCETEST_H
-#define STATEBALANCETEST_H
+#pragma once
 
 #include "controller_common/FSM/FSMState.h"
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
@@ -19,9 +18,9 @@ struct CtrlInterfaces;
 
 using namespace edge::control::quadruped;
 
-class StateBalanceTest final : public FSMState {
+class FSMBalanceTest final : public FSMState {
 public:
-    explicit StateBalanceTest(CtrlInterfaces &ctrl_interfaces,
+    explicit FSMBalanceTest(CtrlInterfaces &ctrl_interfaces,
                               CtrlComponent &ctrl_component,
                               const std::vector<double>& stable_gains);
 
@@ -60,5 +59,3 @@ private:
     std::vector<double> stable_gains_;
 };
 
-
-#endif //STATEBALANCETEST_H

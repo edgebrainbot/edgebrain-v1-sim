@@ -211,7 +211,7 @@ class ResetCoordinatorNode(Node):
                         self.failed_resets += 1
                         return False, f'Controller reset failed: {controller_message}'
                 
-                time.sleep(1.5)  # Small delay between resets
+                time.sleep(3)  # Small delay between resets
                 
                 # Reset Gazebo
                 gz_start = time.time()

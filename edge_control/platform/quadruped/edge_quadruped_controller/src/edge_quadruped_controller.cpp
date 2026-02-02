@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 
 namespace edge::control::quadruped
 {
@@ -193,11 +193,11 @@ namespace edge::control::quadruped
                 cmd_vx_ = msg->twist.linear.x;
                 cmd_vy_ = msg->twist.linear.y;
                 cmd_wz_ = msg->twist.angular.z;
-                std::cout << "*************************************************************" << std::endl;
-                std::cout << "Received /cmd_vel: "
-                        << "vx = " << cmd_vx_ << ", "
-                        << "vy = " << cmd_vy_ << ", "
-                        << "wz = " << cmd_wz_ << std::endl;
+                // std::cout << "*************************************************************" << std::endl;
+                // std::cout << "Received /cmd_vel: "
+                //         << "vx = " << cmd_vx_ << ", "
+                //         << "vy = " << cmd_vy_ << ", "
+                //         << "wz = " << cmd_wz_ << std::endl;
             });
 
             // Subscribe to "edge/terminal_action"
@@ -206,10 +206,10 @@ namespace edge::control::quadruped
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
             {
                 latest_edge_action_ = *msg;
-                std::cout << "Received new action from the trigger." << std::endl;
-                for (int i = 0; i < 6; i++) {
-                    std::cout << "accel[" << i << "] = " << latest_edge_action_.control_action[i] << std::endl;
-                }
+                // std::cout << "Received new action from the trigger." << std::endl;
+                // for (int i = 0; i < 6; i++) {
+                //     std::cout << "accel[" << i << "] = " << latest_edge_action_.control_action[i] << std::endl;
+                // }
             });
 
             // Subscribe to fall status
@@ -329,13 +329,13 @@ namespace edge::control::quadruped
         }
 
         // Create FSM List
-        state_list_.passive = std::make_shared<StatePassive>(ctrl_interfaces_);
-        state_list_.fixedDown = std::make_shared<StateFixedDown>(ctrl_interfaces_, down_pos_, stand_gains_[0], stand_gains_[1]);
-        state_list_.fixedStand = std::make_shared<StateFixedStand>(ctrl_interfaces_, ctrl_component_, stand_pos_, stand_gains_[0], stand_gains_[1]);
-        state_list_.freeStand = std::make_shared<StateFreeStand>(ctrl_interfaces_, ctrl_component_, stand_gains_[0], stand_gains_[1]);
-        state_list_.balanceTest = std::make_shared<StateBalanceTest>(ctrl_interfaces_, ctrl_component_, stable_gains_);
-        state_list_.trotting = std::make_shared<StateTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_, gait_height_);
-
+        state_list_.passive = std::make_shared<FSMPassive>(ctrl_interfaces_);
+        state_list_.fixedDown = std::make_shared<FSMFixedDown>(ctrl_interfaces_, down_pos_, stand_gains_[0], stand_gains_[1]);
+        state_list_.fixedStand = std::make_shared<FSMFixedStand>(ctrl_interfaces_, ctrl_component_, stand_pos_, stand_gains_[0], stand_gains_[1]);
+        state_list_.freeStand = std::make_shared<FSMFreeStand>(ctrl_interfaces_, ctrl_component_, stand_gains_[0], stand_gains_[1]);
+        state_list_.balanceTest = std::make_shared<FSMBalanceTest>(ctrl_interfaces_, ctrl_component_, stable_gains_);
+        state_list_.trotting = std::make_shared<FSMTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_, gait_height_);
+        
         // Initialize FSM
         current_state_ = state_list_.passive;
         current_state_->enter();
@@ -359,7 +359,7 @@ namespace edge::control::quadruped
 
         if (mode_ == FSMMode::NORMAL)
         {
-            if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
+            if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(current_state_)) {
                 trot->run(time, period, 
                           latest_edge_action_, 
                           tracking_error_tea_pub_, 
@@ -385,7 +385,7 @@ namespace edge::control::quadruped
                             current_state_->state_name_string.c_str(), next_state_->state_name_string.c_str());
 
                 // If switching to trotting state, set last reset time
-                if (auto trot = std::dynamic_pointer_cast<StateTrotting>(next_state_)) {
+                if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(next_state_)) {
                     trot->setLastResetTime(rclcpp::Clock().now());
                 }
             }
@@ -535,7 +535,7 @@ namespace edge::control::quadruped
                     }
                     
                     // Reset gait generator if in trotting state
-                    if (auto trot = std::dynamic_pointer_cast<StateTrotting>(current_state_)) {
+                    if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(current_state_)) {
                         trot->getGaitGenerator().reset();
                         trot->setReset(true);       // inform the trotting state of the reset
                     }

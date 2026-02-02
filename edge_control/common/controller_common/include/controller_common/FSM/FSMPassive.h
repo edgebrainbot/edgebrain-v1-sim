@@ -1,15 +1,10 @@
-//
-// Created by tlab-uav on 24-9-6.
-//
-
-#ifndef STATEPASSIVE_H
-#define STATEPASSIVE_H
+#pragma once
 #include "FSMState.h"
 
-class StatePassive final : public FSMState
+class FSMPassive final : public FSMState
 {
 public:
-    explicit StatePassive(CtrlInterfaces& ctrl_interfaces);
+    explicit FSMPassive(CtrlInterfaces& ctrl_interfaces);
 
     void enter() override;
 
@@ -21,5 +16,3 @@ public:
     FSMStateName checkChange() override;
 };
 
-
-#endif //STATEPASSIVE_H

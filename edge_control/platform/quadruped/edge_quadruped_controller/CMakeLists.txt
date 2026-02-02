@@ -39,12 +39,11 @@ endforeach ()
 # Add the libraries
 add_library(${PROJECT_NAME} SHARED
   src/edge_quadruped_controller.cpp
-  src/FSM/StateFixedStand.cpp
+  src/FSM/FSMFixedStand.cpp
 
-  src/FSM/StateFreeStand.cpp
-  src/FSM/StateBalanceTest.cpp
-  src/FSM/StateTrotting.cpp
-
+  src/FSM/FSMFreeStand.cpp
+  src/FSM/FSMBalanceTest.cpp
+  src/FSM/FSMTrotting.cpp
   src/robot_model/QuadrupedModel.cpp
 
   src/estimator/Estimator.cpp

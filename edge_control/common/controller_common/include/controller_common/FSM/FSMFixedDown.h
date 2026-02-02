@@ -2,15 +2,14 @@
 // Created by tlab-uav on 24-9-11.
 //
 
-#ifndef STATEFIXEDDOWN_H
-#define STATEFIXEDDOWN_H
+#pragma once
 
 #include "FSMState.h"
 
-class StateFixedDown final : public FSMState
+class FSMFixedDown final : public FSMState
 {
 public:
-    explicit StateFixedDown(CtrlInterfaces& ctrl_interfaces,
+    explicit FSMFixedDown(CtrlInterfaces& ctrl_interfaces,
                             const std::vector<double>& target_pos,
                             double kp,
                             double kd
@@ -36,6 +35,3 @@ private:
     double percent_ = 0; //%
     double phase = 0.0;
 };
-
-
-#endif //STATEFIXEDDOWN_H

@@ -21,9 +21,9 @@ foreach (Dependency IN ITEMS ${dependencies})
 endforeach ()
 
 add_library(${PROJECT_NAME} SHARED
-        src/FSM/StatePassive.cpp
+        src/FSM/FSMPassive.cpp
         src/FSM/BaseFixedStand.cpp
-        src/FSM/StateFixedDown.cpp
+        src/FSM/FSMFixedDown.cpp
 )
 
 target_include_directories(${PROJECT_NAME}

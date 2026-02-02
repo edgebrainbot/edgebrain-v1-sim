@@ -55,15 +55,15 @@ public:
     VirtualStatusIndicatorNode() : Node("virtual_status_indicator_node")
     {
         // Create publisher for visualization marker
-        safe_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
-            "/edge/safe_indicator_marker", 10);
+        safety_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+            "/edge/safety_indicator_marker", 10);
         
-        // Create publisher for action mode marker
-        action_mode_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
-            "/edge/action_mode_indicator_marker", 10);
+        // Create publisher for controller marker
+        controller_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(
+            "/edge/controller_indicator_marker", 10);
 
         // Subscribe to safety state
-        safe_status_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+        safety_status_sub_ = this->create_subscription<std_msgs::msg::Bool>(
             "/edge/is_safe", 10,
             std::bind(&VirtualStatusIndicatorNode::safeStatusCallback, this, std::placeholders::_1));
 
@@ -72,29 +72,29 @@ public:
             "/edge/terminal_action", 10,
             std::bind(&VirtualStatusIndicatorNode::actionModeCallback, this, std::placeholders::_1));
 
-        // Initialize safe_marker
-        safe_marker_.header.frame_id = "base_link";
-        safe_marker_.ns = "virtual_status_indicator";
-        safe_marker_.id = 0;
-        safe_marker_.type = visualization_msgs::msg::Marker::SPHERE;
-        safe_marker_.action = visualization_msgs::msg::Marker::ADD;
-        safe_marker_.pose.position.x = 0.0;
-        safe_marker_.pose.position.y = 0.0;
-        safe_marker_.pose.position.z = 0.0;
-        safe_marker_.scale.x = safe_marker_.scale.y = safe_marker_.scale.z = 0.2;
-        safe_marker_.color.a = 1.0;
+        // Initialize safety_marker
+        safety_marker_.header.frame_id = "base_link";
+        safety_marker_.ns = "virtual_status_indicator";
+        safety_marker_.id = 0;
+        safety_marker_.type = visualization_msgs::msg::Marker::SPHERE;
+        safety_marker_.action = visualization_msgs::msg::Marker::ADD;
+        safety_marker_.pose.position.x = 0.0;
+        safety_marker_.pose.position.y = 0.0;
+        safety_marker_.pose.position.z = 0.0;
+        safety_marker_.scale.x = safety_marker_.scale.y = safety_marker_.scale.z = 0.2;
+        safety_marker_.color.a = 1.0;
 
-        // Initialize action_mode_marker
-        action_mode_marker_.header.frame_id = "base_link";
-        action_mode_marker_.ns = "virtual_status_indicator";
-        action_mode_marker_.id = 0;
-        action_mode_marker_.type = visualization_msgs::msg::Marker::SPHERE;
-        action_mode_marker_.action = visualization_msgs::msg::Marker::ADD;
-        action_mode_marker_.pose.position.x = 0.0;
-        action_mode_marker_.pose.position.y = 0.0;
-        action_mode_marker_.pose.position.z = 0.0;
-        action_mode_marker_.scale.x = action_mode_marker_.scale.y = action_mode_marker_.scale.z = 0.2;
-        action_mode_marker_.color.a = 1.0;
+        // Initialize controller_marker
+        controller_marker_.header.frame_id = "base_link";
+        controller_marker_.ns = "virtual_status_indicator";
+        controller_marker_.id = 0;
+        controller_marker_.type = visualization_msgs::msg::Marker::SPHERE;
+        controller_marker_.action = visualization_msgs::msg::Marker::ADD;
+        controller_marker_.pose.position.x = 0.0;
+        controller_marker_.pose.position.y = 0.0;
+        controller_marker_.pose.position.z = 0.0;
+        controller_marker_.scale.x = controller_marker_.scale.y = controller_marker_.scale.z = 0.2;
+        controller_marker_.color.a = 1.0;
 
         RCLCPP_INFO(this->get_logger(), "🟢 Virtual Status Indicator Node initialized.");
     }
@@ -103,39 +103,39 @@ private:
     void safeStatusCallback(const std_msgs::msg::Bool::SharedPtr msg)
     {
         bool is_safe = msg->data;
-        safe_marker_.header.stamp = this->now();
+        safety_marker_.header.stamp = this->now();
 
         if (is_safe) {
-            safe_marker_.color =  toColorRGBA(color_map["GREEN"]);
+            safety_marker_.color =  toColorRGBA(color_map["GREEN"]);
         }
         else {
-            safe_marker_.color = toColorRGBA(color_map["RED"]);
+            safety_marker_.color = toColorRGBA(color_map["RED"]);
         }
 
-        safe_marker_pub_->publish(safe_marker_);
+        safety_marker_pub_->publish(safety_marker_);
     }
 
     void actionModeCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
     {
         int action_mode = msg->action_mode;     // 0 -- student, 1 -- teacher
-        action_mode_marker_.header.stamp = this->now();
+        controller_marker_.header.stamp = this->now();
 
         if (action_mode) {       // teacher mode
-            action_mode_marker_.color = toColorRGBA(color_map["YELLOW"]);
+            controller_marker_.color = toColorRGBA(color_map["YELLOW"]);
         }
         else {      // student mode
-            action_mode_marker_.color = toColorRGBA(color_map["BLUE"]);
+            controller_marker_.color = toColorRGBA(color_map["BLUE"]);
         }
 
-        action_mode_marker_pub_->publish(action_mode_marker_);
+        controller_marker_pub_->publish(controller_marker_);
     }
 
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr safe_marker_pub_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr action_mode_marker_pub_;
-    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr safe_status_sub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr safety_marker_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr controller_marker_pub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr safety_status_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_mode_sub_;
-    visualization_msgs::msg::Marker safe_marker_;
-    visualization_msgs::msg::Marker action_mode_marker_;
+    visualization_msgs::msg::Marker safety_marker_;
+    visualization_msgs::msg::Marker controller_marker_;
 };
 
 int main(int argc, char **argv)

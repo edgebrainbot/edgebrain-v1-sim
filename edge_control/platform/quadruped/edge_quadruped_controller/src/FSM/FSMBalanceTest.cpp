@@ -1,13 +1,13 @@
 #include "edge_quadruped_controller/gait/PhaseScheduler.h"
-#include "edge_quadruped_controller/FSM/StateBalanceTest.h"
+#include "edge_quadruped_controller/FSM/FSMBalanceTest.hpp"
 #include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 
-StateBalanceTest::StateBalanceTest(CtrlInterfaces& ctrl_interfaces,
+FSMBalanceTest::FSMBalanceTest(CtrlInterfaces& ctrl_interfaces,
                                    CtrlComponent& ctrl_component,
                                    const std::vector<double>& stable_gains)
     : FSMState(FSMStateName::BALANCETEST,
-               "balance test",
+               "FSM Balance Test",
                ctrl_interfaces),
       estimator_(ctrl_component.estimator_),
       robot_model_(ctrl_component.robot_model_),
@@ -32,7 +32,7 @@ StateBalanceTest::StateBalanceTest(CtrlInterfaces& ctrl_interfaces,
     Kd_w_ = Vec3(30, 30, 30).asDiagonal();
 }
 
-void StateBalanceTest::enter()
+void FSMBalanceTest::enter()
 {
     pcd_init_ = estimator_->getPosition();
     pcd_ = pcd_init_;
@@ -40,7 +40,7 @@ void StateBalanceTest::enter()
     setStableGain();
 }
 
-void StateBalanceTest::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
+void FSMBalanceTest::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
 {
     pcd_(0) = pcd_init_(0) + invNormalize(ctrl_interfaces_.control_inputs_.ly, _xMin, _xMax);
     pcd_(1) = pcd_init_(1) - invNormalize(ctrl_interfaces_.control_inputs_.lx, _yMin, _yMax);
@@ -52,13 +52,13 @@ void StateBalanceTest::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/
     calcTorque();
 }
 
-void StateBalanceTest::exit()
+void FSMBalanceTest::exit()
 {
     // Reset phase scheduler to SWING_ALL
     phase_scheduler_->status_ = PhaseStatus::SWING_ALL;
 }
 
-FSMStateName StateBalanceTest::checkChange()
+FSMStateName FSMBalanceTest::checkChange()
 {
     switch (ctrl_interfaces_.control_inputs_.command)
     {
@@ -71,7 +71,7 @@ FSMStateName StateBalanceTest::checkChange()
     }
 }
 
-void StateBalanceTest::calcTorque()
+void FSMBalanceTest::calcTorque()
 {
     const auto B2G_Rotation = estimator_->getRotation();
     const RotMat G2B_Rotation = B2G_Rotation.transpose();
@@ -110,7 +110,7 @@ void StateBalanceTest::calcTorque()
     }
 }
 
-void StateBalanceTest::setStableGain() const
+void FSMBalanceTest::setStableGain() const
 {
     for (int i = 0; i < 12; i++)
     {

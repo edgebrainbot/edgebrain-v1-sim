@@ -1,8 +1,7 @@
-#include "controller_common/FSM/StateFixedDown.h"
-
 #include <cmath>
+#include "controller_common/FSM/FSMFixedDown.h"
 
-StateFixedDown::StateFixedDown(CtrlInterfaces& ctrl_interfaces,
+FSMFixedDown::FSMFixedDown(CtrlInterfaces& ctrl_interfaces,
                                const std::vector<double>& target_pos,
                                const double kp,
                                const double kd)
@@ -16,7 +15,7 @@ StateFixedDown::StateFixedDown(CtrlInterfaces& ctrl_interfaces,
     }
 }
 
-void StateFixedDown::enter()
+void FSMFixedDown::enter()
 {
     for (int i = 0; i < 12; i++)
     {
@@ -33,7 +32,7 @@ void StateFixedDown::enter()
     }
 }
 
-void StateFixedDown::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
+void FSMFixedDown::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
 {
     percent_ += 1 / duration_;
     phase = std::tanh(percent_);
@@ -44,12 +43,12 @@ void StateFixedDown::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*p
     }
 }
 
-void StateFixedDown::exit()
+void FSMFixedDown::exit()
 {
     percent_ = 0;
 }
 
-FSMStateName StateFixedDown::checkChange()
+FSMStateName FSMFixedDown::checkChange()
 {
     if (percent_ < 1.5)
     {

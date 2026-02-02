@@ -5,7 +5,7 @@
 
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
-#include "edge_quadruped_controller/FSM/StateTrotting.h"
+#include "edge_quadruped_controller/FSM/FSMTrotting.hpp"
 #include <edge_quadruped_controller/utils/math/mathTools.h>
 #include <edge_quadruped_controller/control/CtrlComponent.h>
 #include <edge_quadruped_controller/estimator/Estimator.hpp>
@@ -13,12 +13,12 @@
 
 using namespace edge::control::quadruped;
 
-StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
+FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
                              CtrlComponent& ctrl_component,
                              const std::vector<double>& swing_gains,
                              const std::vector<double>& stable_gains,
                              double gait_height) 
-                             : FSMState(FSMStateName::TROTTING, "trotting",
+                             : FSMState(FSMStateName::TROTTING, "FSM Trotting",
                                 ctrl_interfaces),
                                 estimator_(ctrl_component.estimator_),
                                 robot_model_(ctrl_component.robot_model_),
@@ -57,7 +57,7 @@ StateTrotting::StateTrotting(CtrlInterfaces& ctrl_interfaces,
 
 }
 
-void StateTrotting::enter()
+void FSMTrotting::enter()
 {
     // pcd_ = estimator_->getPosition();
     // pcd_(2) = -estimator_->getFeetPosInBodyFrame()(2, 0);
@@ -77,7 +77,7 @@ void StateTrotting::enter()
     step_count_ = 0;
 }
 
-void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
+void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
                         edge_msgs::msg::EdgeAction& latest_action,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
@@ -102,8 +102,8 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
     nav_goal_(0) = goalX;
     nav_goal_(1) = goalY;
 
-    std::cout << "Body pos: " << pos_body_.transpose() << std::endl;
-    std::cout << "Body vel: " << vel_body_.transpose() << std::endl;
+    // std::cout << "Body pos: " << pos_body_.transpose() << std::endl;
+    // std::cout << "Body vel: " << vel_body_.transpose() << std::endl;
 
     B2G_RotMat = estimator_->getRotation();
     G2B_RotMat = B2G_RotMat.transpose();
@@ -128,12 +128,12 @@ void StateTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*pe
     calcGain();
 }
 
-void StateTrotting::exit()
+void FSMTrotting::exit()
 {
     phase_scheduler_->status_ = PhaseStatus::SWING_ALL;
 }
 
-FSMStateName StateTrotting::checkChange()
+FSMStateName FSMTrotting::checkChange()
 {
     if (is_reset_)
     {
@@ -158,7 +158,7 @@ FSMStateName StateTrotting::checkChange()
     }
 }
 
-void StateTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
+void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
 {
     // /* Movement */
     // v_cmd_body_(0) = invNormalize(ctrl_interfaces_.control_inputs_.ly, v_x_limit_(0), v_x_limit_(1));
@@ -184,12 +184,12 @@ void StateTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
 
     d_yaw_cmd_ = wz_in;
 
-    // 滤波
+    // Smoothing
     d_yaw_cmd_ = 0.9 * d_yaw_cmd_past_ + (1 - 0.9) * d_yaw_cmd_;
     d_yaw_cmd_past_ = d_yaw_cmd_;
 }
 
-void StateTrotting::calcCmd()
+void FSMTrotting::calcCmd()
 {
     /* Movement */
     vel_cmd_global_ = B2G_RotMat * v_cmd_body_;
@@ -212,7 +212,7 @@ void StateTrotting::calcCmd()
     w_cmd_global_(2) = d_yaw_cmd_;
 }
 
-void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
+void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
@@ -228,11 +228,11 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     curr_robot_state_ = getRobotState(true);
     curr_tracking_error_tea_ = getTrackingError();
     auto curr_tracking_error_stu_ = getDRLStudentGoalState() - curr_robot_state_;
-    std::cout << "tracking error: ";
-    for (int i = 0; i < 12; i++) {
-        std::cout << curr_tracking_error_tea_[i] << " ";
-    }
-    std::cout << std::endl;
+    // std::cout << "tracking error: ";
+    // for (int i = 0; i < 12; i++) {
+    //     std::cout << curr_tracking_error_tea_[i] << " ";
+    // }
+    // std::cout << std::endl;
 
     // Publish transition topic
     pubTransitionTopic(transition_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
@@ -246,8 +246,8 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     auto state_msg = EigenToVec12Msg(curr_robot_state_);
     robot_state_pub_->publish(state_msg);
 
-    std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
-    std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;
+    // std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
+    // std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;
 
     // std::cout << "pos error: " << pos_error_.transpose() << std::endl;
     // std::cout << "vel error: " << vel_error_.transpose() << std::endl;
@@ -258,8 +258,8 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     for (int i = 0; i < 6; i++) {
         accel(i) = latest_action.control_action[i];
     }
-    std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
-    std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
+    // std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
+    // std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
 
     accel(0) = saturation(accel(0), Vec2(-3, 3));
     accel(1) = saturation(accel(1), Vec2(-3, 3));
@@ -271,7 +271,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     accel(4) = saturation(accel(4), Vec2(-40, 40));
     accel(5) = saturation(accel(5), Vec2(-20, 20));
 
-    std::cout << "acc command: " << accel.transpose() << std::endl;
+    // std::cout << "acc command: " << accel.transpose() << std::endl;
 
     edge_msgs::msg::EdgeAction latest_action_saturated = EigenToEdgeActionMsg(accel, latest_action.action_mode);
 
@@ -315,8 +315,8 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     // d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
     // d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
 
-    std::cout << "actual dd_pcd: " << dd_pcd.transpose() << std::endl;
-    std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;
+    // std::cout << "actual dd_pcd: " << dd_pcd.transpose() << std::endl;
+    // std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;
 
     Vec34 force_feet_global =
         -balance_ctrl_->calcGRF(dd_pcd, d_wbd, B2G_RotMat, estimator_->getFeetPosInBodyFrame(), phase_scheduler_->contact_);
@@ -352,7 +352,7 @@ void StateTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedP
     last_robot_state_ = curr_robot_state_;
 }
 
-void StateTrotting::calcQQd()
+void FSMTrotting::calcQQd()
 {
     const Vec34 pos_feet_body = robot_model_->getFeetPosInBodyFrame();
 
@@ -373,7 +373,7 @@ void StateTrotting::calcQQd()
     }
 }
 
-void StateTrotting::calcGain() const
+void FSMTrotting::calcGain() const
 {
     for (int i(0); i < 4; ++i)
     {
@@ -398,7 +398,7 @@ void StateTrotting::calcGain() const
     }
 }
 
-bool StateTrotting::checkStepOrNot()
+bool FSMTrotting::checkStepOrNot()
 {
     // if (fabs(v_cmd_body_(0)) > 0.03 || fabs(v_cmd_body_(1)) > 0.03 ||
     //     fabs(pos_error_(0)) > 0.08 || fabs(pos_error_(1)) > 0.08 ||
@@ -412,7 +412,7 @@ bool StateTrotting::checkStepOrNot()
 }
 
 // Publish transition topic
-void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
                                        const edge_msgs::msg::EdgeAction& latest_action,
                                        double obstacleAvgDistance, double obstacleMinDistance, 
                                        bool is_goal_reached, bool is_fall)
@@ -461,11 +461,11 @@ void StateTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transit
     transition.done = is_goal_reached;
 
     transition_pub->publish(transition);
-    std::cout << "Published to transition topic." << std::endl;
+    // std::cout << "Published to transition topic." << std::endl;
 }
 
 
-Vector12d StateTrotting::getTrackingError() const
+Vector12d FSMTrotting::getTrackingError() const
 {
     Vector12d tracking_error = Vector12d::Zero();
     
@@ -492,19 +492,19 @@ Vector12d StateTrotting::getTrackingError() const
 }
 
 
-std::vector<double> StateTrotting::getObservation() const
+std::vector<double> FSMTrotting::getObservation() const
 {
     Vector12d last_base_observation =  getDRLStudentGoalState() - last_robot_state_;
     return EigenToVector(last_base_observation);
 }
 
-std::vector<double> StateTrotting::getObservationNext() const
+std::vector<double> FSMTrotting::getObservationNext() const
 {
     Vector12d curr_base_observation =  getDRLStudentGoalState() - curr_robot_state_;
     return EigenToVector(curr_base_observation);
 }
 
-edge_msgs::msg::EdgeAction StateTrotting::getLearnedDRLAction() const
+edge_msgs::msg::EdgeAction FSMTrotting::getLearnedDRLAction() const
 {
     /**
      * Calculate DRL action by removing residual effect from teacher action
@@ -519,7 +519,7 @@ edge_msgs::msg::EdgeAction StateTrotting::getLearnedDRLAction() const
     return EigenToEdgeActionMsg(learned_drl_action, last_edge_action_.action_mode);
 }
 
-Vector12d StateTrotting::getRobotState(bool is_global/* = true*/) const
+Vector12d FSMTrotting::getRobotState(bool is_global/* = true*/) const
 {
     /**
     * Get the robot state in either global frame or body frame
@@ -547,7 +547,7 @@ Vector12d StateTrotting::getRobotState(bool is_global/* = true*/) const
     return robotState;
 }
 
-Vector12d StateTrotting::getDRLStudentGoalState() const
+Vector12d FSMTrotting::getDRLStudentGoalState() const
 {
     Vector12d robotState = Vector12d::Zero();
 

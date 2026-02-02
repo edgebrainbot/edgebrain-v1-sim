@@ -6,10 +6,10 @@
 #pragma once
 
 #include "control/CtrlComponent.h"
-#include "FSM/StateFixedStand.h"
-#include "FSM/StateFreeStand.h"
-#include "FSM/StateBalanceTest.h"
-#include "FSM/StateTrotting.h"
+#include "FSM/FSMFixedStand.hpp"
+#include "FSM/FSMFreeStand.hpp"
+#include "FSM/FSMBalanceTest.hpp"
+#include "FSM/FSMTrotting.hpp"
 
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
@@ -18,8 +18,8 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <controller_interface/controller_interface.hpp>
 #include <controller_common/FSM/FSMState.h>
-#include <controller_common/FSM/StatePassive.h>
-#include <controller_common/FSM/StateFixedDown.h>
+#include <controller_common/FSM/FSMPassive.h>
+#include <controller_common/FSM/FSMFixedDown.h>
 #include <controller_common/common/enumClass.h>
 #include <controller_common/common/mathTypes.h>
 
@@ -43,12 +43,12 @@ namespace edge::control::quadruped
     struct FSMStateList
     {
         std::shared_ptr<FSMState> invalid;
-        std::shared_ptr<StatePassive> passive;
-        std::shared_ptr<StateFixedDown> fixedDown;
-        std::shared_ptr<StateFixedStand> fixedStand;
-        std::shared_ptr<StateFreeStand> freeStand;
-        std::shared_ptr<StateTrotting> trotting;
-        std::shared_ptr<StateBalanceTest> balanceTest;
+        std::shared_ptr<FSMPassive> passive;
+        std::shared_ptr<FSMFixedDown> fixedDown;
+        std::shared_ptr<FSMFixedStand> fixedStand;
+        std::shared_ptr<FSMFreeStand> freeStand;
+        std::shared_ptr<FSMTrotting> trotting;
+        std::shared_ptr<FSMBalanceTest> balanceTest;
     };
 
     class EdgeQuadrupedController final : public controller_interface::ControllerInterface

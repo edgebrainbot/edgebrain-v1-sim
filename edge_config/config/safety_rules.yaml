@@ -95,7 +95,7 @@ switching:
     obstacle_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 0.5
+      limit: 0.4
       unit: m
 
   # =========================================================

@@ -1,16 +1,16 @@
 #include <cmath>
-#include "edge_quadruped_controller/FSM/StateFreeStand.h"
+#include "edge_quadruped_controller/FSM/FSMFreeStand.hpp"
 #include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 
 #include "edge_quadruped_controller/utils/math/mathTools.h"
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
 
-StateFreeStand::StateFreeStand(CtrlInterfaces& ctrl_interfaces,
-                               CtrlComponent& ctrl_component,
-                               const double kp,
-                               const double kd)
+FSMFreeStand::FSMFreeStand(CtrlInterfaces& ctrl_interfaces,
+                           CtrlComponent& ctrl_component,
+                           const double kp,
+                           const double kd)
     : FSMState(
-          FSMStateName::FREESTAND, "free stand",
+          FSMStateName::FREESTAND, "FSM Free Stand",
           ctrl_interfaces),
       robot_model_(ctrl_component.robot_model_),
       kp_(kp), kd_(kd)
@@ -25,7 +25,7 @@ StateFreeStand::StateFreeStand(CtrlInterfaces& ctrl_interfaces,
     height_min_ = -height_max_;
 }
 
-void StateFreeStand::enter()
+void FSMFreeStand::enter()
 {
     for (int i = 0; i < 12; i++)
     {
@@ -34,10 +34,11 @@ void StateFreeStand::enter()
     }
 
     init_joint_pos_ = robot_model_->current_joint_pos_;
-    // 获取初始足端位置（对应原版_initVecXP）
+    
+    // Get initial foot positions (corresponding to original _initVecXP)
     init_foot_pos_ = robot_model_->getFeetPosInBodyFrame();
 
-    // 使用FR腿位置作为参考点，计算其他足端相对于FR腿的位置
+    // Take FR leg position as reference point, calculate other foot positions relative to FR leg
     fr_init_pos_ = init_foot_pos_.col(0);
     for (int i = 0; i < 4; ++i)
     {
@@ -46,7 +47,7 @@ void StateFreeStand::enter()
     ctrl_interfaces_.control_inputs_.command = 0;
 }
 
-void StateFreeStand::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
+void FSMFreeStand::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/)
 {
     calc_body_target(invNormalize(ctrl_interfaces_.control_inputs_.lx, row_min_, row_max_),
                      invNormalize(ctrl_interfaces_.control_inputs_.ly, pitch_min_, pitch_max_),
@@ -54,11 +55,11 @@ void StateFreeStand::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*p
                      invNormalize(ctrl_interfaces_.control_inputs_.ry, height_min_, height_max_));
 }
 
-void StateFreeStand::exit()
+void FSMFreeStand::exit()
 {
 }
 
-FSMStateName StateFreeStand::checkChange()
+FSMStateName FSMFreeStand::checkChange()
 {
     switch (ctrl_interfaces_.control_inputs_.command)
     {
@@ -71,7 +72,7 @@ FSMStateName StateFreeStand::checkChange()
     }
 }
 
-void StateFreeStand::calc_body_target(const double row, const double pitch,
+void FSMFreeStand::calc_body_target(const double row, const double pitch,
                                       const double yaw, const double height)
 {
     // 使用原版算法计算目标足端位置
@@ -88,7 +89,7 @@ void StateFreeStand::calc_body_target(const double row, const double pitch,
     }
 }
 
-Vec34 StateFreeStand::calcOP(const double row, const double pitch, const double yaw, const double height)
+Vec34 FSMFreeStand::calcOP(const double row, const double pitch, const double yaw, const double height)
 {
     // 对应原版_calcOP函数
     // 计算机身目标位置：从原点开始，加上高度偏移

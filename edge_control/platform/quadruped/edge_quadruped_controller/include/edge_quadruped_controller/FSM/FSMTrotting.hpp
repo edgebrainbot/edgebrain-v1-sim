@@ -41,10 +41,10 @@ using namespace edge::control::quadruped;
 using namespace edge::ros_interfaces;
 using namespace edge::config;
 
-class StateTrotting final : public FSMState {
+class FSMTrotting final : public FSMState {
 
 public:
-    explicit StateTrotting(CtrlInterfaces &ctrl_interfaces,
+    explicit FSMTrotting(CtrlInterfaces &ctrl_interfaces,
                            CtrlComponent &ctrl_component,
                            const std::vector<double>& swing_gains,
                            const std::vector<double>& stable_gains,

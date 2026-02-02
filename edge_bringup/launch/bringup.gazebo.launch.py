@@ -139,7 +139,7 @@ def generate_launch_description():
         period=1.0,
         actions=[ExecuteProcess(
             cmd=[
-                'ros2', 'topic', 'pub', '-r', '100',
+                'ros2', 'topic', 'pub', '-r', '1',
                 '/goal_point',
                 'geometry_msgs/msg/PointStamped',
                 f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'

@@ -194,12 +194,15 @@ void FARMaster::MainLoopCallBack() {
     if (!FARUtil::IsDebug) printf("\033[2K");
     std::cout<<"    "<<"Local V-Graph Updated. Number of local vertices: "<<ContourGraph::contour_graph_.size()<<std::endl;
   }
+  
   /* Adjust heights with terrain */
   map_handler_.AdjustCTNodeHeight(ContourGraph::contour_graph_);
   map_handler_.AdjustNodesHeight(nav_graph_);
+  
   // Truncate for local range nodes
   graph_manager_.UpdateGlobalNearNodes();
   near_nav_graph_ = graph_manager_.GetExtendLocalNode();
+  
   // Match near nav nodes with contour
   contour_graph_.MatchContourWithNavGraph(nav_graph_, near_nav_graph_, new_ctnodes_);
   if (master_params_.is_visual_opencv) {
@@ -207,6 +210,7 @@ void FARMaster::MainLoopCallBack() {
     cv::Mat cloud_img = contour_detector_.GetCloudImgMat();
     contour_detector_.ShowCornerImage(cloud_img, new_vertices_ptr_);
   }
+  
   /* update planner graph */
   new_nodes_.clear();
   if (!is_stop_update_ && graph_manager_.ExtractGraphNodes(new_ctnodes_)) {
@@ -216,6 +220,7 @@ void FARMaster::MainLoopCallBack() {
     if (!FARUtil::IsDebug) printf("\033[2K");
     std::cout<<"    "<< "Number of new vertices adding to global V-Graph: "<< new_nodes_.size()<<std::endl;
   }
+  
   /* Graph Updating */
   graph_manager_.UpdateNavGraph(new_nodes_, is_stop_update_, clear_nodes_);
 

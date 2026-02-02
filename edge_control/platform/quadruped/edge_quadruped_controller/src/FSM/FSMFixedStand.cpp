@@ -1,7 +1,7 @@
-#include "edge_quadruped_controller/FSM/StateFixedStand.h"
+#include "edge_quadruped_controller/FSM/FSMFixedStand.hpp"
 #include "edge_quadruped_controller/control/CtrlComponent.h"
 
-StateFixedStand::StateFixedStand(CtrlInterfaces& ctrl_interfaces, 
+FSMFixedStand::FSMFixedStand(CtrlInterfaces& ctrl_interfaces, 
                                  CtrlComponent& ctrl_component,
                                  const std::vector<double>& target_pos,
                                  const double kp,
@@ -11,12 +11,12 @@ StateFixedStand::StateFixedStand(CtrlInterfaces& ctrl_interfaces,
 {
 }
 
-void StateFixedStand::enter() {
+void FSMFixedStand::enter() {
     // Call parent enter method
     BaseFixedStand::enter();
 }
 
-FSMStateName StateFixedStand::checkChange()
+FSMStateName FSMFixedStand::checkChange()
 {
     if (launch_after_reset_) {
         launch_after_reset_ = false;
