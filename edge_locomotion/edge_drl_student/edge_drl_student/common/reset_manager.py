@@ -231,9 +231,9 @@ class ResetManager:
         reset_start: float = time.time()
         
         # Wait for Reset Coordinator service
-        self.node.get_logger().info('⏳ Waiting for Reset Coordinator service...')
-        if not self.coordinator_client.wait_for_service(timeout_sec=2.0):
-            error_msg: str = f'Reset Coordinator service not available after 2.0s'
+        self.node.get_logger().info('⏳ Waiting for Gz Reset Handler service...')
+        if not self.gz_reset_client.wait_for_service(timeout_sec=2.0):
+            error_msg: str = f'Gz Reset Handler service not available after 2.0s'
             self.node.get_logger().error(f'❌ {error_msg}')
             self.reset_failure_count += 1
             self.is_resetting = False
@@ -246,8 +246,8 @@ class ResetManager:
         request = Trigger.Request()
         
         try:
-            self.node.get_logger().info('📞 Calling Reset Coordinator...')
-            future = self.coordinator_client.call_async(request)
+            self.node.get_logger().info('📞 Calling Gz Reset Handler...')
+            future = self.gz_reset_client.call_async(request)
             
             # Polling with timeout and progress display
             start_time: float = time.time()
@@ -257,7 +257,7 @@ class ResetManager:
                 elapsed: float = time.time() - start_time
                 
                 if elapsed > self.reset_timeout:
-                    error_msg = f'Reset Coordinator timeout after {elapsed:.2f}s'
+                    error_msg = f'Gz Reset Handler timeout after {elapsed:.2f}s'
                     self.node.get_logger().error(f'❌ {error_msg}')
                     self.reset_failure_count += 1
                     elapsed_time: float = time.time() - reset_start
