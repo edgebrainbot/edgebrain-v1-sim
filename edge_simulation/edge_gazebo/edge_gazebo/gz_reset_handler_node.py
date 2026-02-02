@@ -15,9 +15,9 @@ from std_srvs.srv import Empty, Trigger
 from pathlib import Path  
 
 
-class ResetCoordinatorNode(Node):
+class GzResetHandlerNode(Node):
     """
-    Reset Coordinator Node
+    Gz Reset Handler Node
     
     Receives reset request from DRL student via /edge/reset,
     then coordinates reset of both Controller and Gazebo,
@@ -25,7 +25,7 @@ class ResetCoordinatorNode(Node):
     """
     
     def __init__(self):
-        super().__init__('reset_coordinator_node')
+        super().__init__('gz_reset_handler_node')
         
         # Use reentrant callback group
         self.callback_group = ReentrantCallbackGroup()
@@ -103,7 +103,7 @@ class ResetCoordinatorNode(Node):
         # ========== Create Main Service ==========
         self.edge_reset_srv = self.create_service(
             Trigger,
-            '/edge/reset/coordinator',
+            '/edge/reset/gz_handler',
             self.edge_reset_callback,
             callback_group=self.callback_group
         )
@@ -140,7 +140,7 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info('🎯 Reset Coordinator Node Initialized')
         self.get_logger().info('=' * 70)
         self.get_logger().info('📡 Services:')
-        self.get_logger().info('  Main: /edge/reset/coordinator (Trigger)')
+        self.get_logger().info('  Main: /edge/reset/gz_handler (Trigger)')
         self.get_logger().info(f'  Controller Reset: {self.controller_reset_service_name}')
         self.get_logger().info(f'  Controller Start: {self.controller_start_service_name}')
         self.get_logger().info('─' * 70)
@@ -151,7 +151,7 @@ class ResetCoordinatorNode(Node):
         self.get_logger().info(f'  Delay After Reset: {self.delay_after_reset}s')
         self.get_logger().info(f'  Reset Attempts: {self.reset_attempts}')
         self.get_logger().info('=' * 70)
-        self.get_logger().info('✅ Ready to receive reset requests on /edge/reset/coordinator')
+        self.get_logger().info('✅ Ready to receive reset requests on /edge/reset/gz_handler')
         self.get_logger().info('=' * 70)
 
     def edge_reset_callback(self, request: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
@@ -160,7 +160,7 @@ class ResetCoordinatorNode(Node):
 
         self.get_logger().info('')
         self.get_logger().info('═' * 70)
-        self.get_logger().info('🔄 [RESET REQUEST] Received from DRL student on /edge/reset/coordinator')
+        self.get_logger().info('🔄 [RESET REQUEST] Received from DRL student on /edge/reset/gz_handler')
         self.get_logger().info('═' * 70)
         
         success, message = self._perform_coordinated_reset()
@@ -718,7 +718,7 @@ class ResetCoordinatorNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     
-    node = ResetCoordinatorNode()
+    node = GzResetHandlerNode()
     
     executor = MultiThreadedExecutor()
     executor.add_node(node)
@@ -726,7 +726,7 @@ def main(args=None):
     try:
         executor.spin()
     except KeyboardInterrupt:
-        node.get_logger().info('Shutting down Reset Coordinator Node')
+        node.get_logger().info('Shutting down Gz Reset Handler Node')
         stats = node.get_reset_stats()
         node.get_logger().info('=' * 70)
         node.get_logger().info('📊 Final Reset Statistics:')

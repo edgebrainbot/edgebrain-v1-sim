@@ -136,7 +136,7 @@ class DRLStudentNode(Node):
             reset_timeout=15.0,
             logger=self.logger,
             reset_service_name='/edge/reset',
-            coordinator_service_name='/edge/reset/coordinator'
+            gz_reset_service_name='/edge/reset/gz_handler'
         )
         
         # Action bounds

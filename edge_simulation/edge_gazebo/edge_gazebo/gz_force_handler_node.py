@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # ============================================================================
 """
-External Force Application Node - Supports Impulse and Pulse Forces
+Gz Force Handler Node - Supports Impulse and Pulse Forces
 """
 
 import rclpy
@@ -15,9 +15,9 @@ import subprocess
 import threading
 import time
 
-class ExternalForceNode(Node):
+class GzForceHandlerNode(Node):
     def __init__(self):
-        super().__init__('external_force_node')
+        super().__init__('gz_force_handler_node')
         
         # Parameters
         self.declare_parameter('world_name', 'obstacle_course')
@@ -63,7 +63,7 @@ class ExternalForceNode(Node):
     def print_info(self):
         """Print node information"""
         self.get_logger().info('='*70)
-        self.get_logger().info('🚀 External Force Node Started')
+        self.get_logger().info('🚀 GZ Force Handler Node Started')
         self.get_logger().info('='*70)
         self.get_logger().info(f'🌍 World: {self.world}')
         self.get_logger().info(f'📦 Model: {self.model}')
@@ -269,7 +269,7 @@ class ExternalForceNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = ExternalForceNode()
+    node = GzForceHandlerNode()
     
     try:
         rclpy.spin(node)

@@ -302,10 +302,10 @@ Visualization Manager:
         clear_nodes: false
         free_goal: true
         free_odom_position: false
-        last_nav_node: true
+        last_nav_node: false
         original_goal: true
         out_contour: true
-        waypoint: true
+        waypoint: false
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -717,5 +717,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1476
-  X: 665
-  Y: 90
+  X: 690
+  Y: 74

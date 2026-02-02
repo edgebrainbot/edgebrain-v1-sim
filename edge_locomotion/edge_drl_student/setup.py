@@ -6,7 +6,7 @@ package_name = 'edge_drl_student'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='1.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -19,8 +19,8 @@ setup(
     zip_safe=True,
     maintainer='Yihao Cai',
     maintainer_email='yihao.cai@wayne.edu',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='The ros2 package for Deep Reinforcement Learning Student in Edge Brain Go2',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

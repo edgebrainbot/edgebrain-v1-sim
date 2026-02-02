@@ -32,19 +32,15 @@ def generate_launch_description():
     use_global_rviz_arg = DeclareLaunchArgument(
         "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
     )
-    reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
-    reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")
-    reset_position_z_arg = DeclareLaunchArgument("reset_position_z", default_value="0.35", description="Reset Z")
+    use_sim_time_arg = DeclareLaunchArgument(
+        "use_sim_time", default_value="true", description="Use simulation (Gazebo) clock"
+    )
 
     robot = LaunchConfiguration("robot")
     namespace = LaunchConfiguration("namespace")
     world_name = LaunchConfiguration("world_name")
     use_global_rviz = LaunchConfiguration("use_global_rviz")
-    reset_position_x = LaunchConfiguration("reset_position_x")
-    reset_position_y = LaunchConfiguration("reset_position_y")
-    reset_position_z = LaunchConfiguration("reset_position_z")
-
-    set_sim_time = SetParameter(name='use_sim_time', value=True)
+    use_sim_time = LaunchConfiguration("use_sim_time")
 
     # ------------------------
     # Include Launch Descriptions
@@ -60,7 +56,7 @@ def generate_launch_description():
             "namespace": namespace,
             "robot": robot,
             "world": world_name,
-            "use_sim_time": "true",
+            "use_sim_time": use_sim_time,
             "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
         }.items()
     )
@@ -75,7 +71,7 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
-            "use_sim_time": "true"
+            "use_sim_time": use_sim_time
         }.items()
     )
 
@@ -89,7 +85,7 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
-            "use_sim_time": "true"
+            "use_sim_time": use_sim_time
         }.items()
     )
 
@@ -103,7 +99,7 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
-            "use_sim_time": "true"
+            "use_sim_time": use_sim_time
         }.items()
     )
 
@@ -118,8 +114,23 @@ def generate_launch_description():
             "namespace": namespace,
             "robot": robot,
             "world": world_name,
-            "use_sim_time": "true",
+            "use_sim_time": use_sim_time,
             "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
+        }.items()
+    )
+
+    gz_interact_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_gazebo"),
+                "launch", "gz_interact.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "robot_name": robot,
+            "namespace": namespace,
+            "world_name": world_name,
+            "use_sim_time": use_sim_time
         }.items()
     )
 
@@ -131,7 +142,7 @@ def generate_launch_description():
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
         # output='screen',
-        parameters=[{'use_sim_time': True}]
+        parameters=[{'use_sim_time': use_sim_time}]
     )
 
     goal = [6.0, -6.0, 0.0]
@@ -148,29 +159,6 @@ def generate_launch_description():
         )]
     )
 
-    gz_reset_handler_node = Node(
-        package='edge_bringup', 
-        executable='gazebo_reset_handler', 
-        name='reset_coordinator_node',
-        output='screen',
-        parameters=[{
-            'use_sim_time': True,
-            'world_name': world_name,
-            'robot_name': robot,
-            'reset_position_x': reset_position_x,
-            'reset_position_y': reset_position_y,
-            'reset_position_z': reset_position_z,
-            'reset_orientation_x': 0.0,
-            'reset_orientation_y': 0.0,
-            'reset_orientation_z': 0.0,
-            'reset_orientation_w': 1.0,
-            'service_timeout': 3000,
-            'reset_world': False,
-            'reset_robot_pose': True,
-            'wait_after_reset': 0.5,
-        }]
-    )
-
     rviz_config_file = PathJoinSubstitution([
         FindPackageShare('edge_bringup'),
         'rviz',
@@ -183,19 +171,16 @@ def generate_launch_description():
         name='global_rviz',
         output='screen',
         arguments=['-d', rviz_config_file],
-        parameters=[{'use_sim_time': True}],
+        parameters=[{'use_sim_time': use_sim_time}],
         condition=IfCondition(use_global_rviz)
     )
 
     return LaunchDescription([
-        # launch arguments
-        set_sim_time,
+        # -- launch arguments --
+        use_sim_time_arg,
         namespace_arg,
         robot_arg,
         world_name_arg,
-        reset_position_x_arg,
-        reset_position_y_arg,
-        reset_position_z_arg,
         use_global_rviz_arg,
 
         # -- Launch Components --
@@ -204,9 +189,9 @@ def generate_launch_description():
         # drl_student_launch,
         trigger_launch,
         navigation_launch,
+        gz_interact_launch,
         
         virtual_status_indicator_node,
         publish_goal_point,
-        gz_reset_handler_node,
         global_rviz_node
     ])

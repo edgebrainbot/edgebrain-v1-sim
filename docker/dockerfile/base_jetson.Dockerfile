@@ -60,6 +60,7 @@ WORKDIR ${THIRD_PARTY_PATH}
 
 
 # ------------ ROS2 Workspace ------------
+ARG MAKE_JOBS=$(nproc)
 ARG ROS2_WS_NAME=edge_ws
 ARG ROS2_WS_PATH=/home/${USERNAME}/${ROS2_WS_NAME}
 SHELL ["/bin/bash", "-c"]
@@ -70,7 +71,7 @@ RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git && \
     cd unitree_sdk2 && git checkout f29ee9f && \
     mkdir build && cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 
@@ -102,7 +103,7 @@ RUN git clone https://github.com/google-deepmind/mujoco.git && \
     cd mujoco && git checkout 3.3.3 && \
     mkdir build && cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 
@@ -111,8 +112,7 @@ RUN git clone https://github.com/legubiao/unitree_mujoco.git && \
     cd unitree_mujoco/simulate && git checkout 1fda6580 && \
     mkdir build && cd build && \
     cmake .. && \
-    make -j$(nproc)
-
+    make -j${MAKE_JOBS} 
 
 # ------------ Build eigenpy ------------
 RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
@@ -125,7 +125,7 @@ RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
     cd eigenpy && mkdir build && cd build && \
     cmake .. && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 
@@ -140,7 +140,7 @@ RUN git clone --recursive https://github.com/coal-library/coal.git && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 
@@ -150,7 +150,7 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
     git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 
@@ -164,7 +164,7 @@ RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     -DBUILD_WITH_COLLISION_SUPPORT=ON \
     -DPYTHON_EXECUTABLE=$(which python3) \
     -DCMAKE_INSTALL_PREFIX=/usr/local && \
-    make -j$(nproc) && \
+    make -j${MAKE_JOBS} && \
     sudo make install
 
 

@@ -42,14 +42,14 @@ class ResetManager:
         │    └──────────────┬─────────────────────────┘   │
         │                   │                             │
         │    ┌──────────────▼─────────────────────────┐   │
-        │    │ Service Client: /edge/reset/coordinator│   │
-        │    │  - Forwards to Reset Coordinator       │   │
+        │    │ Service Client: /edge/reset/gz_handler │   │
+        │    │  - Forwards to Gz Reset Handler        │   │
         │    └──────────────┬─────────────────────────┘   │
         └───────────────────┼─────────────────────────────┘
-                            │ call /edge/reset/coordinator
+                            │ call /edge/reset/gz_handler
                             ▼
         ┌─────────────────────────────────────────────────┐
-        │         Reset Coordinator (gazebo_resetter)     │
+        │         Gz Reset Handler (gazebo_resetter)      │
         │  1. Reset Controller                            │
         │  2. Reset Gazebo (pause→reset→unpause)          │
         │  3. Start Controller                            │
@@ -62,7 +62,7 @@ class ResetManager:
         ...     reset_timeout=20.0,
         ...     logger=logger,
         ...     reset_service_name='/edge/reset',
-        ...     coordinator_service_name='/edge/reset/coordinator',
+        ...     coordinator_service_name='/edge/reset/gz_handler',
         ... )
         >>> 
         >>> # Agent calls internally with enum
@@ -82,7 +82,7 @@ class ResetManager:
         reset_timeout: float,
         logger: Logger,
         reset_service_name: str = '/edge/reset',
-        coordinator_service_name: str = '/edge/reset/coordinator',
+        gz_reset_service_name: str = '/edge/reset/gz_handler',
     ) -> None:
         """
         Initialize Reset Manager
@@ -92,19 +92,19 @@ class ResetManager:
             reset_timeout: Service call timeout in seconds
             logger: Logger instance
             reset_service_name: Service name for receiving reset requests (server)
-            coordinator_service_name: Service name for calling Reset Coordinator (client)
+            gz_reset_service_name: Service name for calling Gz Reset Handler (client)
         """
         self.node: Node = node
         self.reset_timeout: float = reset_timeout
         self.logger: Logger = logger
         self.reset_service_name: str = reset_service_name
-        self.coordinator_service_name: str = coordinator_service_name
+        self.gz_reset_service_name: str = gz_reset_service_name
         
         # ========== Service Server (Receive all reset requests) ==========
         node.create_service(Trigger, reset_service_name, self._reset_service_callback)
         
-        # ========== Service Client (Call Reset Coordinator) ==========
-        self.coordinator_client = node.create_client(Trigger, coordinator_service_name)
+        # ========== Service Client (Call Gz Reset Handler) ==========
+        self.gz_reset_client = node.create_client(Trigger, gz_reset_service_name)
         
         # Statistics
         self.reset_count: int = 0
@@ -123,7 +123,7 @@ class ResetManager:
             f"{'='*70}\n"
             f"📡 Services:\n"
             f"   Server (receive):  {reset_service_name}\n"
-            f"   Client (forward):  {coordinator_service_name}\n"
+            f"   Client (forward):  {gz_reset_service_name}\n"
             f"─────────────────────────────────────────────────────────────────────\n"
             f"⚙️  Configuration:\n"
             f"   Timeout: {reset_timeout}s\n"
