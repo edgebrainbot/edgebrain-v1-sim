@@ -69,10 +69,12 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
         double r = rew_fn->compute(factors);
 
         // Validate the reward value
-        if (std::isnan(r) || std::isinf(r)) {
-            throw std::runtime_error(
-                "[RewardComposer] Invalid reward value (NaN/Inf) for '" + name + "'"
-            );
+        bool valid = std::isfinite(r);
+        if (!valid) {
+            std::cerr
+                << "[RewardComposer][WARN] Reward '" << name
+                << "' is NaN/Inf. Set to 0.0\n";
+            r = 0.0;
         }
 
         edge_msgs::msg::EdgeReward msg;

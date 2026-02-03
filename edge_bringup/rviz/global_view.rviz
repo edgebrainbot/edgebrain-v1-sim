@@ -6,8 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Goalpoint1
-        - /Goalpoint1/Namespaces1
         - /GlobalPath1/Namespaces1
         - /VGraph1/Namespaces1
         - /Grid1/Line Style1
@@ -718,4 +716,4 @@ Window Geometry:
     collapsed: false
   Width: 1476
   X: 444
-  Y: 74
+  Y: 64
