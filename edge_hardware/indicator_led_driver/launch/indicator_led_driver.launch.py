@@ -9,12 +9,24 @@ def generate_launch_description():
     """
 
     safety_led_driver_node = Node(
-        package='safety_led_driver',
+        package='indicator_led_driver',
         executable='safety_led_driver_node',      # ← setup.py entry point
         name='safety_led_driver',
         namespace='edge',                   # Added namespace 'edge'
         output='screen',
         emulate_tty=True,
     )
+    
+    task_led_driver_node = Node(
+        package='indicator_led_driver',
+        executable='task_led_driver_node',      # ← setup.py entry point
+        name='task_led_driver',
+        namespace='edge',                   # Added namespace 'edge'
+        output='screen',
+        emulate_tty=True,
+    )
 
-    return LaunchDescription([safety_led_driver_node])
+    return LaunchDescription([
+        safety_led_driver_node,
+        task_led_driver_node
+    ])

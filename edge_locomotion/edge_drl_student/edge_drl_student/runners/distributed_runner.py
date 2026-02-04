@@ -449,7 +449,7 @@ class DistributedRunner:
             is_success = self._process_transition(msg, stepwise_total_reward)
             if is_success:
                 self.transition_count += 1
-            print(f"Processed transition #{self.transition_count}")
+            # print(f"Processed transition #{self.transition_count}")
             
         # Update episode stats (training mode)
         self.episode_manager.update(reward_components, action_mode, ep_mode) 

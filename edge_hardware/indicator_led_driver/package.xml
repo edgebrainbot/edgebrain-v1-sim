@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>safety_led_driver</name>
-  <version>0.0.0</version>
-  <description>The ROS2 package for the driver of the Safety LED Light</description>
+  <name>indicator_led_driver</name>
+  <version>2.0.0</version>
+  <description>The ROS2 package for the driver of the Indicator LED Light</description>
   <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
