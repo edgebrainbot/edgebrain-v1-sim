@@ -105,6 +105,29 @@
       <name>enclosing_wall</name>
     </include> -->
 
+    <!-- Falling rock -->
+    <!-- <include>
+      <uri>model://external/falling_rock3</uri>
+      <pose relative_to='world_offset'>4 4 0.5 0 0 0</pose>   
+      <name>falling_rock</name>
+    </include> -->
+
+    <!-- Pine tree -->
+    <include>
+      <uri>model://external/pine_tree</uri>
+      <pose relative_to='world_offset'>3 2 0 0 0 0</pose>   
+      <name>pine_tree</name>
+      <static>true</static>
+    </include>
+
+    <!-- Oak tree -->
+    <include>
+      <uri>model://external/oak_tree</uri>
+      <pose relative_to='world_offset'>-2 -10 0 0 0 0</pose>   
+      <name>oak_tree</name>
+      <static>true</static>
+    </include>
+
     <!-- Construction barrel -->
     <include>
       <uri>model://external/construction_barrel</uri>

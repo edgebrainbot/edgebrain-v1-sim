@@ -10,7 +10,7 @@ from rclpy.node import Node
 import Jetson.GPIO as GPIO
 
 # -------------------- GPIO CONFIG --------------------
-PIN_LED = 17
+PIN_LED = 18
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(PIN_LED, GPIO.OUT)
 

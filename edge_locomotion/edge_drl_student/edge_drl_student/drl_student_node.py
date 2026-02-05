@@ -123,7 +123,7 @@ class DRLStudentNode(Node):
         self.episode_manager = EpisodeManager(
             logger=self.logger,
             # max_episode_length=int(5e4),
-            max_episode_length=int(1e4),
+            max_episode_length=int(3e4),
             training_episode=10000,
             eval_during_train=True,
             eval_interval=eval_interval,
