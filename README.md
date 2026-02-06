@@ -69,7 +69,8 @@ Package Dependency:
 1. Clone this repository:
 
 ```bash
-git clone -b humble git@github.com:Charlescai123/edge-learning-go2.git
+mkdir -p ~/edge_ws/src && cd ~/edge_ws/src
+git clone -b Jetson https://github.com/Charlescai123/edge-brain-go2.git
 ```
 
 2. Initialize and update all submodules recursively

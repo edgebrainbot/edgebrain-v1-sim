@@ -27,7 +27,7 @@ def generate_launch_description():
         "robot", default_value="go2", description="Robot name (e.g. go2, go1, a1)"
     )
     world_name_arg = DeclareLaunchArgument(
-        "world_name", default_value="obstacle_course.world", description="Gazebo world name"
+        "world_name", default_value="openwild_outdoor.world", description="Gazebo world name"
     )
     use_global_rviz_arg = DeclareLaunchArgument(
         "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
