@@ -32,11 +32,11 @@ class GzResetHandlerNode(Node):
         
         # ========== Parameter Declaration ==========
         # Gazebo parameters
-        self.declare_parameter('world_name', 'obstacle_course.world')
+        self.declare_parameter('world_name', 'openwild_outdoor.world')
         self.declare_parameter('robot_name', 'go2')
         self.declare_parameter('reset_position_x', 0.0)
         self.declare_parameter('reset_position_y', 0.0)
-        self.declare_parameter('reset_position_z', 0.35)
+        self.declare_parameter('reset_position_z', 0.3)
         self.declare_parameter('reset_orientation_x', 0.0)
         self.declare_parameter('reset_orientation_y', 0.0)
         self.declare_parameter('reset_orientation_z', 0.0)
@@ -211,7 +211,7 @@ class GzResetHandlerNode(Node):
                         self.failed_resets += 1
                         return False, f'Controller reset failed: {controller_message}'
                 
-                time.sleep(3)  # Small delay between resets
+                time.sleep(5)  # Small delay between resets
                 
                 # Reset Gazebo
                 gz_start = time.time()
@@ -321,7 +321,7 @@ class GzResetHandlerNode(Node):
             call_duration = time.time() - call_start
             
             try:
-                response = future.result()
+                response : Trigger.Response = future.result()
             except Exception as e:
                 error_msg = f'Failed to get response: {str(e)}'
                 self.get_logger().error(f'    ❌ {error_msg}')
@@ -374,7 +374,7 @@ class GzResetHandlerNode(Node):
             call_duration = time.time() - call_start
             
             try:
-                response = future.result()
+                response : Trigger.Response = future.result()
             except Exception as e:
                 error_msg = f'Failed to get response: {str(e)}'
                 self.get_logger().error(f'    ❌ {error_msg}')

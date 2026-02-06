@@ -16,7 +16,7 @@ def generate_launch_description():
     # Launch Arguments
     # ------------------------
     robot_name_arg = DeclareLaunchArgument("robot_name", default_value="go2", description="Robot name (e.g. go2, go1, a1)")
-    world_name_arg = DeclareLaunchArgument("world_name", default_value="obstacle_course.world", description="Gazebo world name")
+    world_name_arg = DeclareLaunchArgument("world_name", default_value="openwild_outdoor.world", description="Gazebo world name")
     use_sim_time_arg = DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation (Gazebo) clock")
     reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
     reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")

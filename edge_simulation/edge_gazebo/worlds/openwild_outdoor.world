@@ -131,8 +131,9 @@
     <!-- Construction barrel -->
     <include>
       <uri>model://props/falling_rock3</uri>
-      <pose relative_to='world_offset'>-3.26847 -2.977565 0.65 0 0 0</pose>
+      <pose relative_to='world_offset'>-3.26847 -2.977565 0.3 0 0 0</pose>
       <name>falling_rock</name>
+      <static>true</static>
     </include>
 
     <!-- Construction cone -->
