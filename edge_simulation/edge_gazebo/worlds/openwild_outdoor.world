@@ -130,9 +130,9 @@
 
     <!-- Construction barrel -->
     <include>
-      <uri>model://props/construction_barrel</uri>
-      <pose relative_to='world_offset'>-3.26847 -2.977565 0 0 0 0</pose>
-      <name>construction_barrel</name>
+      <uri>model://props/falling_rock3</uri>
+      <pose relative_to='world_offset'>-3.26847 -2.977565 0.65 0 0 0</pose>
+      <name>falling_rock</name>
     </include>
 
     <!-- Construction cone -->
@@ -163,11 +163,12 @@
       <name>oak_tree2</name>
     </include>
 
-    <!-- Triangular Groove -->
+    <!-- Small Rock Fall -->
     <include>
-      <uri>model://structures/triangular_groove</uri>
-      <pose relative_to='world_offset'>-2.5 -3.8 0 0 0 0</pose>
-      <name>triangular_groove</name>
+      <uri>model://props/small_rock_fall</uri>
+      <pose relative_to='world_offset'>-7.5 2.8 0.05 0 0 0</pose>
+      <name>small_rock_fall</name>
+      <static>true</static>
     </include>
 
     <!-- Oak Tree 3 -->

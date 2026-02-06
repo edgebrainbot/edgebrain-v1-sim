@@ -227,7 +227,7 @@ def generate_launch_description():
     
     world_file_name = DeclareLaunchArgument(
         'world',
-        default_value='obstacle_course.world',
+        default_value='openwild_outdoor.world',
         description='World file name (including .world extension)'
     )
     
