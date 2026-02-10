@@ -32,8 +32,8 @@ By default, these pins may be configured as **SFIO (special-function I/O)** rath
 
 To accommodate different use cases, we provide two configuration approaches:
 
-- **Quick Solution** – a runtime pinmux modification that takes effect immediately but will be reset after reboot
-- **Permanent Solution** – a persistent pinmux configuration applied at the system level
+- [**Quick Solution**](#quick-solution) – a runtime pinmux modification that takes effect immediately but will be reset after reboot
+- [**Permanent Solution**](#permanent-solution) – a persistent pinmux configuration applied at the system level
 
 For more details on pinmux configuration, please refer to the official NVIDIA documentation:  
 [Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes)
