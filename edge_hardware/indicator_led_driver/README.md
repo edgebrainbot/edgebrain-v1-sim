@@ -27,3 +27,25 @@ Below are the pinouts of Jetson, for more details, please refer to [Jetson Pinou
 cd ~/ros2_ws
 colcon build --packages-up-to go2_description --symlink-install
 ```
+
+```bash
+sudo apt-get install busybox
+```
+
+```bash
+sudo busybox devmem <32-bit address>
+```
+
+For example, if you want to turn the pin GPIO27 (Board 15) into a GPIO, then 
+
+```bash
+python gpio_pinmux_lookup.py 15
+```
+
+Then you will get a result (e.g., 0x2440020)
+
+```bash
+sudo busybox devmem 0x2440020 w 0x0
+```
+
+For more details, please refer to [Nvidia Manual](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes).
