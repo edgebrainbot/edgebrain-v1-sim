@@ -62,9 +62,9 @@ cd indicator_led_driver
 python gpio_pinmux_lookup.py 15
 ```
 
-This command returns the pinmux register address (e.g., `0x2440020`)
+This command returns the `<32-bit address>` pinmux register address (e.g., `0x2440020`)
 
-3. Configure the pin as GPIO:
+3. Configure the pin as GPIO with the address:
 ```bash
 sudo busybox devmem <32-bit address> w 0x0
 ```
