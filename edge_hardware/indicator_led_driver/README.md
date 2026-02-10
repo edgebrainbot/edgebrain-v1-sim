@@ -14,7 +14,7 @@ Hardware Parts:
 * [DC Buck Converter (Down to 19V)](https://www.amazon.com/WSOLDMA-Power-Converter-380W-Regulator/dp/B0FD3N74PX/ref=sr_1_5?crid=3LT91008OIPJN&dib=eyJ2IjoiMSJ9.3bP993nCub1Tu_8Owz16QEohUsW8tZRbV6Ci6QRBBTUVjjfa8iXLebjSQJxWPzENwwXcdcptmMifTuER0PGfp0iHmKXrI8xww-GmPmGdsZz0Mo_Bb_BjjJUhG8c0paYy92g66j4Zc8QK54n-2YikvdkbiDOq0Dv37dk5Z4KKYRBArOaIhjjsqNfSB6bEjvbqfTw1DsOxS1P0CbFeEBr0Lazx5CwWNKr994TKf1-Gwg8.oxAwnvlPzWf86-opbN9tCPO2e1pu4Y3GAs4003v5n4c&dib_tag=se&keywords=dc+buck+converter+19v&qid=1760927773&sprefix=dc+buck+converter+19v%2Caps%2C102&sr=8-5)
 * [5V Relay Module Board](https://www.amazon.com/AEDIKO-Channel-Optocoupler-Isolation-Support/dp/B095YFJ69T/ref=sr_1_6?dib=eyJ2IjoiMSJ9.lFuR0w3vVJBfcJd6U3GDz3nveE-vZmFloFOeo4djgP8foj0mcJgPwWoFPvzGEkuApeIeTYixaEXNZ3LoM0NXtz5A8-GNoYPdIw4P4IpT0RCnyphfpK0-qmAjLOKd209v42GHg1hBFGGHvBGs9cITbyOBV2AOsyfZOdEhPvZYoe6XLZJz0iF5FXW1Y6uf0LEEVaUuAtf9XSV9CfRKO_S8gMpv02Cq8ZUt2HyEYY271pE.nRLPElfHwCEJdPfyuzG4Vzkjhmgi0CJngdPf37F5iQs&dib_tag=se&hvadid=694960905560&hvdev=c&hvexpln=67&hvlocphy=9016921&hvnetw=g&hvocijid=10288365099145971698--&hvqmt=e&hvrand=10288365099145971698&hvtargid=kwd-888657369097&hydadcr=27082_14699453&keywords=relay%2Bmodule%2Bamazon&mcid=334f599df5ed3dad946cdafcbb1f6aba&qid=1760927735&sr=8-6&th=1)
 
-## Jetson AGX Orin
+## GPIO Setup (Jetson AGX Orin)
 
 Below are the pinouts of Jetson, for more details, please refer to [Jetson Pinout](https://jetsonhacks.com/nvidia-jetson-agx-orin-gpio-header-pinout/).
 
@@ -23,29 +23,56 @@ Below are the pinouts of Jetson, for more details, please refer to [Jetson Pinou
   <img src="./docs/pinout.png" alt="Pinout" height="450">
 </p>
 
+For the **LED indicator driver**, the LEDs are controlled directly using Jetson GPIOs:
+
+- **`GPIO27 (Board Pin 15)`** is used as the control signal for the **Red and Green LEDs**
+- **`GPIO08 (Board Pin 16)`** is used as the control signal for the **Blue LED**
+
+By default, these pins may be configured as **SFIO (special-function I/O)** rather than standard GPIO. As a result, the pinmux configuration must be modified before they can be used as GPIO outputs.
+
+To accommodate different use cases, we provide two configuration approaches:
+
+- **Quick Solution** – a runtime pinmux modification that takes effect immediately but will be reset after reboot
+- **Permanent Solution** – a persistent pinmux configuration applied at the system level
+
+For more details on pinmux configuration, please refer to the official NVIDIA documentation:  
+[Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes)
+
+The two solutions are described below.
+
+
+### Quick Solution
+
+The workflow is: 
+
+Board Pin Number → Pinmux Register Address → Write GPIO Value
+
+1. Install the dependencies:
+
 ```bash
-cd ~/ros2_ws
-colcon build --packages-up-to go2_description --symlink-install
+sudo apt-get install busybox 
+pip install Jetson.GPIO==2.1.12
 ```
 
-```bash
-sudo apt-get install busybox
-```
+2. Look up the pinmux register address.
+
+For example, to configure GPIO27 (Board Pin 15):
+
 
 ```bash
-sudo busybox devmem <32-bit address>
-```
-
-For example, if you want to turn the pin GPIO27 (Board 15) into a GPIO, then 
-
-```bash
+cd indicator_led_driver 
 python gpio_pinmux_lookup.py 15
 ```
 
-Then you will get a result (e.g., 0x2440020)
+This command returns the pinmux register address (e.g., `0x2440020`)
 
+3. Configure the pin as GPIO:
 ```bash
-sudo busybox devmem 0x2440020 w 0x0
+sudo busybox devmem <32-bit address> w 0x0
 ```
 
-For more details, please refer to [Nvidia Manual](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes).
+This change takes effect immediately but will be lost after reboot.
+
+### Permanent Solution
+
+For more details, please refer to [Nvidia Manual]().
