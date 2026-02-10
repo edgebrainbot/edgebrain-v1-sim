@@ -43,9 +43,7 @@ The two solutions are described below.
 
 ## Quick Solution
 
-The workflow is: 
-
-Board Pin Number → Pinmux Register Address → Write GPIO Value
+The workflow is: **Board Pin Number** → **Pinmux Register Address** → **Write GPIO Value**.
 
 1. Install the dependencies:
 
