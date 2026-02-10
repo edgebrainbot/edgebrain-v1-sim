@@ -41,7 +41,7 @@ For more details on pinmux configuration, please refer to the official NVIDIA do
 The two solutions are described below.
 
 
-### Quick Solution
+## Quick Solution
 
 The workflow is: 
 
@@ -73,6 +73,6 @@ sudo busybox devmem <32-bit address> w 0x0
 
 This change takes effect immediately but will be lost after reboot.
 
-### Permanent Solution
+## Permanent Solution
 
 For more details, please refer to [Nvidia Manual]().
