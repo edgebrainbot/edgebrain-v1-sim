@@ -6,31 +6,32 @@
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Bool
 import Jetson.GPIO as GPIO
 
 # -------------------- GPIO CONFIG --------------------
-PIN_LED = 13
+SAFETY_PIN_LED = 15
 GPIO.setmode(GPIO.BOARD)
-GPIO.setup(PIN_LED, GPIO.OUT)
+GPIO.setup(SAFETY_PIN_LED, GPIO.OUT)
 
 def set_led(red_on: bool):
-    GPIO.output(PIN_LED, GPIO.HIGH if red_on else GPIO.LOW)
+    GPIO.output(SAFETY_PIN_LED, GPIO.HIGH if red_on else GPIO.LOW)
 
 # -------------------- Safety LED Driver Node --------------------
 class SafetyLedDriverNode(Node):
     def __init__(self):
         super().__init__("safety_led_driver")
-        self.get_logger().info("🟢 Safety LED Driver Node started.")
+        self.get_logger().info("🟢/🔴 Safety LED Driver Node started.")
 
         # Subscribe to safety status topic
         self.sub_safe_ = self.create_subscription(
-            msg_type = __import__('std_msgs.msg').msg.Bool,  # import std_msgs.msg.Bool
+            msg_type = Bool,
             topic = "is_safe",
             callback = self.safe_callback,
             qos_profile = 10,
         )
 
-    def safe_callback(self, msg):
+    def safe_callback(self, msg: Bool):
         """callback when receiving is_safe message"""
         if msg.data:
             set_led(False)  # safe → green light on

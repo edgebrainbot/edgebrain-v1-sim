@@ -5,28 +5,27 @@
 # ============================================================================
 
 import rclpy
-from std_msgs.msg import Bool
 from rclpy.node import Node
+from std_msgs.msg import Bool
 import Jetson.GPIO as GPIO
 
 # -------------------- GPIO CONFIG --------------------
-PIN_LED = 18
+TASK_PIN_LED = 16
 GPIO.setmode(GPIO.BOARD)
-GPIO.setup(PIN_LED, GPIO.OUT)
+GPIO.setup(TASK_PIN_LED, GPIO.OUT)
 
-def set_led(red_on: bool):
-    GPIO.output(PIN_LED, GPIO.HIGH if red_on else GPIO.LOW)
-
+def set_led(task_done: bool):
+    GPIO.output(TASK_PIN_LED, GPIO.HIGH if task_done else GPIO.LOW)
 
 # -------------------- Task LED Driver Node --------------------
 class TaskLedDriverNode(Node):
     def __init__(self):
         super().__init__("task_led_driver")
-        self.get_logger().info("🟢 Task LED Driver Node started.")
+        self.get_logger().info("🔵 Task LED Driver Node started.")
 
-        # Subscribe to task_done status topic
-        self.sub_safe_ = self.create_subscription(
-            msg_type = Bool,  # import std_msgs.msg.Bool
+        # Subscribe to task status topic
+        self.sub_task_ = self.create_subscription(
+            msg_type = Bool,
             topic = "is_done",
             callback = self.task_callback,
             qos_profile = 10,
@@ -35,17 +34,17 @@ class TaskLedDriverNode(Node):
     def task_callback(self, msg: Bool):
         """callback when receiving is_done message"""
         if msg.data:
-            set_led(False)  # task undone → no light on
-            self.get_logger().info("✅ System is safe.")
+            set_led(True)  # done → blue light on
+            self.get_logger().info("✅ Task is done.")
         else:
-            set_led(True)   # task done → blue light on
-            self.get_logger().warn("⚠️ System is unsafe!")
+            set_led(False)   # not done → blue light off
+            self.get_logger().warn("⚠️ Task is not done!")
+
 
     def destroy_node(self):
         GPIO.cleanup()
         super().destroy_node()
         self.get_logger().info("💡 GPIO cleaned up and node shut down.")
-        
 
 # -------------------- MAIN --------------------
 def main(args=None):
