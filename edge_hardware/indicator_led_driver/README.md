@@ -35,7 +35,7 @@ To accommodate different use cases, we provide two configuration approaches:
 - [**Quick Solution**](#quick-solution) – a runtime pinmux modification that takes effect immediately but will be reset after reboot
 - [**Permanent Solution**](#permanent-solution) – a persistent pinmux configuration applied at the system level
 
-For more details on pinmux configuration, please refer to the official tutorial [Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes)
+For more details on pinmux configuration, please refer to Nvidia's official tutorial [Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes)
 
 
 ## Quick Solution
