@@ -49,7 +49,7 @@ sudo apt-get install busybox
 pip install Jetson.GPIO==2.1.12
 ```
 
-2. Look up the pinmux register address. For example, to configure GPIO27 (Board Pin 15):
+2. Look up the pinmux register address. For example, to configure `GPIO27 (Board Pin 15)`:
 
 
 ```bash
