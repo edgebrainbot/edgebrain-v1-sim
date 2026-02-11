@@ -35,12 +35,12 @@ To accommodate different use cases, we provide two configuration approaches:
 - [**Quick Solution**](#quick-solution) – a runtime pinmux modification that takes effect immediately but will be reset after reboot
 - [**Permanent Solution**](#permanent-solution) – a persistent pinmux configuration applied at the system level
 
-For more details on pinmux configuration, please refer to Nvidia's official tutorial [Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes)
+For more details on pinmux configuration, please refer to Nvidia's official tutorial [Jetson AGX Orin Pinmux Changes](https://docs.nvidia.com/jetson/archives/r36.2/DeveloperGuide/HR/JetsonModuleAdaptationAndBringUp/JetsonAgxOrinSeries.html#pinmux-changes).
 
 
 ## Quick Solution
 
-The workflow is: `Board Pin Number` → `Pinmux Register Address` → `Write GPIO Value`.
+The overall workflow is: `Board Pin Number` → `Pinmux Register Address` → `Write GPIO Value`
 
 1. Install the dependencies:
 
@@ -49,9 +49,7 @@ sudo apt-get install busybox
 pip install Jetson.GPIO==2.1.12
 ```
 
-2. Look up the pinmux register address.
-
-For example, to configure GPIO27 (Board Pin 15):
+2. Look up the pinmux register address. For example, to configure GPIO27 (Board Pin 15):
 
 
 ```bash
