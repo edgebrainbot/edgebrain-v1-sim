@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <sdf version='1.8'>
-  <world name='obstacle_course'>
+  <world name='openwild_outdoor'>
     
     <frame name='world_offset'>
       <pose relative_to='world'>6 0 0 0 0 0</pose>

@@ -22,7 +22,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
         (trigger_source_ == 1) ? "teacher" :
-        (trigger_source_ == 0) ? "student" : "none");
+        (trigger_source_ == 0) ? "student" : "auto");
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");

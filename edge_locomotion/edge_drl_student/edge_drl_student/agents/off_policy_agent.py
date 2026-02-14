@@ -20,7 +20,7 @@ class OffPolicyAgent(BaseAgent):
     def __init__(self, 
                  replay_buffer: Union[SoloReplayBuffer, DualReplayBuffer, CognitiveReplayBuffer], 
                  batch_size=256,
-                 gamma=0.99, 
+                 gamma=0.95, 
                  tau=0.005,  
                  device="cpu"):
         super().__init__(device=device)

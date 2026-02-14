@@ -7,23 +7,31 @@ import cvxpy as cp
 
 from typing import Tuple, Any, Optional
 
+np.set_printoptions(suppress=True)
 
 class LMISolver:
     def __init__(self):
         self.alpha = 0.9
         self.hd = 1e-10
         self.phi = 0.15
-        self.cc = 0.6
-        self.b1 = 1 / 0.8  # yaw
-        self.b2 = 1 / (1.0 * self.cc)  # height
-        self.b3 = 1 / 1.5  # velocity
-        self.c1 = 1 / 25
-        self.c2 = 1 / 50
+        
+        # State
+        self.b1 = 1 / 0.3         # height
+        self.b2 = 1 / 2.0         # roll
+        self.b3 = 1 / 2.0         # pitch
+        self.b4 = 1 / 2.0         # yaw
+        self.b5 = 1 / 1.0         # vx
+        self.b6 = 1 / 15.0         # vy
+        self.b7 = 1 / 15.0        # vz
+        self.b8 = 1 / 15.0        # roll rate
+        self.b9 = 1 / 15.0        # pitch rate
+        self.b10 = 1 / 5.0       # yaw rate
+        
+        self.c1 = 1 / 50
+        self.c2 = 1 / 100
 
-        # fixed matrices
-        self.D = np.array([[self.b2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, self.b3, 0, 0, 0, 0, 0],
-                           [0, 0, 0, self.b1, 0, 0, 0, 0, 0, 0]])
+        # constraint matrices
+        self.D = np.diag([self.b1, self.b2, self.b3, self.b4, self.b5, self.b6, self.b7, self.b8, self.b9, self.b10])
         self.C = np.array([[self.c1, 0, 0, 0, 0, 0],
                            [0, self.c1, 0, 0, 0, 0],
                            [0, 0, self.c1, 0, 0, 0],
@@ -49,7 +57,7 @@ class LMISolver:
             cp.bmat([[Q, R.T],
                      [R, T]]) >> 0,
             Q - 10 * self.z_param >> 0,
-            np.eye(3) - self.D @ Q @ self.D.T >> 0,
+            np.eye(10) - self.D @ Q @ self.D.T >> 0,
             np.eye(6) - self.C @ T @ self.C.T >> 0,
             T - self.hd * np.eye(6) >> 0,
         ])
@@ -71,7 +79,7 @@ class LMISolver:
                        [0, 0, 1]])
         Rzyx = Rz @ Ry @ Rx
 
-        T_s = 1 / 20
+        T_s = 1 / 50
         aA = np.zeros((10, 10))
         aA[0, 6] = 1
         aA[1:4, 7:10] = Rzyx
@@ -86,7 +94,7 @@ class LMISolver:
         
         self.A_param.value = A
         self.B_param.value = B
-
+        
         self.problem.solve(solver=cp.CVXOPT, verbose=False)
 
         if self.problem.status == 'optimal':
@@ -118,16 +126,16 @@ class LMISolver:
 
 
 if __name__ == '__main__':
-    zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
+    zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 1.6559, -1.4925, -0.6624])
 
     # zz = np.array([0.1, 0.05, 0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.16])
     # zz = np.array([0.] * 10)
 
     lmisolver = LMISolver()
     
-    (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
+    # (F_kp, F_kd), _, elapsed_time = lmisolver.patch_lmi(zz)
     
-    REPEAT = 1000  # Test counts
+    REPEAT = 1  # Test counts
     solve_time = 0.0
     total_time = 0.0
 
@@ -140,8 +148,8 @@ if __name__ == '__main__':
 
     avg_time = total_time / REPEAT * 1e3
     avg_solve_time = solve_time / REPEAT * 1e3
-    print(f"Average solution time over {REPEAT} runs: {avg_time:.6f} milliseconds")
-    print(f"Average solve time over {REPEAT} runs: {avg_solve_time:.6f} milliseconds")
+    # print(f"Average solution time over {REPEAT} runs: {avg_time:.6f} milliseconds")
+    # print(f"Average solve time over {REPEAT} runs: {avg_solve_time:.6f} milliseconds")
     
     # zz = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
     # t1 = time.time()

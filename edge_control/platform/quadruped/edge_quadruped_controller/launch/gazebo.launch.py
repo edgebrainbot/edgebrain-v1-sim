@@ -8,7 +8,8 @@ from launch_ros.substitutions import FindPackageShare
 from launch import LaunchContext, LaunchDescription
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import SetEnvironmentVariable, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, RegisterEventHandler
 from ament_index_python.packages import get_package_share_directory
 
 def launch_setup(context: LaunchContext, *args, **kwargs):
@@ -31,6 +32,22 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     os.environ["GZ_SIM_RESOURCE_PATH"] = \
         os.environ.get("GZ_SIM_RESOURCE_PATH", "") + ":" + model_resource_path
     
+    # Set GAZEBO log level to error to reduce log spam
+    disable_gz_logs = SetEnvironmentVariable(
+        name='GZ_LOGGING',
+        value='0'
+    )
+
+    limit_gz_log_level = SetEnvironmentVariable(
+        name='GZ_LOG_LEVEL',
+        value='error'
+    )
+
+    disable_ros_logs = SetEnvironmentVariable(
+        name='RCUTILS_LOGGING_SEVERITY_THRESHOLD',
+        value='ERROR'
+    )
+
     try:
         pkg_path = os.path.join(get_package_share_directory(pkg_description))
     except Exception as e:
@@ -168,6 +185,10 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     return [
         tf_static,
         tf_to_map_node,
+        
+        disable_gz_logs,
+        limit_gz_log_level,
+        disable_ros_logs,
         
         Node(
             package='ros_gz_bridge',

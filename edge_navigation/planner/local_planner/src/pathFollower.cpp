@@ -436,8 +436,8 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
 
           // Slow down if minimum distance to obstacle is small (threhold to be determined)
-          double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
-          double safeDistanceThreshold = 0.3; // Placeholder, to be replaced by actual computation
+          double slowDownGain = 1.0; // Placeholder, to be replaced by actual computation
+          double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
           if (minObstacleDist < safeDistanceThreshold) {
             std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
             cmd_vel.twist.linear.x *= slowDownGain;

@@ -73,10 +73,10 @@ class DRLStudentNode(Node):
         self.get_logger().info(f"📊 Logger initialized: {LOG_PATH}")
 
         # ========== Initialize Replay Buffer ==========
-        self.batch_size = 100
-        stu_buf_size = int(1e5)
-        tea_buf_size = int(1e5)
-        teacher_prefill_size = 50  # Pre-fill size for teacher buffer
+        self.batch_size = 512
+        stu_buf_size = int(2e5)
+        tea_buf_size = int(2e5)
+        teacher_prefill_size = 200  # Pre-fill size for teacher buffer
         stu_blending_weight = 0.1
         tea_blending_weight = 0.9
 
@@ -140,11 +140,12 @@ class DRLStudentNode(Node):
         )
         
         # Action bounds
-        # action_bound = (
-        #     torch.tensor([-10., -10., -10., -20., -20., -20.], device=self.device),
-        #     torch.tensor([ 10.,  10.,  10.,  20.,  20.,  20.], device=self.device)
-        # )
-        action_bound = (-10, 10)  # Uniform bound for all actions
+        action_bound = (
+            torch.tensor([-10., -10., -10., -15., -15., -15.], device=self.device),
+            torch.tensor([ 10.,  10.,  10.,  15.,  15.,  15.], device=self.device)
+        )
+        
+        # action_bound = (-10, 10)  # Uniform bound for all actions
         
         ros2_topic_name = {
             'transition_topic': '/edge/transition',

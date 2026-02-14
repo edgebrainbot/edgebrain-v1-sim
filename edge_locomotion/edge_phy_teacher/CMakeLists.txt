@@ -31,17 +31,17 @@ set(ecvxcone_headers
 )
 
 set(ecvxcone_sources
-  src/ecvxcone/base.c
-  src/ecvxcone/blas.c
-  src/ecvxcone/debug.c
-  src/ecvxcone/dense.c
-  src/ecvxcone/lapack.c
-  src/ecvxcone/misc.c
-  src/ecvxcone/solver.c
-  src/ecvxcone/sparse.c
-  src/ecvxcone/solver_utils.c
-  src/ecvxcone/cpg_solve.c
-  src/ecvxcone/cpg_workspace.c
+  src/optimization/ecvxcone/base.c
+  src/optimization/ecvxcone/blas.c
+  src/optimization/ecvxcone/debug.c
+  src/optimization/ecvxcone/dense.c
+  src/optimization/ecvxcone/lapack.c
+  src/optimization/ecvxcone/misc.c
+  src/optimization/ecvxcone/solver.c
+  src/optimization/ecvxcone/sparse.c
+  src/optimization/ecvxcone/solver_utils.c
+  src/optimization/ecvxcone/cpg_solve.c
+  src/optimization/ecvxcone/cpg_workspace.c
 )
 
 add_library(ecvxcone SHARED ${ecvxcone_sources})
@@ -52,30 +52,30 @@ set_target_properties(ecvxcone PROPERTIES
 )
 
 # ------------------ C++ library ------------------
-add_library(lmi_optimizer_lib
-  src/lmi_optimizer.cpp
+add_library(lmi_solver_lib
+  src/optimization/lmi_gain_solver.cpp
 )
-target_include_directories(lmi_optimizer_lib PUBLIC 
+target_include_directories(lmi_solver_lib PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${EIGEN3_INCLUDE_DIRS}
 )
-target_link_libraries(lmi_optimizer_lib
+target_link_libraries(lmi_solver_lib
   ecvxcone
   ${BLAS_LIBRARIES}
   ${LAPACK_LIBRARIES}
 )
-ament_target_dependencies(lmi_optimizer_lib
+ament_target_dependencies(lmi_solver_lib
   rclcpp
   std_msgs
 )
 
 # ------------------ Executable ------------------
-add_executable(phy_teacher src/phy_teacher.cpp)
+add_executable(phy_teacher src/phy_teacher_node.cpp)
 target_include_directories(phy_teacher PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${EIGEN3_INCLUDE_DIRS}
 )
-target_link_libraries(phy_teacher lmi_optimizer_lib)
+target_link_libraries(phy_teacher lmi_solver_lib)
 
 # Ensure RPATH includes relative lib/
 set_target_properties(phy_teacher PROPERTIES
@@ -93,18 +93,27 @@ ament_target_dependencies(
 )
 
 add_executable(control_gain_listener test/control_gain_listener.cpp)
-target_link_libraries(control_gain_listener lmi_optimizer_lib)
-ament_target_dependencies(control_gain_listener rclcpp)
+target_link_libraries(control_gain_listener lmi_solver_lib)
+ament_target_dependencies(control_gain_listener rclcpp edge_msgs)
 target_include_directories(control_gain_listener PUBLIC include)
+
+add_executable(gain_synthesizer src/gain_synthesizer_node.cpp)
+target_include_directories(gain_synthesizer PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIRS}
+)
+target_link_libraries(gain_synthesizer lmi_solver_lib)
+ament_target_dependencies(gain_synthesizer rclcpp edge_msgs)
 
 
 # ------------------ Install ------------------
 install(TARGETS
   phy_teacher
-  lmi_optimizer_lib
+  lmi_solver_lib
   ecvxcone
   mock_publisher
   control_gain_listener
+  gain_synthesizer
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib

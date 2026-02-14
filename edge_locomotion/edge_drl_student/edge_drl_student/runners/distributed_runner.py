@@ -514,7 +514,9 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            learned_action = policy_action + self.policy_blending_weight * blended_action
+            # learned_action = 0.5*policy_action + 0.2*blended_action
+            
+            learned_action = 0.8*policy_action + 0.2*blended_action
         else:
             learned_action = policy_action
         

@@ -188,7 +188,7 @@ def generate_launch_description():
         phy_teacher_launch,
         # drl_student_launch,
         trigger_launch,
-        navigation_launch,
+        # navigation_launch,
         gz_interact_launch,
         
         virtual_status_indicator_node,

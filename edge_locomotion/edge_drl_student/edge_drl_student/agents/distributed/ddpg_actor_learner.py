@@ -216,9 +216,9 @@ class DDPGActorLearner(ActorLearner):
     def __repr__(self) -> str:
         """String representation"""
         # Extract key parameters from agent_kwargs
-        actor_lr = self.agent_kwargs.get('actor_lr', 3e-4)
-        critic_lr = self.agent_kwargs.get('critic_lr', 3e-4)
-        gamma = self.agent_kwargs.get('gamma', 0.99)
+        actor_lr = self.agent_kwargs.get('actor_lr', 5e-7)
+        critic_lr = self.agent_kwargs.get('critic_lr', 1e-5)
+        gamma = self.agent_kwargs.get('gamma', 0.95)
         tau = self.agent_kwargs.get('tau', 0.005)
         
         return (
@@ -291,9 +291,9 @@ if __name__ == "__main__":
         sync_interval=2,
         actor_hidden_dims=(256, 256, 256),
         critic_hidden_dims=(256, 256, 256),
-        actor_lr=3e-4,
-        critic_lr=3e-4,
-        gamma=0.99,
+        actor_lr=5e-7,
+        critic_lr=1e-5,
+        gamma=0.95,
         tau=0.005,
     )
     
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     print("="*70 + "\n")
     
     sample_obs = torch.randn(4, obs_dim, device=device)
-    actions = actor_learner.acting_agent.act(sample_obs, noise_scale=0.1, explore=True)
+    actions = actor_learner.acting_agent.act(sample_obs, noise_scale=0.0, explore=True)
     print(f"Sample actions shape: {actions.shape}")
     print(f"Sample actions:\n{actions}\n")
     

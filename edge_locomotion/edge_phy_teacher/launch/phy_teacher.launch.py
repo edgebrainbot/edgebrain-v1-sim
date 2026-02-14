@@ -30,6 +30,38 @@ def generate_launch_description():
     if not os.path.exists(phy_teacher_config_path):
         raise FileNotFoundError(f"❌ Config file not found: {phy_teacher_config_path}")
 
+    # Physical Teacher Node
+    phy_teacher_node = Node(
+        package='edge_phy_teacher',
+        executable='phy_teacher',
+        name='phy_teacher',
+        namespace='edge',
+        output='screen',
+        parameters=[
+            default_config_path,
+            phy_teacher_config_path,
+        ],
+    )
+    
+    # Gain Synthesizer Node
+    gain_synthesizer_node = Node(
+        package='edge_phy_teacher',
+        executable='gain_synthesizer',
+        name='gain_synthesizer',
+        namespace='edge',
+        output='screen',
+        prefix=PythonExpression([
+            "'taskset -c ' + str(",
+            LaunchConfiguration('set_cpu_affinity'),
+            ")"
+        ]),
+        parameters=[
+            default_config_path,
+            phy_teacher_config_path,
+            {'print_process_time': LaunchConfiguration('print_process_time')}
+        ],
+    )
+
     return LaunchDescription([
         # DeclareLaunchArgument(
         #     'update_rate',
@@ -41,27 +73,13 @@ def generate_launch_description():
             default_value='1',
             description='Specify which CPU core(s) the node should run on'
         ),
-        # DeclareLaunchArgument(
-        #     'print_process_time',
-        #     default_value='true',
-        #     description='Whether to print the process time'
-        # ),
-        Node(
-            package='edge_phy_teacher',
-            executable='phy_teacher',
-            name='phy_teacher',
-            namespace='edge',
-            output='screen',
-            prefix=PythonExpression([
-                "'taskset -c ' + str(",
-                LaunchConfiguration('set_cpu_affinity'),
-                ")"
-            ]),
-            parameters=[
-                default_config_path,
-                phy_teacher_config_path,
-                # {'update_rate': LaunchConfiguration('update_rate')},
-                # {'print_process_time': LaunchConfiguration('print_process_time')}
-            ],
-        )
+        DeclareLaunchArgument(
+            'print_process_time',
+            default_value='true',
+            description='Whether to print the process time'
+        ),
+        
+        phy_teacher_node, 
+        gain_synthesizer_node
+        
     ])

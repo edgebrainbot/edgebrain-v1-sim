@@ -3,4 +3,4 @@
     update_rate: 300.0              # trigger update rate in Hz
     print_processing: false         # whether to print processing
     start_with_teacher: true        # whether to start with teacher mode
-    trigger_source: -1               # trigger source, options: -1 -- none, 0 -- student, 1 -- teacher
+    trigger_source: -1               # trigger source, options: -1 -- auto, 0 -- student, 1 -- teacher

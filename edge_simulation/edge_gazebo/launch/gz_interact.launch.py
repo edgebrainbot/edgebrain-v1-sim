@@ -20,7 +20,7 @@ def generate_launch_description():
     use_sim_time_arg = DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation (Gazebo) clock")
     reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
     reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")
-    reset_position_z_arg = DeclareLaunchArgument("reset_position_z", default_value="0.30", description="Reset Z")
+    reset_position_z_arg = DeclareLaunchArgument("reset_position_z", default_value="0.35", description="Reset Z")
 
     robot_name = LaunchConfiguration("robot_name")
     world_name = LaunchConfiguration("world_name")
@@ -79,5 +79,5 @@ def generate_launch_description():
         
         # -- Launch Components --
         gz_reset_handler_node,
-        gz_force_handler_node,
+        # gz_force_handler_node,
     ])

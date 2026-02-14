@@ -37,16 +37,19 @@ using Mat3x3 = Eigen::Matrix<double, 3, 3>;
 using Mat6x6 = Eigen::Matrix<double, 6, 6>;
 using Vec6d  = Eigen::Matrix<double, 6, 1>;
 
-class LMIOptimizer {
+// Utility
+void print_matrix6x6(const Mat6x6& mat, const char* name);
+inline void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
+    result = A * B;
+}
+
+class LMIGainSolver {
 public:
-    LMIOptimizer();  // Constructor
-    ~LMIOptimizer(); // Destructor
+    LMIGainSolver();  // Constructor
+    ~LMIGainSolver(); // Destructor
 
     Mat6x6 F_kp;  // Contains the solved Kp gain matrices
     Mat6x6 F_kd;  // Contains the solved Kd gain matrices
-
-    Mat6x6 default_F_kp;  // Default Kp gain matrices
-    Mat6x6 default_F_kd;  // Default Kd gain matrices
 
     double tracking_err[10];
     double tracking_err_square[10];
@@ -60,16 +63,6 @@ public:
     void update_Ry(double pitch);
     void update_Rz(double yaw);
     void update_Rzyx(double roll, double pitch, double yaw);
-
-    void set_default_kp(Mat6x6 kp) { default_F_kp = kp; print_matrix6x6(default_F_kp, "Default Kp set to:");
-    }
-    void set_default_kd(Mat6x6 kd) { default_F_kd = kd; print_matrix6x6(default_F_kd, "Default Kd set to:");}
-
-    // Utility
-    static void print_matrix6x6(const Mat6x6& mat, const char* name);
-    static void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
-        result = A * B;
-    }
 
 private:
     // matrix objects

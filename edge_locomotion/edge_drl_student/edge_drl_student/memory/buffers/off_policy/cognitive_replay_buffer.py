@@ -23,8 +23,8 @@ class CognitiveReplayBuffer(DualReplayBuffer):
                  student_prefill_size: int,
                  teacher_buf_size: int, 
                  teacher_prefill_size: int,
-                 stu_blending_weight: float = 0.1,
-                 tea_blending_weight: float = 0.9,
+                 stu_blending_weight: float = 0.0,
+                 tea_blending_weight: float = 1.0,
                  obs_dim: int = 12,
                  action_dim: int = 6,
                  device: str = "cpu",
@@ -102,7 +102,7 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Batch size for PHY-Teacher Buffer
         tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
         
-        tea_batch_size = 50
+        tea_batch_size = 150
 
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size

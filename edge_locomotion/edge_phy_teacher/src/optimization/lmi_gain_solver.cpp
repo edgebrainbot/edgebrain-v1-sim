@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include "lmi_optimizer.hpp"
+#include "lmi_gain_solver.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,11 +115,11 @@ ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, in
 
 namespace lmi {
 
-LMIOptimizer::LMIOptimizer() {
+LMIGainSolver::LMIGainSolver() {
     lmi_init();
 }
 
-LMIOptimizer::~LMIOptimizer() {
+LMIGainSolver::~LMIGainSolver() {
     // Free allocated matrices
     if (P_mat_) free(P_mat_);
     if (Q_mat_) free(Q_mat_);
@@ -129,7 +129,7 @@ LMIOptimizer::~LMIOptimizer() {
     if (ipiv_) free(ipiv_);
 }
 
-void LMIOptimizer::lmi_init() {
+void LMIGainSolver::lmi_init() {
     /********************************  LMI Initialization  *******************************/
     // Initialize Q
     Q_mat_ = (matrix*)(malloc(sizeof(matrix))); if (!Q_mat_) err_no_memory;
@@ -164,36 +164,36 @@ void LMIOptimizer::lmi_init() {
     ipiv_ = Matrix_New(10, 1, INT);
 }
 
-double LMIOptimizer::time_diff(struct timespec start, struct timespec end, int count) {
+double LMIGainSolver::time_diff(struct timespec start, struct timespec end, int count) {
   double diff_ms = (end.tv_sec - start.tv_sec) * 1e3 + (end.tv_nsec - start.tv_nsec) / 1e6;
   return diff_ms / count;
 }
 
 /********************************  Rotation Matrices  *******************************/
-void LMIOptimizer::update_Rx(double roll) {
+void LMIGainSolver::update_Rx(double roll) {
     Rx_(0, 0) = 1; Rx_(0, 1) = 0; Rx_(0, 2) = 0;
     Rx_(1, 0) = 0; Rx_(1, 1) = cos(roll); Rx_(1, 2) = -sin(roll);
     Rx_(2, 0) = 0; Rx_(2, 1) = sin(roll); Rx_(2, 2) = cos(roll);
 }
 
-void LMIOptimizer::update_Ry(double pitch) {
+void LMIGainSolver::update_Ry(double pitch) {
     Ry_(0, 0) = cos(pitch); Ry_(0, 1) = 0; Ry_(0, 2) = sin(pitch);
     Ry_(1, 0) = 0; Ry_(1, 1) = 1; Ry_(1, 2) = 0;
     Ry_(2, 0) = -sin(pitch); Ry_(2, 1) = 0; Ry_(2, 2) = cos(pitch);
 }
 
-void LMIOptimizer::update_Rz(double yaw) {
+void LMIGainSolver::update_Rz(double yaw) {
     Rz_(0, 0) = cos(yaw); Rz_(0, 1) = -sin(yaw); Rz_(0, 2) = 0;
     Rz_(1, 0) = sin(yaw); Rz_(1, 1) = cos(yaw); Rz_(1, 2) = 0;
     Rz_(2, 0) = 0; Rz_(2, 1) = 0; Rz_(2, 2) = 1;
 }
 
-void LMIOptimizer::update_Rzyx(double roll, double pitch, double yaw) {
+void LMIGainSolver::update_Rzyx(double roll, double pitch, double yaw) {
 
     // Reset rotation matrices
-    LMIOptimizer::update_Rx(roll);
-    LMIOptimizer::update_Ry(pitch);
-    LMIOptimizer::update_Rz(yaw);
+    LMIGainSolver::update_Rx(roll);
+    LMIGainSolver::update_Ry(pitch);
+    LMIGainSolver::update_Rz(yaw);
 
     // Combine rotations
     Mat3x3 temp;
@@ -204,17 +204,17 @@ void LMIOptimizer::update_Rzyx(double roll, double pitch, double yaw) {
 /*******************************  Update Functions  *******************************/
 
 // Function to update the rotation matrices based on tracking error
-void LMIOptimizer::update_Matrix_A(){
+void LMIGainSolver::update_Matrix_A(){
     cpg_update_A(71, Rzyx_(0, 0) * Ts);  cpg_update_A(81, Rzyx_(0, 1) * Ts);  cpg_update_A(91, Rzyx_(0, 2) * Ts);
     cpg_update_A(72, Rzyx_(1, 0) * Ts);  cpg_update_A(82, Rzyx_(1, 1) * Ts);  cpg_update_A(92, Rzyx_(1, 2) * Ts);
     cpg_update_A(73, Rzyx_(2, 0) * Ts);  cpg_update_A(83, Rzyx_(2, 1) * Ts);  cpg_update_A(93, Rzyx_(2, 2) * Ts);
 }
 
-void LMIOptimizer::update_Matrix_B(){
+void LMIGainSolver::update_Matrix_B(){
 
 }
 
-void LMIOptimizer::update_TrackingErrorSquare() {
+void LMIGainSolver::update_TrackingErrorSquare() {
     for (int i = 0; i < 10; ++i) {
         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
     }
@@ -231,7 +231,7 @@ void LMIOptimizer::update_TrackingErrorSquare() {
 }
 
 /********************************  Post Processing  *******************************/
-void LMIOptimizer::post_processing() {
+void LMIGainSolver::post_processing() {
     P_mat_ = Matrix_NewFromMatrix(Q_mat_, Q_mat_->id);  // Ensure P is initialized
 
     // P = inverse(Q)
@@ -263,14 +263,14 @@ void LMIOptimizer::post_processing() {
     }
 }
 
-void LMIOptimizer::test_and_print() {
+void LMIGainSolver::test_and_print() {
     test_tracking_err();
     update();
     print_matrix6x6(F_kp, "F_kp");
     print_matrix6x6(F_kd, "F_kd");
 }
 
-void LMIOptimizer::update() {
+void LMIGainSolver::update() {
     double roll = tracking_err[1];
     double pitch = tracking_err[2];
     double yaw = tracking_err[3];
@@ -286,32 +286,24 @@ void LMIOptimizer::update() {
     // Call the solver
     cpg_solve();
 
-    // Post processing to finalize the matrices
-    post_processing();
+    // Check solver status and post-process results if successful
+    if(CPG_Info.status == OPTIMAL) {
+        std::cout << "LMI optimization successful. Processing results..." << std::endl;
+        // Post processing to finalize the matrices
+        post_processing();
+    } else {
+        std::cerr << "LMI optimization failed with status: " << CPG_Info.status << std::endl;
+    }
+
 }
 
-void LMIOptimizer::test_tracking_err() {
+void LMIGainSolver::test_tracking_err() {
     double data[10] = {-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624};
     std::copy(data, data + 10, tracking_err);
 }
 
-void LMIOptimizer::print_matrix6x6(const Mat6x6& mat, const char* name) {
-    std::cout << "Matrix " << name << ":" << std::endl;
 
-    for (int i = 0; i < 6; ++i) {
-        std::cout << "  [";
-        for (int j = 0; j < 6; ++j) {
-        std::cout << std::setw(8) << std::fixed << std::setprecision(4) << mat(i, j);
-        if (j < 5)
-            std::cout << ", ";
-        }
-        std::cout << "]" << std::endl;
-    }
-
-    std::cout << std::endl; 
-}
-
-void LMIOptimizer::benchmark(int iterations, bool verbose, double threshold) {
+void LMIGainSolver::benchmark(int iterations, bool verbose, double threshold) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < iterations; ++i) {
@@ -330,9 +322,20 @@ void LMIOptimizer::benchmark(int iterations, bool verbose, double threshold) {
     printf("Average solving time per iteration: %.3f ms\n", time_diff(start, end, iterations));
 }
 
+void print_matrix6x6(const Mat6x6& mat, const char* name) {
+    std::cout << "Matrix " << name << ":" << std::endl;
+
+    for (int i = 0; i < 6; ++i) {
+        std::cout << "  [";
+        for (int j = 0; j < 6; ++j) {
+        std::cout << std::setw(8) << std::fixed << std::setprecision(4) << mat(i, j);
+        if (j < 5)
+            std::cout << ", ";
+        }
+        std::cout << "]" << std::endl;
+    }
+    std::cout << std::endl; 
+}
+
 } // namespace lmi
-
-
-
-
 

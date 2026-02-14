@@ -12,17 +12,17 @@ def generate_launch_description():
     # -----------------------------
     #      Declare Arguments 
     # -----------------------------
-    use_rviz = DeclareLaunchArgument("use_rviz", default_value="true")
-    world_name = DeclareLaunchArgument("world_name", default_value="unity")
-    vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.30")
-    sensorOffsetX = DeclareLaunchArgument("sensorOffsetX", default_value="0.0")
-    sensorOffsetY = DeclareLaunchArgument("sensorOffsetY", default_value="0.0")
-    cameraOffsetZ = DeclareLaunchArgument("cameraOffsetZ", default_value="0.0")
-    vehicleX = DeclareLaunchArgument("vehicleX", default_value="0.0")
-    vehicleY = DeclareLaunchArgument("vehicleY", default_value="0.0")
-    terrainZ = DeclareLaunchArgument("terrainZ", default_value="0.0")
-    vehicleYaw = DeclareLaunchArgument("vehicleYaw", default_value="0.0")
-    checkTerrainConn = DeclareLaunchArgument("checkTerrainConn", default_value="true")
+    use_rviz = DeclareLaunchArgument("use_rviz", default_value="false", description="Whether to launch RViz for visualization")
+    world_name = DeclareLaunchArgument("world_name", default_value="unity", description="Gazebo world name")
+    vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.30", description="Height of the vehicle")
+    sensorOffsetX = DeclareLaunchArgument("sensorOffsetX", default_value="0.0", description="Sensor offset in X direction")
+    sensorOffsetY = DeclareLaunchArgument("sensorOffsetY", default_value="0.0", description="Sensor offset in Y direction")
+    cameraOffsetZ = DeclareLaunchArgument("cameraOffsetZ", default_value="0.0", description="Camera offset in Z direction")
+    vehicleX = DeclareLaunchArgument("vehicleX", default_value="0.0", description="Vehicle position in X direction")
+    vehicleY = DeclareLaunchArgument("vehicleY", default_value="0.0", description="Vehicle position in Y direction")
+    terrainZ = DeclareLaunchArgument("terrainZ", default_value="0.0", description="Terrain position in Z direction")
+    vehicleYaw = DeclareLaunchArgument("vehicleYaw", default_value="0.0", description="Vehicle yaw angle")
+    checkTerrainConn = DeclareLaunchArgument("checkTerrainConn", default_value="true", description="Whether to check terrain connectivity")
 
     # joystick node
     joy_node = Node(
