@@ -33,9 +33,8 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     // Initialize Default Gains
     std::vector<double> default_kp_raw = this->declare_parameter<std::vector<double>>("DEFAULT_KP", std::vector<double>(36, 0.0));
     std::vector<double> default_kd_raw = this->declare_parameter<std::vector<double>>("DEFAULT_KD", std::vector<double>(36, 0.0));
-
-    lmi::Mat6x6 default_kp = edge::ros_interfaces::VectorToEigen<6, 6>(default_kp_raw);
-    lmi::Mat6x6 default_kd = edge::ros_interfaces::VectorToEigen<6, 6>(default_kd_raw);
+    set_default_kp(edge::ros_interfaces::VectorToEigen<6, 6>(default_kp_raw));
+    set_default_kd(edge::ros_interfaces::VectorToEigen<6, 6>(default_kd_raw));
 
     // Timer
     control_timer_ = this->create_wall_timer(
