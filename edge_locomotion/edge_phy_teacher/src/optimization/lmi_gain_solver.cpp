@@ -115,7 +115,7 @@ ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, in
 
 namespace lmi {
 
-LMIGainSolver::LMIGainSolver() {
+LMIGainSolver::LMIGainSolver(double Ts) : Ts_(Ts) {
     lmi_init();
 }
 
@@ -205,9 +205,9 @@ void LMIGainSolver::update_Rzyx(double roll, double pitch, double yaw) {
 
 // Function to update the rotation matrices based on tracking error
 void LMIGainSolver::update_Matrix_A(){
-    cpg_update_A(71, Rzyx_(0, 0) * Ts);  cpg_update_A(81, Rzyx_(0, 1) * Ts);  cpg_update_A(91, Rzyx_(0, 2) * Ts);
-    cpg_update_A(72, Rzyx_(1, 0) * Ts);  cpg_update_A(82, Rzyx_(1, 1) * Ts);  cpg_update_A(92, Rzyx_(1, 2) * Ts);
-    cpg_update_A(73, Rzyx_(2, 0) * Ts);  cpg_update_A(83, Rzyx_(2, 1) * Ts);  cpg_update_A(93, Rzyx_(2, 2) * Ts);
+    cpg_update_A(71, Rzyx_(0, 0) * Ts_);  cpg_update_A(81, Rzyx_(0, 1) * Ts_);  cpg_update_A(91, Rzyx_(0, 2) * Ts_);
+    cpg_update_A(72, Rzyx_(1, 0) * Ts_);  cpg_update_A(82, Rzyx_(1, 1) * Ts_);  cpg_update_A(92, Rzyx_(1, 2) * Ts_);
+    cpg_update_A(73, Rzyx_(2, 0) * Ts_);  cpg_update_A(83, Rzyx_(2, 1) * Ts_);  cpg_update_A(93, Rzyx_(2, 2) * Ts_);
 }
 
 void LMIGainSolver::update_Matrix_B(){
@@ -217,18 +217,10 @@ void LMIGainSolver::update_Matrix_B(){
 void LMIGainSolver::update_TrackingErrorSquare() {
     for (int i = 0; i < 10; ++i) {
         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
+        cpg_update_tracking_err_square(i, tracking_err_square[i]);
     }
-    cpg_update_tracking_err_square(0, tracking_err_square[0]);
-    cpg_update_tracking_err_square(1, tracking_err_square[1]);
-    cpg_update_tracking_err_square(2, tracking_err_square[2]);
-    cpg_update_tracking_err_square(3, tracking_err_square[3]);
-    cpg_update_tracking_err_square(4, tracking_err_square[4]);
-    cpg_update_tracking_err_square(5, tracking_err_square[5]);
-    cpg_update_tracking_err_square(6, tracking_err_square[6]);
-    cpg_update_tracking_err_square(7, tracking_err_square[7]);
-    cpg_update_tracking_err_square(8, tracking_err_square[8]);
-    cpg_update_tracking_err_square(9, tracking_err_square[9]);
 }
+
 
 /********************************  Post Processing  *******************************/
 void LMIGainSolver::post_processing() {

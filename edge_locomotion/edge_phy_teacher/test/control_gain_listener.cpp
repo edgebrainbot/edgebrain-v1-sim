@@ -21,7 +21,7 @@ public:
       "/edge/synthesized_gain", 10,
       std::bind(&ControlGainListener::on_gain_update, this, std::placeholders::_1));
 
-    RCLCPP_INFO(this->get_logger(), "ControlGainListener initialized.");
+    RCLCPP_INFO(this->get_logger(), "Synthesized Gain Listener initialized.");
   }
 
 private:

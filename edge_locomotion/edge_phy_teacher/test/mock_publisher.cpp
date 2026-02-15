@@ -19,7 +19,7 @@ public:
   : Node("mock_publisher"),
     gen_(rd_()), dist_(-0.1, 0.1)
   {
-    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("edge/tracking_error", 30);
+    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("edge/control_state", 30);
     timer_ = this->create_wall_timer(100ms, std::bind(&MockPublisher::timer_callback, this));
     RCLCPP_INFO(this->get_logger(), "MockPublisher started.");
   }
@@ -27,8 +27,11 @@ public:
 private:
 void timer_callback() {
   auto msg = edge_msgs::msg::Vec12Msg();
+  
+  msg.data[0] = 0.0; 
+  msg.data[1] = 0.0; 
 
-  for (size_t i = 0; i < msg.data.size(); i++)
+  for (size_t i = 2; i < msg.data.size(); i++)
   {
     msg.data[i] = dist_(gen_);
   }

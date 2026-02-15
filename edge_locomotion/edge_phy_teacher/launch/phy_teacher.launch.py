@@ -56,7 +56,6 @@ def generate_launch_description():
             ")"
         ]),
         parameters=[
-            default_config_path,
             phy_teacher_config_path,
             {'print_process_time': LaunchConfiguration('print_process_time')}
         ],
@@ -78,6 +77,7 @@ def generate_launch_description():
             default_value='true',
             description='Whether to print the process time'
         ),
+        
         
         phy_teacher_node, 
         gain_synthesizer_node

@@ -1,17 +1,19 @@
+# Physical Teacher settings
 /edge/phy_teacher:
   ros__parameters:
-    # Physical Teacher settings
-    phy_teacher:
-      update_rate: 300               # update rate in Hz
 
-      # teacher_config:
-      chi: 0.1                 # safety scaling factor
-      tau: 20                   # dwelling time in control update (reserved)
-      enable: true              # whether to enable the safety controller
-      trigger_type: 'event'     # trigger type: 'self' or 'event'
+    update_rate: 300          # update rate in Hz
 
-    # Gain synthesizer settings
-    gain_synthesizer:
-      set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
-      print_process_time: rfalse      # whether to print the process time
+    chi: 0.1                  # safety scaling factor
+    tau: 20                   # dwelling time in control update (reserved)
+    enable: true              # whether to enable the safety controller
+    trigger_type: 'event'     # trigger type: 'self' or 'event'
+
+# Gain synthesizer settings
+/edge/gain_synthesizer:
+  ros__parameters:
+
+    sampling_rate: 20              # sampling rate in Hz
+    set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
+    print_process_time: false      # whether to print the process time
     

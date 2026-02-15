@@ -29,7 +29,7 @@ ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, in
 
 
 // Sampling period
-constexpr double Ts = 1.0 / 20.0;
+// constexpr double Ts = 1.0 / 20.0;
 
 namespace lmi {
 
@@ -45,8 +45,13 @@ inline void matrix_multiply(const Mat3x3& A, const Mat3x3& B, Mat3x3& result) {
 
 class LMIGainSolver {
 public:
-    LMIGainSolver();  // Constructor
-    ~LMIGainSolver(); // Destructor
+    LMIGainSolver() = delete;                 // Delete default constructor
+    explicit LMIGainSolver(double Ts);        // Constructor with sampling period
+
+    ~LMIGainSolver();                         // Destructor
+
+    LMIGainSolver(const LMIGainSolver&) = delete;            // Delete copy constructor
+    LMIGainSolver& operator=(const LMIGainSolver&) = delete; // Delete copy assignment operator
 
     Mat6x6 F_kp;  // Contains the solved Kp gain matrices
     Mat6x6 F_kd;  // Contains the solved Kd gain matrices
@@ -65,6 +70,8 @@ public:
     void update_Rzyx(double roll, double pitch, double yaw);
 
 private:
+    double Ts_;    // Sampling period
+
     // matrix objects
     matrix* P_mat_;
     matrix* Q_mat_;
