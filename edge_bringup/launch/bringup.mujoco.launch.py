@@ -35,7 +35,7 @@ def generate_launch_description():
     )
 
     use_global_rviz_arg = DeclareLaunchArgument(
-        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
+        "use_global_rviz", default_value="false", description="Use global RViz (integrated) or not"
     )
     
     robot = LaunchConfiguration("robot")
@@ -112,7 +112,7 @@ def generate_launch_description():
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("vehicle_simulator"),
+                FindPackageShare("edge_nav_bringup"),
                 "launch",
                 "system_simulation_with_route_planner.launch.py"
             ])

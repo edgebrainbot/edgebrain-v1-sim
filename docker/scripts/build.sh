@@ -32,6 +32,10 @@ esac
 
 echo "[INFO] Detected architecture: ${ARCH} -> ${PLATFORM}"
 
+# -------- Assigned CPU Jobs --------
+MAKE_JOBS=$(nproc)
+echo "[INFO] Using MAKE_JOBS=${MAKE_JOBS}"
+
 # -------- Image Names --------
 BASE_IMAGE_NAME=edge-brain-base
 BASE_IMAGE_TAG=${PLATFORM}
@@ -87,6 +91,7 @@ echo "  Dockerfile: ${BASE_DOCKERFILE}"
 echo "=============================="
 
 docker build \
+    --build-arg MAKE_JOBS=${MAKE_JOBS} \
     -f ${BASE_DOCKERFILE} \
     -t ${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} .
 
@@ -102,6 +107,7 @@ echo "=============================="
 docker build \
     ${SSH_OPTION} \
     -f "${APP_DOCKERFILE}" \
+    --build-arg MAKE_JOBS=${MAKE_JOBS} \
     --build-arg PLATFORM=${PLATFORM} \
     --build-arg BASE_IMAGE=${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} \
     -t "${APP_IMAGE_NAME}:${APP_IMAGE_TAG}" .

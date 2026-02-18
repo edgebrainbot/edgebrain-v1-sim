@@ -169,7 +169,7 @@ def generate_launch_description():
     
     network_interface = DeclareLaunchArgument(
         'network_interface',
-        default_value='eno1',
+        default_value='lo',
         description='Network interface for DDS communication (e.g., eno1, wlan0, lo)'
     )
 

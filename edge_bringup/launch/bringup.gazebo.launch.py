@@ -106,7 +106,7 @@ def generate_launch_description():
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("nav_bringup"),
+                FindPackageShare("edge_nav_bringup"),
                 "launch", "system_simulation_with_route_planner.launch.py"
             ])
         ),
@@ -185,7 +185,7 @@ def generate_launch_description():
 
         # -- Launch Components --
         controller_launch,
-        # phy_teacher_launch,
+        phy_teacher_launch,
         # drl_student_launch,
         trigger_launch,
         # navigation_launch,

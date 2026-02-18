@@ -26,17 +26,17 @@ def generate_launch_description():
         output="screen",
         parameters=[{
             "metricFile": PathJoinSubstitution([
-                FindPackagePrefix("nav_bringup"),
+                FindPackagePrefix("edge_nav_bringup"),
                 "log",
                 "metrics",
             ]),
             "trajFile": PathJoinSubstitution([
-                FindPackagePrefix("nav_bringup"),
+                FindPackagePrefix("edge_nav_bringup"),
                 "log",
                 "trajectory",
             ]),
             "mapFile": PathJoinSubstitution([
-                FindPackagePrefix("nav_bringup"),
+                FindPackagePrefix("edge_nav_bringup"),
                 "mesh",
                 LaunchConfiguration("world_name"),
                 "map.ply"

@@ -1,12 +1,12 @@
 import glob
 from setuptools import find_packages, setup
 
-package_name = 'nav_bringup'
+package_name = 'edge_nav_bringup'
 launch_files = glob.glob('launch/*.launch.py')
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='1.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',

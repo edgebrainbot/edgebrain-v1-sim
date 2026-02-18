@@ -42,7 +42,7 @@ def deploy_solver(src_dir):
 
         os.makedirs(dst_folder, exist_ok=True)
         shutil.copy2(src_file, dst_folder)
-        print(f"✔ Copied: {os.path.basename(src_file)} → {dst_folder}")
+        print(f"✔ Copied: {src_file} → {dst_folder}")
 
     print(f"\n🎉 Successfully deployed {solver} solver.")
 
@@ -58,5 +58,6 @@ def generate_solver(code_dir, solver):
 
 if __name__ == "__main__":
 
-    generate_solver(code_dir=CODE_DIR, solver=solver)
-    deploy_solver(src_dir=os.path.join(BASE_DIR, CODE_DIR))
+    solver_dir = os.path.join(BASE_DIR, CODE_DIR)
+    generate_solver(code_dir=solver_dir, solver=solver)
+    deploy_solver(src_dir=solver_dir)

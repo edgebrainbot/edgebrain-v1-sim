@@ -651,9 +651,9 @@ GZ_ADD_PLUGIN(
     gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemPostUpdate)
 #else
 IGNITION_ADD_PLUGIN(
-  gz_quadruped_hardware::GazeboSimQuadrupedPlugin,
-  sim::System,
-  gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemConfigure,
-  gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemPreUpdate,
-  gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemPostUpdate)
+    gz_quadruped_hardware::GazeboSimQuadrupedPlugin,
+    sim::System,
+    gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemConfigure,
+    gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemPreUpdate,
+    gz_quadruped_hardware::GazeboSimQuadrupedPlugin::ISystemPostUpdate)
 #endif

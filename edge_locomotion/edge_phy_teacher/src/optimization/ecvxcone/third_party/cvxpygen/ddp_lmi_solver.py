@@ -1,10 +1,16 @@
+#!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
+import sys
+import time
 import importlib
 import logging
 import cvxpy as cp
 from cvxpygen import cpg
 import numpy as np
-import time
-import sys
 
 np.set_printoptions(suppress=True)
 
@@ -20,8 +26,8 @@ def cvxpy_ddp(random=False, threshold=0.1):
         tracking_err = np.random.uniform(-threshold, threshold, size=10)
     else:
         # tracking_err = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
-        # tracking_err = np.array([-0.00137003, 1.02392, -0.442369, -0.0794646, 0.074993, -0.134433, 0.086083, -0.194055, -0.12749, -0.530516])
-        tracking_err = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., -0.1])
+        tracking_err = np.array([-0.00137003, 0.02392, -0.442369, -0.0794646, 0.074993, -0.134433, 0.086083, -0.194055, -0.12749, -0.530516])
+        # tracking_err = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., -0.1])
 
     roll = tracking_err[1]
     pitch = tracking_err[2]
@@ -46,23 +52,23 @@ def cvxpy_ddp(random=False, threshold=0.1):
     B_param = cp.Parameter((10, 6), name='B')
 
     # Sampling period
-    Ts = 1 / 20  # work in 25 to 30
+    Ts = 1 / 30  # work in 25 to 30
 
-    alpha = 0.1
+    alpha = 0.82
     hd = 1e-10
     phi = 0.15
         
     # State
-    b1 = 1 / 0.3         # height
-    b2 = 1 / 2.0         # roll
-    b3 = 1 / 2.0         # pitch
-    b4 = 1 / 2.0         # yaw
-    b5 = 1 / 1.0         # vx
+    b1 = 1 / 0.5         # height
+    b2 = 1 / 10000.0         # roll
+    b3 = 1 / 10000.0         # pitch
+    b4 = 1 / 10000.0         # yaw
+    b5 = 1 / 5.0         # vx
     b6 = 1 / 5.0         # vy
-    b7 = 1 / 15.0        # vz
-    b8 = 1 / 15.0        # roll rate
-    b9 = 1 / 15.0        # pitch rate
-    b10 = 1 / 5.0       # yaw rate
+    b7 = 1 / 10000.0         # vz
+    b8 = 1 / 15.0         # roll rate
+    b9 = 1 / 15.0         # pitch rate
+    b10 = 1 / 5.0        # yaw rate
     
     c1 = 1 / 50
     c2 = 1 / 100
@@ -220,6 +226,6 @@ if __name__ == "__main__":
         print("Optimization failed.")
         
     # Benchmark
-    benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
+    # benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
 
     

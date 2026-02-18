@@ -35,14 +35,14 @@ RUN apt-get update && apt-get install -y lsb-release gnupg && \
     apt-get update && apt-get install -y ignition-fortress
 
     
-# ------------ Other ROS2 Dependencies ------------
+# ------------ Extra ROS2 Dependencies ------------
 RUN apt update && apt install -y ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions \
     ros-${ROS_DISTRO}-xacro ros-${ROS_DISTRO}-ros-gz-bridge ros-${ROS_DISTRO}-ros-gz-sim \
     ros-${ROS_DISTRO}-ros-gz-interfaces
 
 
 # ------------ Python Dependencies ------------
-RUN pip3 install transforms3d ultralytics cv-bridge opencv-python numpy==1.26.1 segment-anything
+RUN pip3 install transforms3d ultralytics cv-bridge opencv-python numpy==1.26.1 segment-anything cvxpy==1.7.3
 
 
 # ------------ Checkout branch as user ------------

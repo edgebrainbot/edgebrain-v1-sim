@@ -38,7 +38,6 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     Kd_swing_ = Vec3(10, 10, 10).asDiagonal();
 
 
-
     // v_x_limit_ << -1.3, 1.3;        // max forward/backward speed 1.3 m/s (does affect stability)
     // v_y_limit_ << -1.2, 1.2;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     // w_yaw_limit_ << -0.45, 0.45;
@@ -47,9 +46,9 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     // v_y_limit_ << -0.1, 0.1;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     // w_yaw_limit_ << -0.2, 0.2;
 
-    v_x_limit_ << 0.1, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
-    v_y_limit_ << -0.15, 0.15;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    w_yaw_limit_ << -0.25, 0.25;
+    v_x_limit_ << -0.3, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
+    v_y_limit_ << -0.4, 0.4;        // max lateral speed 1.2 m/s (doesn't affect stability much)
+    w_yaw_limit_ << -0.45, 0.45;
 
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 

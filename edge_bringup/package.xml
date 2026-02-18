@@ -21,7 +21,7 @@
   <exec_depend>edge_gazebo</exec_depend>
   <exec_depend>edge_quadruped_controller</exec_depend>
   <exec_depend>indicator_led_driver</exec_depend>
-  <exec_depend>nav_bringup</exec_depend>
+  <exec_depend>edge_nav_bringup</exec_depend>
 
   <export>
     <build_type>ament_python</build_type>

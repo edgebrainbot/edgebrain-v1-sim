@@ -60,7 +60,7 @@ WORKDIR ${THIRD_PARTY_PATH}
 
 
 # ------------ ROS2 Workspace ------------
-ARG MAKE_JOBS=$(nproc)
+ARG MAKE_JOBS
 ARG ROS2_WS_NAME=edge_ws
 ARG ROS2_WS_PATH=/home/${USERNAME}/${ROS2_WS_NAME}
 SHELL ["/bin/bash", "-c"]
@@ -108,7 +108,7 @@ RUN git clone https://github.com/google-deepmind/mujoco.git && \
 
 
 # ------------ Build unitree_mujoco ------------
-RUN git clone https://github.com/legubiao/unitree_mujoco.git && \
+RUN git clone https://github.com/Charlescai123/unitree_mujoco.git && \
     cd unitree_mujoco/simulate && git checkout 1fda6580 && \
     mkdir build && cd build && \
     cmake .. && \
