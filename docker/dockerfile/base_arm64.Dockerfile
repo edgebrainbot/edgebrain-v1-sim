@@ -70,6 +70,49 @@ ARG ROS2_WS_PATH=/home/${USERNAME}/${ROS2_WS_NAME}
 SHELL ["/bin/bash", "-c"]
 
 
+# ------------ Build eigenpy ------------
+RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
+    cd eigenpy && mkdir build && cd build && \
+    cmake .. && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
+
+# ------------ Build Coal ------------
+RUN sudo apt update && \
+    sudo apt install -y cmake libeigen3-dev libboost-all-dev python3-dev python3-pip && \
+    git clone --recursive https://github.com/coal-library/coal.git && \
+    cd coal && git checkout devel && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
+
+# ------------ Build hpp-fcl ------------
+RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git && \
+    cd hpp-fcl && git checkout v2.4.5 && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
+
+# ------------ Build Pinocchio ------------
+RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
+    cd pinocchio && git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_PYTHON_INTERFACE=ON \
+    -DBUILD_WITH_COLLISION_SUPPORT=ON \
+    -DPYTHON_EXECUTABLE=$(which python3) \
+    -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
 # ------------ Build unitree_sdk2 ------------
 RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git && \
     cd unitree_sdk2 && git checkout f29ee9f && \
@@ -102,55 +145,12 @@ RUN git clone https://github.com/google-deepmind/mujoco.git && \
 
 # ------------ Build unitree_mujoco ------------
 RUN git clone https://github.com/Charlescai123/unitree_mujoco.git && \
-    cd unitree_mujoco/simulate && git checkout 1fda6580 && \
+    cd unitree_mujoco/simulate && git checkout mujoco-v3.3.3 && \
     mkdir build && cd build && \
     cmake .. && \
     make -j${MAKE_JOBS}
 
-# ------------ Build eigenpy ------------
-RUN git clone https://github.com/stack-of-tasks/eigenpy.git && \
-    cd eigenpy && mkdir build && cd build && \
-    cmake .. && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
-# ------------ Build Coal ------------
-RUN sudo apt update && \
-    sudo apt install -y cmake libeigen3-dev libboost-all-dev python3-dev python3-pip && \
-    git clone --recursive https://github.com/coal-library/coal.git && \
-    cd coal && git checkout devel && \
-    git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
-# ------------ Build hpp-fcl ------------
-RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git && \
-    cd hpp-fcl && git checkout v2.4.5 && \
-    git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
-# ------------ Build pinocchio ------------
-RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
-    cd pinocchio && git submodule update --init --recursive && \
-    mkdir build && cd build && \
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_PYTHON_INTERFACE=ON \
-    -DBUILD_WITH_COLLISION_SUPPORT=ON \
-    -DPYTHON_EXECUTABLE=$(which python3) \
-    -DCMAKE_INSTALL_PREFIX=/usr/local && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
+    
 # ------------ PyTorch + torchvision + torchaudio ------------
 WORKDIR ${HOME_PATH}
 RUN pip3 install --upgrade pip && \
@@ -179,4 +179,3 @@ ENV ROS_DISTRO=${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-ENV PYTHONPATH=/usr/lib/python3/dist-packages:${ROS2_WS_PATH}/install/lib/python3.10/site-packages

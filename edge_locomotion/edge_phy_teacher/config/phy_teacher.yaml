@@ -4,7 +4,7 @@
 
     update_rate: 200          # update rate in Hz
 
-    chi: 0.1                  # safety scaling factor
+    chi: 0.0                  # safety scaling factor
     tau: 20                   # dwelling time in control update (reserved)
     enable: true              # whether to enable the safety controller
     trigger_type: 'event'     # trigger type: 'self' or 'event'
@@ -13,7 +13,7 @@
 /edge/gain_synthesizer:
   ros__parameters:
 
-    sampling_rate: 30              # sampling rate in Hz
+    sampling_rate: 35              # sampling rate in Hz
     set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
     print_process_time: false      # whether to print the process time
     

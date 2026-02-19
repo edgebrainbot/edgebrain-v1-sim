@@ -65,55 +65,7 @@ ARG ROS2_WS_NAME=edge_ws
 ARG ROS2_WS_PATH=/home/${USERNAME}/${ROS2_WS_NAME}
 SHELL ["/bin/bash", "-c"]
 
-
-# ------------ Build unitree_sdk2 ------------
-RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git && \
-    cd unitree_sdk2 && git checkout f29ee9f && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
-# ------------ Build unitree_ros2 ------------
-RUN sudo apt update && \
-    sudo apt install -y ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
-    ros-${ROS_DISTRO}-rosidl-generator-dds-idl libyaml-cpp-dev && \
-    git clone https://github.com/unitreerobotics/unitree_ros2.git && \
-    cd unitree_ros2/cyclonedds_ws/src && \
-    git clone https://github.com/ros2/rmw_cyclonedds -b ${ROS_DISTRO} && \
-    git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x && \
-    cd .. && colcon build --packages-select cyclonedds && \
-    source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build
-
-
-# ------------ Build mujoco ------------
-RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-    libxrandr-dev \
-    libxinerama-dev \
-    libxcursor-dev \
-    libxi-dev \
-    libgl1-mesa-dev \
-    libglu1-mesa-dev \
-    libx11-dev \
-    libxext-dev \
-    && sudo rm -rf /var/lib/apt/lists/*
-
-RUN git clone https://github.com/google-deepmind/mujoco.git && \
-    cd mujoco && git checkout 3.3.3 && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j${MAKE_JOBS} && \
-    sudo make install
-
-
-# ------------ Build unitree_mujoco ------------
-RUN git clone https://github.com/Charlescai123/unitree_mujoco.git && \
-    cd unitree_mujoco/simulate && git checkout 1fda6580 && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j${MAKE_JOBS} 
-
+    
 # ------------ Build eigenpy ------------
 RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     libboost-python-dev python3-dev python3-scipy \
@@ -154,7 +106,7 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
     sudo make install
 
 
-# ------------ Build pinocchio ------------
+# ------------ Build Pinocchio ------------
 RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     cd pinocchio && git submodule update --init --recursive && \
     mkdir build && cd build && \
@@ -166,6 +118,55 @@ RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
     -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j${MAKE_JOBS} && \
     sudo make install
+
+
+# ------------ Build unitree_sdk2 ------------
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git && \
+    cd unitree_sdk2 && git checkout f29ee9f && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
+
+# ------------ Build unitree_ros2 ------------
+RUN sudo apt update && \
+    sudo apt install -y ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    ros-${ROS_DISTRO}-rosidl-generator-dds-idl libyaml-cpp-dev && \
+    git clone https://github.com/unitreerobotics/unitree_ros2.git && \
+    cd unitree_ros2/cyclonedds_ws/src && \
+    git clone https://github.com/ros2/rmw_cyclonedds -b ${ROS_DISTRO} && \
+    git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x && \
+    cd .. && colcon build --packages-select cyclonedds && \
+    c && colcon build
+
+
+# ------------ Build mujoco ------------
+RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+    libxrandr-dev \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxi-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libx11-dev \
+    libxext-dev \
+    && sudo rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/google-deepmind/mujoco.git && \
+    cd mujoco && git checkout 3.3.3 && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j${MAKE_JOBS} && \
+    sudo make install
+
+
+# ------------ Build unitree_mujoco ------------
+RUN git clone https://github.com/Charlescai123/unitree_mujoco.git && \
+    cd unitree_mujoco/simulate && git checkout mujoco-v3.3.3 && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j${MAKE_JOBS} 
 
 
 # ----------- Install PyTorch and toolboxs for JetPack 6.2 -------------
@@ -200,4 +201,3 @@ ENV ROS_DISTRO=${ROS_DISTRO}
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-ENV PYTHONPATH=/usr/lib/python3/dist-packages:${ROS2_WS_PATH}/install/lib/python3.10/site-packages

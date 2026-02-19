@@ -6,20 +6,21 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction, ExecuteProcess, OpaqueFunction
-from launch_ros.actions import Node, SetParameter
+from launch_ros.actions import Node
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.event_handlers import OnProcessExit
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument, TimerAction, ExecuteProcess, OpaqueFunction
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch.actions import IncludeLaunchDescription, RegisterEventHandler, Shutdown
-from launch.event_handlers import OnProcessExit
+
 
 def generate_launch_description():
 
-    # ------------------------
-    # Launch Arguments
-    # ------------------------
+    # ------------------------------
+    # ---    Launch Arguments    ---
+    # ------------------------------
     namespace_arg = DeclareLaunchArgument(
         "namespace", default_value="edge", description="Global namespace for all nodes"
     )
@@ -42,9 +43,11 @@ def generate_launch_description():
     use_global_rviz = LaunchConfiguration("use_global_rviz")
     use_sim_time = LaunchConfiguration("use_sim_time")
 
-    # ------------------------
-    # Include Launch Descriptions
-    # ------------------------
+    # -----------------------------------
+    # --  Include Launch Descriptions  --
+    # -----------------------------------
+    
+    # -------- Edge Quadruped Controller Launch --------
     controller_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -61,6 +64,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # -------- Phy-Teacher Launch --------
     phy_teacher_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -75,6 +79,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # -------- DRL-Student Launch --------
     drl_student_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -89,6 +94,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # -------- Trigger Launch --------
     trigger_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -103,6 +109,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # -------- Edge Navigation Launch --------
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -119,6 +126,7 @@ def generate_launch_description():
         }.items()
     )
 
+    # -------- Gazebo Interaction Service Launch --------
     gz_interact_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -134,9 +142,11 @@ def generate_launch_description():
         }.items()
     )
 
-    # ------------------------
-    # Node Definitions
-    # ------------------------
+    # -----------------------------------
+    # --       Node Definitions        --
+    # -----------------------------------
+
+    # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
         package='edge_config',
         executable='virtual_status_indicator_node',
@@ -145,6 +155,7 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}]
     )
 
+    # -------- Goal Publisher Node --------
     goal = [6.0, -6.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0,
@@ -159,6 +170,7 @@ def generate_launch_description():
         )]
     )
 
+    # -------- Global Rviz Node --------
     rviz_config_file = PathJoinSubstitution([
         FindPackageShare('edge_bringup'),
         'rviz',

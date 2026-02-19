@@ -8,10 +8,13 @@ import os
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    ExecuteProcess,
     IncludeLaunchDescription,
     RegisterEventHandler,
+    TimerAction,
 )
 from launch_ros.actions import Node
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -19,9 +22,9 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Pyth
 
 
 def generate_launch_description():
-    # ------------------------
-    # Declare Launch Arguments
-    # ------------------------
+    # ------------------------------
+    # ---    Launch Arguments    ---
+    # ------------------------------
     namespace_arg = DeclareLaunchArgument(
         "namespace",
         default_value="edge",
@@ -35,18 +38,18 @@ def generate_launch_description():
     )
 
     use_global_rviz_arg = DeclareLaunchArgument(
-        "use_global_rviz", default_value="false", description="Use global RViz (integrated) or not"
+        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
     )
     
     robot = LaunchConfiguration("robot")
     namespace = LaunchConfiguration("namespace")
     use_global_rviz = LaunchConfiguration("use_global_rviz")
 
-    # ------------------------
-    # Locomotion Control Layer
-    # ------------------------
+    # -----------------------------------
+    # --  Include Launch Descriptions  --
+    # -----------------------------------
     
-    # -------- Edge Quadruped Controller --------
+    # -------- Edge Quadruped Controller Launch --------
     controller_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -58,12 +61,11 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
-            "use_sim_time": "true",
             "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
         }.items()
-    )
+    )  
     
-    # -------- PHY Teacher --------
+    # -------- PHY Teacher Launch --------
     phy_teacher_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -78,7 +80,7 @@ def generate_launch_description():
         }.items()
     )
     
-    # -------- DRL Student --------
+    # -------- DRL Student Launch --------
     drl_student_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -93,7 +95,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # -------- Trigger --------
+    # -------- Trigger Launch --------
     trigger_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -108,7 +110,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # --------- Navigation Module ---------
+    # --------- Navigation Module Launch ---------
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -117,20 +119,55 @@ def generate_launch_description():
                 "system_simulation_with_route_planner.launch.py"
             ])
         ),
-        # launch_arguments={
-        #     "namespace": namespace,
-        #     "robot": robot
-        # }.items()
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot,
+            "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
+        }.items()
     )
+    
+    # -----------------------------------
+    # --       Node Definitions        --
+    # -----------------------------------
 
-    # === Virtual Status Indicator Node ===
+    # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
         package='edge_config',
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
         output='screen',
     )
+    
+    # -------- Goal Publisher Node --------
+    goal = [6.0, -6.0, 0.0]
+    publish_goal_point = TimerAction(
+        period=1.0,
+        actions=[ExecuteProcess(
+            cmd=[
+                'ros2', 'topic', 'pub', '-r', '1',
+                '/goal_point',
+                'geometry_msgs/msg/PointStamped',
+                f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'
+            ],
+            # output='screen'
+        )]
+    )
 
+    # -------- Global Rviz Node --------
+    rviz_config_file = PathJoinSubstitution([
+        FindPackageShare('edge_bringup'),
+        'rviz',
+        'global_view.rviz'
+    ])
+    global_rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='global_rviz',
+        output='screen',
+        arguments=['-d', rviz_config_file],
+        condition=IfCondition(use_global_rviz)
+    )
+    
     return LaunchDescription([
         # -- Launch Arguments --
         robot_arg,
@@ -143,6 +180,8 @@ def generate_launch_description():
         # drl_student_launch,
         trigger_launch,
         virtual_status_indicator_node,
+        global_rviz_node,
         
         # navigation_launch,
+        publish_goal_point,
     ])

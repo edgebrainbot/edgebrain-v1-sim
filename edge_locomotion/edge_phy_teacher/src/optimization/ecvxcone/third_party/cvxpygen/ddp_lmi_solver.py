@@ -26,8 +26,8 @@ def cvxpy_ddp(random=False, threshold=0.1):
         tracking_err = np.random.uniform(-threshold, threshold, size=10)
     else:
         # tracking_err = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
-        tracking_err = np.array([-0.00137003, 0.02392, -0.442369, -0.0794646, 0.074993, -0.134433, 0.086083, -0.194055, -0.12749, -0.530516])
-        # tracking_err = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., -0.1])
+        # tracking_err = np.array([-0.00137003, 0.02392, -0.442369, -0.0794646, 0.074993, -0.134433, 0.086083, -0.194055, -0.12749, -0.530516])
+        tracking_err = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., -0.1])
 
     roll = tracking_err[1]
     pitch = tracking_err[2]
@@ -52,9 +52,9 @@ def cvxpy_ddp(random=False, threshold=0.1):
     B_param = cp.Parameter((10, 6), name='B')
 
     # Sampling period
-    Ts = 1 / 30  # work in 25 to 30
+    Ts = 1 / 35  # work in 25 to 30
 
-    alpha = 0.82
+    alpha = 0.65
     hd = 1e-10
     phi = 0.15
         
@@ -226,6 +226,6 @@ if __name__ == "__main__":
         print("Optimization failed.")
         
     # Benchmark
-    # benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
+    benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
 
     

@@ -12,16 +12,18 @@ from launch.actions import (
     RegisterEventHandler,
 )
 from launch_ros.actions import Node
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch.event_handlers import OnProcessExit
 
 
 def generate_launch_description():
-    # ------------------------
-    # Declare Launch Arguments
-    # ------------------------
+    
+    # ------------------------------
+    # ---    Launch Arguments    ---
+    # ------------------------------
     namespace_arg = DeclareLaunchArgument(
         "namespace",
         default_value="edge",
@@ -35,6 +37,11 @@ def generate_launch_description():
         description="Robot name (e.g. go2, go1, a1)"
     )
     
+    # Use Global RViz argument
+    use_global_rviz_arg = DeclareLaunchArgument(
+        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
+    )
+        
     # Real Robot Usage argument
     use_real_robot_arg = DeclareLaunchArgument(
         "use_real_robot",
@@ -55,17 +62,20 @@ def generate_launch_description():
         default_value="0",
         description="DDS domain ID for communication"
     )
-
+    
+    robot = LaunchConfiguration("robot")
     network_interface = LaunchConfiguration("network_interface")
     dds_domain_id = LaunchConfiguration("dds_domain_id")
 
-    use_real_robot = LaunchConfiguration("use_real_robot")
     namespace = LaunchConfiguration("namespace")
-    robot = LaunchConfiguration("robot")
+    use_real_robot = LaunchConfiguration("use_real_robot")
+    use_global_rviz = LaunchConfiguration("use_global_rviz")
 
-    # ------------------------
-    # Hardware layer
-    # ------------------------
+    # -----------------------------------
+    # --  Include Launch Descriptions  --
+    # -----------------------------------
+    
+    # -------- LED Hardware Launch --------
     led_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -79,12 +89,8 @@ def generate_launch_description():
             "robot": robot
         }.items()
     )
-
-    # ------------------------
-    # Locomotion Control Layer
-    # ------------------------
     
-    # -------- Edge Quadruped Controller --------
+    # -------- Edge Quadruped Controller Launch --------
     controller_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -96,7 +102,6 @@ def generate_launch_description():
         launch_arguments={
             "namespace": namespace,
             "robot": robot,
-            
             "use_real_robot": use_real_robot,
             "network_interface": network_interface,
             "dds_domain_id": dds_domain_id,
@@ -104,7 +109,7 @@ def generate_launch_description():
         }.items()
     )
     
-    # -------- PHY Teacher --------
+    # -------- PHY Teacher Launch --------
     phy_teacher_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -119,7 +124,7 @@ def generate_launch_description():
         }.items()
     )
     
-    # -------- DRL Student --------
+    # -------- DRL Student Launch --------
     drl_student_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -134,7 +139,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # -------- Trigger --------
+    # -------- Trigger Launch --------
     trigger_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -149,7 +154,7 @@ def generate_launch_description():
         }.items()
     )
 
-    # --------- Navigation Module ---------
+    # --------- Navigation Module Launch ---------
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
@@ -164,13 +169,34 @@ def generate_launch_description():
         # }.items()
     )
 
-    # === Virtual Status Indicator Node ===
+    # -----------------------------------
+    # --       Node Definitions        --
+    # -----------------------------------
+
+    # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
         package='edge_config',
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
         output='screen',
     )
+    
+    # -------- Global Rviz Node --------
+    rviz_config_file = PathJoinSubstitution([
+        FindPackageShare('edge_bringup'),
+        'rviz',
+        'global_view.rviz'
+    ])
+    
+    global_rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='global_rviz',
+        output='screen',
+        arguments=['-d', rviz_config_file],
+        condition=IfCondition(use_global_rviz)
+    )
+    
 
     return LaunchDescription([
         # -- Launch Arguments --
@@ -179,7 +205,8 @@ def generate_launch_description():
         
         use_real_robot_arg,         
         network_interface_arg,   
-        dds_domain_arg,        
+        dds_domain_arg,       
+        use_global_rviz_arg, 
     
         # -- Launch Components --
         led_launch,
@@ -189,5 +216,7 @@ def generate_launch_description():
         trigger_launch,
         virtual_status_indicator_node,
         
+        global_rviz_node,
         # navigation_launch,
+
     ])

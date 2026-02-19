@@ -227,9 +227,9 @@ namespace edge::control::quadruped
             {
                 latest_goal_x_ = msg->point.x;
                 latest_goal_y_ = msg->point.y;
-                std::cout << "Received new goal from the trigger." << std::endl;
-                std::cout << "latest_edge_goal x: " << latest_goal_x_ << std::endl;
-                std::cout << "latest_edge_goal y: " << latest_goal_y_ << std::endl;
+                // std::cout << "Received new goal from the trigger." << std::endl;
+                // std::cout << "latest_edge_goal x: " << latest_goal_x_ << std::endl;
+                // std::cout << "latest_edge_goal y: " << latest_goal_y_ << std::endl;
             });
 
             // Subscribe to obstacle average distance

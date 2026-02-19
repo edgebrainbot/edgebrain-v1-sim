@@ -18,7 +18,7 @@
 # =========================================================
 
 debug:
-  enabled: false   # set to true to enable debug logging
+  enabled: true   # set to true to enable debug logging
 
 switching:
   enabled: true

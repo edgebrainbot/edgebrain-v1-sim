@@ -38,11 +38,12 @@ RUN apt-get update && apt-get install -y lsb-release gnupg && \
 # ------------ Extra ROS2 Dependencies ------------
 RUN apt update && apt install -y ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions \
     ros-${ROS_DISTRO}-xacro ros-${ROS_DISTRO}-ros-gz-bridge ros-${ROS_DISTRO}-ros-gz-sim \
-    ros-${ROS_DISTRO}-ros-gz-interfaces
+    ros-${ROS_DISTRO}-ros-gz-interfaces ros-${ROS_DISTRO}-rqt-robot-steering
 
 
 # ------------ Python Dependencies ------------
-RUN pip3 install transforms3d ultralytics cv-bridge opencv-python numpy==1.26.1 segment-anything cvxpy==1.7.3
+RUN pip3 install --upgrade pip && pip3 install --ignore-installed transforms3d ultralytics cv-bridge opencv-python \
+    numpy==1.26.4 segment-anything pdaqp==0.6.7 cvxpy==1.7.3 cvxopt==1.3.2 scipy==1.15.3 setuptools==59.6.0
 
 
 # ------------ Checkout branch as user ------------
@@ -51,10 +52,14 @@ RUN cd edge_ws/src/edge-brain-go2 && git checkout Jetson
 
 SHELL ["/bin/bash", "-c"]
 
+# ------------ Install cvxPYGEN and Build Gain Synthesizer --------------
+RUN cd edge_ws/src/edge-brain-go2/edge_locomotion/edge_phy_teacher/src/optimization/ecvxcone/third_party/cvxpygen \
+    && pip install --user -e . && python build_solver.py
+
 
 # ------------ Build custom ROS2 packages ------------
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    cd edge_ws/src/edge-brain-go2 && ./scripts/build_ws.sh || true
+    cd edge_ws/src/edge-brain-go2 && ./edge_scripts/build_ws.sh || true
 
 
 # ------------ Environment Variables ------------
@@ -62,7 +67,7 @@ ENV ROS_DOMAIN_ID=0
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-ENV PYTHONPATH=/usr/lib/python3/dist-packages:/home/${USERNAME}/edge_ws/install/lib/python3.10/site-packages
+# ENV PYTHONPATH=/usr/lib/python3/dist-packages:/home/${USERNAME}/edge_ws/install/lib/python3.10/site-packages
 
 
 # ------------ Entrypoint ------------
