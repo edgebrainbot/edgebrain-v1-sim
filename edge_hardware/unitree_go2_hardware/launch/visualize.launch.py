@@ -3,11 +3,11 @@ import os
 import xacro
 from launch_ros.actions import Node
 from launch.event_handlers import OnProcessExit
-from launch.substitutions import PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, RegisterEventHandler, SetEnvironmentVariable
 
 
 
@@ -133,12 +133,25 @@ def generate_launch_description():
         description='DDS domain ID for communication'
     )
 
+    ros_rmw_implementation = DeclareLaunchArgument(
+        'ros_rmw_implementation',
+        default_value='rmw_fastrtps_cpp',
+        description='ROS 2 RMW implementation used by launched ROS nodes'
+    )
+
+    set_rmw_implementation = SetEnvironmentVariable(
+        'RMW_IMPLEMENTATION',
+        LaunchConfiguration('ros_rmw_implementation')
+    )
+
     return LaunchDescription([
         pkg_description,
         pkg_hardware_go2,
         use_real_robot,
         network_interface,
         dds_domain_id,
+        ros_rmw_implementation,
+        set_rmw_implementation,
         
         OpaqueFunction(function=launch_setup),
     ])

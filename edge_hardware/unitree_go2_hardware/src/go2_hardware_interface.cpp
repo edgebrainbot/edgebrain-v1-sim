@@ -6,6 +6,8 @@
 #include "unitree_go2_hardware/crc32.hpp"
 #include "unitree_go2_hardware/go2_hardware_interface.hpp"
 
+#include <exception>
+
 #define TOPIC_LOWCMD "rt/lowcmd"
 #define TOPIC_LOWSTATE "rt/lowstate"
 #define TOPIC_HIGHSTATE "rt/sportmodestate"
@@ -87,8 +89,34 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
     RCLCPP_INFO(rclcpp::get_logger(logger_name_), "use_real_robot: %s, network_interface: %s, domain: %d", 
         use_real_robot_ ? "true" : "false", network_interface_.c_str(), domain_);
     
+    std::cout << "domain: " << domain_ << ", network_interface: " << network_interface_ << std::endl;
     // Initialize communication channels
-    unitree::robot::ChannelFactory::Instance()->Init(domain_, network_interface_);
+    try
+    {
+        unitree::robot::ChannelFactory::Instance()->Init(domain_, network_interface_);
+    }
+    catch (const std::exception& e)
+    {
+        RCLCPP_ERROR(
+            rclcpp::get_logger(logger_name_),
+            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): %s",
+            domain_,
+            network_interface_.c_str(),
+            e.what());
+        return hardware_interface::CallbackReturn::ERROR;
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(
+            rclcpp::get_logger(logger_name_),
+            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): unknown exception",
+            domain_,
+            network_interface_.c_str());
+        return hardware_interface::CallbackReturn::ERROR;
+    }
+
+    std::cout << "Initialized communication channels with domain " << domain_ 
+              << " and network interface " << network_interface_ << std::endl;
 
     low_cmd_publisher_ = std::make_shared<unitree::robot::ChannelPublisher<unitree_go::msg::dds_::LowCmd_>>(TOPIC_LOWCMD);
     low_cmd_publisher_->InitChannel();
@@ -110,8 +138,7 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
             highStateMessageHandler(std::forward<decltype(msg)>(msg));
         }, 1);
 
-
-    return SystemInterface::on_init(info);
+    return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 /***************************************************************************************/

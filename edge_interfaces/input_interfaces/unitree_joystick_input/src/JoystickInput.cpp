@@ -3,6 +3,9 @@
 //
 
 #include "unitree_joystick_input/JoystickInput.h"
+
+#include <exception>
+#include <stdexcept>
 #define TOPIC_JOYSTICK "rt/wirelesscontroller"
 
 using std::placeholders::_1;
@@ -19,7 +22,29 @@ JoystickInput::JoystickInput() : Node("unitree_joysick_node")
     network_interface_ = get_parameter("network_interface").as_string();
     domain_ = get_parameter("domain").as_int();
     RCLCPP_INFO(get_logger(), " network_interface: %s, domain: %d", network_interface_.c_str(), domain_);
-    ChannelFactory::Instance()->Init(domain_, network_interface_);
+    try
+    {
+        ChannelFactory::Instance()->Init(domain_, network_interface_);
+    }
+    catch (const std::exception& e)
+    {
+        RCLCPP_ERROR(
+            get_logger(),
+            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): %s",
+            domain_,
+            network_interface_.c_str(),
+            e.what());
+        throw std::runtime_error("Unitree DDS initialization failed");
+    }
+    catch (...)
+    {
+        RCLCPP_ERROR(
+            get_logger(),
+            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): unknown exception",
+            domain_,
+            network_interface_.c_str());
+        throw std::runtime_error("Unitree DDS initialization failed");
+    }
 
     subscriber_ = std::make_shared<ChannelSubscriber<unitree_go::msg::dds_::WirelessController_>>(
         TOPIC_JOYSTICK);
@@ -90,8 +115,17 @@ void JoystickInput::remoteWirelessHandle(const void* messages)
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<JoystickInput>();
-    spin(node);
+    try
+    {
+        auto node = std::make_shared<JoystickInput>();
+        spin(node);
+    }
+    catch (const std::exception& e)
+    {
+        RCLCPP_FATAL(rclcpp::get_logger("unitree_joysick_node"), "Node startup failed: %s", e.what());
+        rclcpp::shutdown();
+        return 1;
+    }
     rclcpp::shutdown();
     return 0;
 }

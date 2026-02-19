@@ -10,6 +10,7 @@ from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     RegisterEventHandler,
+    SetEnvironmentVariable,
 )
 from launch_ros.actions import Node
 from launch.conditions import IfCondition
@@ -62,14 +63,27 @@ def generate_launch_description():
         default_value="0",
         description="DDS domain ID for communication"
     )
+
+    # ROS middleware implementation
+    ros_rmw_implementation_arg = DeclareLaunchArgument(
+        "ros_rmw_implementation",
+        default_value="rmw_fastrtps_cpp",
+        description="ROS 2 RMW implementation used by launched nodes"
+    )
     
     robot = LaunchConfiguration("robot")
     network_interface = LaunchConfiguration("network_interface")
     dds_domain_id = LaunchConfiguration("dds_domain_id")
+    ros_rmw_implementation = LaunchConfiguration("ros_rmw_implementation")
 
     namespace = LaunchConfiguration("namespace")
     use_real_robot = LaunchConfiguration("use_real_robot")
     use_global_rviz = LaunchConfiguration("use_global_rviz")
+
+    set_rmw_implementation = SetEnvironmentVariable(
+        "RMW_IMPLEMENTATION",
+        ros_rmw_implementation,
+    )
 
     # -----------------------------------
     # --  Include Launch Descriptions  --
@@ -206,7 +220,11 @@ def generate_launch_description():
         use_real_robot_arg,         
         network_interface_arg,   
         dds_domain_arg,       
+        ros_rmw_implementation_arg,
         use_global_rviz_arg, 
+
+        # -- Runtime Environment --
+        set_rmw_implementation,
     
         # -- Launch Components --
         led_launch,
