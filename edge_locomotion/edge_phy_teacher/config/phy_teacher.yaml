@@ -16,4 +16,3 @@
     sampling_rate: 35              # sampling rate in Hz
     set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
     print_process_time: false      # whether to print the process time
-    

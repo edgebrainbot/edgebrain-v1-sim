@@ -221,7 +221,6 @@ void LMIGainSolver::update_TrackingErrorSquare() {
     }
 }
 
-
 /********************************  Post Processing  *******************************/
 void LMIGainSolver::post_processing() {
     P_mat_ = Matrix_NewFromMatrix(Q_mat_, Q_mat_->id);  // Ensure P is initialized

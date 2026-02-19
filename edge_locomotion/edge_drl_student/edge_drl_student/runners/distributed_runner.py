@@ -249,6 +249,9 @@ class DistributedRunner:
         """Tracking error callback"""
         self.tracking_error_ = msg
         
+        self.tracking_error_[0] = 0.0
+        self.tracking_error_[1] = 0.0
+    
         tracking_errors = torch.tensor(msg.data, dtype=torch.float32)
         self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
         self.logger.writer.add_scalar('Control/tracking_error/max', torch.max(torch.abs(tracking_errors)), self.transition_count)
@@ -515,8 +518,7 @@ class DistributedRunner:
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
             # learned_action = 0.5*policy_action + 0.2*blended_action
-            
-            learned_action = 0.8*policy_action + 0.2*blended_action
+            learned_action = 0.9*policy_action + 0.1*blended_action
         else:
             learned_action = policy_action
         

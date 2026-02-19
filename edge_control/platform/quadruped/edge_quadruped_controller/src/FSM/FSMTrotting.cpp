@@ -432,7 +432,7 @@ void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transitio
 
     // Check if goal is reached
     auto dist_to_goal = (nav_goal_ - robot_pos_.head<2>()).norm();
-    double reach_goal_threshold = 0.4;   // reach_goal threshold
+    double reach_goal_threshold = 2.0;   // reach_goal threshold
 
     is_goal_reached = is_goal_reached || (dist_to_goal < reach_goal_threshold);
 

@@ -108,7 +108,7 @@ class DRLStudentNode(Node):
             raise ValueError(f"Unsupported RUN type: {RUN}")
         self.get_logger().info(f"✅ Replay buffer initialized: {RUN}")
                 
-        eval_interval = 5 # Evaluate every N episodes during training
+        eval_interval = 500000 # Evaluate every N episodes during training
                 
         # Vision Processor
         self.vision_processor = VisionProcessor(

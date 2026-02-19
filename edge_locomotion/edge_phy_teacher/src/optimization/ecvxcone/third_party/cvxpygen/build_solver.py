@@ -1,12 +1,19 @@
+#!/usr/bin/env python3
+# ============================================================================
+# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+# ============================================================================
+
+import os
+import sys
+import time
+import shutil
 import importlib
 import logging
-import os
+import numpy as np
 import cvxpy as cp
 from cvxpygen import cpg
-import numpy as np
-import time
-import sys
-import shutil
+
 from ddp_lmi_solver import cvxpy_ddp
 
 np.set_printoptions(suppress=True)

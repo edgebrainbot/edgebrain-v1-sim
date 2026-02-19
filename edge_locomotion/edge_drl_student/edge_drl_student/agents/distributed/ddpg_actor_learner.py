@@ -216,8 +216,10 @@ class DDPGActorLearner(ActorLearner):
     def __repr__(self) -> str:
         """String representation"""
         # Extract key parameters from agent_kwargs
-        actor_lr = self.agent_kwargs.get('actor_lr', 5e-7)
-        critic_lr = self.agent_kwargs.get('critic_lr', 1e-5)
+        actor_lr = self.agent_kwargs.get('actor_lr', 5e-6) 
+        # actor_lr = self.agent_kwargs.get('actor_lr', 5e-7) 
+        critic_lr = self.agent_kwargs.get('critic_lr', 1e-4)
+        # critic_lr = self.agent_kwargs.get('critic_lr', 1e-5)
         gamma = self.agent_kwargs.get('gamma', 0.95)
         tau = self.agent_kwargs.get('tau', 0.005)
         
@@ -291,8 +293,8 @@ if __name__ == "__main__":
         sync_interval=2,
         actor_hidden_dims=(256, 256, 256),
         critic_hidden_dims=(256, 256, 256),
-        actor_lr=5e-7,
-        critic_lr=1e-5,
+        actor_lr=5e-6,
+        critic_lr=1e-4,
         gamma=0.95,
         tau=0.005,
     )
