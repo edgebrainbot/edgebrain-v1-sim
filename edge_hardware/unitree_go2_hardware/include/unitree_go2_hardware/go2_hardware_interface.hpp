@@ -78,6 +78,7 @@ private:
 
     int domain_ = 1;
     bool show_foot_force_ = false;
+    bool use_real_robot_ = false;
     std::string network_interface_ = "lo";
     std::string logger_name_ = "Unitree Go2 Hardware";
 

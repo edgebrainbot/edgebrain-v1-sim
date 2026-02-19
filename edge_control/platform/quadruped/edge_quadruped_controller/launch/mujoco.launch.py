@@ -50,6 +50,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     # Select controller config based on whether using real robot or simulation
     config_file = "controller_real.yaml" if use_real_robot == 'true' else "controller_sim.yaml"
+    print(f"Using controller configuration: {config_file}")
     robot_controllers = PathJoinSubstitution(
         [
             FindPackageShare(package_controller),

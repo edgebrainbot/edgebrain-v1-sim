@@ -12,13 +12,25 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction, IncludeLaunchD
 
 
 def launch_setup(context: LaunchContext, *args, **kwargs):
+    # Retrieve launch arguments
     package_description = context.launch_configurations['pkg_description']
     pkg_description_path = os.path.join(get_package_share_directory(package_description))
-
-    xacro_file = os.path.join(pkg_description_path, 'xacro', 'robot.xacro')
-    robot_description = xacro.process_file(xacro_file).toxml()
     
     package_hardware_go2 = context.launch_configurations['pkg_hardware_go2']
+    use_real_robot = context.launch_configurations['use_real_robot']
+    network_interface = context.launch_configurations['network_interface']
+    dds_domain_id = context.launch_configurations['dds_domain_id']
+
+    # Process the xacro file to generate the robot description
+    xacro_file = os.path.join(pkg_description_path, 'xacro', 'robot.xacro')
+    robot_description = xacro.process_file(
+        xacro_file,
+        mappings={
+            'use_real_robot': use_real_robot,
+            'network_interface': network_interface,
+            'dds_domain_id': dds_domain_id,
+        }
+    ).toxml()
 
     robot_controllers = PathJoinSubstitution(
         [
@@ -102,10 +114,31 @@ def generate_launch_description():
         default_value='unitree_go2_hardware',
         description='package for go2 hardware interface'
     )
+    
+    use_real_robot = DeclareLaunchArgument(
+        'use_real_robot',
+        default_value='true',
+        description='Whether to use real robot or not'
+    )
+    
+    network_interface = DeclareLaunchArgument(
+        'network_interface',
+        default_value='eno1',
+        description='Network interface for DDS communication (e.g., eno1, wlan0, lo)'
+    )
+
+    dds_domain_id = DeclareLaunchArgument(
+        'dds_domain_id',
+        default_value='0',
+        description='DDS domain ID for communication'
+    )
 
     return LaunchDescription([
         pkg_description,
         pkg_hardware_go2,
+        use_real_robot,
+        network_interface,
+        dds_domain_id,
         
         OpaqueFunction(function=launch_setup),
     ])

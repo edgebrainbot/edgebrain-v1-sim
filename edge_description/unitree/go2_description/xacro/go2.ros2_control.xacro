@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:arg name="use_real_robot" default="true" />
-  <xacro:arg name="network_interface" default="lo" />
-  <xacro:arg name="dds_domain_id" default="0" />
+  <xacro:arg name="use_real_robot" default="false"/>
+  <xacro:arg name="network_interface" default="lo"/>
+  <xacro:arg name="dds_domain_id" default="0"/>
 
 	<ros2_control name="UnitreeSystem" type="system">
 
@@ -12,16 +12,18 @@
 
 			<!-- Parameters for real robot -->
 			<xacro:if value="$(arg use_real_robot)">
+			    <param name="use_real_robot">true</param>
 				<param name="domain">$(arg dds_domain_id)</param> 
-					<param name="network_interface">$(arg network_interface)</param>
-					<param name="show_foot_force">true</param>
+				<param name="network_interface">$(arg network_interface)</param>
+				<param name="show_foot_force">true</param>
 			</xacro:if>
 
 			<!-- Parameters for Mujoco simulation -->
 			<xacro:unless value="$(arg use_real_robot)">
+				<param name="use_real_robot">false</param>
 				<param name="domain">1</param> 
-					<param name="network_interface">lo</param>
-					<param name="show_foot_force">true</param>
+				<param name="network_interface">lo</param>
+				<param name="show_foot_force">true</param>
 			</xacro:unless>
 		</hardware>
 

@@ -56,6 +56,13 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
         }
     }
 
+    // Use real robot
+    if (const auto use_real_robot_param = info.hardware_parameters.find("use_real_robot"); 
+        use_real_robot_param != info.hardware_parameters.end())
+    {
+        use_real_robot_ = use_real_robot_param->second == "true";
+    }
+
     // Network interface parameters
     if (const auto network_interface_param = info.hardware_parameters.find("network_interface"); 
         network_interface_param != info.hardware_parameters.end())
@@ -77,7 +84,8 @@ hardware_interface::CallbackReturn Go2HardwareInterface::on_init(
         show_foot_force_ = show_foot_force_param->second == "true";
     }
 
-    RCLCPP_INFO(rclcpp::get_logger(logger_name_), " network_interface: %s, domain: %d", network_interface_.c_str(), domain_);
+    RCLCPP_INFO(rclcpp::get_logger(logger_name_), "use_real_robot: %s, network_interface: %s, domain: %d", 
+        use_real_robot_ ? "true" : "false", network_interface_.c_str(), domain_);
     
     // Initialize communication channels
     unitree::robot::ChannelFactory::Instance()->Init(domain_, network_interface_);
