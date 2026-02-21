@@ -14,6 +14,12 @@ def generate_launch_description():
         "checkTerrainConn",
         default_value="false"
     )
+    
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
 
     # -----------------------------
     # Node: terrainAnalysisExt
@@ -44,7 +50,7 @@ def generate_launch_description():
             "use_sim_time": True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
@@ -53,5 +59,7 @@ def generate_launch_description():
     # -----------------------------
     return LaunchDescription([
         checkTerrainConn_arg,
+        odom_topic_arg,
+        
         terrain_analysis_ext_node
     ])

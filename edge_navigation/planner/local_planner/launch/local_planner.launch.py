@@ -27,6 +27,7 @@ def generate_launch_description():
         DeclareLaunchArgument("goalX", default_value="0.0"),
         DeclareLaunchArgument("goalY", default_value="0.0"),
         DeclareLaunchArgument("is_real_robot", default_value="true"),
+        DeclareLaunchArgument("odom_topic", default_value="odom", description="Odometry topic to use"),
     ]
 
     # -----------------------------
@@ -82,7 +83,7 @@ def generate_launch_description():
             'use_sim_time': True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
@@ -130,7 +131,7 @@ def generate_launch_description():
             'use_sim_time': True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 

@@ -9,6 +9,13 @@ from ament_index_python.packages import get_package_share_directory
 import launch_ros
 
 def generate_launch_description():
+    # Launch Arguments
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
+    
     # Far Planner config file path
     config_file = PathJoinSubstitution([
         get_package_share_directory('far_planner'),
@@ -24,6 +31,8 @@ def generate_launch_description():
     ])
     
     return LaunchDescription([
+        odom_topic_arg,
+        
         # SetParameter(name='use_sim_time', value='false'),
         DeclareLaunchArgument('config', default_value='default', description='Configuration file for RViz and Far Planner'),
         DeclareLaunchArgument('use_rviz', default_value='true', description='Whether to launch RViz'),
@@ -40,7 +49,7 @@ def generate_launch_description():
             ],
             remappings=[
                 # ('/odom_world', '/state_estimation'),
-                ('/odom_world', '/odom'),
+                ('/odom_world', LaunchConfiguration("odom_topic")),
                 ('/terrain_cloud', '/terrain_map_ext'),
                 ('/scan_cloud', '/terrain_map'),
                 ('/terrain_local_cloud', '/registered_scan')

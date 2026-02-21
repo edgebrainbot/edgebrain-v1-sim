@@ -165,7 +165,7 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
     base_frame_id_ = base_frame_id;
 
     // Create odometry publisher
-    odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
+    odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom_est", 10);
 
     // Create tf broadcaster
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_);
