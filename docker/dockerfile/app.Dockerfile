@@ -37,8 +37,8 @@ RUN apt-get update && apt-get install -y lsb-release gnupg && \
     
 # ------------ Extra ROS2 Dependencies ------------
 RUN apt update && apt install -y ros-${ROS_DISTRO}-pcl-ros ros-${ROS_DISTRO}-pcl-conversions \
-    ros-${ROS_DISTRO}-xacro ros-${ROS_DISTRO}-ros-gz-bridge ros-${ROS_DISTRO}-ros-gz-sim \
-    ros-${ROS_DISTRO}-ros-gz-interfaces ros-${ROS_DISTRO}-rqt-robot-steering
+    ros-${ROS_DISTRO}-xacro ros-${ROS_DISTRO}-ros-gz-bridge ros-${ROS_DISTRO}-joint-state-publisher-gui \
+    ros-${ROS_DISTRO}-ros-gz-sim ros-${ROS_DISTRO}-ros-gz-interfaces ros-${ROS_DISTRO}-rqt-robot-steering 
 
 
 # ------------ Python Dependencies ------------
