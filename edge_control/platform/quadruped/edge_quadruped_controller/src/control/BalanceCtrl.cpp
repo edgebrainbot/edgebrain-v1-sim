@@ -14,9 +14,8 @@ namespace edge::control::quadruped
 
 BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
 
-    float jetson_weight = 1.5;  // Estimated weight of Jetson Nano in kg
     float jetson_com_offset_z = 0.05;  // Estimated vertical offset of Jetson Nano's COM from the robot's COM in meters
-    mass_ = robot->getRobotMass() +jetson_weight;
+    mass_ = robot->getRobotMass();
 
     com_offset_ = robot->getComOffset();
     com_offset_(2) += jetson_com_offset_z;
