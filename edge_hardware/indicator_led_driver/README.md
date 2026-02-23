@@ -66,6 +66,90 @@ sudo busybox devmem <32-bit address> w 0x0
 
 This change takes effect immediately but will be lost after reboot.
 
+## Quick Solution (Auto Apply at Boot)
+
+The runtime pinmux modification using `devmem` will be reset after reboot.
+
+To automatically re-apply the pinmux configuration at boot, create a systemd service.
+
+---
+
+### 1. Create a systemd service
+
+```bash
+sudo vim /etc/systemd/system/jetson-gpio-init.service
+```
+
+---
+
+### 2. Add the following content
+
+Replace `<ADDR_GPIO27>` and `<ADDR_GPIO08>` with the actual pinmux register addresses.
+
+```ini
+[Unit]
+Description=Jetson GPIO Pinmux Initialization
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "\
+/bin/busybox devmem <ADDR_GPIO27> w 0x0 && \
+/bin/busybox devmem <ADDR_GPIO08> w 0x0"
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save and exit.
+
+---
+
+### 3. Reload systemd
+
+```bash
+sudo systemctl daemon-reload
+```
+
+---
+
+### 4. Enable at boot
+
+```bash
+sudo systemctl enable jetson-gpio-init.service
+```
+
+---
+
+### 5. (Optional) Run immediately
+
+```bash
+sudo systemctl start jetson-gpio-init.service
+```
+
+---
+
+### 6. Verify service status
+
+```bash
+sudo systemctl status jetson-gpio-init.service
+```
+
+Expected:
+
+```
+Active: active (exited)
+```
+
+---
+
+## Notes
+
+- This is still a runtime pinmux modification.
+- It will be automatically re-applied at every boot.
+- For production hardware, the permanent pinmux configuration via device tree is recommended.
+
 ## Permanent Solution
 
 For more details, please refer to [Nvidia Manual]().
