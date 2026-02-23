@@ -14,8 +14,13 @@ namespace edge::control::quadruped
 
 BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
 
-    mass_ = robot->getRobotMass();
-    com_offset_ = robot->getComOffset();
+    double jetson_mass = 1.5;  // Estimated mass of the Jetson module
+    mass_ = robot->getRobotMass() + jetson_mass;  // Total mass
+
+    double jetson_com_offset_z = 0.03;  // Estimated vertical offset of the Jetson's center of mass from the robot's original COM
+    double jetson_com_offset_y = -0.015;
+
+    com_offset_ = robot->getComOffset() + Vec3(0, jetson_com_offset_y, jetson_com_offset_z);  // Adjusted COM offset
     Ib_ = robot->getRobotInertia();
     g_ << 0, 0, -9.81;
 

@@ -165,7 +165,7 @@ Estimator::Estimator(CtrlInterfaces& ctrl_interfaces, CtrlComponent& ctrl_compon
     base_frame_id_ = base_frame_id;
 
     // Create odometry publisher
-    odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
+    odom_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom_sim", 10);
 
     // Create tf broadcaster
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_);
@@ -341,7 +341,7 @@ void Estimator::publishOdometryAndTf()
     odom_msg->twist.covariance[35] = 0.05; // wz
 
     // Publish odometry
-    odom_publisher_->publish(std::move(odom_msg)); 
+    // odom_publisher_->publish(std::move(odom_msg)); 
 
     // Create and publish transform
     geometry_msgs::msg::TransformStamped transform_stamped;

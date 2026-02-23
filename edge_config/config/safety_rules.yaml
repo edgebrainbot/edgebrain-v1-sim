@@ -73,7 +73,8 @@ switching:
     wx:
       type: relative
       index: 9
-      limit: 7.5
+      limit: 0
+      # limit: 7.5
       unit: deg/s
     
     # pitch_rate limit in degrees per second (relative mode)

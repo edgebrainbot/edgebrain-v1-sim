@@ -52,7 +52,7 @@ def cvxpy_ddp(random=False, threshold=0.1):
     B_param = cp.Parameter((10, 6), name='B')
 
     # Sampling period
-    Ts = 1 / 35  # work in 25 to 30
+    Ts = 1 / 40  # work in 25 to 30
 
     alpha = 0.65
     hd = 1e-10
@@ -226,6 +226,6 @@ if __name__ == "__main__":
         print("Optimization failed.")
         
     # Benchmark
-    benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
+    # benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
 
     

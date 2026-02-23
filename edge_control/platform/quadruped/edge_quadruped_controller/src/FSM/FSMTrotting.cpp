@@ -46,9 +46,9 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     // v_y_limit_ << -0.1, 0.1;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     // w_yaw_limit_ << -0.2, 0.2;
 
-    v_x_limit_ << -0.3, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
-    v_y_limit_ << -0.4, 0.4;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    w_yaw_limit_ << -0.45, 0.45;
+    v_x_limit_ << -0.25, 0.25;        // max forward/backward speed 1.3 m/s (does affect stability)
+    v_y_limit_ << -0.15, 0.15;        // max lateral speed 1.2 m/s (doesn't affect stability much)
+    w_yaw_limit_ << -0.15, 0.15;
 
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
@@ -182,7 +182,7 @@ void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
     double vy_in = (fabs(cmd_vy) > 1e-4)
                     ? std::clamp(cmd_vy, v_y_limit_(0), v_y_limit_(1))
                     : -invNormalize(ctrl_interfaces_.control_inputs_.lx, v_y_limit_(0), v_y_limit_(1));
-
+    // vy_in += 0.06;
     double wz_in = (fabs(cmd_wz) > 1e-4)
                     ? std::clamp(cmd_wz, w_yaw_limit_(0), w_yaw_limit_(1))
                     : -invNormalize(ctrl_interfaces_.control_inputs_.rx, w_yaw_limit_(0), w_yaw_limit_(1));
@@ -226,6 +226,11 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;
+
+    std::cout << "pos_body_: " << pos_body_.transpose() << std::endl;
+    std::cout << "pcd_: " << pcd_.transpose() << std::endl;
+    std::cout << "vel_cmd_global: " << vel_cmd_global_.transpose() << std::endl;
+    std::cout << "vel_body: " << vel_body_.transpose() << std::endl;
 
     // Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
