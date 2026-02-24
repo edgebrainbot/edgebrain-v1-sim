@@ -89,6 +89,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+                        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
                         double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
@@ -129,7 +130,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, is_task_done_pub_, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
     calcQQd();
     calcGain();
 }
@@ -222,6 +223,7 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub,
     const edge_msgs::msg::EdgeAction& latest_action, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
     pos_error_ = pcd_ - pos_body_;
@@ -246,7 +248,7 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
     // std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    pubTransitionTopic(transition_pub, is_task_done_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
 
     auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
     tracking_error_tea_pub_->publish(track_msg);
@@ -424,6 +426,7 @@ bool FSMTrotting::checkStepOrNot()
 
 // Publish transition topic
 void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+                                     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub,
                                        const edge_msgs::msg::EdgeAction& latest_action,
                                        double obstacleAvgDistance, double obstacleMinDistance, 
                                        bool is_goal_reached, bool is_fall)
@@ -440,6 +443,11 @@ void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transitio
     double reach_goal_threshold = 2.0;   // reach_goal threshold
 
     is_goal_reached = is_goal_reached || (dist_to_goal < reach_goal_threshold);
+
+    // Publish is_task_done message if goal is reached
+    std_msgs::msg::Bool is_task_done_msg;
+    is_task_done_msg.data = is_goal_reached;
+    is_task_done_pub->publish(is_task_done_msg);
 
     // Jerk in action
     auto a1 = EdgeActionMsgToEigen(last_edge_action_);

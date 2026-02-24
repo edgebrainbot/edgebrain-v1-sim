@@ -26,13 +26,13 @@ class TaskLedDriverNode(Node):
         # Subscribe to task status topic
         self.sub_task_ = self.create_subscription(
             msg_type = Bool,
-            topic = "is_done",
+            topic = "is_task_done",
             callback = self.task_callback,
             qos_profile = 10,
         )
 
     def task_callback(self, msg: Bool):
-        """callback when receiving is_done message"""
+        """callback when receiving is_task_done message"""
         if msg.data:
             set_led(True)  # done → blue light on
             self.get_logger().info("✅ Task is done.")

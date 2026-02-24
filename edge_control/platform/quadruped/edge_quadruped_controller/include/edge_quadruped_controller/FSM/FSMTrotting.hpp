@@ -15,6 +15,7 @@
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "controller_common/FSM/FSMState.h"
 
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "edge_quadruped_controller/utils/math/mathTypes.h"
 #include "edge_quadruped_controller/gait/GaitGenerator.h"
@@ -59,6 +60,7 @@ public:
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
              rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
              rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+             rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
              double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
@@ -88,6 +90,7 @@ private:
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
                  rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+                 rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
                  const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
     /**
@@ -107,6 +110,7 @@ private:
     bool checkStepOrNot();
 
     void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+                            rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub,
                             const edge_msgs::msg::EdgeAction& latest_action,
                             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 

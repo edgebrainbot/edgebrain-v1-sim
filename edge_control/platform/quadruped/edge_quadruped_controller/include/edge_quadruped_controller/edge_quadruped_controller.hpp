@@ -192,11 +192,14 @@ namespace edge::control::quadruped
         //             << "wz = " << cmd_wz_ << std::endl;
         // }
 
-        // For publishers and subscribers
+        // For publishers 
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_;
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_;
+
+        // For subscribers
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_fall_sub_;

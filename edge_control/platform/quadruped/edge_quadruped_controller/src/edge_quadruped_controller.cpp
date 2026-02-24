@@ -282,6 +282,10 @@ namespace edge::control::quadruped
             transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
                 topic_ns_ + "/transition", 100);
 
+            // Publisher for is_task_done
+            is_task_done_pub_ = get_node()->create_publisher<std_msgs::msg::Bool>(
+                topic_ns_ + "/is_task_done", 100);
+
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_node()->get_logger(), "Failed to create subscription: %s", e.what());
             throw;
@@ -366,6 +370,7 @@ namespace edge::control::quadruped
                           tracking_error_stu_pub_,
                           robot_state_pub_,
                           transition_pub_, 
+                          is_task_done_pub_,
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
                           obstacle_avg_distance_,
                           obstacle_min_distance_,

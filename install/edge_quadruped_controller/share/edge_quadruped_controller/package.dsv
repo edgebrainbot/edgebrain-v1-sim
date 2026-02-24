@@ -1,0 +1,5 @@
+source;share/edge_quadruped_controller/local_setup.bash
+source;share/edge_quadruped_controller/local_setup.dsv
+source;share/edge_quadruped_controller/local_setup.ps1
+source;share/edge_quadruped_controller/local_setup.sh
+source;share/edge_quadruped_controller/local_setup.zsh
