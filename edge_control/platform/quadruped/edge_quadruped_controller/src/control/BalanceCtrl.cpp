@@ -20,7 +20,6 @@ BalanceCtrl::BalanceCtrl(const std::shared_ptr<QuadrupedModel> &robot) {
     com_offset_ = robot->getComOffset();
     com_offset_(2) += jetson_com_offset_z;
 
-
     Ib_ = robot->getRobotInertia();
     g_ << 0, 0, -9.81;
 

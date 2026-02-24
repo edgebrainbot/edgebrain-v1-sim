@@ -128,7 +128,7 @@ private:
 
     // Robot command
     Vec3 pcd_;
-    Vec3 vel_cmd_global_, v_cmd_body_;
+    Vec3 vel_cmd_global_, v_cmd_body_, v_cmd_body_past_;
     double dt_;
     double yaw_cmd_{}, d_yaw_cmd_{}, d_yaw_cmd_past_{};
     Vec3 w_cmd_global_;

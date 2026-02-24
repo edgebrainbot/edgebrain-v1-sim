@@ -331,34 +331,17 @@ Visualization Manager:
         Value: /viz_path_topic
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: VGraph
       Namespaces:
-        angle_direct: true
-        boundary_edge: true
-        boundary_vertex: true
-        freespace_vertex: true
-        freespace_vgraph: true
-        frontier_vertex: true
-        global_vertex: true
-        global_vgraph: true
-        localrange_vertex: true
-        odom_edge: true
-        polygon_edge: true
-        to_goal_edge: true
-        trajectory_edge: true
-        trajectory_vertex: true
-        updating_vertex: true
-        vertex_angle: true
-        vertices_matches: true
-        visibility_edge: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /viz_graph_topic
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: ViewpointExtend
@@ -525,7 +508,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 18.008262634277344
+      Distance: 28.33635139465332
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

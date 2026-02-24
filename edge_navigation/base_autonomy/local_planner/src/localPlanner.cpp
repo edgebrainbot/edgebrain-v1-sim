@@ -647,7 +647,7 @@ int main(int argc, char** argv)
 
   RCLCPP_INFO(nh->get_logger(), "Initialization complete.");
 
-  rclcpp::Rate rate(100);
+  rclcpp::Rate rate(100);    // Origin: 100
   bool status = rclcpp::ok();
   while (status) {
     rclcpp::spin_some(nh);
@@ -897,7 +897,7 @@ int main(int argc, char** argv)
           }
 
           path.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
-        //   path.header.frame_id = "vehicle";
+          // path.header.frame_id = "vehicle";    // Origin: vehicle
           path.header.frame_id = "base_link";
           pubPath->publish(path);
 
@@ -944,7 +944,7 @@ int main(int argc, char** argv)
           sensor_msgs::msg::PointCloud2 freePaths2;
           pcl::toROSMsg(*freePaths, freePaths2);
           freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
-        //   freePaths2.header.frame_id = "vehicle";
+          // freePaths2.header.frame_id = "vehicle";    // Origin: vehicle
           freePaths2.header.frame_id = "base_link";
           pubFreePaths->publish(freePaths2);
           #endif
@@ -971,7 +971,7 @@ int main(int argc, char** argv)
         path.poses[0].pose.position.z = 0;
 
         path.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
-        // path.header.frame_id = "vehicle";
+        // path.header.frame_id = "vehicle";    // Origin: vehicle
         path.header.frame_id = "base_link";
         pubPath->publish(path);
 
@@ -980,7 +980,7 @@ int main(int argc, char** argv)
         sensor_msgs::msg::PointCloud2 freePaths2;
         pcl::toROSMsg(*freePaths, freePaths2);
         freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
-        // freePaths2.header.frame_id = "vehicle";
+        // freePaths2.header.frame_id = "vehicle";    // Origin: vehicle
         freePaths2.header.frame_id = "base_link";
         pubFreePaths->publish(freePaths2);
         #endif

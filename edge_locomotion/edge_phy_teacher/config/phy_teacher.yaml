@@ -2,7 +2,7 @@
 /edge/phy_teacher:
   ros__parameters:
 
-    update_rate: 300          # update rate in Hz
+    update_rate: 400          # update rate in Hz
 
     chi: 0.0                  # safety scaling factor
     tau: 20                   # dwelling time in control update (reserved)

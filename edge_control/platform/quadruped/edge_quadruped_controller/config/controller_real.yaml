@@ -21,7 +21,7 @@ imu_sensor_broadcaster:
 
 edge_quadruped_controller:
   ros__parameters:
-    update_rate: 450  # Hz
+    update_rate: 500  # Hz
     topic_namespace: "edge"
 
     odom_frame_id: "leg_odom"

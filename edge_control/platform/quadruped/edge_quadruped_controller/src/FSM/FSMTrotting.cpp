@@ -46,9 +46,9 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     // v_y_limit_ << -0.1, 0.1;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     // w_yaw_limit_ << -0.2, 0.2;
 
-    v_x_limit_ << -0.25, 0.25;        // max forward/backward speed 1.3 m/s (does affect stability)
-    v_y_limit_ << -0.15, 0.15;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    w_yaw_limit_ << -0.15, 0.15;
+    v_x_limit_ << -0.3, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
+    v_y_limit_ << -0.25, 0.25;        // max lateral speed 1.2 m/s (doesn't affect stability much)
+    w_yaw_limit_ << -0.5, 0.5;
 
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
@@ -183,7 +183,7 @@ void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
     double vy_in = (fabs(cmd_vy) > 1e-4)
                     ? std::clamp(cmd_vy, v_y_limit_(0), v_y_limit_(1))
                     : -invNormalize(ctrl_interfaces_.control_inputs_.lx, v_y_limit_(0), v_y_limit_(1));
-    // vy_in += 0.06;
+
     double wz_in = (fabs(cmd_wz) > 1e-4)
                     ? std::clamp(cmd_wz, w_yaw_limit_(0), w_yaw_limit_(1))
                     : -invNormalize(ctrl_interfaces_.control_inputs_.rx, w_yaw_limit_(0), w_yaw_limit_(1));
@@ -191,8 +191,18 @@ void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
 
     d_yaw_cmd_ = wz_in;
 
-    // Smoothing
-    d_yaw_cmd_ = 0.9 * d_yaw_cmd_past_ + (1 - 0.9) * d_yaw_cmd_;
+
+    // Smoothing -- vx vy
+    double alpha_vx = 0.5;
+    double alpha_vy = 0.5;
+    v_cmd_body_(0) = alpha_vx * v_cmd_body_past_(0) + (1 - alpha_vx) * v_cmd_body_(0) + 0.05;
+    v_cmd_body_(1) = alpha_vy * v_cmd_body_past_(1) + (1 - alpha_vy) * v_cmd_body_(1);
+    v_cmd_body_past_ = v_cmd_body_;
+
+
+    // Smoothing -- wz
+    double alpha_wz = 0.5;
+    d_yaw_cmd_ = alpha_wz * d_yaw_cmd_past_ + (1 - alpha_wz) * d_yaw_cmd_;
     d_yaw_cmd_past_ = d_yaw_cmd_;
 }
 
@@ -440,7 +450,7 @@ void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transitio
 
     // Check if goal is reached
     auto dist_to_goal = (nav_goal_ - robot_pos_.head<2>()).norm();
-    double reach_goal_threshold = 2.0;   // reach_goal threshold
+    double reach_goal_threshold = 0.5;   // reach_goal threshold
 
     is_goal_reached = is_goal_reached || (dist_to_goal < reach_goal_threshold);
 

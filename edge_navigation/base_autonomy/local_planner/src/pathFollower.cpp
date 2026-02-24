@@ -300,7 +300,7 @@ int main(int argc, char** argv)
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
   geometry_msgs::msg::TwistStamped cmd_vel;
-//   cmd_vel.header.frame_id = "vehicle";
+  // cmd_vel.header.frame_id = "vehicle";   // Origin: vehicle
   cmd_vel.header.frame_id = "base_link";
 
   if (autonomyMode) {
@@ -310,7 +310,7 @@ int main(int argc, char** argv)
     else if (joySpeed > 1.0) joySpeed = 1.0;
   }
 
-  rclcpp::Rate rate(100);
+  rclcpp::Rate rate(100); // Origin: Control loop at 100 Hz
   bool status = rclcpp::ok();
   while (status) {
     rclcpp::spin_some(nh);
@@ -439,6 +439,8 @@ int main(int argc, char** argv)
 
         pubSkipCount = pubSkipNum;
 
+
+        // For real robot
         if (is_real_robot)
         {
           if (cmd_vel.twist.linear.x == 0 && cmd_vel.twist.linear.y == 0 && cmd_vel.twist.angular.z == 0){
@@ -447,7 +449,7 @@ int main(int argc, char** argv)
           else{
                sport_req.Move(req, cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z);
           }
-        //   pubGo2Request->publish(req);
+          pubGo2Request->publish(req);
         }
       }
     }
