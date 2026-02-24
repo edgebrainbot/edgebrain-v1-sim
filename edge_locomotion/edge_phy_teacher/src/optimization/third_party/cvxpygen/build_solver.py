@@ -31,16 +31,16 @@ def deploy_solver(src_dir):
     # Define source files
     files_to_copy = [
         (os.path.join(src_dir, 'c', 'include', 'cpg_solve.h'),
-         os.path.join(BASE_DIR, '../../../../../include/ecvxcone')),
+         os.path.join(BASE_DIR, '../../../../include/ecvxcone')),
 
         (os.path.join(src_dir, 'c', 'include', 'cpg_workspace.h'),
-         os.path.join(BASE_DIR, '../../../../../include/ecvxcone')),
+         os.path.join(BASE_DIR, '../../../../include/ecvxcone')),
 
         (os.path.join(src_dir, 'c', 'src', 'cpg_solve.c'),
-         os.path.join(BASE_DIR, '../..')),
+         os.path.join(BASE_DIR, '../../ecvxcone')),
 
         (os.path.join(src_dir, 'c', 'src', 'cpg_workspace.c'),
-         os.path.join(BASE_DIR, '../..')),
+         os.path.join(BASE_DIR, '../../ecvxcone')),
     ]
 
     for src_file, dst_folder in files_to_copy:

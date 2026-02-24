@@ -163,7 +163,6 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
             {'use_sim_time': True},
             # physical_model_config
         ],
-        remappings=[('odom', 'odom_sim')],
     )
 
     tf_to_map_node = Node(

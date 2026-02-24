@@ -15,6 +15,13 @@ def generate_launch_description():
         "world_name",
         default_value="garage"
     )
+    
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
+    
 
     # -----------------------------
     # Node: visualizationTools
@@ -50,12 +57,14 @@ def generate_launch_description():
             "exploredAreaDisplayInterval": 1,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
     return LaunchDescription([
         world_name_arg,
+        odom_topic_arg,
+        
         visualization_tools_node,
         # RealTimePlot disabled (same as XML)
     ])

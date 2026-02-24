@@ -53,6 +53,7 @@ def generate_launch_description():
         "cameraOffsetZ": LaunchConfiguration("cameraOffsetZ"),
         "goalX": LaunchConfiguration("vehicleX"),
         "goalY": LaunchConfiguration("vehicleY"),
+        "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
         }.items()
     )
@@ -69,6 +70,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
             "use_sim_time": "true",
+            "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
 
@@ -84,6 +86,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
             "checkTerrainConn": LaunchConfiguration("checkTerrainConn"),
+            "odom_topic": LaunchConfiguration("odom_topic"),
             "use_sim_time": "true",
         }.items()
     )
@@ -122,6 +125,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
         "use_sim_time": "true",
+        "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
 
@@ -137,6 +141,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
         "world_name": LaunchConfiguration("world_name"),
+        "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
         }.items()
     )

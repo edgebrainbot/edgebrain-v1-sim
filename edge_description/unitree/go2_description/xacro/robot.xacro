@@ -50,6 +50,7 @@
     </visual>
   </link>
 
+  <!-- Robot Trunck -->
   <joint name="floating_base" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="base_link"/>
@@ -98,6 +99,40 @@
     </inertial>
   </link>
 
+  <!-- Nvidia Jetson AGX Orin -->
+  <joint name="jetson_joint" type="fixed">
+    <parent link="trunk"/>
+    <child link="jetson_link"/>
+    <origin rpy="0 0 -1.57" xyz="-0.04 0.048 0.083"/>
+  </joint>
+
+  <link name="jetson_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="file://${pkg_description}/meshes/jetson_agx_orin.stl" scale="1 1 1"/>
+      </geometry>
+      <material name="jetson_gray">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.048 0.04 0.011"/>
+      <geometry>
+        <box size="0.105 0.11 0.071"/>
+      </geometry>
+    </collision>
+    
+    <inertial>
+      <mass value="${jetson_mass}"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.001" ixy="0" ixz="0"
+              iyy="0.001" iyz="0"
+              izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- IMU -->
   <joint name="imu_joint" type="fixed">
     <parent link="trunk"/>
     <child link="imu_link"/>
@@ -125,6 +160,7 @@
     </collision>
   </link>
 
+  <!-- Front Camera -->
   <joint name="camera_joint_front" type="fixed">
     <parent link="trunk"/>
     <child link="front_camera"/>
@@ -134,6 +170,7 @@
   <link name="front_camera">
   </link>
 
+  <!-- Lidar -->
   <joint name="lidar_joint" type="fixed">
     <origin
         xyz="0.28945 0 -0.046825" rpy="0 0 3.1415"/>
