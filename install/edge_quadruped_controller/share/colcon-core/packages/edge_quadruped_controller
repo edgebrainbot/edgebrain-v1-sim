@@ -1,1 +1,0 @@
-control_input_msgs:controller_common:controller_interface:controller_manager:edge_config:edge_msgs:edge_ros_interfaces:geometry_msgs:go2_description:gz_quadruped_hardware:gz_quadruped_playground:joint_state_broadcaster:nav_msgs:pinocchio:pluginlib:rclcpp:ros2_control:std_msgs:std_srvs:tf2_ros:unitree_go2_hardware
