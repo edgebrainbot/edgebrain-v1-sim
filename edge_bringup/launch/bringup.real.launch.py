@@ -8,10 +8,12 @@ import os
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
+    ExecuteProcess,
     IncludeLaunchDescription,
     RegisterEventHandler,
     SetEnvironmentVariable,
 )
+from datetime import datetime
 from launch_ros.actions import Node
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
@@ -71,7 +73,15 @@ def generate_launch_description():
         description="ROS 2 RMW implementation used by launched nodes"
     )
     
+    # Record rosbag argument
+    record_bag_arg = DeclareLaunchArgument(
+        "record_bag",
+        default_value="false",
+        description="Record ros2 bag"
+    )
+    
     robot = LaunchConfiguration("robot")
+    record_bag = LaunchConfiguration("record_bag")
     network_interface = LaunchConfiguration("network_interface")
     dds_domain_id = LaunchConfiguration("dds_domain_id")
     ros_rmw_implementation = LaunchConfiguration("ros_rmw_implementation")
@@ -211,12 +221,27 @@ def generate_launch_description():
         condition=IfCondition(use_global_rviz)
     )
     
+    # -------- ROS2 Bag Record --------
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    bag_name = f"edge_bag_{timestamp}"
+
+    rosbag_record = ExecuteProcess(
+        cmd=[
+            "ros2", "bag", "record",
+            "-o", bag_name,
+            "-a"   # Record all topics. You can specify specific topics if needed.
+        ],
+        output="screen",
+        condition=IfCondition(record_bag)
+    )
+    
 
     return LaunchDescription([
         # -- Launch Arguments --
         namespace_arg,
         robot_arg,
         
+        record_bag_arg,
         use_real_robot_arg,         
         network_interface_arg,   
         dds_domain_arg,       
@@ -236,5 +261,7 @@ def generate_launch_description():
         
         global_rviz_node,
         # navigation_launch,
+        
+        rosbag_record,
 
     ])
