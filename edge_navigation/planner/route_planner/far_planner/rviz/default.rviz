@@ -54,7 +54,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /camera/image
+        Value: /camera/image/raw
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: false
@@ -273,9 +273,12 @@ Visualization Manager:
       Name: Goalpoint
       Namespaces:
         clear_nodes: true
+        free_goal: true
         free_odom_position: true
         last_nav_node: true
+        original_goal: true
         out_contour: true
+        waypoint: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -321,7 +324,7 @@ Visualization Manager:
       Enabled: true
       Name: GlobalPath
       Namespaces:
-        {}
+        global_path: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -346,7 +349,10 @@ Visualization Manager:
       Enabled: true
       Name: ViewpointExtend
       Namespaces:
-        {}
+        corner_direct: true
+        extend_viewpoint: true
+        origin_viewpoint: true
+        raytracing_line: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -484,7 +490,7 @@ Visualization Manager:
       Length: 1.25
       Name: RobotGo2
       Radius: 0.15000000596046448
-      Reference Frame: base_link
+      Reference Frame: vehicle
       Value: true
   Enabled: true
   Global Options:
@@ -550,5 +556,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1387
-  X: 432
-  Y: 99
+  X: 198
+  Y: 100

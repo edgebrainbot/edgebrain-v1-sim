@@ -27,7 +27,7 @@ def generate_launch_description():
         DeclareLaunchArgument("goalCloseDis", default_value="0.4"),
         DeclareLaunchArgument("goalX", default_value="0.0"),
         DeclareLaunchArgument("goalY", default_value="0.0"),
-        DeclareLaunchArgument("is_real_robot", default_value="true"),
+        DeclareLaunchArgument("test_unitree_controller", default_value="true"),
         DeclareLaunchArgument("odom_topic", default_value="odom", description="Odometry topic to use"),
     ]
 
@@ -128,7 +128,7 @@ def generate_launch_description():
             "autonomySpeed": LaunchConfiguration("autonomySpeed"),
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
-            "is_real_robot": LaunchConfiguration("is_real_robot"),
+            "test_unitree_controller": LaunchConfiguration("test_unitree_controller"),
             # 'use_sim_time': True,
         }],
         remappings=[

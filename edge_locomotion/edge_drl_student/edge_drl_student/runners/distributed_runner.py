@@ -521,7 +521,7 @@ class DistributedRunner:
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
             # learned_action = 0.5*policy_action + 0.2*blended_action
-            learned_action = 0.9*policy_action + 0.1*blended_action
+            learned_action = 0.05 * policy_action + 0.0 * blended_action
         else:
             learned_action = policy_action
         
