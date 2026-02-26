@@ -18,6 +18,7 @@ def generate_launch_description():
     vehicleX = LaunchConfiguration("vehicleX")
     vehicleY = LaunchConfiguration("vehicleY")
     checkTerrainConn = LaunchConfiguration("checkTerrainConn")
+    odom_topic = LaunchConfiguration("odom_topic")
 
     declare_args = [
         DeclareLaunchArgument("world_name", default_value="real_world"),
@@ -27,6 +28,7 @@ def generate_launch_description():
         DeclareLaunchArgument("vehicleX", default_value="0.0"),
         DeclareLaunchArgument("vehicleY", default_value="0.0"),
         DeclareLaunchArgument("checkTerrainConn", default_value="true"),
+        DeclareLaunchArgument("odom_topic", default_value="odom"),
     ]
 
     # -------------------------------
@@ -70,7 +72,10 @@ def generate_launch_description():
                 "mapping_utlidar.launch.py"
             ])
         ),
-        launch_arguments={"rviz": "false"}.items(),
+        launch_arguments={
+            "rviz": "false",
+            "odom_topic": odom_topic,
+        }.items(),
     )
 
     local_planner_launch = IncludeLaunchDescription(
@@ -87,6 +92,7 @@ def generate_launch_description():
             "cameraOffsetZ": cameraOffsetZ,
             "goalX": vehicleX,
             "goalY": vehicleY,
+            "odom_topic": odom_topic,
         }.items(),
     )
 
@@ -97,7 +103,10 @@ def generate_launch_description():
                 "launch",
                 "terrain_analysis.launch.py"
             ])
-        )
+        ),
+        launch_arguments={
+            "odom_topic": odom_topic
+        }.items(),
     )
 
     terrain_analysis_ext_launch = IncludeLaunchDescription(
@@ -108,7 +117,10 @@ def generate_launch_description():
                 "terrain_analysis_ext.launch.py"
             ])
         ),
-        launch_arguments={"checkTerrainConn": checkTerrainConn}.items(),
+        launch_arguments={
+            "checkTerrainConn": checkTerrainConn,
+            "odom_topic": odom_topic
+        }.items(),
     )
 
     far_planner_launch = IncludeLaunchDescription(
@@ -118,7 +130,10 @@ def generate_launch_description():
                 "launch",
                 "far_planner.launch.py"
             ])
-        )
+        ),
+        launch_arguments={
+            "odom_topic": odom_topic
+        }.items(),
     )
 
     # -------------------------------

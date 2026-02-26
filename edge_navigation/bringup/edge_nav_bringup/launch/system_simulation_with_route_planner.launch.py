@@ -23,6 +23,7 @@ def generate_launch_description():
     terrainZ = DeclareLaunchArgument("terrainZ", default_value="0.0", description="Terrain position in Z direction")
     vehicleYaw = DeclareLaunchArgument("vehicleYaw", default_value="0.0", description="Vehicle yaw angle")
     checkTerrainConn = DeclareLaunchArgument("checkTerrainConn", default_value="true", description="Whether to check terrain connectivity")
+    odom_topic = DeclareLaunchArgument("odom_topic", default_value="odom_est", description="Odometry topic to use")
 
     # joystick node
     joy_node = Node(
@@ -54,6 +55,7 @@ def generate_launch_description():
         "cameraOffsetZ": LaunchConfiguration("cameraOffsetZ"),
         "goalX": LaunchConfiguration("vehicleX"),
         "goalY": LaunchConfiguration("vehicleY"),
+        "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
         }.items()
     )
@@ -70,6 +72,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
             "use_sim_time": "true",
+            "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
 
@@ -85,6 +88,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
             "checkTerrainConn": LaunchConfiguration("checkTerrainConn"),
+            "odom_topic": LaunchConfiguration("odom_topic"),
             "use_sim_time": "true",
         }.items()
     )
@@ -101,6 +105,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
         "use_sim_time": "true",
+        "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
 
@@ -116,6 +121,7 @@ def generate_launch_description():
         ])),
         launch_arguments={
         "world_name": LaunchConfiguration("world_name"),
+        "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
         }.items()
     )
@@ -134,6 +140,7 @@ def generate_launch_description():
         launch_arguments={
             "use_sim_time": "true",
             "use_rviz": LaunchConfiguration("use_rviz"),
+            "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
 
@@ -152,6 +159,7 @@ def generate_launch_description():
         terrainZ,
         vehicleYaw,
         checkTerrainConn,
+        odom_topic,
 
         joy_node,
         local_planner_launch,

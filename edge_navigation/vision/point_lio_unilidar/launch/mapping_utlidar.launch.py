@@ -18,6 +18,12 @@ def generate_launch_description():
         default_value="true",
         description="Launch RViz2?"
     )
+    
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
 
     # -------------------------
     # Paths
@@ -69,7 +75,7 @@ def generate_launch_description():
         remappings=[
             ("/cloud_registered", "/registered_scan"),
             # ("/aft_mapped_to_init", "/state_estimation"),
-            ("/aft_mapped_to_init", "/odom"),
+            ("/aft_mapped_to_init", LaunchConfiguration("odom_topic")),
         ],
     )
 
@@ -92,6 +98,8 @@ def generate_launch_description():
     # Assemble launch
     # -------------------------
     return LaunchDescription([
+        odom_topic_arg,
+        
         declare_rviz,
         transform_everything_node,
         laser_mapping_node,

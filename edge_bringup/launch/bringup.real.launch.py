@@ -27,6 +27,8 @@ def generate_launch_description():
     # ------------------------------
     # ---    Launch Arguments    ---
     # ------------------------------
+    
+    # Global namespace argument
     namespace_arg = DeclareLaunchArgument(
         "namespace",
         default_value="edge",
@@ -235,6 +237,16 @@ def generate_launch_description():
         condition=IfCondition(record_bag)
     )
     
+    # -------- Camera Image Pub Node --------
+    camera_image_pub_node = Node(
+        package="go2_h264_repub",
+        executable="go2_h264_repub",
+        parameters=[
+            {"publish_rate": 100.0},
+            {"multicast_iface": "eno1"},
+        ],
+    )
+    
 
     return LaunchDescription([
         # -- Launch Arguments --
@@ -260,6 +272,7 @@ def generate_launch_description():
         virtual_status_indicator_node,
         
         global_rviz_node,
+        camera_image_pub_node,
         # navigation_launch,
         
         rosbag_record,

@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 from launch import LaunchDescription
 from launch_ros.actions import Node
-
+from launch.substitutions import LaunchConfiguration
+from launch_ros.substitutions import FindPackageShare
+from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
+    
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
 
     terrain_analysis_node = Node(
         package="terrain_analysis",
@@ -42,13 +50,16 @@ def generate_launch_description():
             "minRelZ": -1.5,
             "maxRelZ": 0.5,
             "disRatioZ": 0.2,
-            'use_sim_time': True,
+            # 'use_sim_time': True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
     return LaunchDescription([
+        odom_topic_arg,
+        
+        # Node launches
         terrain_analysis_node
     ])

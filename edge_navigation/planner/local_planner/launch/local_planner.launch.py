@@ -18,15 +18,17 @@ def generate_launch_description():
         DeclareLaunchArgument("sensorOffsetY", default_value="0.0"),
         DeclareLaunchArgument("cameraOffsetZ", default_value="0.0"),
         DeclareLaunchArgument("twoWayDrive", default_value="false"),
-        DeclareLaunchArgument("maxSpeed", default_value="1.0"),
+        # DeclareLaunchArgument("maxSpeed", default_value="1.0"),   # Original
+        DeclareLaunchArgument("maxSpeed", default_value="0.25"),
         DeclareLaunchArgument("autonomyMode", default_value="true"),
-        DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
-        # DeclareLaunchArgument("autonomySpeed", default_value="0.3"),
+        # DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
+        DeclareLaunchArgument("autonomySpeed", default_value="0.25"),
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
         DeclareLaunchArgument("goalCloseDis", default_value="0.4"),
         DeclareLaunchArgument("goalX", default_value="0.0"),
         DeclareLaunchArgument("goalY", default_value="0.0"),
         DeclareLaunchArgument("is_real_robot", default_value="true"),
+        DeclareLaunchArgument("odom_topic", default_value="odom", description="Odometry topic to use"),
     ]
 
     # -----------------------------
@@ -82,7 +84,7 @@ def generate_launch_description():
             'use_sim_time': True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
@@ -127,10 +129,10 @@ def generate_launch_description():
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
             "is_real_robot": LaunchConfiguration("is_real_robot"),
-            'use_sim_time': True,
+            # 'use_sim_time': True,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 

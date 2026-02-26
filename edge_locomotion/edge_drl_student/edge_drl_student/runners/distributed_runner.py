@@ -247,12 +247,15 @@ class DistributedRunner:
     # ==================== ROS2 Callbacks ====================
     def tracking_error_callback(self, msg: Vec12Msg):
         """Tracking error callback"""
-        self.tracking_error_ = msg
-        
-        self.tracking_error_[0] = 0.0
-        self.tracking_error_[1] = 0.0
-    
-        tracking_errors = torch.tensor(msg.data, dtype=torch.float32)
+        tracking_error_data = list(msg.data)
+        if len(tracking_error_data) > 0:
+            tracking_error_data[0] = 0.0
+        if len(tracking_error_data) > 1:
+            tracking_error_data[1] = 0.0
+
+        self.tracking_error_ = Vec12Msg(data=tracking_error_data)
+
+        tracking_errors = torch.tensor(tracking_error_data, dtype=torch.float32)
         self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
         self.logger.writer.add_scalar('Control/tracking_error/max', torch.max(torch.abs(tracking_errors)), self.transition_count)
         self.logger.writer.add_scalar('Control/tracking_error/std', torch.std(tracking_errors), self.transition_count)

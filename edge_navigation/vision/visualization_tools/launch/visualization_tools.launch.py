@@ -8,9 +8,16 @@ from launch_ros.substitutions import FindPackageShare, FindPackagePrefix
 
 def generate_launch_description():
 
-    # -----------------------------
-    # Arguments
-    # -----------------------------
+    # ------------------------------
+    # ---    Launch Arguments    ---
+    # ------------------------------
+    
+    odom_topic_arg = DeclareLaunchArgument(
+        "odom_topic",
+        default_value="odom",
+        description="Odometry topic to use"
+    )
+    
     world_name_arg = DeclareLaunchArgument(
         "world_name",
         default_value="garage"
@@ -50,12 +57,14 @@ def generate_launch_description():
             "exploredAreaDisplayInterval": 1,
         }],
         remappings=[
-            ("/state_estimation", "/odom"),
+            ("/state_estimation", LaunchConfiguration("odom_topic")),
         ],
     )
 
     return LaunchDescription([
+        odom_topic_arg,
         world_name_arg,
+        
         visualization_tools_node,
         # RealTimePlot disabled (same as XML)
     ])
