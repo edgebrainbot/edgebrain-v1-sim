@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
- #pragma once
+#pragma once
 
 #include <cmath>
 #include <vector>
@@ -19,6 +19,7 @@
 
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
+#include "edge_msgs/msg/edge_vel_action.hpp"
 #include "edge_config/safety_monitor.hpp"
 #include "edge_msgs/srv/get_switching_stats.hpp"
 #include "edge_msgs/srv/reset_switching_stats.hpp"
@@ -90,6 +91,7 @@ private:
 
     // ROS publishers
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr pub_action_;
+    rclcpp::Publisher<edge_msgs::msg::EdgeVelAction>::SharedPtr pub_vel_action_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_alert_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_fall_;
 

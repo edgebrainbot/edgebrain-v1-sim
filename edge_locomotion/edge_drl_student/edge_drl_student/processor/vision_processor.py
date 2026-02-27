@@ -27,7 +27,9 @@ class VisionProcessor:
                  queue_size: int = 10,
                  device: str = 'cpu', 
                  feature_dim: int = 24,
-                 print_interval: int = 30):
+                 print_interval: int = 30,
+                 static_lidar_size: int = 1440
+        ):
         """
         Initialize Vision Processor
         
@@ -40,9 +42,10 @@ class VisionProcessor:
         self.device = device
         self.feature_dim = feature_dim
         self.print_interval = print_interval
+        self.static_lidar_size = static_lidar_size
         
         # Matrix for processing lidar
-        self.mat_base_vec = torch.arange(0.1, 144.1, 0.1, dtype=torch.float32).to(device) * 50
+        self.mat_base_vec = torch.arange(0.1, self.static_lidar_size + .1, 0.1, dtype=torch.float32).to(device) * 50
         x = torch.log(self.mat_base_vec) * 0.0001
         
         # Polynomial feature matrix
@@ -140,8 +143,6 @@ class VisionProcessor:
             return torch.zeros(self.feature_dim, device=self.device)
         
         points_tensor = torch.tensor(points, dtype=torch.float32).to(self.device)
-        
-        print(f"points_tensor shape: {points_tensor.shape}")
         
         # Ensure vis_feature_mat is the right shape for matrix multiplication
         pcd_dim = points_tensor.shape[0]

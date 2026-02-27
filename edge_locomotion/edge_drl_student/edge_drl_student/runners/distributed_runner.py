@@ -515,18 +515,19 @@ class DistributedRunner:
             dtype=torch.float32,
             device=self.device
         )
-        residual_action = (self.residual_gain @ tracking_error.unsqueeze(-1)).flatten()
+        # residual_action = (self.residual_gain @ tracking_error.unsqueeze(-1)).flatten()
+    
         
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
             # learned_action = 0.5*policy_action + 0.2*blended_action
-            learned_action = 0.05 * policy_action + 0.0 * blended_action
+            learned_action = 0.05 * policy_action
         else:
             learned_action = policy_action
         
         # Final output action
-        drl_student_action = learned_action + residual_action
+        drl_student_action = learned_action
         
         return drl_student_action, learned_action
     
