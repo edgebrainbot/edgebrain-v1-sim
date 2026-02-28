@@ -13,11 +13,11 @@
 #include "unitree_api/msg/request.hpp"
 #include "edge_dummy_env/common/ros2_sport_client.h"
 
-class RealRobotExecutorNode : public rclcpp::Node
+class Go2RealRobotExecutorNode : public rclcpp::Node
 {
 public:
-  RealRobotExecutorNode()
-  : Node("real_robot_executor")
+  Go2RealRobotExecutorNode()
+  : Node("go2_real_robot_executor")
   {
     cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
     request_topic_ = declare_parameter<std::string>("request_topic", "/api/sport/request");
@@ -26,7 +26,7 @@ public:
     request_pub_ = create_publisher<unitree_api::msg::Request>(request_topic_, 10);
     cmd_vel_sub_ = create_subscription<geometry_msgs::msg::TwistStamped>(
       cmd_vel_topic_, 20,
-      std::bind(&RealRobotExecutorNode::cmdVelCallback, this, std::placeholders::_1)
+      std::bind(&Go2RealRobotExecutorNode::cmdVelCallback, this, std::placeholders::_1)
     );
 
     RCLCPP_INFO(get_logger(), "Listening %s -> publishing %s", cmd_vel_topic_.c_str(), request_topic_.c_str());
@@ -64,7 +64,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<RealRobotExecutorNode>());
+  rclcpp::spin(std::make_shared<Go2RealRobotExecutorNode>());
   rclcpp::shutdown();
   return 0;
 }

@@ -37,6 +37,7 @@ public:
 private:
     
     void updateLoop();     // Main periodic update loop
+    void updateLoopVel();  // Main periodic update loop for velocity action
 
     bool checkSafety();    // Check safety for switching
     void resetStats();     // Reset switching statistics
@@ -46,6 +47,8 @@ private:
     // ROS2 Callbacks
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
+    void studentVelCallback(const edge_msgs::msg::EdgeVelAction::SharedPtr msg);
+    void teacherVelCallback(const edge_msgs::msg::EdgeVelAction::SharedPtr msg);
     void errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
@@ -66,6 +69,8 @@ private:
     bool is_last_state_fall_;                             // last fall state (is fall or not)
     edge::ros_interfaces::Vector6d   last_stu_action_;    // last received student action
     edge::ros_interfaces::Vector6d   last_tea_action_;    // last received teacher action
+    edge::ros_interfaces::Vector3d   last_stu_vel_action_;    // last received student velocity action
+    edge::ros_interfaces::Vector3d   last_tea_vel_action_;    // last received teacher velocity action
     edge::ros_interfaces::Vector12d  last_error_state_;   // last received error state
     edge::ros_interfaces::Vector12d  last_robot_state_;   // last received robot state
 
@@ -84,6 +89,8 @@ private:
     // ROS subscribers
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeVelAction>::SharedPtr sub_student_vel_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeVelAction>::SharedPtr sub_teacher_vel_;
     rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_error_;
     rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_robot_state_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_obstacle_distance_;
@@ -104,6 +111,10 @@ private:
     bool print_processing_;                         // whether to print processing info
     bool is_start_with_teacher_;                    // whether to start with teacher mode
     bool is_robot_state_initialized_ = false;       // whether robot state has been initialized
+    std::string student_topic_name_;                      // topic name for student action
+    std::string teacher_topic_name_;                      // topic name for teacher action
+    std::string terminal_action_name_;                   // topic name for publishing terminal action
+
 
     rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer
     std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;       // Safety monitor

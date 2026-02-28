@@ -17,16 +17,44 @@ find_package(unitree_api REQUIRED)
 find_package(go2_sport_api REQUIRED)
 find_package(unitree_sdk2 REQUIRED)
 
-add_executable(real_robot_executor src/executor.cpp)
+add_executable(real_robot_executor src/go2_real_robot_executor.cpp)
 target_include_directories(real_robot_executor PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
-add_executable(robot_state src/robot_state.cpp)
-target_link_libraries(robot_state unitree_sdk2)
+add_executable(dummy_robot_env
+  src/dummy_robot_env.cpp
+)
+target_include_directories(dummy_robot_env PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 
-add_executable(dummy_robot_env src/dummy_robot_env.cpp)
+add_executable(go2_high_state_bridge
+  src/go2_high_state_bridge.cpp
+  src/go2_high_state_subscriber.cpp
+)
+target_include_directories(go2_high_state_bridge PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(go2_high_state_bridge unitree_sdk2)
+
+add_executable(go2_high_state_sub_test
+  test/go2_high_state_sub_test.cpp
+  src/go2_high_state_subscriber.cpp
+)
+target_include_directories(go2_high_state_sub_test PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(go2_high_state_sub_test unitree_sdk2)
+
+ament_target_dependencies(go2_high_state_sub_test
+  edge_msgs
+  edge_ros_interfaces
+)
 
 ament_target_dependencies(real_robot_executor
   rclcpp
@@ -44,10 +72,17 @@ ament_target_dependencies(dummy_robot_env
   edge_ros_interfaces
 )
 
+ament_target_dependencies(go2_high_state_bridge
+  rclcpp
+  edge_msgs
+  edge_ros_interfaces
+)
+
 install(TARGETS
   real_robot_executor
-  robot_state
   dummy_robot_env
+  go2_high_state_bridge
+  go2_high_state_sub_test
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -57,7 +92,7 @@ install(
 )
 
 install(
-  DIRECTORY launch
+  DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
 

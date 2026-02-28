@@ -13,7 +13,10 @@
 
 #include "msg_utils.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
+#include "edge_msgs/msg/edge_vel_action.hpp"
+
 #include "edge_msgs/msg/vec12_msg.hpp"
+
 
 namespace edge::ros_interfaces {
 
@@ -94,6 +97,27 @@ inline std::vector<double> EdgeActionMsgToVector(const edge_msgs::msg::EdgeActio
   return std::vector<double>(msg.control_action.begin(), msg.control_action.end());
 }
 
+
+/**
+ * @brief Convert std::vector<double> to edge_msgs::msg::EdgeVelAction.
+ */
+inline edge_msgs::msg::EdgeVelAction VectorToEdgeVelActionMsg(const std::vector<double>& data, uint8_t action_mode) {
+  edge_msgs::msg::EdgeVelAction msg;
+  
+  msg.header.stamp = edge::utils::getCurrentROSTime();
+  const size_t n = std::min(msg.cmd_vel_action.size(), data.size());
+  std::copy_n(data.begin(), n, msg.cmd_vel_action.begin());
+  msg.action_mode = action_mode;
+  return msg;
+}
+
+/**
+ * @brief Convert edge_msgs::msg::EdgeVelAction to std::vector<double>.
+ */
+inline std::vector<double> EdgeVelActionMsgToVector(const edge_msgs::msg::EdgeVelAction& msg) {
+  return std::vector<double>(msg.cmd_vel_action.begin(), msg.cmd_vel_action.end());
+}
+
 /**
  * @brief Convert std::vector<double> to edge_msgs::msg::Vec12.
  */
@@ -122,11 +146,23 @@ inline Vector6d EdgeActionMsgToEigen(const edge_msgs::msg::EdgeAction& msg) {
   return VectorToEigen<6>(EdgeActionMsgToVector(msg));
 }
 
+
+inline Vector3d EdgeVelActionMsgToEigen(const edge_msgs::msg::EdgeVelAction& msg) {
+  return VectorToEigen<3>(EdgeVelActionMsgToVector(msg));
+}
+
 /**
  * @brief Convert Eigen 6D vector to EdgeAction message.
  */
 inline edge_msgs::msg::EdgeAction EigenToEdgeActionMsg(const Vector6d& v, uint8_t action_mode) {
   return VectorToEdgeActionMsg(EigenToVector(v), action_mode);
+}
+
+/**
+ * @brief Convert Eigen 3D vector to EdgeVelAction message.
+ */
+inline edge_msgs::msg::EdgeVelAction EigenToEdgeVelActionMsg(const Vector3d& v, uint8_t action_mode) {
+  return VectorToEdgeVelActionMsg(EigenToVector(v), action_mode);
 }
 
 /**

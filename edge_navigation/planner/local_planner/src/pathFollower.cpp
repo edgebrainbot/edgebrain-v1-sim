@@ -34,6 +34,8 @@
 #include "rmw/types.h"
 #include "rmw/qos_profiles.h"
 
+#include "edge_msgs/msg/edge_vel_action.hpp"
+
 // For real robot
 #include "unitree_api/msg/request.hpp"
 #include "common/ros2_sport_client.h"
@@ -299,6 +301,8 @@ int main(int argc, char** argv)
 
   auto pubSpeed = nh->create_publisher<geometry_msgs::msg::TwistStamped>("/cmd_vel", 5);
 
+  auto pubPhyTeacherActionVel = nh->create_publisher<edge_msgs::msg::EdgeVelAction>("/edge/phy_teacher_action_vel", 5);
+
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
   auto minObstacleSub = nh->create_subscription<std_msgs::msg::Float32>(
@@ -454,6 +458,14 @@ int main(int argc, char** argv)
 
         pubSpeed->publish(cmd_vel);
 
+        edge_msgs::msg::EdgeVelAction phy_teacher_action_vel;
+        phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;
+        phy_teacher_action_vel.cmd_vel_action[0] = cmd_vel.twist.linear.x;
+        phy_teacher_action_vel.cmd_vel_action[1] = cmd_vel.twist.linear.y;
+        phy_teacher_action_vel.cmd_vel_action[2] = cmd_vel.twist.angular.z;
+        phy_teacher_action_vel.action_mode = 1;
+        pubPhyTeacherActionVel->publish(phy_teacher_action_vel);
+
         pubSkipCount = pubSkipNum;
 
         // Use Unitree API for real robot control
@@ -466,6 +478,7 @@ int main(int argc, char** argv)
                sport_req.Move(req, cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z);
           }
           pubGo2Request->publish(req);
+
         }
       }
     }

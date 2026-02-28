@@ -41,7 +41,7 @@ def generate_launch_description():
     
     trigger_source_arg = DeclareLaunchArgument(
         'trigger_source',
-        default_value='-1',
+        default_value='1',
         description='Trigger action source: -1 -- none, 0 -- student, 1 -- teacher'
     )
 

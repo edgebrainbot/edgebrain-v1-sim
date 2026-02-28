@@ -3,47 +3,69 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <functional>
+
 #include <string>
 #include <vector>
+#include <chrono>
+#include <cmath>
+#include <algorithm>
+#include <functional>
+#include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
 
-#include "edge_msgs/msg/transition.hpp"
-#include "edge_msgs/msg/edge_vel_action.hpp"
+#include "edge_msgs/msg/transition_vel.hpp"
+#include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_config/reward_composer.hpp"
+#include "edge_msgs/msg/edge_vel_action.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 class DummyRobotEnvNode : public rclcpp::Node
 {
 public:
 	DummyRobotEnvNode()
-	: Node("dummy_robot_env"),
-		reward_composer_(declare_parameter<std::string>("reward_yaml_path", ""))
+	: Node("dummy_robot_env")
 	{
 		topic_ns_ = declare_parameter<std::string>("topic_namespace", "edge");
+		go2_state_topic_ = declare_parameter<std::string>("go2_state_topic", "/edge/go2/high_state_vec12");
+		RCLCPP_INFO(get_logger(), "Use GO2 state topic as robot state source: %s", go2_state_topic_.c_str());
 
 		action_sub_ = create_subscription<edge_msgs::msg::EdgeVelAction>(
 			topic_ns_ + "/terminal_action_vel", 100,
 			[this](const edge_msgs::msg::EdgeVelAction::SharedPtr msg) -> void
 			{
+				curr_action_vel_ = *msg;
+
+				// Extract cmd_vel action and apply clamping
 				latest_vx_cmd_ = clamp(msg->cmd_vel_action[0], -kMaxVx, kMaxVx);
 				latest_vy_cmd_ = clamp(msg->cmd_vel_action[1], -kMaxVy, kMaxVy);
 				latest_wz_cmd_ = clamp(msg->cmd_vel_action[2], -kMaxWz, kMaxWz);
 				has_cmd_ = true;
 			});
 
-		cmd_vel_sub_ = create_subscription<geometry_msgs::msg::TwistStamped>(
-			"/cmd_vel",
-			20,
-			std::bind(&DummyRobotEnvNode::cmdVelCallback, this, std::placeholders::_1));
+		// Subscribe to goal point
+		goal_sub_ = create_subscription<geometry_msgs::msg::PointStamped>(
+			"/goal_point", 100,
+			[this](const geometry_msgs::msg::PointStamped::SharedPtr msg) -> void
+			{
+				latest_goal_x_ = msg->point.x;
+				latest_goal_y_ = msg->point.y;
+			});
 
-		transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", 20);
+		// Subscribe to GO2 high state relayed as ROS Vec12 message
+		go2_state_sub_ = create_subscription<edge_msgs::msg::Vec12Msg>(
+			go2_state_topic_, 100,
+			[this](const edge_msgs::msg::Vec12Msg::SharedPtr msg) -> void
+			{
+				latest_go2_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
+				has_go2_state_ = true;
+			});
+
+		cmd_vel_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>(topic_ns_ + "/cmd_vel", 50);
+		transition_pub_ = create_publisher<edge_msgs::msg::TransitionVel>(topic_ns_ + "/transition_vel", 20);
 		done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
 
 		const double dt = std::max(1e-3, 1.0 / kStepHz);
@@ -53,7 +75,7 @@ public:
 
 		resetEpisode();
 
-		RCLCPP_INFO(get_logger(), "Dummy env ready. cmd_vel=/cmd_vel transition=/edge_dummy_env/transition");
+		RCLCPP_INFO(get_logger(), "Dummy env ready. cmd_vel=/edge/cmd_vel transition=/edge_dummy_env/transition");
 	}
 
 private:
@@ -63,7 +85,7 @@ private:
 	using Vector12d = edge::ros_interfaces::Vector12d;
 
 	static constexpr double kStepHz = 50.0;
-	static constexpr int kEpisodeHorizonSteps = 1200;
+	static constexpr int kEpisodeHorizonSteps = 12000;
 	static constexpr double kGoalX = 5.0;
 	static constexpr double kGoalY = 0.0;
 	static constexpr double kGoalReachedThreshold = 0.3;
@@ -72,7 +94,7 @@ private:
 	static constexpr double kObstacleRadius = 0.4;
 	static constexpr double kMaxVx = 1.0;
 	static constexpr double kMaxVy = 0.8;
-	static constexpr double kMaxWz = 1.5;
+	static constexpr double kMaxWz = 0.5;
 	static constexpr double kNominalHeight = 0.33;
 
 	static double clamp(double value, double low, double high)
@@ -92,53 +114,61 @@ private:
 		return angle;
 	}
 
-	static edge_msgs::msg::EdgeAction toEdgeActionMsg(double vx, double vy, double wz)
-	{
-		edge_msgs::msg::EdgeAction action;
-		action.control_action[0] = vx;
-		action.control_action[1] = vy;
-		action.control_action[2] = 0.0;
-		action.control_action[3] = 0.0;
-		action.control_action[4] = 0.0;
-		action.control_action[5] = wz;
-		action.action_mode = 0;
-		return action;
-	}
-
-	void cmdVelCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
-	{
-		latest_vx_cmd_ = clamp(msg->twist.linear.x, -kMaxVx, kMaxVx);
-		latest_vy_cmd_ = clamp(msg->twist.linear.y, -kMaxVy, kMaxVy);
-		latest_wz_cmd_ = clamp(msg->twist.angular.z, -kMaxWz, kMaxWz);
-		has_cmd_ = true;
-	}
-
 	void resetEpisode()
 	{
 		x_ = 0.0;
 		y_ = 0.0;
 		yaw_ = 0.0;
 		step_count_ = 0;
-		last_action_ = Vector6d::Zero();
+		last_action_vel_ = edge_msgs::msg::EdgeVelAction();
+		curr_action_vel_ = edge_msgs::msg::EdgeVelAction();
 		done_ = false;
+		last_robot_state_ = getRobotState();
+		curr_robot_state_ = last_robot_state_;
 	}
 
+	Vector12d getRobotState() const
+	{
+		if (has_go2_state_) {
+			return latest_go2_state_;
+		}
+
+		Vector12d robot_state = Vector12d::Zero();
+		robot_state(0) = x_;
+		robot_state(1) = y_;
+		robot_state(2) = kNominalHeight;
+		robot_state(5) = yaw_;
+		robot_state(6) = latest_vx_cmd_;
+		robot_state(7) = latest_vy_cmd_;
+		robot_state(11) = latest_wz_cmd_;
+		return robot_state;
+	}
+
+	Vector12d getDRLStudentGoalState() const
+	{
+		Vector12d goal_state = Vector12d::Zero();
+		goal_state(0) = latest_goal_x_;
+		goal_state(1) = latest_goal_y_;
+		goal_state(2) = kNominalHeight;
+		return goal_state;
+	}
+
+	// obs
 	std::vector<double> getObservation() const
 	{
-		Vector12d obs = Vector12d::Zero();
-		obs(0) = kGoalX - x_;
-		obs(1) = kGoalY - y_;
-		obs(2) = 0.0;
-		obs(3) = 0.0;
-		obs(4) = 0.0;
-		obs(5) = wrapToPi(-yaw_);
-		obs(6) = latest_vx_cmd_;
-		obs(7) = latest_vy_cmd_;
-		obs(8) = 0.0;
-		obs(9) = 0.0;
-		obs(10) = 0.0;
-		obs(11) = latest_wz_cmd_;
-		return edge::ros_interfaces::EigenToVector(obs);
+		return edge::ros_interfaces::Vec12MsgToVector(edge::ros_interfaces::EigenToVec12Msg(last_robot_state_));
+	}
+
+	// obs_next
+	std::vector<double> getObservationNext() const
+	{
+		return edge::ros_interfaces::Vec12MsgToVector(edge::ros_interfaces::EigenToVec12Msg(curr_robot_state_));
+	}
+
+	// action
+	edge_msgs::msg::EdgeVelAction getDRLAction() const
+	{
+		return last_action_vel_;
 	}
 
 	double getObstacleMinDistance() const
@@ -150,20 +180,60 @@ private:
 
 	bool isGoalReached() const
 	{
-		return std::hypot(kGoalX - x_, kGoalY - y_) < kGoalReachedThreshold;
+		return std::hypot(latest_goal_x_ - x_, latest_goal_y_ - y_) < kGoalReachedThreshold;
 	}
 
-	void integrateDynamics(double dt)
+	bool processTransition()
 	{
-		const double cos_yaw = std::cos(yaw_);
-		const double sin_yaw = std::sin(yaw_);
+		Vector2d nav_goal;
+		nav_goal << latest_goal_x_, latest_goal_y_;
 
-		const double vx_world = latest_vx_cmd_ * cos_yaw - latest_vy_cmd_ * sin_yaw;
-		const double vy_world = latest_vx_cmd_ * sin_yaw + latest_vy_cmd_ * cos_yaw;
+		Vector3d robot_pos;
+		robot_pos << curr_robot_state_(0), curr_robot_state_(1), curr_robot_state_(5);
 
-		x_ += vx_world * dt;
-		y_ += vy_world * dt;
-		yaw_ = wrapToPi(yaw_ + latest_wz_cmd_ * dt);
+		// Reward factors
+		const bool is_fall = false;
+		const bool goal_reached = isGoalReached();
+		const bool timeout = step_count_ >= kEpisodeHorizonSteps;
+		const Vector3d curr_vel_action = (Vector3d() << latest_vx_cmd_, latest_vy_cmd_, latest_wz_cmd_).finished();
+		const Vector3d last_vel_action =
+			(Vector3d() << last_action_vel_.cmd_vel_action[0],
+			 last_action_vel_.cmd_vel_action[1],
+			 last_action_vel_.cmd_vel_action[2]).finished();
+
+		edge::config::RewardFactor reward_factors{
+			{"is_teacher_activated", false},
+			{"time_elapsed", static_cast<double>(step_count_)},
+			{"obstacle_distance_min", getObstacleMinDistance()},
+			{"nav_goal", nav_goal},
+			{"robot_pos", robot_pos},
+			{"robot_state", curr_robot_state_},
+			{"is_fall", is_fall},
+			{"is_goal_reached", goal_reached}
+		};
+
+		// Compute reward components with error handling
+		std::vector<edge_msgs::msg::EdgeReward> reward_components;
+		try {
+			reward_components = reward_composer_.computeTotalReward(reward_factors);
+		} catch (const std::exception & e) {
+			RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+				"Reward compose failed (check reward YAML keys/factors): %s", e.what());
+		}
+
+		// Transition message
+		edge_msgs::msg::TransitionVel transition;
+		transition.header.stamp = now();
+		transition.obs = getObservation();
+		transition.action = getDRLAction();
+		transition.reward_components = std::move(reward_components);
+		transition.next_obs = getObservationNext();
+		transition.done = goal_reached || timeout || is_fall;
+
+		// Publish transition
+		transition_pub_->publish(transition);
+
+		return transition.done;
 	}
 
 	void stepOnce()
@@ -176,92 +246,67 @@ private:
 			return;
 		}
 
-		const double dt = std::max(1e-3, 1.0 / kStepHz);
-		std::vector<double> obs = getObservation();
-
-		const Vector6d curr_action = (Vector6d() << latest_vx_cmd_, latest_vy_cmd_, 0.0, 0.0, 0.0, latest_wz_cmd_).finished();
-		const Vector6d delta_action = curr_action - last_action_;
-		last_action_ = curr_action;
-
-		integrateDynamics(dt);
 		step_count_ += 1;
 
-		Vector12d robot_state = Vector12d::Zero();
-		robot_state(0) = x_;
-		robot_state(1) = y_;
-		robot_state(2) = kNominalHeight;
-		robot_state(5) = yaw_;
-		robot_state(6) = latest_vx_cmd_;
-		robot_state(7) = latest_vy_cmd_;
-		robot_state(11) = latest_wz_cmd_;
+		// Obtain the latest robot state from GO2 state topic
+		curr_robot_state_ = getRobotState();
 
-		Vector2d nav_goal;
-		nav_goal << kGoalX, kGoalY;
+		// Process transition
+		done_ = processTransition();
 
-		Vector3d robot_pos;
-		robot_pos << x_, y_, yaw_;
-
-		const bool goal_reached = isGoalReached();
-		const bool timeout = step_count_ >= kEpisodeHorizonSteps;
-		const bool is_fall = false;
-
-		edge::config::RewardFactor reward_factors{
-			{"is_teacher_activated", false},
-			{"time_elapsed", static_cast<double>(step_count_)},
-			{"obstacle_distance_min", getObstacleMinDistance()},
-			{"nav_goal", nav_goal},
-			{"robot_pos", robot_pos},
-			{"robot_state", robot_state},
-			{"delta_action", delta_action},
-			{"is_fall", is_fall},
-			{"is_goal_reached", goal_reached}
-		};
-
-		std::vector<edge_msgs::msg::EdgeReward> reward_components;
-		try {
-			reward_components = reward_composer_.computeTotalReward(reward_factors);
-		} catch (const std::exception & e) {
-			RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-				"Reward compose failed (check reward YAML keys/factors): %s", e.what());
-		}
-
-		edge_msgs::msg::Transition transition;
-		transition.header.stamp = now();
-		transition.obs = std::move(obs);
-		transition.action = toEdgeActionMsg(latest_vx_cmd_, latest_vy_cmd_, latest_wz_cmd_);
-		transition.reward_components = std::move(reward_components);
-		transition.next_obs = getObservation();
-		transition.done = goal_reached || timeout || is_fall;
-
-		transition_pub_->publish(transition);
-
+		// Publish done signal
 		std_msgs::msg::Bool done_msg;
-		done_msg.data = transition.done;
+		done_msg.data = done_;
 		done_pub_->publish(done_msg);
 
-		done_ = transition.done;
+		// Send cmd_vel as action to env for execution
+		geometry_msgs::msg::TwistStamped cmd_vel_msg;
+		cmd_vel_msg.header.stamp = now();
+		cmd_vel_msg.twist.linear.x = latest_vx_cmd_;
+		cmd_vel_msg.twist.linear.y = latest_vy_cmd_;
+		cmd_vel_msg.twist.angular.z = latest_wz_cmd_;
+		cmd_vel_pub_->publish(cmd_vel_msg);
+
+		// Update last action and last robot state for next step
+		last_action_vel_ = curr_action_vel_;
+		last_robot_state_ = curr_robot_state_;
 	}
 
-	edge::config::RewardComposer reward_composer_;
+	// Reward composer
+	edge::config::RewardComposer reward_composer_{""};
 	std::string topic_ns_;
+	std::string go2_state_topic_{"/edge/go2/high_state_vec12"};
 
 	bool has_cmd_{false};
+	bool has_go2_state_{false};
 	bool done_{false};
 	int step_count_{0};
 
 	double latest_vx_cmd_{0.0};
 	double latest_vy_cmd_{0.0};
 	double latest_wz_cmd_{0.0};
+	double latest_goal_x_{kGoalX};
+	double latest_goal_y_{kGoalY};
 
 	double x_{0.0};
 	double y_{0.0};
 	double yaw_{0.0};
 
-	Vector6d last_action_ = Vector6d::Zero();
+	Vector12d last_robot_state_ = Vector12d::Zero();
+	Vector12d curr_robot_state_ = Vector12d::Zero();
+	Vector12d latest_go2_state_ = Vector12d::Zero();
 
+	// Vector3d last_action_vel_ = Vector3d::Zero();
+	// Vector3d curr_action_vel_ = Vector3d::Zero();
+	edge_msgs::msg::EdgeVelAction last_action_vel_;
+	edge_msgs::msg::EdgeVelAction curr_action_vel_;
+
+	// Subscriptions and publishers
 	rclcpp::Subscription<edge_msgs::msg::EdgeVelAction>::SharedPtr action_sub_;
-	rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_sub_;
-	rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
+	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
+	rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr go2_state_sub_;
+	rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_pub_;
+	rclcpp::Publisher<edge_msgs::msg::TransitionVel>::SharedPtr transition_pub_;
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
 	rclcpp::TimerBase::SharedPtr timer_;
 };

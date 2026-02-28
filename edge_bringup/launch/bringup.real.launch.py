@@ -272,7 +272,7 @@ def generate_launch_description():
         virtual_status_indicator_node,
         
         global_rviz_node,
-        camera_image_pub_node,
+        # camera_image_pub_node,
         # navigation_launch,
         
         rosbag_record,

@@ -11,7 +11,7 @@ def generate_launch_description():
 
     declare_cmd_vel_topic = DeclareLaunchArgument(
         "cmd_vel_topic",
-        default_value="/cmd_vel",
+        default_value="/edge/cmd_vel",
         description="Input cmd_vel topic (TwistStamped)",
     )
 
@@ -43,5 +43,6 @@ def generate_launch_description():
         declare_cmd_vel_topic,
         declare_request_topic,
         declare_stop_epsilon,
+        
         executor_node,
     ])
