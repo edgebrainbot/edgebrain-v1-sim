@@ -14,7 +14,7 @@ class MsgConversionTestNode : public rclcpp::Node {
 public:
   MsgConversionTestNode() : Node("test_conversion") {
     edge_msgs::msg::EdgeAction msg;
-    msg.control_action = {1.0, 2.0, 3.0};
+    msg.action_value = {1.0, 2.0, 3.0};
     auto v = EdgeActionMsgToEigen(msg);
     RCLCPP_INFO(this->get_logger(), "Eigen vector: [%f, %f, %f]", v[0], v[1], v[2]);
   }

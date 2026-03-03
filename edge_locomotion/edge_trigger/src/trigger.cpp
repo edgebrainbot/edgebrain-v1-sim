@@ -52,12 +52,6 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     sub_student_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
         student_topic_name_, 50, std::bind(&Trigger::studentCallback, this, _1));
 
-    sub_teacher_vel_ = this->create_subscription<edge_msgs::msg::EdgeVelAction>(
-        teacher_topic_name_ + "_vel", 50, std::bind(&Trigger::teacherVelCallback, this, _1));
-
-    sub_student_vel_ = this->create_subscription<edge_msgs::msg::EdgeVelAction>(
-        student_topic_name_ + "_vel", 50, std::bind(&Trigger::studentVelCallback, this, _1));
-
     sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
         "/obstacle_min_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
 
@@ -68,7 +62,6 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     pub_alert_  = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
     pub_fall_   = this->create_publisher<std_msgs::msg::Bool>("is_fall", 50);
     pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>(terminal_action_name_, 50);
-    pub_vel_action_ = this->create_publisher<edge_msgs::msg::EdgeVelAction>(terminal_action_name_ + "_vel", 50);
 
     // Service for getting switching statistics
     srv_get_switching_stats_ = this->create_service<edge_msgs::srv::GetSwitchingStats>(
@@ -83,9 +76,6 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     // Timer for periodic update
     auto period = std::chrono::duration<double>(1.0 / update_rate_);
     timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
-
-    // auto period = std::chrono::duration<double>(1.0 / update_rate_);
-    // timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoopVel, this));
 
     // Initialize Safety Monitor
     safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
@@ -102,18 +92,6 @@ void Trigger::studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 void Trigger::teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
     last_tea_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
-}
-
-// For student velocity action callback
-void Trigger::studentVelCallback(const edge_msgs::msg::EdgeVelAction::SharedPtr msg)
-{
-    last_stu_vel_action_ = edge::ros_interfaces::EdgeVelActionMsgToEigen(*msg);
-}
-
-// For teacher velocity action callback
-void Trigger::teacherVelCallback(const edge_msgs::msg::EdgeVelAction::SharedPtr msg)
-{
-    last_tea_vel_action_ = edge::ros_interfaces::EdgeVelActionMsgToEigen(*msg);
 }
 
 void Trigger::errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg)
@@ -226,9 +204,7 @@ void Trigger::resetCachedVariables()
     last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial error state
     last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial robot state
     last_stu_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial student action
-    last_tea_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial teacher action
-    last_stu_vel_action_ = edge::ros_interfaces::Vector3d::Zero();                                     // initial student velocity action
-    last_tea_vel_action_ = edge::ros_interfaces::Vector3d::Zero();                                     // initial teacher velocity action
+    last_tea_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial teacher action                                // initial teacher velocity action
 }
 
 void Trigger::resetStats()
@@ -343,66 +319,6 @@ void Trigger::updateLoop()
 
     // Publish terminal action
     pub_action_->publish(terminal_action);
-
-    // Publish alert status (still report safety evaluation)
-    std_msgs::msg::Bool alert_msg;
-    alert_msg.data = is_last_state_safe_;
-    pub_alert_->publish(alert_msg);
-
-    // Publish fall status
-    std_msgs::msg::Bool fall_msg;
-    fall_msg.data = is_last_state_fall_;
-    pub_fall_->publish(fall_msg);
-
-}
-
-
-
-void Trigger::updateLoopVel()
-{
-    // Convert states
-    std::vector<double> error_state(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-    std::vector<double> robot_state(last_robot_state_.data(), last_robot_state_.data() + last_robot_state_.size());
-    
-    // Evaluate safety and fall status
-    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, error_state, obstacle_distance_, goal_distance_);
-    is_last_state_fall_ = is_robot_state_initialized_ ? safety_monitor_->detectFall(robot_state) : false;
-
-    if (print_processing_) {
-        RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_last_state_safe_ ? "true" : "false");
-    }
-
-    // Determine terminal action and mode
-    edge::utils::ActionMode terminal_mode;
-    edge_msgs::msg::EdgeVelAction terminal_action_vel;
-    
-    // Determine terminal mode (override or safety-based)
-    if (trigger_source_ == 0) {
-        terminal_mode = edge::utils::ActionMode::STUDENT;
-    }
-    else if (trigger_source_ == 1) {
-        terminal_mode = edge::utils::ActionMode::TEACHER;
-    }
-    else {
-        terminal_mode = is_last_state_safe_ ? edge::utils::ActionMode::STUDENT
-                                            : edge::utils::ActionMode::TEACHER;
-    }
-
-    // Prepare terminal action message
-    if (terminal_mode == edge::utils::ActionMode::STUDENT) {
-        terminal_action_vel = edge::ros_interfaces::EigenToEdgeVelActionMsg(last_stu_vel_action_,
-                                                                    edge::utils::ToMsg(terminal_mode));
-    }
-    else {
-        terminal_action_vel = edge::ros_interfaces::EigenToEdgeVelActionMsg(last_tea_vel_action_, 
-                                                                    edge::utils::ToMsg(terminal_mode));
-    }
-
-    // Update switching statistics
-    updateStats(terminal_mode);
-
-    // Publish terminal action
-    pub_vel_action_->publish(terminal_action_vel);
 
     // Publish alert status (still report safety evaluation)
     std_msgs::msg::Bool alert_msg;

@@ -15,7 +15,7 @@ Options:
 Example:
     $0                             # Auto-detect workspace
     $0 -w /path/to/edge_ws         # Specify workspace manually
-    $0 --workspace ~/edge_ws_dev   # Using long option
+    $0 --workspace ~/edge_ws       # Using long option
 EOF
     exit 0
 }
@@ -59,38 +59,41 @@ done
 
 # ==========================================
 # 🔍 Determine workspace directory
+# Priority:
+#   1) Command line argument
+#   2) Environment variable EDGE_WORKSPACE
+#   3) Auto-detection
 # ==========================================
+
+# ---- Priority 1: Command line ----
 if [[ -n "$WORKSPACE_DIR" ]]; then
-    # User specified workspace
-    if [[ ! -d "$WORKSPACE_DIR" ]]; then
-        echo "❌ Error: Specified workspace directory does not exist: $WORKSPACE_DIR"
-        exit 1
-    fi
-    
-    # Verify it's a edge_ws* directory
-    base=$(basename "$WORKSPACE_DIR")
-    if [[ $base != edge_ws* ]]; then
-        echo "⚠️  Warning: Directory name '$base' doesn't match pattern 'edge_ws*'"
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
-        fi
-    fi
-    
-    echo "✅ Using specified workspace: $WORKSPACE_DIR"
+    echo "✅ Using workspace from command line: $WORKSPACE_DIR"
+
+# ---- Priority 2: Environment variable ----
+elif [[ -n "$EDGE_WORKSPACE" ]]; then
+    WORKSPACE_DIR="$EDGE_WORKSPACE"
+    echo "✅ Using workspace from environment variable: $WORKSPACE_DIR"
+
+# ---- Priority 3: Auto-detect ----
 else
-    # Auto-detect workspace
     SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     WORKSPACE_DIR=$(find_workspace_root "$SCRIPT_PATH")
-    
+
     if [[ -z "$WORKSPACE_DIR" ]]; then
-        echo "❌ Error: Could not find any directory named 'edge_ws*' above $SCRIPT_PATH"
-        echo "💡 Tip: Use -w option to specify workspace manually"
+        echo "❌ Error: Could not auto-detect workspace (edge_ws*)"
+        echo "💡 Tip:"
+        echo "   - Use -w option"
+        echo "   - Or export EDGE_WORKSPACE=/your/ws"
         exit 1
     fi
-    
-    echo "✅ ROS 2 workspace auto-detected: $WORKSPACE_DIR"
+
+    echo "✅ Auto-detected workspace: $WORKSPACE_DIR"
+fi
+
+# ---- Final validation ----
+if [[ ! -d "$WORKSPACE_DIR" ]]; then
+    echo "❌ Error: Workspace directory does not exist: $WORKSPACE_DIR"
+    exit 1
 fi
 
 cd "$WORKSPACE_DIR"
