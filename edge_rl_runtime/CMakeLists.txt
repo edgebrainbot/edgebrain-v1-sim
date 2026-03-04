@@ -59,6 +59,7 @@ ament_target_dependencies(go2_high_state_sub_test
 ament_target_dependencies(real_robot_executor
   rclcpp
   geometry_msgs
+  edge_msgs
   unitree_api
   go2_sport_api
 )

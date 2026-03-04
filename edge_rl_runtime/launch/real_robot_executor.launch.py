@@ -5,14 +5,14 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    cmd_vel_topic = LaunchConfiguration("cmd_vel_topic")
+    vel_action_topic = LaunchConfiguration("vel_action_topic")
     request_topic = LaunchConfiguration("request_topic")
     stop_epsilon = LaunchConfiguration("stop_epsilon")
 
-    declare_cmd_vel_topic = DeclareLaunchArgument(
-        "cmd_vel_topic",
-        default_value="/edge/cmd_vel",
-        description="Input cmd_vel topic (TwistStamped)",
+    declare_vel_action_topic = DeclareLaunchArgument(
+        "vel_action_topic",
+        default_value="/edge/command_action",
+        description="Input vel_action topic (EdgeAction)",
     )
 
     declare_request_topic = DeclareLaunchArgument(
@@ -33,14 +33,14 @@ def generate_launch_description():
         name="real_robot_executor",
         output="screen",
         parameters=[
-            {"cmd_vel_topic": cmd_vel_topic},
+            {"vel_action_topic": vel_action_topic},
             {"request_topic": request_topic},
             {"stop_epsilon": stop_epsilon},
         ],
     )
 
     return LaunchDescription([
-        declare_cmd_vel_topic,
+        declare_vel_action_topic,
         declare_request_topic,
         declare_stop_epsilon,
         

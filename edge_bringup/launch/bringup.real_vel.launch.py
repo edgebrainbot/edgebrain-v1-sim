@@ -261,7 +261,7 @@ def generate_launch_description():
         # drl_student_launch,
         
         trigger_launch,
-        # rl_runtime_launch,
+        rl_runtime_launch,
         # real_robot_executor_launch,
         # virtual_status_indicator_node,
         

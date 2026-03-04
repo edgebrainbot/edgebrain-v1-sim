@@ -161,7 +161,7 @@ void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
 
   path.poses.resize(pathSize);
   for (int i = 0; i < pathSize; i++) {
-    path.poses[i].pose.position.x = -pathIn->poses[i].pose.position.x;
+    path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
     path.poses[i].pose.position.y = pathIn->poses[i].pose.position.y;
     path.poses[i].pose.position.z = pathIn->poses[i].pose.position.z;
   }
