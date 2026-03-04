@@ -373,7 +373,7 @@ class DistributedRunnerVel:
         # Create transition
         t = self.replay_buffer.to_transition(
             obs=obs_norm,
-            action=msg.action.control_action,
+            action=msg.action.action_value,
             reward=stepwise_total_reward,
             next_obs=next_obs_norm,
             done=msg.done
@@ -548,26 +548,35 @@ class DistributedRunnerVel:
         
         # Compute actions
         drl_student_action, learned_action = self.compute_output_action(mode=run_mode)
+
+        def _to_ros_float_list(action_tensor: torch.Tensor, action_name: str) -> List[float]:
+            action_np = action_tensor.detach().cpu().numpy().flatten().astype(np.float64)
+            if not np.all(np.isfinite(action_np)):
+                invalid_count = int(np.size(action_np) - np.count_nonzero(np.isfinite(action_np)))
+                self.node.get_logger().warn(
+                    f"⚠️ {action_name} contains {invalid_count} non-finite values; replacing with 0.0"
+                )
+                action_np = np.nan_to_num(action_np, nan=0.0, posinf=0.0, neginf=0.0)
+            return [float(v) for v in action_np]
                 
         # Publish drl-student action
-        control_action_np = drl_student_action.detach().cpu().numpy().flatten().astype(np.float64)
-        if control_action_np.shape[0] == 3:
-            vx, vy, wz = control_action_np
-            control_action_np = np.array([vx, vy, 0.0, 0.0, 0.0, wz], dtype=np.float64)
+        control_action_values = _to_ros_float_list(drl_student_action, "drl_student_action")
+        # if control_action_np.shape[0] == 3:
+        #     vx, vy, wz = control_action_np
+        #     control_action_np = np.array([vx, vy, 0.0, 0.0, 0.0, wz], dtype=np.float64)
         edge_drl_action_msg = EdgeAction()
         edge_drl_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_drl_action_msg.control_action = control_action_np
+        edge_drl_action_msg.action_value = control_action_values
+        edge_drl_action_msg.action_type = EdgeAction.CMD_VEL
         edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
         self.drl_action_pub.publish(edge_drl_action_msg)
         
         # Publish learned action
-        learned_action_np = learned_action.detach().cpu().numpy().flatten().astype(np.float64)
-        if learned_action_np.shape[0] == 3:
-            vx, vy, wz = learned_action_np
-            learned_action_np = np.array([vx, vy, 0.0, 0.0, 0.0, wz], dtype=np.float64)
+        learned_action_values = _to_ros_float_list(learned_action, "learned_action")
         edge_policy_action_msg = EdgeAction()
         edge_policy_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_policy_action_msg.control_action = learned_action_np
+        edge_policy_action_msg.action_value = learned_action_values
+        edge_policy_action_msg.action_type = EdgeAction.CMD_VEL
         edge_policy_action_msg.action_mode = ActionMode.STUDENT.value
         self.drl_learned_action_pub.publish(edge_policy_action_msg)
         
