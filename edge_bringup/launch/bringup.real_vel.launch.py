@@ -146,13 +146,13 @@ def generate_launch_description():
         }.items()
     )
 
-    # -------- Dummy Robot Env Split Launch --------
-    dummy_robot_env_split_launch = IncludeLaunchDescription(
+    # -------- RL Runtime Env Split Launch --------
+    rl_runtime_split_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("edge_dummy_env"),
+                FindPackageShare("edge_rl_runtime"),
                 "launch",
-                "dummy_robot_env_split.launch.py"
+                "rl_runtime_env_split.launch.py"
             ])
         ),
         launch_arguments={
@@ -164,7 +164,7 @@ def generate_launch_description():
     real_robot_executor_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
-                FindPackageShare("edge_dummy_env"),
+                FindPackageShare("edge_rl_runtime"),
                 "launch",
                 "real_robot_executor.launch.py"
             ])
@@ -261,7 +261,7 @@ def generate_launch_description():
         # drl_student_launch,
         
         trigger_launch,
-        dummy_robot_env_split_launch,
+        rl_runtime_split_launch,
         # real_robot_executor_launch,
         # virtual_status_indicator_node,
         

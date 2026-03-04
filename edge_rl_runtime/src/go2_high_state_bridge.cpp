@@ -6,7 +6,7 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "edge_msgs/msg/vec12_msg.hpp"
-#include "edge_dummy_env/go2_high_state_subscriber.hpp"
+#include "edge_rl_runtime/go2_high_state_subscriber.hpp"
 
 class Go2HighStateBridgeNode : public rclcpp::Node
 {
@@ -21,7 +21,7 @@ public:
         state_pub_ = create_publisher<edge_msgs::msg::Vec12Msg>(state_topic_, 500);
 
         try {
-            go2_subscriber_ = std::make_unique<edge::dummy_env::Go2HighStateSubscriber>(network_interface_);
+            go2_subscriber_ = std::make_unique<edge::rl_runtime::Go2HighStateSubscriber>(network_interface_);
             go2_subscriber_->Init();
             bridge_ready_ = true;
         } catch (const std::exception & e) {
@@ -57,7 +57,7 @@ private:
     double publish_hz_{500.0};
     bool bridge_ready_{false};
 
-    std::unique_ptr<edge::dummy_env::Go2HighStateSubscriber> go2_subscriber_;
+    std::unique_ptr<edge::rl_runtime::Go2HighStateSubscriber> go2_subscriber_;
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr state_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 };

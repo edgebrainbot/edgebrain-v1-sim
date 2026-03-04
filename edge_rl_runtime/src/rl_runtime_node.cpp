@@ -21,11 +21,13 @@
 #include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
-class DummyRobotEnvNode : public rclcpp::Node
+namespace edge::rl_runtime
+{
+
+class RLRuntimeNode : public rclcpp::Node
 {
 public:
-	DummyRobotEnvNode()
-	: Node("dummy_robot_env")
+	RLRuntimeNode() : Node("rl_runtime")
 	{
 		topic_ns_ = declare_parameter<std::string>("topic_namespace", "edge");
 		go2_state_topic_ = declare_parameter<std::string>("go2_state_topic", "/edge/go2/high_state_vec12");
@@ -84,11 +86,11 @@ public:
 		const double dt = std::max(1e-3, 1.0 / kStepHz);
 		timer_ = create_wall_timer(
 			std::chrono::duration<double>(dt),
-			std::bind(&DummyRobotEnvNode::stepOnce, this));
+			std::bind(&RLRuntimeNode::stepOnce, this));
 
 		resetEpisode();
 
-		RCLCPP_INFO(get_logger(), "Dummy env ready. cmd_vel=/edge/cmd_vel transition=/edge_dummy_env/transition");
+		RCLCPP_INFO(get_logger(), "RL runtime node ready. cmd_vel=/edge/cmd_vel transition=/edge_rl_runtime/transition");
 	}
 
 private:
@@ -337,11 +339,12 @@ private:
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
 	rclcpp::TimerBase::SharedPtr timer_;
 };
+}	// namespace edge::rl_runtime
 
 int main(int argc, char ** argv)
 {
 	rclcpp::init(argc, argv);
-	rclcpp::spin(std::make_shared<DummyRobotEnvNode>());
+	rclcpp::spin(std::make_shared<edge::rl_runtime::RLRuntimeNode>());
 	rclcpp::shutdown();
 	return 0;
 }

@@ -112,8 +112,8 @@ echo "------------------------------------------------------------"
 echo "🔹 [1/6] Building edge_bringup..."
 colcon build --packages-up-to edge_bringup ${BUILD_ARGS}
 
-echo "🔹 [2/6] Building edge_dummy_env..."
-colcon build --packages-up-to edge_dummy_env ${BUILD_ARGS}
+echo "🔹 [2/6] Building edge_rl_runtime..."
+colcon build --packages-up-to edge_rl_runtime ${BUILD_ARGS}
 
 echo "🔹 [3/6] Building edge_quadruped_controller..."
 colcon build --packages-up-to edge_quadruped_controller ${BUILD_ARGS}

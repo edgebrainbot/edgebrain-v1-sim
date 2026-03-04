@@ -9,7 +9,7 @@
 #include <unitree/idl/go2/SportModeState_.hpp>
 #include <unitree/robot/channel/channel_subscriber.hpp>
 
-namespace edge::dummy_env {
+namespace edge::rl_runtime {
 
 class Go2HighStateSubscriber {
 public:
@@ -41,4 +41,4 @@ private:
     bool has_state_{false};
 };
 
-}  // namespace edge::dummy_env
+}  // namespace edge::rl_runtime

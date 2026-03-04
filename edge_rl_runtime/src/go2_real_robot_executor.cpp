@@ -11,13 +11,12 @@
 #include "geometry_msgs/msg/twist_stamped.hpp"
 
 #include "unitree_api/msg/request.hpp"
-#include "edge_dummy_env/common/ros2_sport_client.h"
+#include "edge_rl_runtime/common/ros2_sport_client.h"
 
 class Go2RealRobotExecutorNode : public rclcpp::Node
 {
 public:
-  Go2RealRobotExecutorNode()
-  : Node("go2_real_robot_executor")
+  Go2RealRobotExecutorNode() : Node("go2_real_robot_executor")
   {
     cmd_vel_topic_ = declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
     request_topic_ = declare_parameter<std::string>("request_topic", "/api/sport/request");

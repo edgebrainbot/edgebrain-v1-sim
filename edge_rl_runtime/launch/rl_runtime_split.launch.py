@@ -29,10 +29,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "topic_namespace",
             default_value="edge",
-            description="Namespace prefix used by dummy_robot_env",
+            description="Namespace prefix used by rl_runtime_node for subscribing to GO2 state and publishing cmd_vel and transition",
         ),
         Node(
-            package="edge_dummy_env",
+            package="edge_rl_runtime",
             executable="go2_high_state_bridge",
             name="go2_high_state_bridge",
             output="screen",
@@ -43,9 +43,9 @@ def generate_launch_description():
             }],
         ),
         Node(
-            package="edge_dummy_env",
-            executable="dummy_robot_env",
-            name="dummy_robot_env",
+            package="edge_rl_runtime",
+            executable="rl_runtime_node",
+            name="rl_runtime_node",
             output="screen",
             parameters=[{
                 "topic_namespace": topic_namespace,

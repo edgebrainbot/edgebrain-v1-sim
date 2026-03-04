@@ -1,10 +1,10 @@
-#include "edge_dummy_env/go2_high_state_subscriber.hpp"
+#include "edge_rl_runtime/go2_high_state_subscriber.hpp"
 
 #include <iostream>
 #include <utility>
 #include <unistd.h>
 
-namespace edge::dummy_env {
+namespace edge::rl_runtime {
 
 Go2HighStateSubscriber::Go2HighStateSubscriber(std::string network_interface)
     : network_interface_(std::move(network_interface)),
@@ -145,4 +145,4 @@ void Go2HighStateSubscriber::HandleMessage(const void* message) {
     has_state_ = true;
 }
 
-}  // namespace edge::dummy_env
+}  // namespace edge::rl_runtime

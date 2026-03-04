@@ -28,7 +28,7 @@ def generate_launch_description():
     )
 
     executor_node = Node(
-        package="edge_dummy_env",
+        package="edge_rl_runtime",
         executable="real_robot_executor",
         name="real_robot_executor",
         output="screen",

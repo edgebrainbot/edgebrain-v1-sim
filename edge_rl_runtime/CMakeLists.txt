@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(edge_dummy_env)
+project(edge_rl_runtime)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -23,10 +23,9 @@ target_include_directories(real_robot_executor PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-add_executable(dummy_robot_env
-  src/dummy_robot_env.cpp
-)
-target_include_directories(dummy_robot_env PUBLIC
+add_executable(rl_runtime_node src/rl_runtime_node.cpp)
+
+target_include_directories(rl_runtime_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -63,7 +62,7 @@ ament_target_dependencies(real_robot_executor
   go2_sport_api
 )
 
-ament_target_dependencies(dummy_robot_env
+ament_target_dependencies(rl_runtime_node
   rclcpp
   geometry_msgs
   std_msgs
@@ -80,7 +79,7 @@ ament_target_dependencies(go2_high_state_bridge
 
 install(TARGETS
   real_robot_executor
-  dummy_robot_env
+  rl_runtime_node
   go2_high_state_bridge
   go2_high_state_sub_test
   DESTINATION lib/${PROJECT_NAME}
