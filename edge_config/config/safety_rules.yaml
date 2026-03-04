@@ -99,6 +99,12 @@ switching:
       limit: 0.10
       unit: m
 
+    goal_distance:
+      type: relative
+      index: -1   # -1 means not used for errorState
+      limit: 10.0
+      unit: m
+
   # =========================================================
   # EXAMPLE: Absolute bound rules (uncomment to use)
   # =========================================================

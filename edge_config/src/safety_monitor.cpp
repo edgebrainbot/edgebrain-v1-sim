@@ -329,11 +329,11 @@ bool SafetyMonitor::evaluateSafety(RuleType ruleType,
                 );
             }
             // Special case: goal distance
-            if (r.name == "goal_distance" && goal_distance < r.limit) {
+            if (r.name == "goal_distance" && goal_distance > r.limit) {
                 is_safe = false;
                 violation_reasons_.push_back("close_to_goal");
                 violation_details.push_back(
-                    r.name + ": " + std::to_string(goal_distance) + " < " + 
+                    r.name + ": " + std::to_string(goal_distance) + " > " + 
                     std::to_string(r.limit) + " (" + r.unit + ")"
                 );
             }
