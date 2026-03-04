@@ -22,7 +22,19 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
     student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
     terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
+    int action_type_param = this->declare_parameter<int>("action_type", 0);
+    
+    try {
+        action_type_ =  edge::utils::ActionType(action_type_param);
+    }
+    catch (const std::exception& e) {
+        RCLCPP_FATAL(this->get_logger(),
+            "Invalid action_type parameter: %d", action_type_param);
+        throw;
+    }
 
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger action type is set to %s: %d", 
+        edge::utils::ToString(action_type_).c_str(), static_cast<int>(action_type_));
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
         (trigger_source_ == 1) ? "teacher" :
         (trigger_source_ == 0) ? "student" : "auto");
@@ -203,8 +215,10 @@ void Trigger::resetCachedVariables()
     is_last_state_safe_ = !is_start_with_teacher_;      // initial alert state
     last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial error state
     last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial robot state
-    last_stu_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial student action
-    last_tea_action_  = edge::ros_interfaces::EdgeActionMsgToEigen(edge_msgs::msg::EdgeAction());     // initial teacher action                                // initial teacher velocity action
+    
+    int dim = edge::utils::dimension(action_type_, 12);
+    last_stu_action_  = Eigen::VectorXd::Zero(dim);     // initial student action
+    last_tea_action_  = Eigen::VectorXd::Zero(dim);     // initial teacher action            
 }
 
 void Trigger::resetStats()
@@ -306,12 +320,12 @@ void Trigger::updateLoop()
 
     // Prepare terminal action message
     if (terminal_mode == edge::utils::ActionMode::STUDENT) {
-        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_stu_action_,
-                                                                    edge::utils::ToMsg(terminal_mode));
+        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(
+            last_stu_action_, edge::utils::ToMsg(action_type_), edge::utils::ToMsg(terminal_mode));
     }
     else {
-        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(last_tea_action_, 
-                                                                    edge::utils::ToMsg(terminal_mode));
+        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(
+            last_tea_action_, edge::utils::ToMsg(action_type_), edge::utils::ToMsg(terminal_mode));
     }
 
     // Update switching statistics

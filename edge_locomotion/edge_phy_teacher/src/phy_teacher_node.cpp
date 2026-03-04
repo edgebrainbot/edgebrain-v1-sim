@@ -153,8 +153,8 @@ void PhyTeacher::controlCallback() {
         curr_action_ = last_action_;
     }
 
-    teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(curr_action_, 
-                                                                    edge::utils::ToMsg(teacher_mode));
+    teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(
+        curr_action_,  edge_msgs::msg::EdgeAction::BASE_ACCEL, edge::utils::ToMsg(teacher_mode));
     action_pub_->publish(teacher_action_msg);
 
     got_msg_ = false;   // Reset flag until next message is received

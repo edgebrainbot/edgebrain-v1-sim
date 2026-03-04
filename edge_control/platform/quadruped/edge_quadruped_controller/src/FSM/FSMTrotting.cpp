@@ -277,9 +277,11 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
     // std::cout << "angle error: " << rotMatToExp(Rd * G2B_RotMat).transpose() << std::endl;
     // std::cout << "angular vel error: " << (w_cmd_global_ - estimator_->getGyroGlobal()).transpose() << std::endl;
 
-    Vec6 accel;
-    for (int i = 0; i < 6; i++) {
-        accel(i) = latest_action.control_action[i];
+    Vec6 accel = Vec6::Zero();
+    const auto action_size = latest_action.action_value.size();
+    const auto copy_size = std::min<size_t>(6, action_size);
+    for (size_t i = 0; i < copy_size; ++i) {
+        accel(static_cast<int>(i)) = latest_action.action_value[i];
     }
     // std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
     // std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
@@ -296,7 +298,10 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
 
     // std::cout << "acc command: " << accel.transpose() << std::endl;
 
-    edge_msgs::msg::EdgeAction latest_action_saturated = EigenToEdgeActionMsg(accel, latest_action.action_mode);
+    edge_msgs::msg::EdgeAction latest_action_saturated = EigenToEdgeActionMsg(
+        accel,
+        edge_msgs::msg::EdgeAction::BASE_ACCEL,
+        latest_action.action_mode);
 
     Vec3 dd_pcd = accel.segment(0, 3);
     Vec3 d_wbd = accel.segment(3, 3);
@@ -462,7 +467,10 @@ void FSMTrotting::pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transitio
     // Jerk in action
     auto a1 = EdgeActionMsgToEigen(last_edge_action_);
     auto a2 = EdgeActionMsgToEigen(latest_action);
-    Vector6d delta_action = a1 - a2;
+    Vector6d delta_action = Vector6d::Zero();
+    if (a1.size() == 6 && a2.size() == 6) {
+        delta_action = a1 - a2;
+    }
 
     // Prepare reward factors
     edge::config::RewardFactor reward_factors{
@@ -540,12 +548,19 @@ edge_msgs::msg::EdgeAction FSMTrotting::getLearnedDRLAction() const
      * learned_drl_action = terminal_action - residual_gain @ tracking_error
      */
     auto last_residual_action = ctrl_component_.residual_gain_ * last_tracking_error_tea_;
-    auto learned_drl_action = EdgeActionMsgToEigen(last_edge_action_) - last_residual_action;
+    auto last_terminal_action = EdgeActionMsgToEigen(last_edge_action_);
+    if (last_terminal_action.size() != 6) {
+        last_terminal_action = Vector6d::Zero();
+    }
+    auto learned_drl_action = last_terminal_action - last_residual_action;
 
     // std::cout << "last residual action: " << last_residual_action.transpose() << std::endl;
     // std::cout << "learned drl action: " << learned_drl_action.transpose() << std::endl;
 
-    return EigenToEdgeActionMsg(learned_drl_action, last_edge_action_.action_mode);
+    return EigenToEdgeActionMsg(
+        learned_drl_action,
+        edge_msgs::msg::EdgeAction::BASE_ACCEL,
+        last_edge_action_.action_mode);
 }
 
 Vector12d FSMTrotting::getRobotState(bool is_global/* = true*/) const

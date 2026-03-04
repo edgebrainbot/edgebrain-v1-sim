@@ -726,21 +726,39 @@ def main(args=None):
     try:
         executor.spin()
     except KeyboardInterrupt:
-        node.get_logger().info('Shutting down Gz Reset Handler Node')
         stats = node.get_reset_stats()
-        node.get_logger().info('=' * 70)
-        node.get_logger().info('📊 Final Reset Statistics:')
-        node.get_logger().info(f'  Total resets: {stats["reset_count"]}')
-        node.get_logger().info(f'  Successful: {stats["reset_count"] - stats["failed_resets"]}')
-        node.get_logger().info(f'  Failed: {stats["failed_resets"]}')
-        node.get_logger().info(f'    - Controller reset failures: {stats["controller_reset_failures"]}')
-        node.get_logger().info(f'    - Gazebo failures: {stats["gazebo_failures"]}')
-        node.get_logger().info(f'    - Controller start failures: {stats["controller_start_failures"]}')
-        node.get_logger().info(f'  Success rate: {stats["success_rate"]:.1f}%')
-        node.get_logger().info('=' * 70)
+        lines = [
+            'Shutting down Gz Reset Handler Node',
+            '=' * 70,
+            '📊 Final Reset Statistics:',
+            f'  Total resets: {stats["reset_count"]}',
+            f'  Successful: {stats["reset_count"] - stats["failed_resets"]}',
+            f'  Failed: {stats["failed_resets"]}',
+            f'    - Controller reset failures: {stats["controller_reset_failures"]}',
+            f'    - Gazebo failures: {stats["gazebo_failures"]}',
+            f'    - Controller start failures: {stats["controller_start_failures"]}',
+            f'  Success rate: {stats["success_rate"]:.1f}%',
+            '=' * 70,
+        ]
+
+        if rclpy.ok():
+            for line in lines:
+                node.get_logger().info(line)
+        else:
+            for line in lines:
+                print(f'[gz_reset_handler_node] {line}')
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        if node is not None:
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
+
+        try:
+            if rclpy.ok():
+                rclpy.shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':

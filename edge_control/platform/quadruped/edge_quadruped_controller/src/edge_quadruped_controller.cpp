@@ -116,6 +116,10 @@ namespace edge::control::quadruped
             // Initialize reset time
             last_reset_timestep_ = 0;
 
+            latest_edge_action_.action_type = edge_msgs::msg::EdgeAction::BASE_ACCEL;
+            latest_edge_action_.action_mode = edge_msgs::msg::EdgeAction::STUDENT;
+            latest_edge_action_.action_value.assign(6, 0.0);
+
             ctrl_component_.estimator_ = std::make_shared<Estimator>(ctrl_interfaces_, ctrl_component_, 
                                                                      odom_frame_id_, base_frame_id_, get_node());
             ctrl_component_.balance_ctrl_ = std::make_shared<BalanceCtrl>(ctrl_component_.robot_model_);
@@ -198,6 +202,24 @@ namespace edge::control::quadruped
                 //         << "vx = " << cmd_vx_ << ", "
                 //         << "vy = " << cmd_vy_ << ", "
                 //         << "wz = " << cmd_wz_ << std::endl;
+            });
+
+            auto terminal_action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
+                topic_ns_ + "/cmd_vel", 100,
+                [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
+            {       
+                if (msg->action_value.size() < 3) {
+                    RCLCPP_WARN_THROTTLE(
+                        get_node()->get_logger(),
+                        *get_node()->get_clock(),
+                        5000,
+                        "Received /cmd_vel EdgeAction with size=%zu (<3), ignoring",
+                        msg->action_value.size());
+                    return;
+                }
+                cmd_vx_ = msg->action_value[0];
+                cmd_vy_ = msg->action_value[1];
+                cmd_wz_ = msg->action_value[2];
             });
 
             // Subscribe to "edge/terminal_action"

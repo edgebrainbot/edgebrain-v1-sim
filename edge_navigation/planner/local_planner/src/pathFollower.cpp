@@ -28,13 +28,13 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "edge_msgs/msg/edge_action.hpp"
+
 #include "message_filters/subscriber.h"
 #include "message_filters/synchronizer.h"
 #include "message_filters/sync_policies/approximate_time.h"
 #include "rmw/types.h"
 #include "rmw/qos_profiles.h"
-
-#include "edge_msgs/msg/edge_vel_action.hpp"
 
 // For real robot
 #include "unitree_api/msg/request.hpp"
@@ -301,7 +301,7 @@ int main(int argc, char** argv)
 
   auto pubSpeed = nh->create_publisher<geometry_msgs::msg::TwistStamped>("/cmd_vel", 5);
 
-  auto pubPhyTeacherActionVel = nh->create_publisher<edge_msgs::msg::EdgeVelAction>("/edge/phy_teacher_action_vel", 5);
+  auto pubPhyTeacherActionVel = nh->create_publisher<edge_msgs::msg::EdgeAction>("/edge/phy_teacher_action_vel", 5);
 
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
@@ -458,11 +458,12 @@ int main(int argc, char** argv)
 
         pubSpeed->publish(cmd_vel);
 
-        edge_msgs::msg::EdgeVelAction phy_teacher_action_vel;
+        edge_msgs::msg::EdgeAction phy_teacher_action_vel;
         phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;
-        phy_teacher_action_vel.cmd_vel_action[0] = cmd_vel.twist.linear.x;
-        phy_teacher_action_vel.cmd_vel_action[1] = cmd_vel.twist.linear.y;
-        phy_teacher_action_vel.cmd_vel_action[2] = cmd_vel.twist.angular.z;
+        phy_teacher_action_vel.action_value[0] = cmd_vel.twist.linear.x;
+        phy_teacher_action_vel.action_value[1] = cmd_vel.twist.linear.y;
+        phy_teacher_action_vel.action_value[2] = cmd_vel.twist.angular.z;
+        phy_teacher_action_vel.action_type = edge_msgs::msg::EdgeAction::CMD_VEL;
         phy_teacher_action_vel.action_mode = 1;
         pubPhyTeacherActionVel->publish(phy_teacher_action_vel);
 

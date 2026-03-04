@@ -120,13 +120,30 @@ LMIGainSolver::LMIGainSolver(double Ts) : Ts_(Ts) {
 }
 
 LMIGainSolver::~LMIGainSolver() {
-    // Free allocated matrices
-    if (P_mat_) free(P_mat_);
-    if (Q_mat_) free(Q_mat_);
-    if (R_mat_) free(R_mat_);
-    if (aB_) free(aB_);
-    if (aF_) free(aF_);
-    if (ipiv_) free(ipiv_);
+    if (P_mat_) {
+        Matrix_Free(P_mat_);
+        P_mat_ = nullptr;
+    }
+    if (Q_mat_) {
+        free(Q_mat_);
+        Q_mat_ = nullptr;
+    }
+    if (R_mat_) {
+        free(R_mat_);
+        R_mat_ = nullptr;
+    }
+    if (aB_) {
+        Matrix_Free(aB_);
+        aB_ = nullptr;
+    }
+    if (aF_) {
+        Matrix_Free(aF_);
+        aF_ = nullptr;
+    }
+    if (ipiv_) {
+        Matrix_Free(ipiv_);
+        ipiv_ = nullptr;
+    }
 }
 
 void LMIGainSolver::lmi_init() {
@@ -235,6 +252,7 @@ void LMIGainSolver::post_processing() {
     blas_gemm(temp, P_mat_, aF_, 'N', 'N', NULL, NULL, -1, -1, -1, 0, 0, 0, 0, 0, 0);
     Matrix_Free(temp);  // Free the temporary matrix
     Matrix_Free(P_mat_);  // Free P if it was previously allocated
+    P_mat_ = nullptr;
 
     // Fb2 = aF[6:10, 0:4]
     // F_kp = -np.block([

@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 #include <string>
 #include <vector>
 #include <chrono>
@@ -17,10 +16,9 @@
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 
-#include "edge_msgs/msg/transition_vel.hpp"
+#include "edge_msgs/msg/transition.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_config/reward_composer.hpp"
-#include "edge_msgs/msg/edge_vel_action.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 class DummyRobotEnvNode : public rclcpp::Node
@@ -33,16 +31,16 @@ public:
 		go2_state_topic_ = declare_parameter<std::string>("go2_state_topic", "/edge/go2/high_state_vec12");
 		RCLCPP_INFO(get_logger(), "Use GO2 state topic as robot state source: %s", go2_state_topic_.c_str());
 
-		action_sub_ = create_subscription<edge_msgs::msg::EdgeVelAction>(
+		action_sub_ = create_subscription<edge_msgs::msg::EdgeAction>(
 			topic_ns_ + "/terminal_action_vel", 100,
-			[this](const edge_msgs::msg::EdgeVelAction::SharedPtr msg) -> void
+			[this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
 			{
 				curr_action_vel_ = *msg;
 
 				// Extract cmd_vel action and apply clamping
-				latest_vx_cmd_ = clamp(msg->cmd_vel_action[0], -kMaxVx, kMaxVx);
-				latest_vy_cmd_ = clamp(msg->cmd_vel_action[1], -kMaxVy, kMaxVy);
-				latest_wz_cmd_ = clamp(msg->cmd_vel_action[2], -kMaxWz, kMaxWz);
+				latest_vx_cmd_ = clamp(msg->action_value[0], -kMaxVx, kMaxVx);
+				latest_vy_cmd_ = clamp(msg->action_value[1], -kMaxVy, kMaxVy);
+				latest_wz_cmd_ = clamp(msg->action_value[2], -kMaxWz, kMaxWz);
 				has_cmd_ = true;
 			});
 
@@ -65,7 +63,7 @@ public:
 			});
 
 		cmd_vel_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>(topic_ns_ + "/cmd_vel", 50);
-		transition_pub_ = create_publisher<edge_msgs::msg::TransitionVel>(topic_ns_ + "/transition_vel", 20);
+		transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", 20);
 		done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
 
 		const double dt = std::max(1e-3, 1.0 / kStepHz);
@@ -120,8 +118,8 @@ private:
 		y_ = 0.0;
 		yaw_ = 0.0;
 		step_count_ = 0;
-		last_action_vel_ = edge_msgs::msg::EdgeVelAction();
-		curr_action_vel_ = edge_msgs::msg::EdgeVelAction();
+		last_action_vel_ = edge_msgs::msg::EdgeAction();
+		curr_action_vel_ = edge_msgs::msg::EdgeAction();
 		done_ = false;
 		last_robot_state_ = getRobotState();
 		curr_robot_state_ = last_robot_state_;
@@ -166,7 +164,7 @@ private:
 	}
 
 	// action
-	edge_msgs::msg::EdgeVelAction getDRLAction() const
+	edge_msgs::msg::EdgeAction getDRLAction() const
 	{
 		return last_action_vel_;
 	}
@@ -197,9 +195,9 @@ private:
 		const bool timeout = step_count_ >= kEpisodeHorizonSteps;
 		const Vector3d curr_vel_action = (Vector3d() << latest_vx_cmd_, latest_vy_cmd_, latest_wz_cmd_).finished();
 		const Vector3d last_vel_action =
-			(Vector3d() << last_action_vel_.cmd_vel_action[0],
-			 last_action_vel_.cmd_vel_action[1],
-			 last_action_vel_.cmd_vel_action[2]).finished();
+			(Vector3d() << last_action_vel_.action_value[0],
+			 last_action_vel_.action_value[1],
+			 last_action_vel_.action_value[2]).finished();
 
 		edge::config::RewardFactor reward_factors{
 			{"is_teacher_activated", false},
@@ -222,7 +220,7 @@ private:
 		}
 
 		// Transition message
-		edge_msgs::msg::TransitionVel transition;
+		edge_msgs::msg::Transition transition;
 		transition.header.stamp = now();
 		transition.obs = getObservation();
 		transition.action = getDRLAction();
@@ -298,15 +296,15 @@ private:
 
 	// Vector3d last_action_vel_ = Vector3d::Zero();
 	// Vector3d curr_action_vel_ = Vector3d::Zero();
-	edge_msgs::msg::EdgeVelAction last_action_vel_;
-	edge_msgs::msg::EdgeVelAction curr_action_vel_;
+	edge_msgs::msg::EdgeAction last_action_vel_;
+	edge_msgs::msg::EdgeAction curr_action_vel_;
 
 	// Subscriptions and publishers
-	rclcpp::Subscription<edge_msgs::msg::EdgeVelAction>::SharedPtr action_sub_;
+	rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
 	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
 	rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr go2_state_sub_;
 	rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_pub_;
-	rclcpp::Publisher<edge_msgs::msg::TransitionVel>::SharedPtr transition_pub_;
+	rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
 	rclcpp::TimerBase::SharedPtr timer_;
 };

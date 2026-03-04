@@ -73,12 +73,12 @@ private:
     double Ts_;    // Sampling period
 
     // matrix objects
-    matrix* P_mat_;
-    matrix* Q_mat_;
-    matrix* R_mat_;
-    matrix* aB_;
-    matrix* aF_;
-    matrix* ipiv_;
+    matrix* P_mat_ = nullptr;
+    matrix* Q_mat_ = nullptr;
+    matrix* R_mat_ = nullptr;
+    matrix* aB_ = nullptr;
+    matrix* aF_ = nullptr;
+    matrix* ipiv_ = nullptr;
 
     Mat3x3 Rx_;
     Mat3x3 Ry_;

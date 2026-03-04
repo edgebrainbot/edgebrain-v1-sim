@@ -103,9 +103,11 @@ private:
     bool print_processing_;                         // whether to print processing info
     bool is_start_with_teacher_;                    // whether to start with teacher mode
     bool is_robot_state_initialized_ = false;       // whether robot state has been initialized
-    std::string student_topic_name_;                      // topic name for student action
-    std::string teacher_topic_name_;                      // topic name for teacher action
-    std::string terminal_action_name_;                   // topic name for publishing terminal action
+    
+    edge::utils::ActionType action_type_;           // action type: 0 -- base acceleration
+    std::string student_topic_name_;                // topic name for student action
+    std::string teacher_topic_name_;                // topic name for teacher action
+    std::string terminal_action_name_;              // topic name for publishing terminal action
 
 
     rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer
