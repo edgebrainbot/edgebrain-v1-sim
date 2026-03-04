@@ -43,12 +43,20 @@ public:
 				}
 
 				curr_action_vel_ = *msg;
+				if (curr_action_vel_.action_type != edge_msgs::msg::EdgeAction::CMD_VEL) {
+					RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+						"Received EdgeAction with action_type %u (not CMD_VEL), ignore.",
+						curr_action_vel_.action_type);
+					return;
+				} else {
+					// Extract cmd_vel action and apply clamping
+					latest_vx_cmd_ = clamp(msg->action_value[0], -kMaxVx, kMaxVx);
+					latest_vy_cmd_ = clamp(msg->action_value[1], -kMaxVy, kMaxVy);
+					latest_wz_cmd_ = clamp(msg->action_value[2], -kMaxWz, kMaxWz);
+					has_cmd_ = true;
+				}
 
-				// Extract cmd_vel action and apply clamping
-				latest_vx_cmd_ = clamp(msg->action_value[0], -kMaxVx, kMaxVx);
-				latest_vy_cmd_ = clamp(msg->action_value[1], -kMaxVy, kMaxVy);
-				latest_wz_cmd_ = clamp(msg->action_value[2], -kMaxWz, kMaxWz);
-				has_cmd_ = true;
+
 			});
 
 		// Subscribe to goal point

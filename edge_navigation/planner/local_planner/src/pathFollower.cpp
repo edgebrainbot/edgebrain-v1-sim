@@ -323,6 +323,11 @@ int main(int argc, char** argv)
       minObstacleDist = msg->data;
     });
 
+    edge_msgs::msg::EdgeAction phy_teacher_action_vel;
+    phy_teacher_action_vel.action_type = edge_msgs::msg::EdgeAction::CMD_VEL;
+    phy_teacher_action_vel.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
+    phy_teacher_action_vel.action_value.resize(3);
+
   geometry_msgs::msg::TwistStamped cmd_vel;
 //   cmd_vel.header.frame_id = "vehicle";
   cmd_vel.header.frame_id = "base_link";
@@ -477,15 +482,11 @@ int main(int argc, char** argv)
 
         pubSpeed->publish(cmd_vel);
 
-        edge_msgs::msg::EdgeAction phy_teacher_action_vel;
+        // Publish teacher action for physical teacher
         phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;
-        phy_teacher_action_vel.action_value = {
-          cmd_vel.twist.linear.x,
-          cmd_vel.twist.linear.y,
-          cmd_vel.twist.angular.z
-        };
-        phy_teacher_action_vel.action_type = edge_msgs::msg::EdgeAction::CMD_VEL;
-        phy_teacher_action_vel.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
+        phy_teacher_action_vel.action_value[0] = cmd_vel.twist.linear.x;
+        phy_teacher_action_vel.action_value[1] = cmd_vel.twist.linear.y;
+        phy_teacher_action_vel.action_value[2] = cmd_vel.twist.angular.z;
         pubPhyTeacherActionVel->publish(phy_teacher_action_vel);
 
         pubSkipCount = pubSkipNum;
