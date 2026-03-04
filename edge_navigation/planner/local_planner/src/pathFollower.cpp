@@ -152,16 +152,16 @@ void odomHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odomIn)
 void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
 {
   int pathSize = pathIn->poses.size();
-  if (pathSize == 0) {
-    path.poses.clear();
-    pathPointID = 0;
-    pathInit = false;
-    return;
-  }
+  // if (pathSize == 0) {
+  //   path.poses.clear();
+  //   pathPointID = 0;
+  //   pathInit = false;
+  //   return;
+  // }
 
   path.poses.resize(pathSize);
   for (int i = 0; i < pathSize; i++) {
-    path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
+    path.poses[i].pose.position.x = -pathIn->poses[i].pose.position.x;
     path.poses[i].pose.position.y = pathIn->poses[i].pose.position.y;
     path.poses[i].pose.position.z = pathIn->poses[i].pose.position.z;
   }

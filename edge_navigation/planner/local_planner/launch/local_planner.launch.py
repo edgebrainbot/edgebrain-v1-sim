@@ -20,7 +20,7 @@ def generate_launch_description():
         DeclareLaunchArgument("twoWayDrive", default_value="false"),
         # DeclareLaunchArgument("maxSpeed", default_value="1.0"),   # Original
         DeclareLaunchArgument("maxSpeed", default_value="0.25"),
-        DeclareLaunchArgument("autonomyMode", default_value="false"),
+        DeclareLaunchArgument("autonomyMode", default_value="true"),
         # DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
         DeclareLaunchArgument("autonomySpeed", default_value="0.25"),
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),

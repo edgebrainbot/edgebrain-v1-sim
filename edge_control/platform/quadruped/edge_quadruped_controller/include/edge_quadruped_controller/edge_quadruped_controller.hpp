@@ -223,31 +223,6 @@ namespace edge::control::quadruped
 
         edge_msgs::msg::EdgeAction latest_edge_action_;
 
-        // void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
-        // {
-        //     latest_accel_ = *msg;
-        //     std::cout << "Received new action." << std::endl;
-        //     for (int i = 0; i < 6; i++) {
-        //         std::cout << "accel[" << i << "] = " << latest_accel_.action[i] << std::endl;
-        //     }
-        // }
-
-        // rclcpp::Publisher<phy_teacher_interfaces::msg::TrackingError>::SharedPtr pub_;
-        // rclcpp::Subscription<phy_teacher_interfaces::msg::ControlGains>::SharedPtr sub_gain_;
-
-        // void controlGainCallback(const phy_teacher_interfaces::msg::ControlGains::SharedPtr msg) {
-        //     std::cout << "Received new control gains." << std::endl;
-        //     for (int i = 0; i < 6; i++) {
-        //         for (int j = 0; j < 6; j++) {
-        //             latest_kp_(i, j) = msg->kp[i*6 + j];
-        //             latest_kd_(i, j) = msg->kd[i*6 + j];
-        //         }
-        //     }
-        //     std::cout << "Latest Kp: " << std::endl << latest_kp_ << std::endl;
-        //     std::cout << "Latest Kd: " << std::endl << latest_kd_ << std::endl;
-        //     gain_update_ = true;
-        // }
-
         Mat6 latest_kp_ = (Mat6() << 0, 0, 0, 0, 0, 0,
                           0, 0, 0, 0, 0, 0,
                           0, 0, 14, 0, 0, 0,

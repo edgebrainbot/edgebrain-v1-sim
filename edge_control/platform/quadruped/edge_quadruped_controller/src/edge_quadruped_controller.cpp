@@ -189,49 +189,68 @@ namespace edge::control::quadruped
                 ctrl_interfaces_.control_inputs_.ry = msg->ry;
             });
 
-            // Subscribe to "cmd_vel"
-            cmd_sub_ = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
-                "/cmd_vel", 100,
-                [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
-            {
-                cmd_vx_ = msg->twist.linear.x;
-                cmd_vy_ = msg->twist.linear.y;
-                cmd_wz_ = msg->twist.angular.z;
-                // std::cout << "*************************************************************" << std::endl;
-                // std::cout << "Received /cmd_vel: "
-                //         << "vx = " << cmd_vx_ << ", "
-                //         << "vy = " << cmd_vy_ << ", "
-                //         << "wz = " << cmd_wz_ << std::endl;
-            });
+            // // Subscribe to "cmd_vel"
+            // cmd_sub_ = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
+            //     "/cmd_vel", 100,
+            //     [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
+            // {
+            //     cmd_vx_ = msg->twist.linear.x;
+            //     cmd_vy_ = msg->twist.linear.y;
+            //     cmd_wz_ = msg->twist.angular.z;
+            //     // std::cout << "*************************************************************" << std::endl;
+            //     // std::cout << "Received /cmd_vel: "
+            //     //         << "vx = " << cmd_vx_ << ", "
+            //     //         << "vy = " << cmd_vy_ << ", "
+            //     //         << "wz = " << cmd_wz_ << std::endl;
+            // });
 
-            auto terminal_action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
-                topic_ns_ + "/cmd_vel", 100,
+            // auto terminal_action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
+            //     topic_ns_ + "/cmd_vel", 100,
+            //     [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
+            // {       
+            //     if (msg->action_value.size() < 3) {
+            //         RCLCPP_WARN_THROTTLE(
+            //             get_node()->get_logger(),
+            //             *get_node()->get_clock(),
+            //             5000,
+            //             "Received /cmd_vel EdgeAction with size=%zu (<3), ignoring",
+            //             msg->action_value.size());
+            //         return;
+            //     }
+            //     cmd_vx_ = msg->action_value[0];
+            //     cmd_vy_ = msg->action_value[1];
+            //     cmd_wz_ = msg->action_value[2];
+            // });
+
+            // Subscribe to "edge/command_action"
+            action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
+                topic_ns_ + "/command_action", 100,
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
-            {       
-                if (msg->action_value.size() < 3) {
+            {
+                latest_edge_action_ = *msg;
+                if(msg->action_type == edge_msgs::msg::EdgeAction::CMD_VEL) {
+                    if (msg->action_value.size() < 3) {
+                        RCLCPP_WARN_THROTTLE(
+                            get_node()->get_logger(),
+                            *get_node()->get_clock(),
+                            5000,
+                            "Received /command_action EdgeAction with size=%zu (<3), ignoring",
+                            msg->action_value.size());
+                        return;
+                    }
+                    cmd_vx_ = msg->action_value[0];
+                    cmd_vy_ = msg->action_value[1];
+                    cmd_wz_ = msg->action_value[2];
+                } else if (msg->action_type == edge_msgs::msg::EdgeAction::BASE_ACCEL) {
+                    // Handle base acceleration command if needed
+                } else {
                     RCLCPP_WARN_THROTTLE(
                         get_node()->get_logger(),
                         *get_node()->get_clock(),
                         5000,
-                        "Received /cmd_vel EdgeAction with size=%zu (<3), ignoring",
-                        msg->action_value.size());
-                    return;
+                        "Received /command_action EdgeAction with unknown action_type=%d, ignoring",
+                        msg->action_type);
                 }
-                cmd_vx_ = msg->action_value[0];
-                cmd_vy_ = msg->action_value[1];
-                cmd_wz_ = msg->action_value[2];
-            });
-
-            // Subscribe to "edge/terminal_action"
-            action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
-                topic_ns_ + "/terminal_action", 100,
-                [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
-            {
-                latest_edge_action_ = *msg;
-                // std::cout << "Received new action from the trigger." << std::endl;
-                // for (int i = 0; i < 6; i++) {
-                //     std::cout << "accel[" << i << "] = " << latest_edge_action_.control_action[i] << std::endl;
-                // }
             });
 
             // Subscribe to fall status
@@ -301,8 +320,8 @@ namespace edge::control::quadruped
                 topic_ns_ + "/robot_state", 100);   
 
             // Publisher for experience
-            transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
-                topic_ns_ + "/transition", 100);
+            // transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
+            //     topic_ns_ + "/transition", 100);
 
             // Publisher for is_task_done
             is_task_done_pub_ = get_node()->create_publisher<std_msgs::msg::Bool>(

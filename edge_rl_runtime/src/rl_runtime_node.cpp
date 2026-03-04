@@ -21,6 +21,8 @@
 #include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
+#include "control_input_msgs/msg/inputs.hpp"
+
 namespace edge::rl_runtime
 {
 
@@ -34,7 +36,7 @@ public:
 		RCLCPP_INFO(get_logger(), "Use GO2 state topic as robot state source: %s", go2_state_topic_.c_str());
 
 		action_sub_ = create_subscription<edge_msgs::msg::EdgeAction>(
-			topic_ns_ + "/terminal_action_vel", 100,
+			topic_ns_ + "/terminal_action", 100,
 			[this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
 			{
 				if (msg->action_value.size() < 3) {
@@ -57,8 +59,6 @@ public:
 					latest_wz_cmd_ = clamp(msg->action_value[2], -kMaxWz, kMaxWz);
 					has_cmd_ = true;
 				}
-
-
 			});
 
 		// Subscribe to goal point
@@ -79,8 +79,38 @@ public:
 				has_go2_state_ = true;
 			});
 
+		            // Subscribe to "control input"
+		control_input_sub_ = create_subscription<control_input_msgs::msg::Inputs>(
+			"/control_input", 100, 
+			[this](const control_input_msgs::msg::Inputs::SharedPtr msg) -> void
+		{
+			switch (msg->command)
+			{
+				case 6:
+					is_started_ = false;
+					is_paused_ = true;
+					RCLCPP_INFO(get_logger(), "Received pause command.");
+					break;
+				case 7:
+					is_started_ = true;
+					is_paused_ = false;
+					RCLCPP_INFO(get_logger(), "Received start command.");
+					break;
+				default:
+					RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+						"Received control input with unrecognized command %d, ignoring.",
+						msg->command);
+					break;
+			}
+		});
+		
+		// Publishers
+		rclcpp::QoS transition_qos(200);
+		transition_qos.best_effort();
+
+		command_action_pub_ = create_publisher<edge_msgs::msg::EdgeAction>(topic_ns_ + "/command_action", 50);
 		cmd_vel_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>(topic_ns_ + "/cmd_vel", 50);
-		transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", 20);
+		transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", transition_qos);	// Best effort for transition to avoid queueing old transitions
 		done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
 
 		const double dt = std::max(1e-3, 1.0 / kStepHz);
@@ -90,7 +120,7 @@ public:
 
 		resetEpisode();
 
-		RCLCPP_INFO(get_logger(), "RL runtime node ready. cmd_vel=/edge/cmd_vel transition=/edge_rl_runtime/transition");
+		RCLCPP_INFO(get_logger(), "RL runtime node ready. cmd_vel=/edge/cmd_vel transition=/edge/transition");
 	}
 
 private:
@@ -272,8 +302,20 @@ private:
 		}
 
 		if (!has_cmd_) {
+			RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
+				"Waiting for action command on topic %s/terminal_action...", topic_ns_.c_str());
 			return;
 		}
+
+		if (!is_started_) {
+			RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
+				"Waiting for start command on /control_input (command=4)...");
+			return;
+		}
+
+		RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+			"Step %d: Processing transition...", step_count_);
+
 
 		step_count_ += 1;
 
@@ -289,12 +331,15 @@ private:
 		done_pub_->publish(done_msg);
 
 		// Send cmd_vel as action to env for execution
-		geometry_msgs::msg::TwistStamped cmd_vel_msg;
-		cmd_vel_msg.header.stamp = now();
-		cmd_vel_msg.twist.linear.x = latest_vx_cmd_;
-		cmd_vel_msg.twist.linear.y = latest_vy_cmd_;
-		cmd_vel_msg.twist.angular.z = latest_wz_cmd_;
-		cmd_vel_pub_->publish(cmd_vel_msg);
+		// geometry_msgs::msg::TwistStamped cmd_vel_msg;
+		// cmd_vel_msg.header.stamp = now();
+		// cmd_vel_msg.twist.linear.x = latest_vx_cmd_;
+		// cmd_vel_msg.twist.linear.y = latest_vy_cmd_;
+		// cmd_vel_msg.twist.angular.z = latest_wz_cmd_;
+		// cmd_vel_pub_->publish(cmd_vel_msg);
+
+		// Publish the terminal action to executor
+		command_action_pub_->publish(curr_action_vel_);
 
 		// Update last action and last robot state for next step
 		last_action_vel_ = curr_action_vel_;
@@ -321,6 +366,9 @@ private:
 	double y_{0.0};
 	double yaw_{0.0};
 
+	bool is_started_{false};
+	bool is_paused_{false};
+
 	Vector12d last_robot_state_ = Vector12d::Zero();
 	Vector12d curr_robot_state_ = Vector12d::Zero();
 	Vector12d latest_go2_state_ = Vector12d::Zero();
@@ -330,12 +378,16 @@ private:
 	edge_msgs::msg::EdgeAction last_action_vel_;
 	edge_msgs::msg::EdgeAction curr_action_vel_;
 
-	// Subscriptions and publishers
+	// Subscribers
 	rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
 	rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
 	rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr go2_state_sub_;
+	rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
+
+	// Publishers
 	rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_pub_;
 	rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
+	rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
 	rclcpp::TimerBase::SharedPtr timer_;
 };

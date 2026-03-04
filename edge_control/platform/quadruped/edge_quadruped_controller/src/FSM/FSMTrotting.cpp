@@ -258,7 +258,7 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
     // std::cout << std::endl;
 
     // Publish transition topic
-    pubTransitionTopic(transition_pub, is_task_done_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    // pubTransitionTopic(transition_pub, is_task_done_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
 
     auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
     tracking_error_tea_pub_->publish(track_msg);
@@ -303,33 +303,33 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
         edge_msgs::msg::EdgeAction::BASE_ACCEL,
         latest_action.action_mode);
 
-    Vec3 dd_pcd = accel.segment(0, 3);
-    Vec3 d_wbd = accel.segment(3, 3);
+    // Vec3 dd_pcd = accel.segment(0, 3);
+    // Vec3 d_wbd = accel.segment(3, 3);
 
-    // Vec6 all_pos_error;
-    // Vec6 all_vel_error;
-    // all_pos_error << pos_error_, rotMatToExp(Rd * G2B_RotMat);
-    // all_vel_error << vel_error_, (w_cmd_global_ - estimator_->getGyroGlobal());
+    Vec6 all_pos_error;
+    Vec6 all_vel_error;
+    all_pos_error << pos_error_, rotMatToExp(Rd * G2B_RotMat);
+    all_vel_error << vel_error_, (w_cmd_global_ - estimator_->getGyroGlobal());
     // std::cout << "all pos error: " << all_pos_error.transpose() << std::endl;
     // std::cout << "all vel error: " << all_vel_error.transpose() << std::endl;
-    // Eigen::Matrix<double , 6, 6> kp;
-    // Eigen::Matrix<double , 6, 6> kd;
-    // kp << 1, 0, 0, 0, 0, 0,
-    //       0, 1, 0, 0, 0, 0,
-    //       0, 0, 70, 0, 0, 0,
-    //       0, 0, 0, 780, 0, 0,
-    //       0, 0, 0, 0, 780, 0,
-    //       0, 0, 0, 0, 0, 100;
+    Eigen::Matrix<double , 6, 6> kp;
+    Eigen::Matrix<double , 6, 6> kd;
+    kp << 1, 0, 0, 0, 0, 0,
+          0, 1, 0, 0, 0, 0,
+          0, 0, 70, 0, 0, 0,
+          0, 0, 0, 780, 0, 0,
+          0, 0, 0, 0, 780, 0,
+          0, 0, 0, 0, 0, 100;
 
-    // kd << 20, 0, 0, 0, 0, 0,
-    //       0, 20, 0, 0, 0, 0,
-    //       0, 0, 20, 0, 0, 0,
-    //       0, 0, 0, 70, 0, 0,
-    //       0, 0, 0, 0, 70, 0,
-    //       0, 0, 0, 0, 0, 70;
-    // auto acc = kp * all_pos_error + kd * all_vel_error;
-    // Vec3 dd_pcd = acc.segment(0, 3);
-    // Vec3 d_wbd = acc.segment(3, 3);
+    kd << 20, 0, 0, 0, 0, 0,
+          0, 20, 0, 0, 0, 0,
+          0, 0, 20, 0, 0, 0,
+          0, 0, 0, 70, 0, 0,
+          0, 0, 0, 0, 70, 0,
+          0, 0, 0, 0, 0, 70;
+    auto acc = kp * all_pos_error + kd * all_vel_error;
+    Vec3 dd_pcd = acc.segment(0, 3);
+    Vec3 d_wbd = acc.segment(3, 3);
 
     // Vec3 dd_pcd = Kpp * pos_error_ + Kdp * vel_error_;
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +

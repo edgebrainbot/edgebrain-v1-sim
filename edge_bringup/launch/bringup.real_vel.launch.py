@@ -147,12 +147,12 @@ def generate_launch_description():
     )
 
     # -------- RL Runtime Env Split Launch --------
-    rl_runtime_split_launch = IncludeLaunchDescription(
+    rl_runtime_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
                 FindPackageShare("edge_rl_runtime"),
                 "launch",
-                "rl_runtime_env_split.launch.py"
+                "rl_runtime.launch.py"
             ])
         ),
         launch_arguments={
@@ -261,7 +261,7 @@ def generate_launch_description():
         # drl_student_launch,
         
         trigger_launch,
-        rl_runtime_split_launch,
+        # rl_runtime_launch,
         # real_robot_executor_launch,
         # virtual_status_indicator_node,
         

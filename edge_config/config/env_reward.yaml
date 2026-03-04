@@ -26,7 +26,7 @@ reward:
 
   # lyapunov: 100
   body_state: 0.1
-  jerky_action: 0.0002
+  # jerky_action: 0.0002
 
   # fall_down: 10000
   # reach_goal: 500

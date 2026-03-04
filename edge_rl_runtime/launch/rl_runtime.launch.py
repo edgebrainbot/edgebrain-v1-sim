@@ -10,6 +10,29 @@ def generate_launch_description():
     go2_publish_hz = LaunchConfiguration("go2_publish_hz")
     topic_namespace = LaunchConfiguration("topic_namespace")
 
+    go2_high_state_bridge_node = Node(
+        package="edge_rl_runtime",
+        executable="go2_high_state_bridge",
+        name="go2_high_state_bridge",
+        output="screen",
+        parameters=[{
+            "go2_network_interface": go2_network_interface,
+            "state_topic": go2_state_topic,
+            "publish_hz": go2_publish_hz,
+        }],
+    )
+
+    rl_runtime_node = Node(
+        package="edge_rl_runtime",
+        executable="rl_runtime_node",
+        name="rl_runtime_node",
+        output="screen",
+        parameters=[{
+            "topic_namespace": topic_namespace,
+            "go2_state_topic": go2_state_topic,
+        }],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             "go2_network_interface",
@@ -31,25 +54,8 @@ def generate_launch_description():
             default_value="edge",
             description="Namespace prefix used by rl_runtime_node for subscribing to GO2 state and publishing cmd_vel and transition",
         ),
-        Node(
-            package="edge_rl_runtime",
-            executable="go2_high_state_bridge",
-            name="go2_high_state_bridge",
-            output="screen",
-            parameters=[{
-                "go2_network_interface": go2_network_interface,
-                "state_topic": go2_state_topic,
-                "publish_hz": go2_publish_hz,
-            }],
-        ),
-        Node(
-            package="edge_rl_runtime",
-            executable="rl_runtime_node",
-            name="rl_runtime_node",
-            output="screen",
-            parameters=[{
-                "topic_namespace": topic_namespace,
-                "go2_state_topic": go2_state_topic,
-            }],
-        ),
+        
+        # Nodes
+        # go2_high_state_bridge_node,   
+        rl_runtime_node,
     ])

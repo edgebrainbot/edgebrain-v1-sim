@@ -13,6 +13,7 @@ find_package(std_msgs REQUIRED)
 find_package(edge_msgs REQUIRED)
 find_package(edge_config REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
+find_package(control_input_msgs REQUIRED)
 find_package(unitree_api REQUIRED)
 find_package(go2_sport_api REQUIRED)
 find_package(unitree_sdk2 REQUIRED)
@@ -69,6 +70,7 @@ ament_target_dependencies(rl_runtime_node
   edge_msgs
   edge_config
   edge_ros_interfaces
+  control_input_msgs
 )
 
 ament_target_dependencies(go2_high_state_bridge
