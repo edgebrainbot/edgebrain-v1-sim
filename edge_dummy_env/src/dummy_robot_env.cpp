@@ -35,6 +35,13 @@ public:
 			topic_ns_ + "/terminal_action_vel", 100,
 			[this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
 			{
+				if (msg->action_value.size() < 3) {
+					RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+						"Received EdgeAction with action_value size %zu (<3), ignore.",
+						msg->action_value.size());
+					return;
+				}
+
 				curr_action_vel_ = *msg;
 
 				// Extract cmd_vel action and apply clamping
@@ -120,6 +127,10 @@ private:
 		step_count_ = 0;
 		last_action_vel_ = edge_msgs::msg::EdgeAction();
 		curr_action_vel_ = edge_msgs::msg::EdgeAction();
+		last_action_vel_.action_type = edge_msgs::msg::EdgeAction::CMD_VEL;
+		last_action_vel_.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
+		last_action_vel_.action_value = {0.0, 0.0, 0.0};
+		curr_action_vel_ = last_action_vel_;
 		done_ = false;
 		last_robot_state_ = getRobotState();
 		curr_robot_state_ = last_robot_state_;
@@ -183,6 +194,16 @@ private:
 
 	bool processTransition()
 	{
+		auto safe_action_value = [this](const edge_msgs::msg::EdgeAction & action, size_t idx) {
+			if (idx < action.action_value.size()) {
+				return action.action_value[idx];
+			}
+			RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+				"last_action_vel.action_value size is %zu, expect >=3. Use 0 for missing entries.",
+				action.action_value.size());
+			return 0.0;
+		};
+
 		Vector2d nav_goal;
 		nav_goal << latest_goal_x_, latest_goal_y_;
 
@@ -195,9 +216,9 @@ private:
 		const bool timeout = step_count_ >= kEpisodeHorizonSteps;
 		const Vector3d curr_vel_action = (Vector3d() << latest_vx_cmd_, latest_vy_cmd_, latest_wz_cmd_).finished();
 		const Vector3d last_vel_action =
-			(Vector3d() << last_action_vel_.action_value[0],
-			 last_action_vel_.action_value[1],
-			 last_action_vel_.action_value[2]).finished();
+			(Vector3d() << safe_action_value(last_action_vel_, 0),
+			 safe_action_value(last_action_vel_, 1),
+			 safe_action_value(last_action_vel_, 2)).finished();
 
 		edge::config::RewardFactor reward_factors{
 			{"is_teacher_activated", false},

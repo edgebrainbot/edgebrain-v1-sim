@@ -152,6 +152,13 @@ void odomHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odomIn)
 void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
 {
   int pathSize = pathIn->poses.size();
+  if (pathSize == 0) {
+    path.poses.clear();
+    pathPointID = 0;
+    pathInit = false;
+    return;
+  }
+
   path.poses.resize(pathSize);
   for (int i = 0; i < pathSize; i++) {
     path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
@@ -172,6 +179,11 @@ void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
 
 void joystickHandler(const sensor_msgs::msg::Joy::ConstSharedPtr joy)
 {
+  if (joy->axes.size() < 6) {
+    RCLCPP_WARN_THROTTLE(nh->get_logger(), *nh->get_clock(), 2000, "Received /joy with fewer than 6 axes; ignoring message.");
+    return;
+  }
+
   joyTime = nh->now().seconds(); 
   joySpeedRaw = sqrt(joy->axes[3] * joy->axes[3] + joy->axes[4] * joy->axes[4]);
   joySpeed = joySpeedRaw;
@@ -334,6 +346,13 @@ int main(int argc, char** argv)
                         + cos(vehicleYawRec) * (vehicleY - vehicleYRec);
 
       int pathSize = path.poses.size();
+      if (pathSize == 0) {
+        pathInit = false;
+        vehicleSpeed = 0;
+        vehicleYawRate = 0;
+        continue;
+      }
+
       float endDisX = path.poses[pathSize - 1].pose.position.x - vehicleXRel;
       float endDisY = path.poses[pathSize - 1].pose.position.y - vehicleYRel;
       float endDis = sqrt(endDisX * endDisX + endDisY * endDisY);
@@ -460,11 +479,13 @@ int main(int argc, char** argv)
 
         edge_msgs::msg::EdgeAction phy_teacher_action_vel;
         phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;
-        phy_teacher_action_vel.action_value[0] = cmd_vel.twist.linear.x;
-        phy_teacher_action_vel.action_value[1] = cmd_vel.twist.linear.y;
-        phy_teacher_action_vel.action_value[2] = cmd_vel.twist.angular.z;
+        phy_teacher_action_vel.action_value = {
+          cmd_vel.twist.linear.x,
+          cmd_vel.twist.linear.y,
+          cmd_vel.twist.angular.z
+        };
         phy_teacher_action_vel.action_type = edge_msgs::msg::EdgeAction::CMD_VEL;
-        phy_teacher_action_vel.action_mode = 1;
+        phy_teacher_action_vel.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
         pubPhyTeacherActionVel->publish(phy_teacher_action_vel);
 
         pubSkipCount = pubSkipNum;

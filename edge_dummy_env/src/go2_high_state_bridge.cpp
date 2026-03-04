@@ -1,4 +1,5 @@
 #include <chrono>
+#include <exception>
 #include <memory>
 #include <string>
 
@@ -19,11 +20,27 @@ public:
 
         state_pub_ = create_publisher<edge_msgs::msg::Vec12Msg>(state_topic_, 500);
 
-        go2_subscriber_ = std::make_unique<edge::dummy_env::Go2HighStateSubscriber>(network_interface_);
-        go2_subscriber_->Init();
+        try {
+            go2_subscriber_ = std::make_unique<edge::dummy_env::Go2HighStateSubscriber>(network_interface_);
+            go2_subscriber_->Init();
+            bridge_ready_ = true;
+        } catch (const std::exception & e) {
+            bridge_ready_ = false;
+            RCLCPP_ERROR(get_logger(),
+                        "Failed to initialize GO2 high state subscriber (nic=%s): %s",
+                        network_interface_.c_str(), e.what());
+        } catch (...) {
+            bridge_ready_ = false;
+            RCLCPP_ERROR(get_logger(),
+                        "Failed to initialize GO2 high state subscriber (nic=%s): unknown exception",
+                        network_interface_.c_str());
+        }
 
         const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, publish_hz_));
         timer_ = create_wall_timer(period, [this]() {
+            if (!bridge_ready_) {
+                return;
+            }
             if (!go2_subscriber_->HasState()) {
                 return;
             }
@@ -38,6 +55,7 @@ private:
     std::string network_interface_;
     std::string state_topic_;
     double publish_hz_{500.0};
+    bool bridge_ready_{false};
 
     std::unique_ptr<edge::dummy_env::Go2HighStateSubscriber> go2_subscriber_;
     rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr state_pub_;
@@ -47,7 +65,15 @@ private:
 int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<Go2HighStateBridgeNode>());
+    try {
+        rclcpp::spin(std::make_shared<Go2HighStateBridgeNode>());
+    } catch (const std::exception & e) {
+        RCLCPP_ERROR(rclcpp::get_logger("go2_high_state_bridge"),
+                    "Unhandled exception: %s", e.what());
+    } catch (...) {
+        RCLCPP_ERROR(rclcpp::get_logger("go2_high_state_bridge"),
+                    "Unhandled unknown exception");
+    }
     rclcpp::shutdown();
     return 0;
 }
