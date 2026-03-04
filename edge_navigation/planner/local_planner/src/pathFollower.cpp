@@ -78,6 +78,7 @@ double autonomySpeed = 1.0;
 double joyToSpeedDelay = 2.0;
 double goalCloseDis = 1.0;
 bool test_unitree_controller = false;
+bool useGazebo = false;
 
 float joySpeed = 0;
 float joySpeedRaw = 0;
@@ -267,6 +268,7 @@ int main(int argc, char** argv)
   nh->declare_parameter<double>("joyToSpeedDelay", joyToSpeedDelay);
   nh->declare_parameter<double>("goalCloseDis", goalCloseDis);
   nh->declare_parameter<bool>("test_unitree_controller", test_unitree_controller);
+  nh->declare_parameter<bool>("use_gazebo", useGazebo);
 
   nh->get_parameter("sensorOffsetX", sensorOffsetX);
   nh->get_parameter("sensorOffsetY", sensorOffsetY);
@@ -300,6 +302,7 @@ int main(int argc, char** argv)
   nh->get_parameter("joyToSpeedDelay", joyToSpeedDelay);
   nh->get_parameter("goalCloseDis", goalCloseDis);
   nh->get_parameter("test_unitree_controller", test_unitree_controller);
+  nh->get_parameter("use_gazebo", useGazebo);
 
   auto subOdom = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odomHandler);
 
