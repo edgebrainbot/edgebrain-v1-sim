@@ -20,6 +20,7 @@ def generate_launch_description():
     checkTerrainConn = LaunchConfiguration("checkTerrainConn")
     odom_topic = LaunchConfiguration("odom_topic")
     test_unitree_controller = LaunchConfiguration("test_unitree_controller")
+    use_gazebo = LaunchConfiguration("useGazebo")
 
     declare_args = [
         DeclareLaunchArgument("world_name", default_value="real_world"),
@@ -31,6 +32,7 @@ def generate_launch_description():
         DeclareLaunchArgument("checkTerrainConn", default_value="true"),
         DeclareLaunchArgument("test_unitree_controller", default_value="false"),
         DeclareLaunchArgument("odom_topic", default_value="odom"),
+        DeclareLaunchArgument("useGazebo", default_value="false"),
     ]
 
     # -------------------------------
@@ -96,6 +98,7 @@ def generate_launch_description():
             "goalY": vehicleY,
             "odom_topic": odom_topic,
             "test_unitree_controller": test_unitree_controller,
+            "useGazebo": use_gazebo,
         }.items(),
     )
 

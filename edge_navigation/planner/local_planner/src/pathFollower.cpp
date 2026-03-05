@@ -162,7 +162,11 @@ void pathHandler(const nav_msgs::msg::Path::ConstSharedPtr pathIn)
 
   path.poses.resize(pathSize);
   for (int i = 0; i < pathSize; i++) {
-    path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
+    if (useGazebo) {
+      path.poses[i].pose.position.x = -pathIn->poses[i].pose.position.x;
+    } else {
+      path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
+    }    
     path.poses[i].pose.position.y = pathIn->poses[i].pose.position.y;
     path.poses[i].pose.position.z = pathIn->poses[i].pose.position.z;
   }
@@ -268,7 +272,7 @@ int main(int argc, char** argv)
   nh->declare_parameter<double>("joyToSpeedDelay", joyToSpeedDelay);
   nh->declare_parameter<double>("goalCloseDis", goalCloseDis);
   nh->declare_parameter<bool>("test_unitree_controller", test_unitree_controller);
-  nh->declare_parameter<bool>("use_gazebo", useGazebo);
+  nh->declare_parameter<bool>("useGazebo", useGazebo);
 
   nh->get_parameter("sensorOffsetX", sensorOffsetX);
   nh->get_parameter("sensorOffsetY", sensorOffsetY);
@@ -302,7 +306,7 @@ int main(int argc, char** argv)
   nh->get_parameter("joyToSpeedDelay", joyToSpeedDelay);
   nh->get_parameter("goalCloseDis", goalCloseDis);
   nh->get_parameter("test_unitree_controller", test_unitree_controller);
-  nh->get_parameter("use_gazebo", useGazebo);
+  nh->get_parameter("useGazebo", useGazebo);
 
   auto subOdom = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odomHandler);
 

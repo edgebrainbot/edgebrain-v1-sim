@@ -15,7 +15,7 @@ from typing import List, Union, Tuple, Dict, Any, Optional
 
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
-from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward
+from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward, EdgeState
 
 from edge_drl_student.common.noise import OUNoise
 from edge_drl_student.common.logger import Logger

@@ -24,6 +24,7 @@ def generate_launch_description():
     vehicleYaw = DeclareLaunchArgument("vehicleYaw", default_value="0.0", description="Vehicle yaw angle")
     checkTerrainConn = DeclareLaunchArgument("checkTerrainConn", default_value="true", description="Whether to check terrain connectivity")
     odom_topic = DeclareLaunchArgument("odom_topic", default_value="odom_est", description="Odometry topic to use")
+    use_gazebo = DeclareLaunchArgument("useGazebo", default_value="true", description="Whether to use Gazebo simulation")
 
     # joystick node
     joy_node = Node(
@@ -57,6 +58,7 @@ def generate_launch_description():
         "goalY": LaunchConfiguration("vehicleY"),
         "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
+        "useGazebo": LaunchConfiguration("useGazebo"),
         }.items()
     )
 
@@ -160,6 +162,7 @@ def generate_launch_description():
         vehicleYaw,
         checkTerrainConn,
         odom_topic,
+        use_gazebo,
 
         joy_node,
         local_planner_launch,

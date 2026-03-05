@@ -28,6 +28,7 @@ def generate_launch_description():
         DeclareLaunchArgument("goalX", default_value="0.0"),
         DeclareLaunchArgument("goalY", default_value="0.0"),
         DeclareLaunchArgument("test_unitree_controller", default_value="false"),
+        DeclareLaunchArgument("useGazebo", default_value="false"),
         DeclareLaunchArgument("odom_topic", default_value="odom", description="Odometry topic to use"),
     ]
 
@@ -129,6 +130,7 @@ def generate_launch_description():
             "joyToSpeedDelay": LaunchConfiguration("joyToSpeedDelay"),
             "goalCloseDis": LaunchConfiguration("goalCloseDis"),
             "test_unitree_controller": LaunchConfiguration("test_unitree_controller"),
+            "useGazebo": LaunchConfiguration("useGazebo"),
             # 'use_sim_time': True,
         }],
         remappings=[
