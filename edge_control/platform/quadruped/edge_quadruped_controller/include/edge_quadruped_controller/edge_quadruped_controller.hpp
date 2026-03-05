@@ -11,6 +11,7 @@
 #include "FSM/FSMBalanceTest.hpp"
 #include "FSM/FSMTrotting.hpp"
 
+#include "edge_msgs/msg/edge_state.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
@@ -197,7 +198,9 @@ namespace edge::control::quadruped
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
         rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;
+        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_;
+        
 
         // For subscribers
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;

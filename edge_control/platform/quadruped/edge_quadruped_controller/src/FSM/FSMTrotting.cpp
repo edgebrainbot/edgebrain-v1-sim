@@ -61,6 +61,8 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     curr_robot_state_.setZero();
     curr_tracking_error_tea_.setZero();
 
+    edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
+    edge_state_.state_value.resize(12);
 }
 
 void FSMTrotting::enter()
@@ -85,10 +87,7 @@ void FSMTrotting::enter()
 
 void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
                         edge_msgs::msg::EdgeAction& latest_action,
-                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
-                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
-                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
-                        rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+                        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
                         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
                         double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
@@ -130,7 +129,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(tracking_error_tea_pub_, tracking_error_stu_pub_, robot_state_pub_, transition_pub_, is_task_done_pub_, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    calcTau(edge_state_pub, is_task_done_pub_, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
     calcQQd();
     calcGain();
 }
@@ -229,10 +228,7 @@ void FSMTrotting::calcCmd()
     w_cmd_global_(2) = d_yaw_cmd_;
 }
 
-void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_, 
-    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_, 
-    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
-    rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
+void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub,
     const edge_msgs::msg::EdgeAction& latest_action, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
 {
@@ -260,14 +256,22 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr
     // Publish transition topic
     // pubTransitionTopic(transition_pub, is_task_done_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
 
-    auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
-    tracking_error_tea_pub_->publish(track_msg);
+    // auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
+    // tracking_error_tea_pub_->publish(track_msg);
 
-    auto track_stu_msg = EigenToVec12Msg(curr_tracking_error_stu_);
-    tracking_error_stu_pub_->publish(track_stu_msg);
+    // auto track_stu_msg = EigenToVec12Msg(curr_tracking_error_stu_);
+    // tracking_error_stu_pub_->publish(track_stu_msg);
 
-    auto state_msg = EigenToVec12Msg(curr_robot_state_);
-    robot_state_pub_->publish(state_msg);
+    // auto state_msg = EigenToVec12Msg(curr_robot_state_);
+    // robot_state_pub_->publish(state_msg);
+
+    edge_state_.header.stamp = now();
+    edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
+    for (int i=0; i<12; ++i){
+        edge_state_.state_value[i] = curr_robot_state_[i];
+    }
+    // edge_state_.state_value = EigenToVec12Msg(curr_robot_state_);
+    edge_state_pub->publish(edge_state_);
 
     // std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
     // std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;

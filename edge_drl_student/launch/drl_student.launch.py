@@ -5,25 +5,77 @@
 # ============================================================================
 
 import os
+
+from datetime import datetime
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from ament_index_python import get_package_share_directory
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, PythonExpression
+from ament_index_python.packages import get_package_share_directory
+
 
 def generate_launch_description():
-    # Get the path to the parameter file
+
+    # ------------------------------------------------
+    # Parameter file
+    # ------------------------------------------------
     physical_model_file = os.path.join(
-        get_package_share_directory('edge_config'),
-        'config',
-        'physical_model.yaml'
+        get_package_share_directory("edge_config"),
+        "config",
+        "physical_model.yaml"
+    )
+
+    # ------------------------------------------------
+    # Launch arguments
+    # ------------------------------------------------
+    task_arg = DeclareLaunchArgument(
+        "task",
+        default_value="navigation",
+        description="Training task: navigation or locomotion"
+    )
+
+    run_arg = DeclareLaunchArgument(
+        "run",
+        default_value="cognitive",
+        description="Replay buffer type: cognitive or dual"
+    )
+
+    task = LaunchConfiguration("task")
+    run = LaunchConfiguration("run")
+
+    # ------------------------------------------------
+    # Experiment naming
+    # ------------------------------------------------
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    project_name = PythonExpression([
+        "'drl_student_' + '", run, "' + '_", timestamp, "'"
+    ])
+
+
+    # ------------------------------------------------
+    # Node
+    # ------------------------------------------------
+    drl_student_node = Node(
+        package="edge_drl_student",
+        executable="drl_student_node",
+        name="drl_student",
+        namespace="edge",
+        output="screen",
+        parameters=[
+            physical_model_file,
+            {
+                "task": task,
+                "run": run,
+                "project_name": project_name,
+            },
+        ],
     )
 
     return LaunchDescription([
-        Node(
-            package='edge_drl_student',
-            executable='drl_student_node',
-            name='drl_student',
-            namespace='edge',
-            output='screen',
-            parameters=[physical_model_file]
-        )
+        task_arg,
+        run_arg,
+        
+        # DRL Student Node
+        drl_student_node,
     ])

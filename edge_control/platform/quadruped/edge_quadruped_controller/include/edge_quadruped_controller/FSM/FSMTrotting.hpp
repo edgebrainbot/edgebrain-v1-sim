@@ -8,6 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 
+#include "edge_msgs/msg/edge_state.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
@@ -56,10 +57,7 @@ public:
     void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
-             rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
-             rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
-             rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
-             rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+             rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
              rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
              double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
@@ -86,10 +84,7 @@ private:
     /**
     * Calculate the torque command
     */
-    void calcTau(rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_pub_, 
-                 rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_,
-                 rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_,
-                 rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_,
+    void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
                  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
                  const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
@@ -148,6 +143,8 @@ private:
 
     Vec12 last_robot_state_;
     Vec12 curr_robot_state_;
+
+    edge_msgs::msg::EdgeState edge_state_;
 
     edge_msgs::msg::EdgeAction last_edge_action_;
     edge_msgs::msg::EdgeAction curr_edge_action_;

@@ -11,11 +11,12 @@ import torch
 import numpy as np
 from rclpy.node import Node
 from dataclasses import dataclass
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 from typing import List, Union, Tuple, Dict, Any, Optional
 
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
-from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward
+from edge_msgs.msg import Transition, Vec12Msg, EdgeAction, EdgeReward, EdgeState
 
 from edge_drl_student.common.noise import OUNoise
 from edge_drl_student.common.logger import Logger
@@ -52,6 +53,9 @@ class DistributedRunner:
         obs_dim: int,
         act_dim: int,
         body_state_dim: int,
+        state_type: int,
+        action_type: int,
+        
         replay_buffer: Union[DualReplayBuffer, CognitiveReplayBuffer],
         action_bound: Union[Tuple[float, float], Tuple[torch.Tensor, torch.Tensor]],
         reset_manager: Optional[ResetManager],
@@ -61,7 +65,7 @@ class DistributedRunner:
         residual_gain: torch.Tensor = RESIDUAL_GAIN,
         transition_topic: str = 'transition',
         drl_action_topic: str = 'drl_student_action',
-        tracking_error_topic: str = 'tracking_error_stu',
+        edge_state_topic: str = 'edge_state_stu',
         drl_learned_action_topic: str = 'drl_student_learned_action',
         fall_detection_topic: str = '/edge/is_fall',
         manual_reset_service: str = '/edge/manual_reset',
@@ -159,8 +163,23 @@ class DistributedRunner:
         self.reset_manager = reset_manager
         self.auto_reset_on_fall = auto_reset_on_fall
         
-        # Tracking error state
-        self.tracking_error_ = Vec12Msg(data=[0.0] * self.body_state_dim)
+        
+        # ============================================================
+        # Edge State/Action Initialization
+        # ============================================================
+        self.state_type = state_type
+        self.action_type = action_type
+
+        if state_type == EdgeState.ROBOT_STATE:
+            self.state_input: List[float] = [0.0] * self.body_state_dim
+            self.node.get_logger().info("🧠 Using ROBOT_STATE as EdgeState")
+
+        elif state_type == EdgeState.TRACKING_ERROR:
+            self.state_input: List[float] = [0.0] * self.body_state_dim
+            self.node.get_logger().info("🧠 Using TRACKING_ERROR as EdgeState")
+
+        else:
+            raise ValueError(f"Unsupported state_type: {state_type}")
         
         # Fall detection state
         self.fall_count: int = 0
@@ -183,8 +202,10 @@ class DistributedRunner:
         self.drl_learned_action_pub = self.node.create_publisher(EdgeAction, drl_learned_action_topic, 10)
         
         # ========== ROS2 Subscribers ==========
-        self.node.create_subscription(Transition, transition_topic, self.transition_callback, 10)
-        self.node.create_subscription(Vec12Msg, tracking_error_topic, self.tracking_error_callback, 10)
+        transition_qos = QoSProfile(depth=10)
+        transition_qos.reliability = ReliabilityPolicy.BEST_EFFORT
+        self.node.create_subscription(Transition, transition_topic, self.transition_callback, transition_qos)
+        self.node.create_subscription(EdgeState, edge_state_topic, self.edge_state_callback, 10)
         self.node.create_subscription(Bool, fall_detection_topic, self.fall_detection_callback, 10)
         
         # ========== ROS2 Services ==========
@@ -245,20 +266,34 @@ class DistributedRunner:
         self.node.get_logger().info("🛑 Loops shutdown")
     
     # ==================== ROS2 Callbacks ====================
-    def tracking_error_callback(self, msg: Vec12Msg):
-        """Tracking error callback"""
-        tracking_error_data = list(msg.data)
-        if len(tracking_error_data) > 0:
-            tracking_error_data[0] = 0.0
-        if len(tracking_error_data) > 1:
-            tracking_error_data[1] = 0.0
+    def edge_state_callback(self, msg: EdgeState):
+        """Edge State callback"""
+        
+        if msg.state_type == EdgeState.ROBOT_STATE:
+            self.state_input: List[float] = list(msg.state_value)
+            print(f"Received ROBOT_STATE: {self.state_input}")
+            self.node.get_logger().debug(f"Received ROBOT_STATE: {self.state_input}")
+            
+        elif msg.state_type == EdgeState.TRACKING_ERROR:
+            self.state_input: List[float] = list(msg.state_value)
+            
+            tracking_error_data = list(msg.state_value)
+            if len(tracking_error_data) > 0:
+                tracking_error_data[0] = 0.0
+            if len(tracking_error_data) > 1:
+                tracking_error_data[1] = 0.0
 
-        self.tracking_error_ = Vec12Msg(data=tracking_error_data)
+            # self.tracking_error_ = Vec12Msg(data=tracking_error_data)
 
-        tracking_errors = torch.tensor(tracking_error_data, dtype=torch.float32)
-        self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
-        self.logger.writer.add_scalar('Control/tracking_error/max', torch.max(torch.abs(tracking_errors)), self.transition_count)
-        self.logger.writer.add_scalar('Control/tracking_error/std', torch.std(tracking_errors), self.transition_count)
+            tracking_errors = torch.tensor(tracking_error_data, dtype=torch.float32)
+            self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
+            self.logger.writer.add_scalar('Control/tracking_error/max', torch.max(torch.abs(tracking_errors)), self.transition_count)
+            self.logger.writer.add_scalar('Control/tracking_error/std', torch.std(tracking_errors), self.transition_count)
+            
+            self.node.get_logger().debug(f"Received TRACKING_ERROR: {tracking_error_data}")
+        else:
+            self.node.get_logger().error(f"Unknown EdgeState type: {msg.state_type}")
+
     
     def manual_reset_callback(self, request: Trigger.Request, response: Trigger.Response):
         """
@@ -373,7 +408,7 @@ class DistributedRunner:
         # Create transition
         t = self.replay_buffer.to_transition(
             obs=obs_norm,
-            action=msg.action.control_action,
+            action=msg.action.action_value,
             reward=stepwise_total_reward,
             next_obs=next_obs_norm,
             done=msg.done
@@ -436,6 +471,13 @@ class DistributedRunner:
                     self.node.get_logger().info('▶️ Resuming action loop after reset')
                     self.resume_action_loop()
         
+        # Sanity check for action type
+        if msg.action.action_type != self.action_type:
+            self.node.get_logger().error(
+                f"Received action type {msg.action.action_type} does not match expected {self.action_type}"
+            )
+            return
+        
         # Extract reward components
         rew_comp: List[EdgeReward] = msg.reward_components
         reward_components = {c.name: c.value for c in rew_comp}
@@ -487,10 +529,12 @@ class DistributedRunner:
         # Determine if exploration noise should be added
         explore = (mode == DRLMode.TRAIN) and not isinstance(self.replay_buffer, CognitiveReplayBuffer)
         
+        
+        
         # Get current observation
         observation = torch.cat((
             torch.tensor(
-                np.array(self.tracking_error_.data, dtype=np.float32),
+                np.array(self.state_input, dtype=np.float32),
                 dtype=torch.float32,
                 device=self.device
             ),
@@ -510,11 +554,11 @@ class DistributedRunner:
         ).squeeze(0)
         
         # Compute residual action
-        tracking_error = torch.tensor(
-            self.tracking_error_.data,
-            dtype=torch.float32,
-            device=self.device
-        )
+        # tracking_error = torch.tensor(
+        #     self.tracking_error_.data,
+        #     dtype=torch.float32,
+        #     device=self.device
+        # )
         # residual_action = (self.residual_gain @ tracking_error.unsqueeze(-1)).flatten()
     
         
@@ -530,6 +574,7 @@ class DistributedRunner:
         drl_student_action = learned_action
         
         return drl_student_action, learned_action
+
     
     def action_loop(self):
         """Action generation loop (high frequency)"""
@@ -552,14 +597,16 @@ class DistributedRunner:
         # Publish drl-student action
         edge_drl_action_msg = EdgeAction()
         edge_drl_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_drl_action_msg.control_action = drl_student_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_drl_action_msg.action_value = drl_student_action.detach().cpu().numpy().flatten().tolist()
+        edge_drl_action_msg.action_type = self.action_type
         edge_drl_action_msg.action_mode = ActionMode.STUDENT.value
         self.drl_action_pub.publish(edge_drl_action_msg)
         
         # Publish learned action
         edge_policy_action_msg = EdgeAction()
         edge_policy_action_msg.header.stamp = self.node.get_clock().now().to_msg()
-        edge_policy_action_msg.control_action = learned_action.detach().cpu().numpy().flatten().astype(np.float64)
+        edge_policy_action_msg.action_value = learned_action.detach().cpu().numpy().flatten().tolist()
+        edge_policy_action_msg.action_type = self.action_type
         edge_policy_action_msg.action_mode = ActionMode.STUDENT.value
         self.drl_learned_action_pub.publish(edge_policy_action_msg)
         

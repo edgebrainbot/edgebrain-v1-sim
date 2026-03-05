@@ -70,12 +70,11 @@ switching:
 
     # ===== Angular Velocity Limits =====
     # roll_rate limit in degrees per second (relative mode) 8.0
-    wx:
-      type: relative
-      index: 9
-      limit: 0
-      # limit: 7.5
-      unit: deg/s
+    # wx:
+    #   type: relative
+    #   index: 9
+    #   limit: 7.5
+    #   unit: deg/s
     
     # pitch_rate limit in degrees per second (relative mode)
     wy:

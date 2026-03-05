@@ -29,7 +29,6 @@ setup(
     entry_points={
         'console_scripts': [
             'drl_student_node = edge_drl_student.drl_student_node:main',
-            'drl_student_vel_node = edge_drl_student.drl_student_vel_node:main',
         ],
     },
 )
