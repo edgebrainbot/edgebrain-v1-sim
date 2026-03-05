@@ -1,0 +1,24 @@
+rl_runtime:
+  ros__parameters:
+
+    goal:
+      x: 5.0
+      y: 0.0
+      threshold: 0.3
+
+    obstacle:
+      x: 2.5
+      y: 0.0
+      radius: 0.4
+
+    velocity_limit:
+      vx: 1.0
+      vy: 0.8
+      wz: 0.5
+
+    nominal_height: 0.33
+
+    episode:
+      horizon_steps: 12000
+
+    step_hz: 50.0

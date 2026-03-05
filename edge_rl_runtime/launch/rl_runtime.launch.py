@@ -1,7 +1,9 @@
+import os
+from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from ament_index_python import get_package_share_directory
 
 
 def generate_launch_description():
@@ -9,6 +11,12 @@ def generate_launch_description():
     go2_state_topic = LaunchConfiguration("go2_state_topic")
     go2_publish_hz = LaunchConfiguration("go2_publish_hz")
     topic_namespace = LaunchConfiguration("topic_namespace")
+
+    config_file = os.path.join(
+        get_package_share_directory("edge_rl_runtime"), 
+        'config', 
+        'rl_runtime.yaml'
+    )
 
     go2_high_state_bridge_node = Node(
         package="edge_rl_runtime",
@@ -27,10 +35,13 @@ def generate_launch_description():
         executable="rl_runtime_node",
         name="rl_runtime_node",
         output="screen",
-        parameters=[{
-            "topic_namespace": topic_namespace,
-            "go2_state_topic": go2_state_topic,
-        }],
+        parameters=[
+            config_file,
+            {
+                "topic_namespace": topic_namespace,
+                "go2_state_topic": go2_state_topic
+            }
+        ],
     )
 
     return LaunchDescription([

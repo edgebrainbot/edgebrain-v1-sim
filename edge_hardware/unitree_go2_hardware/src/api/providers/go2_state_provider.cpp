@@ -1,16 +1,21 @@
-#include "edge_rl_runtime/go2_high_state_subscriber.hpp"
+/*
+ * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <iostream>
 #include <utility>
 #include <unistd.h>
 
-namespace edge::rl_runtime {
+#include "unitree_go2_hardware/api/providers/go2_state_provider.hpp"
 
-Go2HighStateSubscriber::Go2HighStateSubscriber(std::string network_interface)
+namespace edge::go2_api::provider {
+
+Go2StateProvider::Go2StateProvider(std::string network_interface)
     : network_interface_(std::move(network_interface)),
       subscriber_(kTopicHighState) {}
 
-void Go2HighStateSubscriber::Init() {
+void Go2StateProvider::Init() {
     unitree::robot::ChannelFactory::Instance()->Init(0, network_interface_);
     std::cout << "Start to subscribe " << kTopicHighState << std::endl;
     subscriber_.InitChannel(
@@ -21,27 +26,27 @@ void Go2HighStateSubscriber::Init() {
         1);
 }
 
-bool Go2HighStateSubscriber::HasState() const {
+bool Go2StateProvider::HasState() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return has_state_;
 }
 
-unitree_go::msg::dds_::SportModeState_ Go2HighStateSubscriber::GetLatestState() const {
+unitree_go::msg::dds_::SportModeState_ Go2StateProvider::GetLatestState() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return latest_state_;
 }
 
-Go2HighStateSubscriber::Vector12d Go2HighStateSubscriber::GetLatestVec12Eigen() const {
+Go2StateProvider::Vector12d Go2StateProvider::GetLatestVec12Eigen() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return ExtractRobotBodyState(latest_state_);
 }
 
-Go2HighStateSubscriber::Vec12Msg Go2HighStateSubscriber::GetLatestVec12Msg() const {
+Go2StateProvider::Vec12Msg Go2StateProvider::GetLatestVec12Msg() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return ExtractRobotBodyStateVec12Msg(latest_state_);
 }
 
-void Go2HighStateSubscriber::PrintLatestState() const {
+void Go2StateProvider::PrintLatestState() const {
     unitree_go::msg::dds_::SportModeState_ latest;
     bool has_state = false;
     {
@@ -51,7 +56,7 @@ void Go2HighStateSubscriber::PrintLatestState() const {
     }
 
     if (!has_state) {
-        std::cout << "[Go2HighStateSubscriber] No state received yet." << std::endl;
+        std::cout << "[Go2StateProvider] No state received yet." << std::endl;
         return;
     }
 
@@ -84,7 +89,7 @@ void Go2HighStateSubscriber::PrintLatestState() const {
     print_state("[latest]", latest);
 }
 
-void Go2HighStateSubscriber::Run() const {
+void Go2StateProvider::Run() const {
     while (true) {
         if (HasState()) {
             const auto state = GetLatestState();
@@ -114,7 +119,7 @@ void Go2HighStateSubscriber::Run() const {
     }
 }
 
-Go2HighStateSubscriber::Vector12d Go2HighStateSubscriber::ExtractRobotBodyState(
+Go2StateProvider::Vector12d Go2StateProvider::ExtractRobotBodyState(
     const unitree_go::msg::dds_::SportModeState_& state) {
     Vector12d vec12 = Vector12d::Zero();
     vec12(0) = state.position()[0];                     // px
@@ -132,12 +137,12 @@ Go2HighStateSubscriber::Vector12d Go2HighStateSubscriber::ExtractRobotBodyState(
     return vec12;
 }
 
-Go2HighStateSubscriber::Vec12Msg Go2HighStateSubscriber::ExtractRobotBodyStateVec12Msg(
+Go2StateProvider::Vec12Msg Go2StateProvider::ExtractRobotBodyStateVec12Msg(
     const unitree_go::msg::dds_::SportModeState_& state) {
     return edge::ros_interfaces::EigenToVec12Msg(ExtractRobotBodyState(state));
 }
 
-void Go2HighStateSubscriber::HandleMessage(const void* message) {
+void Go2StateProvider::HandleMessage(const void* message) {
     const auto* state_msg = static_cast<const unitree_go::msg::dds_::SportModeState_*>(message);
 
     std::lock_guard<std::mutex> lock(state_mutex_);
@@ -145,4 +150,4 @@ void Go2HighStateSubscriber::HandleMessage(const void* message) {
     has_state_ = true;
 }
 
-}  // namespace edge::rl_runtime
+}  // namespace edge::go2_api::provider

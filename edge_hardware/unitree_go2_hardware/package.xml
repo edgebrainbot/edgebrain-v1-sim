@@ -2,15 +2,18 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>unitree_go2_hardware</name>
-  <version>0.0.0</version>
-  <description>The ros2_control hardware interface for Unitree GO2 robot</description>
+  <version>1.5.0</version>
+  <description>The ros2_control hardware interface/API for Unitree GO2 robot</description>
   <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
   <depend>rclcpp</depend>
   <depend>hardware_interface</depend>
   <depend>pluginlib</depend>
+  <depend>edge_msgs</depend>
+  <depend>edge_ros_interfaces</depend>
   <depend>go2_description</depend>
+  <depend>unitree_api</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

@@ -529,8 +529,6 @@ class DistributedRunner:
         # Determine if exploration noise should be added
         explore = (mode == DRLMode.TRAIN) and not isinstance(self.replay_buffer, CognitiveReplayBuffer)
         
-        
-        
         # Get current observation
         observation = torch.cat((
             torch.tensor(

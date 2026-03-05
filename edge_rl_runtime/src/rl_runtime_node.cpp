@@ -79,7 +79,7 @@ public:
 				has_go2_state_ = true;
 			});
 
-		            // Subscribe to "control input"
+		// Subscribe to "control input"
 		control_input_sub_ = create_subscription<control_input_msgs::msg::Inputs>(
 			"/control_input", 100, 
 			[this](const control_input_msgs::msg::Inputs::SharedPtr msg) -> void
@@ -114,8 +114,7 @@ public:
 		done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
 
 		const double dt = std::max(1e-3, 1.0 / kStepHz);
-		timer_ = create_wall_timer(
-			std::chrono::duration<double>(dt),
+		timer_ = create_wall_timer(std::chrono::duration<double>(dt),
 			std::bind(&RLRuntimeNode::stepOnce, this));
 
 		resetEpisode();
@@ -329,14 +328,6 @@ private:
 		std_msgs::msg::Bool done_msg;
 		done_msg.data = done_;
 		done_pub_->publish(done_msg);
-
-		// Send cmd_vel as action to env for execution
-		// geometry_msgs::msg::TwistStamped cmd_vel_msg;
-		// cmd_vel_msg.header.stamp = now();
-		// cmd_vel_msg.twist.linear.x = latest_vx_cmd_;
-		// cmd_vel_msg.twist.linear.y = latest_vy_cmd_;
-		// cmd_vel_msg.twist.angular.z = latest_wz_cmd_;
-		// cmd_vel_pub_->publish(cmd_vel_msg);
 
 		// Publish the terminal action to executor
 		command_action_pub_->publish(curr_action_vel_);
