@@ -271,8 +271,8 @@ class DistributedRunner:
         
         if msg.state_type == EdgeState.ROBOT_STATE:
             self.state_input: List[float] = list(msg.state_value)
-            print(f"Received ROBOT_STATE: {self.state_input}")
-            self.node.get_logger().debug(f"Received ROBOT_STATE: {self.state_input}")
+            # print(f"Received ROBOT_STATE: {self.state_input}")
+            # self.node.get_logger().debug(f"Received ROBOT_STATE: {self.state_input}")
             
         elif msg.state_type == EdgeState.TRACKING_ERROR:
             self.state_input: List[float] = list(msg.state_value)

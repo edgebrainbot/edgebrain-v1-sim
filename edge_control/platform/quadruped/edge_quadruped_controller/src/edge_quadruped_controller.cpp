@@ -248,12 +248,12 @@ namespace edge::control::quadruped
             });
 
             // Subscribe to obstacle minimum distance
-            obstacle_min_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
-                "/obstacle_min_distance", 100,
-                [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
-            {
-                obstacle_min_distance_ = msg->data;
-            });
+            // obstacle_min_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
+            //     "/obstacle_min_distance", 100,
+            //     [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
+            // {
+            //     obstacle_min_distance_ = msg->data;
+            // });
 
             // Subscribe to far_reach_goal_status to update is_goal_reached_
             is_goal_reached_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
@@ -293,8 +293,8 @@ namespace edge::control::quadruped
             //     topic_ns_ + "/transition", 100);
 
             // Publisher for is_task_done
-            is_task_done_pub_ = get_node()->create_publisher<std_msgs::msg::Bool>(
-                topic_ns_ + "/is_task_done", 100);
+            // is_task_done_pub_ = get_node()->create_publisher<std_msgs::msg::Bool>(
+            //     topic_ns_ + "/is_task_done", 100);
 
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_node()->get_logger(), "Failed to create subscription: %s", e.what());
@@ -377,7 +377,6 @@ namespace edge::control::quadruped
                 trot->run(time, period, 
                           latest_edge_action_, 
                           edge_state_pub_,
-                          is_task_done_pub_,
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
                           obstacle_avg_distance_,
                           obstacle_min_distance_,

@@ -78,8 +78,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([-0.3, -0.3, -1.], device=self.device),
-                    torch.tensor([0.3, 0.3, 1.], device=self.device))
+                    torch.tensor([-1.0, -1.0, -1.0], device=self.device),
+                    torch.tensor([1.0, 1.0, 1.0], device=self.device))
             },
             "locomotion": {
                 "act_dim": 6,
@@ -187,7 +187,7 @@ class DRLStudentNode(Node):
 
         self.episode_manager = EpisodeManager(
             logger=self.logger,
-            max_episode_length=int(3e4),
+            max_episode_length=int(3e5),
             training_episode=10000,
             eval_during_train=True,
             eval_interval=eval_interval,

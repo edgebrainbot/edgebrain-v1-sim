@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Image1
+        - /Goalpoint1
         - /Goalpoint1/Namespaces1
         - /GlobalPath1/Namespaces1
         - /VGraph1/Namespaces1
@@ -30,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: RegScan
   - Class: teleop_rviz_plugin_plus/TeleopPanel
     Name: TeleopPanel
 Visualization Manager:
@@ -300,7 +301,13 @@ Visualization Manager:
       Enabled: true
       Name: Goalpoint
       Namespaces:
-        {}
+        clear_nodes: true
+        free_goal: true
+        free_odom_position: false
+        last_nav_node: false
+        original_goal: true
+        out_contour: true
+        waypoint: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -346,7 +353,7 @@ Visualization Manager:
       Enabled: true
       Name: GlobalPath
       Namespaces:
-        {}
+        global_path: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -371,7 +378,10 @@ Visualization Manager:
       Enabled: true
       Name: ViewpointExtend
       Namespaces:
-        {}
+        corner_direct: true
+        extend_viewpoint: true
+        origin_viewpoint: true
+        raytracing_line: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -581,6 +591,11 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        camera_d435:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         front_camera:
           Alpha: 1
           Show Axes: false
@@ -682,14 +697,14 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7753174304962158
+      Pitch: 0.7003173232078552
       Position:
-        X: -5.994317054748535
-        Y: 0.1306867003440857
-        Z: 6.761687278747559
+        X: -8.5552978515625
+        Y: -0.09735751152038574
+        Z: 9.281481742858887
       Target Frame: map
       Value: FPS (rviz_default_plugins)
-      Yaw: 0.08881136029958725
+      Yaw: 6.201996803283691
     Saved:
       - Class: rviz_default_plugins/FPS
         Enable Stereo Rendering:
@@ -730,5 +745,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1476
-  X: 298
-  Y: 105
+  X: 504
+  Y: 125

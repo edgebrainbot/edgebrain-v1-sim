@@ -125,6 +125,16 @@ def generate_launch_description():
             "use_rviz": PythonExpression(["'", use_global_rviz, "' == 'false'"])
         }.items()
     )
+    
+    # -------- RL Runtime Launch --------
+    rl_runtime_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_rl_runtime"),
+                "launch", "rl_runtime.launch.py"
+            ])
+        )
+    )
 
     # -------- Gazebo Interaction Service Launch --------
     gz_interact_launch = IncludeLaunchDescription(
@@ -197,12 +207,13 @@ def generate_launch_description():
 
         # -- Launch Components --
         controller_launch,
-        phy_teacher_launch,
+        # phy_teacher_launch,
         # drl_student_launch,
         trigger_launch,
         # navigation_launch,
         gz_interact_launch,
         
+        # rl_runtime_launch,
         virtual_status_indicator_node,
         publish_goal_point,
         global_rviz_node

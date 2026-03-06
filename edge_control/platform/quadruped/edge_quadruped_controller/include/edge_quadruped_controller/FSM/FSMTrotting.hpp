@@ -58,7 +58,6 @@ public:
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
              rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
-             rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
              double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
@@ -85,7 +84,6 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-                 rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_,
                  const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
 
     /**
@@ -103,12 +101,7 @@ private:
      * @return
      */
     bool checkStepOrNot();
-
-    void pubTransitionTopic(rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub,
-                            rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub,
-                            const edge_msgs::msg::EdgeAction& latest_action,
-                            double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
-
+    
     std::shared_ptr<Estimator> &estimator_;
     std::shared_ptr<QuadrupedModel> &robot_model_;
     std::shared_ptr<BalanceCtrl> &balance_ctrl_;
