@@ -39,10 +39,10 @@ def generate_launch_description():
             Starting mode is important for safety.'
     )
     
-    trigger_source_arg = DeclareLaunchArgument(
-        'trigger_source',
+    action_source_arg = DeclareLaunchArgument(
+        'action_source',
         default_value='-1',
-        description='Trigger action source: -1 -- none, 0 -- student, 1 -- teacher'
+        description='Action source: -1 -- none, 0 -- student, 1 -- teacher'
     )
 
     trigger_node = Node(
@@ -58,7 +58,7 @@ def generate_launch_description():
                 'update_rate': LaunchConfiguration('update_rate'),
                 'print_processing': LaunchConfiguration('print_processing'),
                 'start_with_teacher': LaunchConfiguration('start_with_teacher'),
-                'trigger_source': LaunchConfiguration('trigger_source'),
+                'action_source': LaunchConfiguration('action_source'),
             }
         ]
     )
@@ -67,7 +67,7 @@ def generate_launch_description():
         update_rate_arg,
         print_processing_arg,
         start_with_teacher_arg,
-        trigger_source_arg,
+        action_source_arg,
         
         trigger_node,
     ])

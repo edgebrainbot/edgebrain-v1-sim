@@ -15,29 +15,39 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
     // Load parameters
-    trigger_source_ = this->declare_parameter<int>("trigger_source", -1);
+    action_source_ = this->declare_parameter<int>("action_source", -1);
     update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
+    dwell_steps_ = this->declare_parameter<int>("dwell_steps", 20);
     print_processing_ = this->declare_parameter<bool>("print_processing", false);
     is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
     teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
     student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
     terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
+
     int action_type_param = this->declare_parameter<int>("action_type", 0);
+    std::string trigger_mode_str = this->declare_parameter<std::string>("trigger_mode", "self");
     
     try {
-        action_type_ =  edge::utils::ActionType(action_type_param);
+        action_type_  = edge::utils::ActionType(action_type_param);
+        trigger_mode_ = TriggerModeFromString(trigger_mode_str);
     }
-    catch (const std::exception& e) {
-        RCLCPP_FATAL(this->get_logger(),
-            "Invalid action_type parameter: %d", action_type_param);
+    catch (const std::exception& e)
+    {
+        RCLCPP_FATAL(this->get_logger(), "%s", e.what());
         throw;
     }
+    
 
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger action type is set to %s: %d", 
         edge::utils::ToString(action_type_).c_str(), static_cast<int>(action_type_));
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
-        (trigger_source_ == 1) ? "teacher" :
-        (trigger_source_ == 0) ? "student" : "auto");
+        (action_source_ == 1) ? "teacher" :
+        (action_source_ == 0) ? "student" : "auto");
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger mode is set to %s", 
+        (trigger_mode_ == TriggerMode::SELF) ? "self-trigger" : "event-trigger");
+    if(trigger_mode_ == TriggerMode::SELF) {
+        RCLCPP_INFO(this->get_logger(), "🔘 Trigger dwell steps in self-trigger mode is set to %d", dwell_steps_);
+    }
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");
@@ -287,7 +297,55 @@ void Trigger::updateStats(edge::utils::ActionMode terminal_mode)
 }
 
 
-// -------------------- Main periodic update --------------------
+edge::utils::ActionMode Trigger::selectAction()
+{
+    // In event-trigger mode, switch immediately based on safety status
+    if (trigger_mode_ == TriggerMode::EVENT) {
+        return is_last_state_safe_ ? edge::utils::ActionMode::STUDENT
+                                    : edge::utils::ActionMode::TEACHER;
+    }
+
+    // In self-trigger mode, use dwell time to determine switching
+    else if (trigger_mode_ == TriggerMode::SELF) {  
+        if (is_last_state_safe_) {
+            // If currently safe, reset dwell timer and stay in student mode
+            dwell_count_ = 0;
+            dwell_active_ = false;
+            return edge::utils::ActionMode::STUDENT;
+        }
+        else {
+            // If currently unsafe, start/increment dwell timer
+            if (!dwell_active_) {
+                dwell_active_ = true;  // Start dwell time
+            }
+            ++dwell_count_;
+
+            // If dwell time has been reached, switch to student mode
+            if (dwell_count_ <= dwell_steps_) {
+                if (print_processing_) {
+                    RCLCPP_WARN(this->get_logger(), "🔄 Unsafe state detected, dwell count: %d/%d", dwell_count_, dwell_steps_);
+                }
+                return edge::utils::ActionMode::TEACHER;  // Still in dwell time, stay in teacher mode
+
+            }
+            else {
+                dwell_active_ = false; // Reset dwell time
+                dwell_count_ = 0;   // Reset dwell count
+                if (print_processing_) {
+                    RCLCPP_WARN(this->get_logger(), "🔄 Dwell time reached, switching to student mode");
+                }
+                return edge::utils::ActionMode::STUDENT;  // Dwell time reached, switch to student mode
+            }
+        }
+    } else {
+        // Default to safety-based switching if trigger mode is unrecognized
+        RCLCPP_WARN(this->get_logger(), "Unrecognized trigger mode, defaulting to safety-based switching.");
+        return edge::utils::ActionMode::TEACHER;
+    }
+}
+
+
+// -------------------- Main periodic update for trigger --------------------
 void Trigger::updateLoop()
 {
     // Convert states
@@ -305,17 +363,16 @@ void Trigger::updateLoop()
     // Determine terminal action and mode
     edge::utils::ActionMode terminal_mode;
     edge_msgs::msg::EdgeAction terminal_action;
-    
+
     // Determine terminal mode (override or safety-based)
-    if (trigger_source_ == 0) {
+    if (action_source_ == 0) {
         terminal_mode = edge::utils::ActionMode::STUDENT;
     }
-    else if (trigger_source_ == 1) {
+    else if (action_source_ == 1) {
         terminal_mode = edge::utils::ActionMode::TEACHER;
     }
     else {
-        terminal_mode = is_last_state_safe_ ? edge::utils::ActionMode::STUDENT
-                                            : edge::utils::ActionMode::TEACHER;
+        terminal_mode = selectAction();
     }
 
     // Prepare terminal action message
@@ -343,8 +400,8 @@ void Trigger::updateLoop()
     std_msgs::msg::Bool fall_msg;
     fall_msg.data = is_last_state_fall_;
     pub_fall_->publish(fall_msg);
-
 }
+
 
 
 }  // namespace edge::trigger

@@ -1,9 +1,12 @@
 /edge/trigger:
   ros__parameters:
+    trigger_mode: "self"         # trigger mode, options: "self" -- self-trigger, "event" -- event-trigger
+    dwell_steps: 20              # number of steps to hold teacher action in self-trigger mode
+    
     action_type: 1               # 3d action space (vx, vy, wz)
+    action_source: -1            # action source, options: -1 -- auto, 0 -- student, 1 -- teacher
     print_processing: false      # whether to print processing
     start_with_teacher: true     # whether to start with teacher mode
-    trigger_source: -1           # trigger source, options: -1 -- auto, 0 -- student, 1 -- teacher
 
     update_rate: 400.0           # trigger update rate in Hz
     teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action

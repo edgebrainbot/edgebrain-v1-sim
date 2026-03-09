@@ -24,24 +24,39 @@
 #include "edge_msgs/srv/reset_switching_stats.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
-#define MAX_VAL 100.0
-
 namespace edge::trigger {
 
+#define MAX_VAL 100.0
+
+enum class TriggerMode {
+    SELF,
+    EVENT,
+};
+
+inline TriggerMode TriggerModeFromString(const std::string& s)
+{
+    if (s == "self")  return TriggerMode::SELF;
+    if (s == "event") return TriggerMode::EVENT;
+
+    throw std::invalid_argument("Invalid trigger_mode: " + s);
+}
+
+// Trigger class
 class Trigger : public rclcpp::Node
 {
 public:
     explicit Trigger(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
 private:
-    
-    void updateLoop();     // Main periodic update loop
-    void updateLoopVel();  // Main periodic update loop for velocity action
+
+    void updateLoop();     // Main periodic update loop for trigger
 
     bool checkSafety();    // Check safety for switching
     void resetStats();     // Reset switching statistics
     void updateStats(edge::utils::ActionMode);      // Update switching statistics
     void resetCachedVariables(); // Reset cached variables
+    edge::utils::ActionMode selectAction();   // Select action based on current state and trigger mode
+
     
     // ROS2 Callbacks
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
@@ -99,15 +114,19 @@ private:
     rclcpp::Service<edge_msgs::srv::ResetSwitchingStats>::SharedPtr srv_reset_switching_stats_;
 
     double update_rate_;                            // Update rate (Hz)
-    int trigger_source_;                            // trigger source: -1 -- none, 0 -- student, 1 -- teacher
+    int action_source_;                             // action source: -1 -- none, 0 -- student, 1 -- teacher
+    int dwell_steps_;                               // number of steps to hold teacher action in self-trigger mode
+    int dwell_count_{0};                            // counter for dwell time in self-trigger mode
+    bool dwell_active_{false};                      // whether currently in dwell time in self-trigger mode
     bool print_processing_;                         // whether to print processing info
     bool is_start_with_teacher_;                    // whether to start with teacher mode
-    bool is_robot_state_initialized_ = false;       // whether robot state has been initialized
+    bool is_robot_state_initialized_{false};        // whether robot state has been initialized
     
     edge::utils::ActionType action_type_;           // action type: 0 -- base acceleration
     std::string student_topic_name_;                // topic name for student action
     std::string teacher_topic_name_;                // topic name for teacher action
     std::string terminal_action_name_;              // topic name for publishing terminal action
+    TriggerMode trigger_mode_;                      // trigger mode: self-trigger or event-trigger
 
 
     rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer
