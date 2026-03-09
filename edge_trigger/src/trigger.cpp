@@ -15,9 +15,9 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
     // Load parameters
+    dwell_steps_ = this->declare_parameter<int>("dwell_steps", 20);
     action_source_ = this->declare_parameter<int>("action_source", -1);
     update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
-    dwell_steps_ = this->declare_parameter<int>("dwell_steps", 20);
     print_processing_ = this->declare_parameter<bool>("print_processing", false);
     is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
     teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
@@ -62,11 +62,8 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     resetCachedVariables();
 
     // Subscribers (state, teacher action, student action, obstacle distance)
-    sub_error_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
-        "tracking_error", 50, std::bind(&Trigger::errorStateCallback, this, _1));
-
-    sub_robot_state_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
-        "robot_state", 50, std::bind(&Trigger::robotStateCallback, this, _1));
+    sub_edge_state_ = this->create_subscription<edge_msgs::msg::EdgeState>(
+        "state_input", 50, std::bind(&Trigger::edgeStateCallback, this, _1));
 
     sub_teacher_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
         teacher_topic_name_, 50, std::bind(&Trigger::teacherCallback, this, _1));
@@ -116,16 +113,13 @@ void Trigger::teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
     last_tea_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
 }
 
-void Trigger::errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg)
+void Trigger::edgeStateCallback(const edge_msgs::msg::EdgeState::SharedPtr msg)
 {
-    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
-    // RCLCPP_INFO(this->get_logger(), "Received new error state: %.3f, %.3f, %.3f",
-    //             last_error_state_[0], last_error_state_[1], last_error_state_[2]);
-}
-
-void Trigger::robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg)
-{
-    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
+    if(msg->state_type != edge_msgs::msg::EdgeState::ROBOT_STATE) {
+        RCLCPP_WARN(this->get_logger(), "Received EdgeState message with unsupported state_type: %d", msg->state_type);
+        return;
+    }
+    last_edge_state_ = *msg;  // Store the entire EdgeState message for later use
     if (!is_robot_state_initialized_) is_robot_state_initialized_ = true;
 }
 
@@ -223,9 +217,10 @@ void Trigger::resetCachedVariables()
     obstacle_distance_ = is_start_with_teacher_ ? 0.0 : MAX_VAL;
     is_last_state_fall_ = false;     // initial fall state
     is_last_state_safe_ = !is_start_with_teacher_;      // initial alert state
-    last_error_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial error state
-    last_robot_state_ = edge::ros_interfaces::Vec12MsgToEigen(edge_msgs::msg::Vec12Msg());            // initial robot state
     
+    last_edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
+    last_edge_state_.state_value.assign(12, 0.0);
+
     int dim = edge::utils::dimension(action_type_, 12);
     last_stu_action_  = Eigen::VectorXd::Zero(dim);     // initial student action
     last_tea_action_  = Eigen::VectorXd::Zero(dim);     // initial teacher action            
@@ -349,11 +344,10 @@ edge::utils::ActionMode Trigger::selectAction()
 void Trigger::updateLoop()
 {
     // Convert states
-    std::vector<double> error_state(last_error_state_.data(), last_error_state_.data() + last_error_state_.size());
-    std::vector<double> robot_state(last_robot_state_.data(), last_robot_state_.data() + last_robot_state_.size());
+    std::vector<double> robot_state(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
     
     // Evaluate safety and fall status
-    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, error_state, obstacle_distance_, goal_distance_);
+    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, robot_state, obstacle_distance_, goal_distance_);
     is_last_state_fall_ = is_robot_state_initialized_ ? safety_monitor_->detectFall(robot_state) : false;
 
     if (print_processing_) {

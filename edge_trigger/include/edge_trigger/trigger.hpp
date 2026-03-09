@@ -17,7 +17,7 @@
 
 #include "msg_utils.hpp"
 
-#include "edge_msgs/msg/vec12_msg.hpp"
+#include "edge_msgs/msg/edge_state.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_config/safety_monitor.hpp"
 #include "edge_msgs/srv/get_switching_stats.hpp"
@@ -61,8 +61,7 @@ private:
     // ROS2 Callbacks
     void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
-    void errorStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
-    void robotStateCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
+    void edgeStateCallback(const edge_msgs::msg::EdgeState::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void getStatsCallback(
@@ -79,10 +78,9 @@ private:
     double obstacle_distance_;                            // last received distance to obstacle
     bool is_last_state_safe_;                             // last alert state (is safe or not)
     bool is_last_state_fall_;                             // last fall state (is fall or not)
+    edge_msgs::msg::EdgeState        last_edge_state_;    // last received edge state
     edge::ros_interfaces::VectorXd   last_stu_action_;    // last received student action
     edge::ros_interfaces::VectorXd   last_tea_action_;    // last received teacher action
-    edge::ros_interfaces::Vector12d  last_error_state_;   // last received error state
-    edge::ros_interfaces::Vector12d  last_robot_state_;   // last received robot state
 
     // Statistical tracking
     double student_duration_;                              // Student Mode Accumulated Duration (s)
@@ -99,8 +97,7 @@ private:
     // ROS subscribers
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_;
-    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_error_;
-    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr sub_robot_state_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr sub_edge_state_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_obstacle_distance_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_goal_distance_;
 

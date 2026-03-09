@@ -62,7 +62,7 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     curr_tracking_error_tea_.setZero();
 
     edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
-    edge_state_.state_value.resize(12);
+    edge_state_.state_value.assign(12, 0.0);
 }
 
 void FSMTrotting::enter()
