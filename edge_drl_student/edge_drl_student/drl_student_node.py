@@ -103,8 +103,8 @@ class DRLStudentNode(Node):
 
         self.task = self.get_parameter("task").value
         self.RUN = self.get_parameter("run").value
-        self.is_real_robot: bool = bool(self.get_parameter("is_real_robot").value)
-        self.PROJECT_NAME : str = self.get_parameter("project_name").value  # type: ignore
+        self.IS_REAL_ROBOT = self.get_parameter("is_real_robot").value
+        self.PROJECT_NAME = self.get_parameter("project_name").value
         self.LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", self.PROJECT_NAME)
         self.MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/checkpoints", self.PROJECT_NAME)
         self.BUFFER_PATH = os.path.join(CURRENT_DIR, "outputs/buffers", self.PROJECT_NAME)
@@ -307,7 +307,7 @@ class DRLStudentNode(Node):
             vision_processor=self.vision_processor,
             replay_buffer=self.buffer,
             action_bound=self.action_bound,
-            is_real_robot=self.is_real_robot,
+            is_real_robot=self.IS_REAL_ROBOT,
             # residual_gain=torch.tensor(RESIDUAL_GAIN, device=self.device).reshape(
             #     self.act_dim, self.body_state_dim
             # ),

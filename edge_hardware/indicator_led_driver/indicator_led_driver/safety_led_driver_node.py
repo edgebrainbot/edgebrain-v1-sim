@@ -35,10 +35,10 @@ class SafetyLedDriverNode(Node):
         """callback when receiving is_safe message"""
         if msg.data:
             set_led(False)  # safe → green light on
-            self.get_logger().info("✅ System is safe.")
+            # self.get_logger().info("✅ System is safe.")
         else:
             set_led(True)   # unsafe → red light on
-            self.get_logger().warn("⚠️ System is unsafe!")
+            # self.get_logger().warn("⚠️ System is unsafe!")
 
 
     def destroy_node(self):

@@ -39,7 +39,14 @@ def generate_launch_description():
         default_value="cognitive",
         description="Replay buffer type: cognitive or dual"
     )
+    
+    is_real_robot_arg = DeclareLaunchArgument(
+        "is_real_robot",
+        default_value="true",
+        description="Whether to run on a real robot"
+    )
 
+<<<<<<< HEAD
     is_real_robot_arg = DeclareLaunchArgument(
         "is_real_robot",
         default_value="false",
@@ -48,6 +55,10 @@ def generate_launch_description():
 
     task = LaunchConfiguration("task")
     run = LaunchConfiguration("run")
+=======
+    run = LaunchConfiguration("run")
+    task = LaunchConfiguration("task")
+>>>>>>> 084a36a (Add is_real_robot)
     is_real_robot = LaunchConfiguration("is_real_robot")
 
     # ------------------------------------------------
@@ -81,8 +92,11 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        task_arg,
         run_arg,
+<<<<<<< HEAD
+=======
+        task_arg,
+>>>>>>> 084a36a (Add is_real_robot)
         is_real_robot_arg,
         
         # DRL Student Node

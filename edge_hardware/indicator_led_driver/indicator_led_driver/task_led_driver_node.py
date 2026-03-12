@@ -38,7 +38,7 @@ class TaskLedDriverNode(Node):
             self.get_logger().info("✅ Task is done.")
         else:
             set_led(False)   # not done → blue light off
-            self.get_logger().warn("⚠️ Task is not done!")
+            # self.get_logger().warn("⚠️ Task is not done!")
 
 
     def destroy_node(self):
