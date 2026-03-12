@@ -182,10 +182,10 @@ private:
 
     void stepOnce()
     {
-        if(done_)
-        {
-            reset();
-        }
+        // if(done_)
+        // {
+        //     reset();
+        // }
 
         // whether action command is published
         if (!has_cmd_) {
@@ -211,7 +211,18 @@ private:
         done_msg.data = done_;
         done_pub_->publish(done_msg);
 
-        command_action_pub_->publish(curr_edge_action_);
+        if(done_)
+        {
+            edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
+            stop_action.action_value = {0.0, 0.0, 0.0};
+            command_action_pub_->publish(stop_action);
+            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+                "Episode done: skip transition publish and send stop action [0, 0, 0]");
+        }
+        else
+        {
+            command_action_pub_->publish(curr_edge_action_);
+        }
 
         last_edge_action_ = curr_edge_action_;
         last_edge_state_ = curr_edge_state_;
@@ -275,6 +286,12 @@ private:
         {
         }
 
+        const bool is_done = goal_reached || timeout;
+        if(is_done)
+        {
+            return true;
+        }
+
         edge_msgs::msg::Transition transition;
 
         transition.header.stamp = now();
@@ -282,11 +299,11 @@ private:
         transition.next_obs = getObservationNext();
         transition.action = last_edge_action_;
         transition.reward_components = std::move(reward_components);
-        transition.done = goal_reached || timeout;
+        transition.done = false;
 
         transition_pub_->publish(transition);
 
-        return transition.done;
+        return false;
     }
 
     // Reset the environment to the initial state

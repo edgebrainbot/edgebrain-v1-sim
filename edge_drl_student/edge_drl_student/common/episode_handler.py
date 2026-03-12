@@ -165,6 +165,7 @@ class EpisodeManager:
         max_episode_length: int = 1000,
         training_episode: int = 10000,
         moving_average_window: int = 100,
+        is_real_robot: bool = False,
     ) -> None:
         """
         Initialize Episode Manager
@@ -178,11 +179,13 @@ class EpisodeManager:
             max_episode_length: Maximum steps per episode (default: 1000)
             training_episode: Total training episodes (default: 10000)
             moving_average_window: Window size for moving averages (default: 100)
+            is_real_robot: Whether the robot is real (default: False)
         """
         self.logger: Logger = logger
 
         # ========== Configuration ==========
         self.log_interval: int = log_interval
+        self.is_real_robot: bool = is_real_robot
         self.training_episode: int = training_episode
         self.max_episode_length: int = max_episode_length
         self.moving_average_window: int = moving_average_window

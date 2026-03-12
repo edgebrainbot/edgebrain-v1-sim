@@ -62,6 +62,7 @@ class DistributedRunner:
         episode_manager: Optional[EpisodeManager],
         vision_processor: Optional[VisionProcessor],
 
+        is_real_robot: bool = False,
         residual_gain: torch.Tensor = RESIDUAL_GAIN,
         transition_topic: str = 'transition',
         drl_action_topic: str = 'drl_student_action',
@@ -162,6 +163,7 @@ class DistributedRunner:
         self.episode_manager = episode_manager
         self.reset_manager = reset_manager
         self.auto_reset_on_fall = auto_reset_on_fall
+        self.is_real_robot = is_real_robot
         
         
         # ============================================================
@@ -663,27 +665,26 @@ class DistributedRunner:
         
         # Save models periodically
         if self.actor_learner.update_count % self.save_interval == 0:
-            self.save_checkpoint()
+            self.save_checkpoint(model_name=f"update_{self.actor_learner.update_count}")
     
     # ==================== Buffer Management ====================
     def save_buffer_contents(self, save_path: str):
         """Save replay buffer contents to disk"""
-        self.replay_buffer.dump(f"{self.buffer_save_path}/{save_path}")
-        self.node.get_logger().info(f"💾 Replay buffers saved to {save_path}")
+        target_path = save_path if os.path.isabs(save_path) else f"{self.buffer_save_path}/{save_path}"
+        self.replay_buffer.dump(target_path)
+        self.node.get_logger().info(f"💾 Replay buffers saved to {target_path}")
     
     def load_buffer_contents(self, load_path: str):
         """Load replay buffer contents from disk"""
-        self.replay_buffer.load(f"{self.buffer_save_path}/{load_path}")
-        self.node.get_logger().info(f"✅ Replay buffers loaded from {load_path}")
+        target_path = load_path if os.path.isabs(load_path) else f"{self.buffer_save_path}/{load_path}"
+        self.replay_buffer.load(target_path)
+        self.node.get_logger().info(f"✅ Replay buffers loaded from {target_path}")
     
     # ==================== Model Management ====================
-    def save_checkpoint(self, suffix: str = ''):
+    def save_checkpoint(self, model_name: str = ''):
         """Save model checkpoint including normalizers"""
         
-        if suffix:
-            suffix = f"_{suffix}"
-        
-        save_path = f"{self.model_save_path}/update_count_{self.actor_learner.update_count}{suffix}"
+        save_path = f"{self.model_save_path}/{model_name}"
         
         # Save actor-learner models
         self.actor_learner.save_models(save_path)
@@ -759,7 +760,7 @@ class DistributedRunner:
         
         if ep_mode == DRLMode.EVAL:
             self.node.get_logger().info("Evaluation episode ended, saving checkpoint...")
-            self.save_checkpoint(suffix='eval')
+            self.save_checkpoint(model_name=f'eval_episode_{self.episode_manager.episode_count_train}')
         
         # Log episode end and get stats
         stats = self.episode_manager.log_episode_end(success=success, reason=reason, ep_mode=ep_mode)
@@ -807,6 +808,21 @@ class DistributedRunner:
         #     f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
         #     f"{'='*70}"
         # )
+        
+        if self.is_real_robot:
+            self.replay_buffer.dump(f"{self.buffer_save_path}/episode_{self.episode_manager.episode_count_train}")
+            self.save_checkpoint(model_name=f"episode_{self.episode_manager.episode_count_train}")
+            self.node.get_logger().info(
+                f"\n{'='*70}\n"
+                f"📊 Episode {self.episode_manager.episode_count_train} ended\n"
+                f"{'─'*70}\n"
+                f"   Reason:           {reason.value}\n"
+                f"   Total Reward:     {stats['reward']:.2f}\n"
+                f"   Episode Length:   {stats['length']}\n"
+                f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
+                f"{'='*70}"
+            )
+            return # Skip reset for real robot to allow manual intervention
         
         # Call reset service
         self.node.get_logger().info(f'🔄 Triggering reset (reason: {reason.value})')

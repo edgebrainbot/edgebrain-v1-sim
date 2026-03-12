@@ -5,8 +5,9 @@
 
 import torch
 import numpy as np
+from pathlib import Path
 from dataclasses import asdict
-from typing import Callable, Dict, Generator, Tuple, Optional
+from typing import Callable, Dict, Generator, Tuple, Optional, Union
 
 from edge_drl_student.memory.buffers import SoloReplayBuffer
 from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
@@ -91,6 +92,36 @@ class DualReplayBuffer(BaseBuffer):
 
         else:
             raise RuntimeError(f"Unrecognized action mode: {action_mode} for this transition.")
+
+    def dump(self, path: Union[str, Path], format: str = 'torch', compress: bool = False):
+        """Save both student and teacher replay buffers to a directory."""
+        dump_dir = Path(path)
+        dump_dir.mkdir(parents=True, exist_ok=True)
+
+        self.stu_buf.dump(dump_dir / "stu_buffer.pt", format='torch', compress=compress)
+        self.tea_buf.dump(dump_dir / "tea_buffer.pt", format='torch', compress=compress)
+
+    def load(self,
+             path: Union[str, Path],
+             format: str = 'auto',
+             device: Optional[str] = None):
+        """Load student and teacher replay buffers from a directory."""
+        load_dir = Path(path)
+        if not load_dir.exists():
+            raise FileNotFoundError(load_dir)
+        if not load_dir.is_dir():
+            raise ValueError(f"DualReplayBuffer expects a directory path, got: {load_dir}")
+
+        stu_path = load_dir / "stu_buffer.pt"
+        tea_path = load_dir / "tea_buffer.pt"
+        if not stu_path.exists() or not tea_path.exists():
+            raise FileNotFoundError(
+                f"Missing buffer snapshot files under {load_dir}. "
+                f"Expected: {stu_path.name}, {tea_path.name}"
+            )
+
+        self.stu_buf.load(stu_path, format='auto', device=device)
+        self.tea_buf.load(tea_path, format='auto', device=device)
 
 
     def sample(self, batch_size: int) -> TransitionBatch:

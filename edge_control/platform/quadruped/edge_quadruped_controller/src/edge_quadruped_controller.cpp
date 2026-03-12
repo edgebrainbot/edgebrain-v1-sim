@@ -367,10 +367,6 @@ namespace edge::control::quadruped
     /***************************************************************************************/
     controller_interface::return_type EdgeQuadrupedController::update(const rclcpp::Time& time, const rclcpp::Duration& period)
     {
-        ctrl_component_.robot_model_->update();
-        ctrl_component_.phase_scheduler_->update(time);
-        ctrl_component_.estimator_->update();
-
         if (mode_ == FSMMode::NORMAL)
         {
             if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(current_state_)) {

@@ -28,6 +28,62 @@ torch.set_printoptions(sci_mode=False)
 
 class DRLStudentNode(Node):
 
+    @staticmethod
+    def _find_latest_snapshot_dir(root_dir: str, required_files: tuple[str, ...]) -> str | None:
+        """Find the newest directory containing all required files."""
+        if not os.path.isdir(root_dir):
+            return None
+
+        candidates = []
+        for dirpath, _, filenames in os.walk(root_dir):
+            if all(required in filenames for required in required_files):
+                candidates.append(dirpath)
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=os.path.getmtime, reverse=True)
+        return candidates[0]
+
+    def _resume_previous_real_robot_training(self) -> None:
+        """Resume from latest checkpoint and replay buffer when running on real robot."""
+        checkpoints_root = os.path.join(CURRENT_DIR, "outputs", "checkpoints")
+        buffers_root = os.path.join(CURRENT_DIR, "outputs", "buffers")
+
+        latest_checkpoint = self._find_latest_snapshot_dir(
+            checkpoints_root,
+            ("actor.pt", "critic.pt", "target_actor.pt", "target_critic.pt"),
+        )
+        latest_buffer = self._find_latest_snapshot_dir(
+            buffers_root,
+            ("stu_buffer.pt", "tea_buffer.pt"),
+        )
+
+        loaded_any = False
+
+        if latest_checkpoint is not None:
+            try:
+                self.runner.load_checkpoint(latest_checkpoint)
+                self.get_logger().info(f"✅ Real-robot resume loaded checkpoint: {latest_checkpoint}")
+                loaded_any = True
+            except Exception as exc:
+                self.get_logger().warning(f"⚠️ Failed to load checkpoint from {latest_checkpoint}: {exc}")
+        else:
+            self.get_logger().warning("⚠️ No previous checkpoint found for real-robot auto-resume")
+
+        if latest_buffer is not None:
+            try:
+                self.runner.load_buffer_contents(latest_buffer)
+                self.get_logger().info(f"✅ Real-robot resume loaded buffer: {latest_buffer}")
+                loaded_any = True
+            except Exception as exc:
+                self.get_logger().warning(f"⚠️ Failed to load buffer from {latest_buffer}: {exc}")
+        else:
+            self.get_logger().warning("⚠️ No previous replay buffer found for real-robot auto-resume")
+
+        if loaded_any:
+            self.get_logger().info("🔁 Real-robot startup resume completed")
+
     def __init__(self):
 
         super().__init__("drl_student", namespace="edge")
@@ -35,7 +91,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # Device
         # ============================================================
-
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         # ============================================================
@@ -44,10 +99,12 @@ class DRLStudentNode(Node):
         self.declare_parameter("task", "navigation")
         self.declare_parameter("run", "cognitive")
         self.declare_parameter("project_name", "drl_student")
+        self.declare_parameter("is_real_robot", False)
 
         self.task = self.get_parameter("task").value
         self.RUN = self.get_parameter("run").value
-        self.PROJECT_NAME = self.get_parameter("project_name").value
+        self.is_real_robot: bool = bool(self.get_parameter("is_real_robot").value)
+        self.PROJECT_NAME : str = self.get_parameter("project_name").value  # type: ignore
         self.LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", self.PROJECT_NAME)
         self.MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/checkpoints", self.PROJECT_NAME)
         self.BUFFER_PATH = os.path.join(CURRENT_DIR, "outputs/buffers", self.PROJECT_NAME)
@@ -118,7 +175,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # Logger
         # ============================================================
-
         self.logger = Logger(log_dir=self.LOG_PATH, device=self.device)
 
         self.get_logger().info(f"📊 Logger initialized: {self.LOG_PATH}")
@@ -128,7 +184,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # Replay Buffer
         # ============================================================
-
         self.batch_size = 512
 
         stu_buf_size = int(2e5)
@@ -139,7 +194,6 @@ class DRLStudentNode(Node):
         tea_blending_weight = 0.9
 
         if self.RUN == "dual":
-
             self.buffer = DualReplayBuffer(
                 student_buf_size=stu_buf_size,
                 student_prefill_size=self.batch_size,
@@ -151,7 +205,6 @@ class DRLStudentNode(Node):
             )
 
         elif self.RUN == "cognitive":
-
             self.buffer = CognitiveReplayBuffer(
                 student_buf_size=stu_buf_size,
                 student_prefill_size=self.batch_size,
@@ -192,12 +245,12 @@ class DRLStudentNode(Node):
             eval_during_train=True,
             eval_interval=eval_interval,
             moving_average_window=100,
+            is_real_robot=self.is_real_robot,
         )
 
         # ============================================================
         # Reset Manager
         # ============================================================
-
         self.reset_manager = ResetManager(
             node=self,
             reset_timeout=15.0,
@@ -209,7 +262,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # ROS2 Topics
         # ============================================================
-
         ros2_topic_name = {
             "transition_topic": "/edge/transition",
             "drl_action_topic": "/edge/drl_student_action",
@@ -225,7 +277,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # Training configuration
         # ============================================================
-
         training_cfg = {
             "log_interval": 100,
             "sync_interval": 5,
@@ -241,7 +292,6 @@ class DRLStudentNode(Node):
         # ============================================================
         # Distributed Runner
         # ============================================================
-
         self.runner = DistributedRunner(
             node=self,
             logger=self.logger,
@@ -257,6 +307,7 @@ class DRLStudentNode(Node):
             vision_processor=self.vision_processor,
             replay_buffer=self.buffer,
             action_bound=self.action_bound,
+            is_real_robot=self.is_real_robot,
             # residual_gain=torch.tensor(RESIDUAL_GAIN, device=self.device).reshape(
             #     self.act_dim, self.body_state_dim
             # ),
@@ -268,18 +319,18 @@ class DRLStudentNode(Node):
 
         self.get_logger().info("✅ Distributed Runner initialized")
 
+        if self.is_real_robot:
+            self._resume_previous_real_robot_training()
+
         # ============================================================
         # Start training loop
         # ============================================================
-
         self.runner.start()
-
         self.get_logger().info("🚀 DRL Student Node is up and running!")
 
     # ============================================================
     # Shutdown
     # ============================================================
-
     def destroy_node(self):
 
         self.get_logger().info("🛑 Shutting down DRL Student Node...")
@@ -293,7 +344,6 @@ class DRLStudentNode(Node):
 # ============================================================
 # Main
 # ============================================================
-
 def main(args=None):
 
     print("\n🚀 Starting DRL Student Node\n")
