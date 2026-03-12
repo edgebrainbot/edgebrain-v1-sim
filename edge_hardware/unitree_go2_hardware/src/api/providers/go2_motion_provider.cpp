@@ -19,8 +19,6 @@ Go2MotionProvider::Go2MotionProvider(std::string network_interface,
 
 void Go2MotionProvider::Init()
 {
-    unitree::robot::ChannelFactory::Instance()->Init(0, network_interface_);
-
     // SportClient internally touches DDS resources; construct it only after
     // ChannelFactory has initialized the participant.
     sport_client_ = std::make_unique<unitree::robot::go2::SportClient>();

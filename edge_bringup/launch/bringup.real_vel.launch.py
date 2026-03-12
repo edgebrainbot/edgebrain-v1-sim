@@ -190,6 +190,15 @@ def generate_launch_description():
     # --       Node Definitions        --
     # -----------------------------------
 
+    # -------- State Bridge Node --------_
+    state_bridge_node = Node(
+        package='unitree_go2_hardware',
+        executable='go2_edge_state_bridge',
+        name='go2_edge_state_bridge',
+        output='screen',
+    )
+
+
     # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
         package='edge_config',
@@ -264,7 +273,7 @@ def generate_launch_description():
         rl_runtime_launch,
         # real_robot_executor_launch,
         # virtual_status_indicator_node,
-        
+        state_bridge_node,
         # global_rviz_node,
         # camera_image_pub_node,
         # navigation_launch,

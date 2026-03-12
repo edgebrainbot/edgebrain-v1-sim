@@ -12,4 +12,3 @@
     teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action
     student_topic_name: "/edge/drl_student_action"  # topic name for student action
     terminal_action_name: "/edge/terminal_action"  # topic name for terminal action
-    # terminal_action_name: "/edge/cmd_vel"  # topic name for terminal action

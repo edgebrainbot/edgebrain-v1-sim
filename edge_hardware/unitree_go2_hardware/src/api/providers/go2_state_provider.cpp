@@ -16,7 +16,6 @@ Go2StateProvider::Go2StateProvider(std::string network_interface)
       subscriber_(kTopicHighState) {}
 
 void Go2StateProvider::Init() {
-    unitree::robot::ChannelFactory::Instance()->Init(0, network_interface_);
     std::cout << "Start to subscribe " << kTopicHighState << std::endl;
     subscriber_.InitChannel(
         [this](auto&& msg)

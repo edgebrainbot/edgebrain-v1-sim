@@ -13,6 +13,7 @@
   <depend>edge_msgs</depend>
   <depend>edge_ros_interfaces</depend>
   <depend>go2_description</depend>
+  <depend>go2_sport_api</depend>
   <depend>unitree_api</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

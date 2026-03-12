@@ -124,7 +124,7 @@ class ACTRCognitiveSampler(BaseSampler):
         
         compacted_tuple *= rewards.squeeze()
         # print(f"rewards after exp weighting: {rewards.squeeze()}")
-        # print(f"compacted_item after reward weighting: {compacted_tuple}")
+        print(f"compacted_item after reward weighting: {compacted_tuple}")
         
         family_ID = (compacted_tuple / self.family_criteria).floor()
         # print(f"family_ID: {family_ID}")

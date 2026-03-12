@@ -104,22 +104,6 @@ A convenient build script is provided to compile the ROS 2 workspace:
 
 **Note:** Ensure the script has execute permissions: `chmod +x scripts/build.sh`
 
----
-
-## ⏳ To Do ##
-
-<!-- * [x] Add BEV map to the repo -->
-<!-- * [x] Fast Marching Method (FMM) implementation -->
-
-* [ ] Code Refactorization
-* [ ] Incorporate more challenging scenarios
-    * [x] Dense forests (sandy terrain, trees)
-    * [ ] inclined staircases, and rainy conditions
-* [ ] Go2 real robot deployment
-    * [ ] Gazebo real-time testing
-    * [ ] ROS/ROS2 integration
-* [ ] Restructure the code as FSM and add teleoperation (optional)
-* [ ] Migration to Isaac-Lab
 
 ---
 

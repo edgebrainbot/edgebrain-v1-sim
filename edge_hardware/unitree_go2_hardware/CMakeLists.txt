@@ -13,6 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(PKG_DEPENDENCIES
   edge_msgs
   edge_ros_interfaces
+  go2_sport_api
   hardware_interface
   pluginlib
   rclcpp
@@ -97,6 +98,35 @@ ament_target_dependencies(go2_vel_action_executor
   rclcpp
 )
 
+# Go2 state to edge state bridge node
+add_executable(go2_edge_state_bridge
+  src/go2_edge_state_bridge.cpp
+)
+
+target_link_libraries(go2_edge_state_bridge
+  ${PROJECT_NAME}
+)
+
+ament_target_dependencies(go2_edge_state_bridge
+  edge_msgs
+  rclcpp
+)
+
+# Go2 real robot executor node
+add_executable(go2_real_robot_executor src/go2_real_robot_executor.cpp)
+target_include_directories(go2_real_robot_executor PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(go2_real_robot_executor
+  rclcpp
+  edge_msgs
+  unitree_api
+  go2_sport_api
+)
+
+
 # ---------------- Install ----------------
 
 install(
@@ -117,6 +147,8 @@ install(
     test_crc32
     go2_state_provider_test
     go2_vel_action_executor
+    go2_edge_state_bridge
+    go2_real_robot_executor
   DESTINATION lib/${PROJECT_NAME}
 )
 

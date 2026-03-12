@@ -4,6 +4,7 @@
  */
 
 #include <cmath>
+#include <exception>
 #include <functional>
 #include <string>
 
@@ -21,7 +22,7 @@ public:
         declare_parameter<std::string>("vel_action_topic", "/edge/command_action");
 
     network_interface_ =
-        declare_parameter<std::string>("network_interface", "eth0");
+      declare_parameter<std::string>("network_interface", "eno1");
 
     stop_epsilon_ =
         declare_parameter<double>("stop_epsilon", 1e-4);
@@ -85,7 +86,28 @@ private:
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Go2VelActionExecutor>());
+
+  try
+  {
+    rclcpp::spin(std::make_shared<Go2VelActionExecutor>());
+    rclcpp::shutdown();
+    return 0;
+  }
+  catch (const std::exception &e)
+  {
+    RCLCPP_FATAL(
+      rclcpp::get_logger("go2_vel_action_executor"),
+      "Initialization failed: %s. Check the network interface and run with, for example, "
+      "'--ros-args -p network_interface:=eno1'.",
+      e.what());
+  }
+  catch (...)
+  {
+    RCLCPP_FATAL(
+      rclcpp::get_logger("go2_vel_action_executor"),
+      "Initialization failed with an unknown exception.");
+  }
+
   rclcpp::shutdown();
-  return 0;
+  return 1;
 }
