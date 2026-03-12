@@ -232,8 +232,8 @@ private:
                           curr_edge_state_.state_value[1],  // y
                           curr_edge_state_.state_value[5];  // yaw
 
-            robot_state << curr_edge_state_.state_value[0],   // x
-                           curr_edge_state_.state_value[1],  // y
+            robot_state << latest_goal_x_ - curr_edge_state_.state_value[0],   // delta_x
+                           latest_goal_y_ - curr_edge_state_.state_value[1],  // delta_y
                            curr_edge_state_.state_value[2],  // z
                            curr_edge_state_.state_value[3],  // roll
                            curr_edge_state_.state_value[4],  // pitch
