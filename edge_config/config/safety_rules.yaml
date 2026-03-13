@@ -80,7 +80,7 @@ switching:
     wy:
       type: relative
       index: 10
-      limit: 7.5  # 7.5
+      limit: 15  # 7.5
       unit: deg/s
 
     # angular velocity limit in radians per second (relative mode)
@@ -95,13 +95,13 @@ switching:
     obstacle_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 0.10
+      limit: 0.3
       unit: m
 
     goal_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 10.0
+      limit: 5.5
       unit: m
 
   # =========================================================

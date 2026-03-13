@@ -100,18 +100,12 @@ private:
     using Vector3d = edge::ros_interfaces::Vector3d;
     using Vector12d = edge::ros_interfaces::Vector12d;
 
-    static constexpr int kEpisodeHorizonSteps = 12000;
-    static constexpr double kGoalX = 5.0;
-    static constexpr double kGoalY = 0.0;
-    static constexpr double kGoalReachedThreshold = 0.3;
+    static constexpr int kEpisodeHorizonSteps = 120000;
+    static constexpr double kGoalReachedThreshold = 0.5;
 
-    static constexpr double kObstacleX = 2.5;
-    static constexpr double kObstacleY = 0.0;
-    static constexpr double kObstacleRadius = 0.4;
-
-    static constexpr double kMaxVx = 1.0;
-    static constexpr double kMaxVy = 0.8;
-    static constexpr double kMaxWz = 0.5;
+    // static constexpr double kObstacleX = 2.5;
+    // static constexpr double kObstacleY = 0.0;
+    // static constexpr double kObstacleRadius = 0.4;
 
     static double clamp(double v,double lo,double hi)
     {
@@ -161,13 +155,23 @@ private:
     // obs
 	std::vector<double> getObservation() const
 	{
-		return std::vector<double>(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
+        std::vector<double> obs(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
+        if (obs.size() >= 2) {
+            obs[0] = latest_goal_x_ - last_edge_state_.state_value[0];
+            obs[1] = latest_goal_y_ - last_edge_state_.state_value[1];
+        }
+        return obs;
 	}
 
 	// obs_next
 	std::vector<double> getObservationNext() const
 	{
-		return std::vector<double>(curr_edge_state_.state_value.begin(), curr_edge_state_.state_value.end());
+        std::vector<double> obs_next(curr_edge_state_.state_value.begin(), curr_edge_state_.state_value.end());
+        if (obs_next.size() >= 2) {
+            obs_next[0] = latest_goal_x_ - curr_edge_state_.state_value[0];
+            obs_next[1] = latest_goal_y_ - curr_edge_state_.state_value[1];
+        }
+        return obs_next;
 	}
 
 	// action
@@ -287,11 +291,8 @@ private:
         }
 
         const bool is_done = goal_reached || timeout;
-        if(is_done)
-        {
-            return true;
-        }
 
+        // Publish transition
         edge_msgs::msg::Transition transition;
 
         transition.header.stamp = now();
@@ -299,11 +300,11 @@ private:
         transition.next_obs = getObservationNext();
         transition.action = last_edge_action_;
         transition.reward_components = std::move(reward_components);
-        transition.done = false;
+        transition.done = is_done;
 
         transition_pub_->publish(transition);
 
-        return false;
+        return is_done;
     }
 
     // Reset the environment to the initial state
@@ -334,8 +335,8 @@ private:
     bool is_started_{false};
     bool is_paused_{false};
 
-    double latest_goal_x_{kGoalX};
-    double latest_goal_y_{kGoalY};
+    double latest_goal_x_{0.0};
+    double latest_goal_y_{0.0};
 
     double obstacle_min_distance_{0.0};
 

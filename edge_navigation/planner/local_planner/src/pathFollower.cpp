@@ -487,6 +487,11 @@ int main(int argc, char** argv)
           cmd_vel.twist.angular.z = maxYawRate * PI / 180.0 * joyManualYaw;
         }
 
+        // Truncate the velocity command to be within limits
+        cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, 0.3), 0.0);
+        if(cmd_vel.twist.linear.y > 0.15) cmd_vel.twist.linear.y = 0.15;
+        else if(cmd_vel.twist.linear.y < -0.15) cmd_vel.twist.linear.y = -0.15;
+
         pubSpeed->publish(cmd_vel);
 
         // Publish teacher action for physical teacher

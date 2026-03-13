@@ -565,8 +565,8 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            # learned_action = 0.5*policy_action + 0.2*blended_action
-            learned_action = 0.5 * policy_action
+            learned_action = 1.0 * policy_action + 0.1 * blended_action
+            # learned_action = 0.5 * policy_action
         else:
             learned_action = policy_action
         
@@ -817,9 +817,9 @@ class DistributedRunner:
                 f"📊 Episode {self.episode_manager.episode_count_train} ended\n"
                 f"{'─'*70}\n"
                 f"   Reason:           {reason.value}\n"
-                f"   Total Reward:     {stats['reward']:.2f}\n"
-                f"   Episode Length:   {stats['length']}\n"
-                f"   Activation Ratio: {stats['activation_ratio']:.2%}\n"
+                f"   Total Reward:     {stats.episode_return:.2f}\n"
+                f"   Episode Length:   {stats.episode_length}\n"
+                f"   Activation Ratio: {stats.activation_ratio:.2%}\n"
                 f"{'='*70}"
             )
             return # Skip reset for real robot to allow manual intervention

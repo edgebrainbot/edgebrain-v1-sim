@@ -25,7 +25,7 @@ reward:
   goal_distance: 0.01
 
   # lyapunov: 100
-  body_state: 0.1
+  body_state: 0.2
   # jerky_action: 0.0002
 
   # fall_down: 10000

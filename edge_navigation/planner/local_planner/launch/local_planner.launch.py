@@ -18,11 +18,11 @@ def generate_launch_description():
         DeclareLaunchArgument("sensorOffsetY", default_value="0.0"),
         DeclareLaunchArgument("cameraOffsetZ", default_value="0.0"),
         DeclareLaunchArgument("twoWayDrive", default_value="false"),
-        # DeclareLaunchArgument("maxSpeed", default_value="1.0"),   # Original
-        DeclareLaunchArgument("maxSpeed", default_value="0.5"),
+        DeclareLaunchArgument("maxSpeed", default_value="1.0"),   # Original
+        # DeclareLaunchArgument("maxSpeed", default_value="0.5"),   # For testing
         DeclareLaunchArgument("autonomyMode", default_value="true"),
-        # DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
-        DeclareLaunchArgument("autonomySpeed", default_value="0.5"),
+        DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
+        # DeclareLaunchArgument("autonomySpeed", default_value="0.5"),  # For testing
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
         DeclareLaunchArgument("goalCloseDis", default_value="0.4"),
         DeclareLaunchArgument("goalX", default_value="0.0"),

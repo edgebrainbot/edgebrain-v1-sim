@@ -103,7 +103,7 @@ class DRLStudentNode(Node):
 
         self.task = self.get_parameter("task").value
         self.RUN = self.get_parameter("run").value
-        self.IS_REAL_ROBOT = self.get_parameter("is_real_robot").value
+        self.is_real_robot = self.get_parameter("is_real_robot").value
         self.PROJECT_NAME = self.get_parameter("project_name").value
         self.LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", self.PROJECT_NAME)
         self.MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/checkpoints", self.PROJECT_NAME)
@@ -135,8 +135,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([-0.2, -0.2, -1.0], device=self.device),
-                    torch.tensor([0.2, 0.2, 1.0], device=self.device))
+                    torch.tensor([0.2, -0.5, -1.0], device=self.device),
+                    torch.tensor([1.0, 0.5, 1.0], device=self.device))
             },
             "locomotion": {
                 "act_dim": 6,
@@ -186,12 +186,12 @@ class DRLStudentNode(Node):
         # ============================================================
         self.batch_size = 512
 
-        stu_buf_size = int(2e5)
-        tea_buf_size = int(2e5)
+        stu_buf_size = int(1e5)
+        tea_buf_size = int(1e5)
         teacher_prefill_size = 200
 
-        stu_blending_weight = 0.1
-        tea_blending_weight = 0.9
+        stu_blending_weight = 0.0
+        tea_blending_weight = 1.0
 
         if self.RUN == "dual":
             self.buffer = DualReplayBuffer(
@@ -307,7 +307,7 @@ class DRLStudentNode(Node):
             vision_processor=self.vision_processor,
             replay_buffer=self.buffer,
             action_bound=self.action_bound,
-            is_real_robot=self.IS_REAL_ROBOT,
+            is_real_robot=self.is_real_robot,
             # residual_gain=torch.tensor(RESIDUAL_GAIN, device=self.device).reshape(
             #     self.act_dim, self.body_state_dim
             # ),

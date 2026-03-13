@@ -102,7 +102,7 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Batch size for PHY-Teacher Buffer
         tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
         
-        tea_batch_size = 150
+        tea_batch_size = 100
 
         # Batch size for DRL-Student Buffer
         stu_batch_size = L - tea_batch_size

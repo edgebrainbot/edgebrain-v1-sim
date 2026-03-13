@@ -28,7 +28,7 @@ def generate_launch_description():
 
     print_processing_arg = DeclareLaunchArgument(
         'print_processing',
-        default_value='false',
+        default_value='true',
         description='Print processing logs'
     )
     
@@ -41,7 +41,7 @@ def generate_launch_description():
     
     action_source_arg = DeclareLaunchArgument(
         'action_source',
-        default_value='1',
+        default_value='-1',
         description='Action source: -1 -- none, 0 -- student, 1 -- teacher'
     )
 

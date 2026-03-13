@@ -402,8 +402,8 @@ class EpisodeManager:
             ...     success=True,
             ...     reason=ResetReason.TIMEOUT
             ... )
-            >>> print(f"Episode reward: {stats['reward']:.2f}")
-            >>> print(f"Activation ratio: {stats['activation_ratio']:.2%}")
+            >>> print(f"Episode reward: {stats.episode_return:.2f}")
+            >>> print(f"Activation ratio: {stats.activation_ratio:.2%}")
         """
         
         # Calculate episode duration

@@ -302,7 +302,7 @@ edge::utils::ActionMode Trigger::selectAction()
 
     // In self-trigger mode, use dwell time to determine switching
     else if (trigger_mode_ == TriggerMode::SELF) {  
-        if (is_last_state_safe_) {
+        if (is_last_state_safe_ && !dwell_active_) {
             // If currently safe, reset dwell timer and stay in student mode
             dwell_count_ = 0;
             dwell_active_ = false;
