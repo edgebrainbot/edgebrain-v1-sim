@@ -88,6 +88,7 @@ public:
         command_action_pub_ = create_publisher<edge_msgs::msg::EdgeAction>(topic_ns_ + "/command_action", 50);
         transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", transition_qos);
         done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
+        is_real_robot_ready_pub_ = create_publisher<std_msgs::msg::Bool>("/edge/is_real_robot_ready", 10);
 
         reset();
 
@@ -101,7 +102,7 @@ private:
     using Vector12d = edge::ros_interfaces::Vector12d;
 
     static constexpr int kEpisodeHorizonSteps = 120000;
-    static constexpr double kGoalReachedThreshold = 0.5;
+    static constexpr double kGoalReachedThreshold = 0.6;
 
     // static constexpr double kObstacleX = 2.5;
     // static constexpr double kObstacleY = 0.0;
@@ -209,13 +210,27 @@ private:
 
         step_count_++;
 
+        // Publish real robot ready signal at the beginning of the episode
+        std_msgs::msg::Bool ready_msg;
+        ready_msg.data = true;
+        is_real_robot_ready_pub_->publish(ready_msg);
+
+        // Process transition and compute reward
         done_ = processTransition();
 
+        // Publish whether episode is done
         std_msgs::msg::Bool done_msg;
         done_msg.data = done_;
         done_pub_->publish(done_msg);
 
         if(done_)
+        {
+            done_flag_ = true;  // set done_flag_ to true to send stop action and skip transition publish in the next step
+            RCLCPP_INFO(get_logger(), "Episode done at step %d!", step_count_);
+
+        }
+
+        if(done_flag_)
         {
             edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
             stop_action.action_value = {0.0, 0.0, 0.0};
@@ -329,6 +344,7 @@ private:
     bool has_cmd_{false};
     bool has_state_input_{false};
     bool done_{false};
+    bool done_flag_{false};
 
     int step_count_{0};
 
@@ -355,6 +371,7 @@ private:
 
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_real_robot_ready_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
 };
 

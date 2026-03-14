@@ -164,7 +164,8 @@ class DistributedRunner:
         self.reset_manager = reset_manager
         self.auto_reset_on_fall = auto_reset_on_fall
         self.is_real_robot = is_real_robot
-        
+        self.save_flag = False
+        self.is_real_robot_ready = False
         
         # ============================================================
         # Edge State/Action Initialization
@@ -209,6 +210,7 @@ class DistributedRunner:
         self.node.create_subscription(Transition, transition_topic, self.transition_callback, transition_qos)
         self.node.create_subscription(EdgeState, edge_state_topic, self.edge_state_callback, 10)
         self.node.create_subscription(Bool, fall_detection_topic, self.fall_detection_callback, 10)
+        self.node.create_subscription(Bool, "/edge/is_real_robot_ready", self.real_robot_ready_callback, 10)
         
         # ========== ROS2 Services ==========
         self.node.create_service(Trigger, manual_reset_service, self.manual_reset_callback)
@@ -323,6 +325,11 @@ class DistributedRunner:
         )
         return response
 
+
+    def real_robot_ready_callback(self, msg: Bool):
+        """Callback for real robot readiness signal"""
+        is_real_robot_ready = msg.data
+        self.is_real_robot_ready = is_real_robot_ready
     
     def fall_detection_callback(self, msg: Bool) -> None:
         """Fall detection callback with rising edge detection"""
@@ -631,6 +638,14 @@ class DistributedRunner:
             self.node.get_logger().info('⏸️  Learning loop is paused')
             return
         
+        if not self.is_real_robot_ready:
+            self.node.get_logger().info('⏸️  Waiting for real robot to be ready before learning')
+            return
+        
+        if self.save_flag:
+            self.node.get_logger().info("⏸️  Save flag is set, skipping learning to save checkpoint")
+            return
+        
         # Log buffer sizes
         self.logger.writer.add_scalar('Learn/buffer_size/student', self.replay_buffer.stu_buf_size, self.actor_learner.update_count)
         self.logger.writer.add_scalar('Learn/buffer_size/teacher', self.replay_buffer.tea_buf_size, self.actor_learner.update_count)
@@ -810,17 +825,22 @@ class DistributedRunner:
         # )
         
         if self.is_real_robot:
-            self.replay_buffer.dump(f"{self.buffer_save_path}/episode_{self.episode_manager.episode_count_train}")
-            self.save_checkpoint(model_name=f"episode_{self.episode_manager.episode_count_train}")
-            self.node.get_logger().info(
-                f"\n{'='*70}\n"
-                f"📊 Episode {self.episode_manager.episode_count_train} ended\n"
-                f"{'─'*70}\n"
-                f"   Reason:           {reason.value}\n"
-                f"   Total Reward:     {stats.episode_return:.2f}\n"
-                f"   Episode Length:   {stats.episode_length}\n"
-                f"   Activation Ratio: {stats.activation_ratio:.2%}\n"
-                f"{'='*70}"
+            if self.save_flag:
+                self.node.get_logger().info("Already saved checkpoint for this episode, skipping...")
+            
+            else:
+                self.save_flag = True
+                self.replay_buffer.dump(f"{self.buffer_save_path}/episode_{self.episode_manager.episode_count_train}")
+                self.save_checkpoint(model_name=f"episode_{self.episode_manager.episode_count_train}")
+                self.node.get_logger().info(
+                    f"\n{'='*70}\n"
+                    f"📊 Episode {self.episode_manager.episode_count_train} ended\n"
+                    f"{'─'*70}\n"
+                    f"   Reason:           {reason.value}\n"
+                    f"   Total Reward:     {stats.episode_return:.2f}\n"
+                    f"   Episode Length:   {stats.episode_length}\n"
+                    f"   Activation Ratio: {stats.activation_ratio:.2%}\n"
+                    f"{'='*70}"
             )
             return # Skip reset for real robot to allow manual intervention
         
