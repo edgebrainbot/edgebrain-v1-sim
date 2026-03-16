@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Image1
+        - /Goalpoint1
         - /Goalpoint1/Namespaces1
         - /GlobalPath1/Namespaces1
         - /VGraph1/Namespaces1
@@ -81,7 +81,7 @@ Visualization Manager:
       Class: rviz_default_plugins/PointCloud2
       Color: 255; 255; 255
       Color Transformer: FlatColor
-      Decay Time: 10
+      Decay Time: 1
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
@@ -272,13 +272,10 @@ Visualization Manager:
       Enabled: true
       Name: Goalpoint
       Namespaces:
-        clear_nodes: true
-        free_goal: true
-        free_odom_position: true
-        last_nav_node: true
-        original_goal: true
-        out_contour: true
-        waypoint: true
+        clear_nodes: false
+        free_odom_position: false
+        last_nav_node: false
+        out_contour: false
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -324,7 +321,7 @@ Visualization Manager:
       Enabled: true
       Name: GlobalPath
       Namespaces:
-        global_path: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -334,25 +331,39 @@ Visualization Manager:
         Value: /viz_path_topic
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
+      Enabled: true
       Name: VGraph
       Namespaces:
-        {}
+        angle_direct: false
+        boundary_edge: false
+        boundary_vertex: false
+        freespace_vertex: false
+        freespace_vgraph: true
+        frontier_vertex: false
+        global_vertex: false
+        global_vgraph: false
+        localrange_vertex: false
+        odom_edge: false
+        polygon_edge: true
+        to_goal_edge: false
+        trajectory_edge: false
+        trajectory_vertex: false
+        updating_vertex: false
+        vertex_angle: false
+        vertices_matches: false
+        visibility_edge: false
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /viz_graph_topic
-      Value: false
+      Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: ViewpointExtend
       Namespaces:
-        corner_direct: true
-        extend_viewpoint: true
-        origin_viewpoint: true
-        raytracing_line: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -556,5 +567,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1387
-  X: 198
-  Y: 100
+  X: 121
+  Y: 45

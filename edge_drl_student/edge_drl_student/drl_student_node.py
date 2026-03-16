@@ -96,19 +96,16 @@ class DRLStudentNode(Node):
         # ============================================================
         # Parameters from launch
         # ============================================================
-        self.declare_parameter("task", "navigation")
-        self.declare_parameter("run", "cognitive")
-        self.declare_parameter("project_name", "drl_student")
-        self.declare_parameter("is_real_robot", False)
-
-        self.task = self.get_parameter("task").value
-        self.run = self.get_parameter("run").value
-        self.is_real_robot = self.get_parameter("is_real_robot").value
-        self.PROJECT_NAME = self.get_parameter("project_name").value
-        self.LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", self.PROJECT_NAME)
-        self.MODEL_PATH = os.path.join(CURRENT_DIR, "outputs/checkpoints", self.PROJECT_NAME)
-        self.BUFFER_PATH = os.path.join(CURRENT_DIR, "outputs/buffers", self.PROJECT_NAME)
+        self.run = self.declare_parameter("run", "cognitive").value
+        self.task = self.declare_parameter("task", "navigation").value
+        self.is_real_robot = self.declare_parameter("is_real_robot", False).value
+        self.project_name = self.declare_parameter("project_name", "drl_student").value
         
+        # Path for logs, models, and buffers
+        self.log_path = os.path.join(CURRENT_DIR, "outputs/logs", self.project_name)
+        self.model_path = os.path.join(CURRENT_DIR, "outputs/checkpoints", self.project_name)
+        self.buffer_path = os.path.join(CURRENT_DIR, "outputs/buffers", self.project_name)
+
         # ============================================================
         # Control parameters
         # ============================================================
@@ -175,11 +172,11 @@ class DRLStudentNode(Node):
         # ============================================================
         # Logger
         # ============================================================
-        self.logger = Logger(log_dir=self.LOG_PATH, device=self.device)
+        self.logger = Logger(log_dir=self.log_path, device=self.device)
 
-        self.get_logger().info(f"📊 Logger initialized: {self.LOG_PATH}")
-        self.get_logger().info(f"📦 Model path: {self.MODEL_PATH}")
-        self.get_logger().info(f"💾 Buffer path: {self.BUFFER_PATH}")
+        self.get_logger().info(f"📊 Logger initialized: {self.log_path}")
+        self.get_logger().info(f"📦 Model path: {self.model_path}")
+        self.get_logger().info(f"💾 Buffer path: {self.buffer_path}")
 
         # ============================================================
         # Replay Buffer
@@ -285,8 +282,8 @@ class DRLStudentNode(Node):
             "auto_reset_on_fall": True,
             "batch_size": self.batch_size,
             "save_interval": 500,
-            "model_save_path": self.MODEL_PATH,
-            "buffer_save_path": self.BUFFER_PATH,
+            "model_save_path": self.model_path,
+            "buffer_save_path": self.buffer_path,
         }
 
         # ============================================================

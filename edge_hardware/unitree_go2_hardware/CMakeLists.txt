@@ -9,7 +9,6 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---------------- Dependencies ----------------
-
 set(PKG_DEPENDENCIES
   edge_msgs
   edge_ros_interfaces
@@ -75,15 +74,6 @@ target_link_libraries(test_crc32
   unitree_sdk2
 )
 
-# Go2 state provider test
-add_executable(go2_state_provider_test
-  test/go2_state_provider_test.cpp
-)
-
-target_link_libraries(go2_state_provider_test
-  ${PROJECT_NAME}
-)
-
 # Go2 velocity action executor node
 add_executable(go2_vel_action_executor
   src/go2_vel_action_executor.cpp
@@ -126,6 +116,38 @@ ament_target_dependencies(go2_real_robot_executor
   go2_sport_api
 )
 
+# Go2 state provider comprehensive test
+add_executable(test_go2_state_provider
+  test/test_go2_state_provider.cpp
+)
+
+target_link_libraries(test_go2_state_provider
+  ${PROJECT_NAME}
+)
+
+ament_target_dependencies(test_go2_state_provider
+  edge_msgs
+  rclcpp
+)
+
+# Range obstacle test
+add_executable(test_range_obstacle
+  test/test_range_obstacle.cpp
+)
+
+target_link_libraries(test_range_obstacle
+  ${PROJECT_NAME}
+)
+
+# Comprehensive sport mode state test
+add_executable(test_sport_mode_state
+  test/test_sport_mode_state.cpp
+)
+
+target_link_libraries(test_sport_mode_state
+  ${PROJECT_NAME}
+)
+
 
 # ---------------- Install ----------------
 
@@ -145,10 +167,12 @@ install(
 install(
   TARGETS
     test_crc32
-    go2_state_provider_test
     go2_vel_action_executor
     go2_edge_state_bridge
     go2_real_robot_executor
+    test_go2_state_provider
+    test_range_obstacle
+    test_sport_mode_state
   DESTINATION lib/${PROJECT_NAME}
 )
 
