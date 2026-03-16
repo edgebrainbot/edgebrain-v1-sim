@@ -213,7 +213,7 @@ def generate_launch_description():
         # navigation_launch,
         gz_interact_launch,
         
-        # rl_runtime_launch,
+        rl_runtime_launch,
         virtual_status_indicator_node,
         publish_goal_point,
         global_rviz_node

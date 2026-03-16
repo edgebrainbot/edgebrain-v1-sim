@@ -89,7 +89,7 @@ double autonomySpeed = 1.0;
 double joyToSpeedDelay = 2.0;
 double joyToCheckObstacleDelay = 5.0;
 
-double goalCloseDis = 1.0;
+double goalCloseDis = 1.5;
 double goalClearRange = 0.5;
 
 // double goalCloseDis = 0.2;

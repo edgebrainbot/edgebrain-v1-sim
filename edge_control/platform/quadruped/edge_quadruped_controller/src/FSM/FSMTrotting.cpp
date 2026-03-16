@@ -46,9 +46,9 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     // v_y_limit_ << -0.1, 0.1;        // max lateral speed 1.2 m/s (doesn't affect stability much)
     // w_yaw_limit_ << -0.2, 0.2;
 
-    v_x_limit_ << -0.3, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
+    v_x_limit_ << 0.1, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
     v_y_limit_ << -0.25, 0.25;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    w_yaw_limit_ << -0.5, 0.5;
+    w_yaw_limit_ << -0.3, 0.3;
 
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
@@ -307,10 +307,10 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     Eigen::Matrix<double , 6, 6> kd;
     kp << 1, 0, 0, 0, 0, 0,
           0, 1, 0, 0, 0, 0,
-          0, 0, 70, 0, 0, 0,
-          0, 0, 0, 780, 0, 0,
-          0, 0, 0, 0, 780, 0,
-          0, 0, 0, 0, 0, 100;
+          0, 0, 200, 0, 0, 0,
+          0, 0, 0, 200, 0, 0,
+          0, 0, 0, 0, 200, 0,
+          0, 0, 0, 0, 0, 200;
 
     kd << 20, 0, 0, 0, 0, 0,
           0, 20, 0, 0, 0, 0,

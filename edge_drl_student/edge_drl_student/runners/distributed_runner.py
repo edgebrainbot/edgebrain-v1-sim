@@ -71,7 +71,9 @@ class DistributedRunner:
         fall_detection_topic: str = '/edge/is_fall',
         manual_reset_service: str = '/edge/manual_reset',
 
+        # batch_size: int = 256,
         batch_size: int = 512,
+        
         log_interval: int = 100,
         sync_interval: int = 5,
         save_interval: int = 500,
