@@ -22,6 +22,7 @@ class TaskLedDriverNode(Node):
     def __init__(self):
         super().__init__("task_led_driver")
         self.get_logger().info("🔵 Task LED Driver Node started.")
+        self.is_task_done = False
 
         # Subscribe to task status topic
         self.sub_task_ = self.create_subscription(
@@ -31,17 +32,27 @@ class TaskLedDriverNode(Node):
             qos_profile = 10,
         )
 
+        self.reset_led()  # ensure LED is off at startup
+
+    def reset_led(self):
+        set_led(False)  # default to off
+        self.get_logger().info("💡 Task LED reset to OFF.")
+
     def task_callback(self, msg: Bool):
         """callback when receiving is_task_done message"""
         if msg.data:
-            set_led(True)  # done → blue light on
-            self.get_logger().info("✅ Task is done.")
+            self.is_task_done = True
         else:
             set_led(False)   # not done → blue light off
             # self.get_logger().warn("⚠️ Task is not done!")
+            
+        if self.is_task_done:
+            set_led(True)  # done → blue light on
+            self.get_logger().info("✅ Task is done.")
 
 
     def destroy_node(self):
+        self.reset_led()
         GPIO.cleanup()
         super().destroy_node()
         self.get_logger().info("💡 GPIO cleaned up and node shut down.")

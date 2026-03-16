@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(edge_msgs REQUIRED)
@@ -24,6 +25,7 @@ target_include_directories(rl_runtime_node PUBLIC
 
 ament_target_dependencies(rl_runtime_node
   rclcpp
+  nav_msgs
   geometry_msgs
   std_msgs
   edge_msgs

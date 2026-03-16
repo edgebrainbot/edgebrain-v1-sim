@@ -292,7 +292,7 @@ void FARMaster::PlanningCallBack() {
     map_handler_.GetCloudOfPoint(ori_p, goal_obs, CloudType::OBS_CLOUD, true);
     map_handler_.GetCloudOfPoint(ori_p, goal_free, CloudType::FREE_CLOUD, true);
     graph_planner_.UpdateFreeTerrainGrid(ori_p, goal_obs, goal_free);
-    graph_planner_.ReEvaluateGoalPosition(goal_ptr, !master_params_.is_multi_layer);
+    // graph_planner_.ReEvaluateGoalPosition(goal_ptr, !master_params_.is_multi_layer);   // Comment for fixed goal
 
     // Adding goal into v-graph
     FARUtil::Timer.start_time("Adding Goal to V-Graph");

@@ -1,24 +1,10 @@
-rl_runtime:
+/edge/rl_runtime_node:
   ros__parameters:
 
-    goal:
-      x: 5.0
-      y: 0.0
-      threshold: 0.3
-
-    obstacle:
-      x: 2.5
-      y: 0.0
-      radius: 0.4
-
-    velocity_limit:
-      vx: 1.0
-      vy: 0.8
-      wz: 0.5
-
-    nominal_height: 0.33
+    navigation:
+      goal_threshold: 0.25     # distance threshold to consider episode done
 
     episode:
-      horizon_steps: 12000
+      horizon_steps: 120000     # maximum number of steps per episode, after which the episode is terminated
 
-    step_hz: 50.0
+    state_input_topic: "/edge/state_input"  # topic name for GO2 high state input

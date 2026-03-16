@@ -101,7 +101,7 @@ switching:
     goal_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 4.0
+      limit: 5.0
       unit: m
 
   # =========================================================

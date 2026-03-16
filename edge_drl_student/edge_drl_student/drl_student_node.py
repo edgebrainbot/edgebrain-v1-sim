@@ -102,7 +102,7 @@ class DRLStudentNode(Node):
         self.declare_parameter("is_real_robot", False)
 
         self.task = self.get_parameter("task").value
-        self.RUN = self.get_parameter("run").value
+        self.run = self.get_parameter("run").value
         self.is_real_robot = self.get_parameter("is_real_robot").value
         self.PROJECT_NAME = self.get_parameter("project_name").value
         self.LOG_PATH = os.path.join(CURRENT_DIR, "outputs/logs", self.PROJECT_NAME)
@@ -193,7 +193,7 @@ class DRLStudentNode(Node):
         stu_blending_weight = 0.0
         tea_blending_weight = 1.0
 
-        if self.RUN == "dual":
+        if self.run == "dual":
             self.buffer = DualReplayBuffer(
                 student_buf_size=stu_buf_size,
                 student_prefill_size=self.batch_size,
@@ -204,7 +204,7 @@ class DRLStudentNode(Node):
                 device=self.device,
             )
 
-        elif self.RUN == "cognitive":
+        elif self.run == "cognitive":
             self.buffer = CognitiveReplayBuffer(
                 student_buf_size=stu_buf_size,
                 student_prefill_size=self.batch_size,
@@ -218,9 +218,9 @@ class DRLStudentNode(Node):
             )
 
         else:
-            raise ValueError(f"Unsupported RUN type: {self.RUN}")
+            raise ValueError(f"Unsupported RUN type: {self.run}")
 
-        self.get_logger().info(f"✅ Replay buffer initialized: {self.RUN}")
+        self.get_logger().info(f"✅ Replay buffer initialized: {self.run}")
 
         # ============================================================
         # Vision Processor

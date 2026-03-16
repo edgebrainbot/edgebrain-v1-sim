@@ -7,9 +7,6 @@ from ament_index_python import get_package_share_directory
 
 
 def generate_launch_description():
-    go2_network_interface = LaunchConfiguration("go2_network_interface")
-    go2_state_topic = LaunchConfiguration("go2_state_topic")
-    go2_publish_hz = LaunchConfiguration("go2_publish_hz")
     topic_namespace = LaunchConfiguration("topic_namespace")
 
     config_file = os.path.join(
@@ -18,47 +15,22 @@ def generate_launch_description():
         'rl_runtime.yaml'
     )
 
-    go2_high_state_bridge_node = Node(
-        package="edge_rl_runtime",
-        executable="go2_high_state_bridge",
-        name="go2_high_state_bridge",
-        output="screen",
-        parameters=[{
-            "go2_network_interface": go2_network_interface,
-            "state_topic": go2_state_topic,
-            "publish_hz": go2_publish_hz,
-        }],
-    )
-
     rl_runtime_node = Node(
         package="edge_rl_runtime",
         executable="rl_runtime_node",
         name="rl_runtime_node",
+        namespace=topic_namespace,
         output="screen",
         parameters=[
             config_file,
-            {
-                "topic_namespace": topic_namespace,
-                "go2_state_topic": go2_state_topic
-            }
         ],
     )
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            "go2_network_interface",
-            default_value="eno1",
-            description="Network interface used by Unitree SDK",
-        ),
-        DeclareLaunchArgument(
             "go2_state_topic",
             default_value="/edge/go2/high_state_vec12",
             description="ROS topic used to relay GO2 high state Vec12",
-        ),
-        DeclareLaunchArgument(
-            "go2_publish_hz",
-            default_value="100.0",
-            description="Bridge publish rate in Hz",
         ),
         DeclareLaunchArgument(
             "topic_namespace",
@@ -67,6 +39,5 @@ def generate_launch_description():
         ),
         
         # Nodes
-        # go2_high_state_bridge_node,   
         rl_runtime_node,
     ])

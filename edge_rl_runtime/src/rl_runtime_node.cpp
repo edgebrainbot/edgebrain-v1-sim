@@ -3,25 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <cmath>
 #include <string>
 #include <vector>
 #include <chrono>
-#include <cmath>
+#include <memory>
 #include <algorithm>
 #include <functional>
-#include <memory>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 
 #include "edge_msgs/msg/transition.hpp"
 #include "edge_msgs/msg/edge_state.hpp"
 #include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
-
 #include "control_input_msgs/msg/inputs.hpp"
 
 namespace edge::rl_runtime
@@ -33,15 +33,18 @@ public:
 
     RLRuntimeNode() : Node("rl_runtime")
     {
-        topic_ns_ = declare_parameter<std::string>("topic_namespace", "edge");
         state_input_topic_ = declare_parameter<std::string>("state_input_topic", "/edge/state_input");
+        goal_reached_threshold_ = declare_parameter<double>("navigation.goal_threshold", 0.5);
+        episode_horizon_steps_ = declare_parameter<int>("episode.horizon_steps", 120000);
 
         RCLCPP_INFO(get_logger(), "Use state input topic: %s", state_input_topic_.c_str());
+        RCLCPP_INFO(get_logger(), "Use goal done threshold: %.3f", goal_reached_threshold_);
+        RCLCPP_INFO(get_logger(), "Use episode horizon steps: %d", episode_horizon_steps_);
 
         /* ACTION SUBSCRIBER
          * action arrival triggers environment step */
         action_sub_ = create_subscription<edge_msgs::msg::EdgeAction>(
-            topic_ns_ + "/terminal_action",
+            "terminal_action",
             100,
             std::bind(&RLRuntimeNode::actionCallback, this, std::placeholders::_1)
         );
@@ -81,14 +84,25 @@ public:
             std::bind(&RLRuntimeNode::controlInputCallback, this, std::placeholders::_1)
         );
 
+        /* Odometry */
+        odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+            "/odom",
+            100,
+            [this](const nav_msgs::msg::Odometry::SharedPtr msg)
+            {
+                latest_odom_ = *msg;
+            }
+        );
+
         /* Publishers */
         rclcpp::QoS transition_qos(200);
         transition_qos.best_effort();
 
-        command_action_pub_ = create_publisher<edge_msgs::msg::EdgeAction>(topic_ns_ + "/command_action", 50);
-        transition_pub_ = create_publisher<edge_msgs::msg::Transition>(topic_ns_ + "/transition", transition_qos);
-        done_pub_ = create_publisher<std_msgs::msg::Bool>(topic_ns_ + "/is_task_done", 20);
+        command_action_pub_ = create_publisher<edge_msgs::msg::EdgeAction>("command_action", 50);
+        transition_pub_ = create_publisher<edge_msgs::msg::Transition>("transition", transition_qos);
+        done_pub_ = create_publisher<std_msgs::msg::Bool>("is_task_done", 20);
         is_real_robot_ready_pub_ = create_publisher<std_msgs::msg::Bool>("/edge/is_real_robot_ready", 10);
+        distance_to_goal_pub_ = create_publisher<std_msgs::msg::Float32>("/edge/distance_to_goal_debug", 10);
 
         reset();
 
@@ -100,13 +114,6 @@ private:
     using Vector2d = edge::ros_interfaces::Vector2d;
     using Vector3d = edge::ros_interfaces::Vector3d;
     using Vector12d = edge::ros_interfaces::Vector12d;
-
-    static constexpr int kEpisodeHorizonSteps = 120000;
-    static constexpr double kGoalReachedThreshold = 0.6;
-
-    // static constexpr double kObstacleX = 2.5;
-    // static constexpr double kObstacleY = 0.0;
-    // static constexpr double kObstacleRadius = 0.4;
 
     static double clamp(double v,double lo,double hi)
     {
@@ -181,6 +188,14 @@ private:
 		return last_edge_action_;
 	}
 
+    // is_goal_reached
+    bool is_goal_reached() const
+    {
+        double goal_distance = std::hypot(latest_goal_x_ - latest_odom_.pose.pose.position.x,
+                                            latest_goal_y_ - latest_odom_.pose.pose.position.y);
+        return goal_distance < goal_reached_threshold_;
+    }
+
     /*
      * STEP FUNCTION
      */
@@ -195,7 +210,7 @@ private:
         // whether action command is published
         if (!has_cmd_) {
 			RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
-				"Waiting for action command on topic %s/terminal_action...", topic_ns_.c_str());
+                "Waiting for action command on topic terminal_action...");
 			return;
 		}
 
@@ -227,7 +242,6 @@ private:
         {
             done_flag_ = true;  // set done_flag_ to true to send stop action and skip transition publish in the next step
             RCLCPP_INFO(get_logger(), "Episode done at step %d!", step_count_);
-
         }
 
         if(done_flag_)
@@ -258,12 +272,12 @@ private:
 
         if(curr_edge_state_.state_type == edge_msgs::msg::EdgeState::ROBOT_STATE)
         {
-            robot_pos << curr_edge_state_.state_value[0],   // x
-                          curr_edge_state_.state_value[1],  // y
+            robot_pos <<  latest_odom_.pose.pose.position.x,   // x
+                          latest_odom_.pose.pose.position.y,  // y
                           curr_edge_state_.state_value[5];  // yaw
 
-            robot_state << latest_goal_x_ - curr_edge_state_.state_value[0],   // delta_x
-                           latest_goal_y_ - curr_edge_state_.state_value[1],  // delta_y
+            robot_state << latest_goal_x_ - latest_odom_.pose.pose.position.x,   // delta_x
+                           latest_goal_y_ - latest_odom_.pose.pose.position.y,  // delta_y
                            curr_edge_state_.state_value[2],  // z
                            curr_edge_state_.state_value[3],  // roll
                            curr_edge_state_.state_value[4],  // pitch
@@ -276,19 +290,26 @@ private:
                            curr_edge_state_.state_value[11]; // wz
         }
 
-        bool goal_reached =
-            std::hypot(latest_goal_x_ - curr_edge_state_.state_value[0],
-                       latest_goal_y_ - curr_edge_state_.state_value[1])
-            < kGoalReachedThreshold;
 
-        bool timeout = step_count_ >= kEpisodeHorizonSteps;
+        // double goal_distance = std::hypot(latest_goal_x_ - curr_edge_state_.state_value[0],
+        //                                   latest_goal_y_ - curr_edge_state_.state_value[1]);
+
+        double goal_distance = std::hypot(latest_goal_x_ - latest_odom_.pose.pose.position.x,
+                                            latest_goal_y_ - latest_odom_.pose.pose.position.y);
+        auto goal_distance_msg = std::make_unique<std_msgs::msg::Float32>();
+        goal_distance_msg->data = static_cast<float>(goal_distance);
+        distance_to_goal_pub_->publish(std::move(goal_distance_msg));
+
+        bool goal_reach_flag = is_goal_reached();
+
+        bool timeout = step_count_ >= episode_horizon_steps_;
 
         edge::config::RewardFactor reward_factors
         {
             {"nav_goal", nav_goal},
             {"robot_pos", robot_pos},
             {"robot_state", robot_state},
-            {"is_goal_reached", goal_reached},
+            {"is_goal_reached", goal_reach_flag},
             {"time_elapsed", (double)step_count_},
             {"is_teacher_activated", curr_edge_action_.action_mode == 1 ? true : false},
             {"obstacle_distance_min", obstacle_min_distance_}
@@ -305,7 +326,7 @@ private:
         {
         }
 
-        const bool is_done = goal_reached || timeout;
+        const bool is_done = goal_reach_flag || timeout;
 
         // Publish transition
         edge_msgs::msg::Transition transition;
@@ -338,8 +359,9 @@ private:
 
     edge::config::RewardComposer reward_composer_{""};
 
-    std::string topic_ns_;
     std::string state_input_topic_;
+    int episode_horizon_steps_{120000};
+    double goal_reached_threshold_{0.3};
 
     bool has_cmd_{false};
     bool has_state_input_{false};
@@ -359,20 +381,25 @@ private:
     edge_msgs::msg::EdgeState last_edge_state_;
     edge_msgs::msg::EdgeState curr_edge_state_;
     Vector12d latest_state_input_ = Vector12d::Zero();
+    nav_msgs::msg::Odometry latest_odom_;
 
     edge_msgs::msg::EdgeAction last_edge_action_;
     edge_msgs::msg::EdgeAction curr_edge_action_;
 
+    // Subscribers
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr state_input_sub_;
     rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
+    // Publishers
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_real_robot_ready_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr distance_to_goal_pub_;
 };
 
 }
