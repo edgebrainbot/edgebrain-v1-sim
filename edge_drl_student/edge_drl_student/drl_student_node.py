@@ -181,8 +181,7 @@ class DRLStudentNode(Node):
         # ============================================================
         # Replay Buffer
         # ============================================================
-
-        self.batch_size = 512 #512
+        self.batch_size = 512
         stu_buf_size = int(1e5) 
         tea_buf_size = int(1e5)
         teacher_prefill_size = 200
