@@ -28,7 +28,7 @@ def generate_launch_description():
 
     print_processing_arg = DeclareLaunchArgument(
         'print_processing',
-        default_value='true',
+        default_value='false',
         description='Print processing logs'
     )
     

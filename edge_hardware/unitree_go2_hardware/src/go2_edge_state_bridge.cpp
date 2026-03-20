@@ -24,12 +24,15 @@ public:
     domain_id_(declare_parameter<int>("domain_id", 0)),
     publish_topic_(declare_parameter<std::string>("publish_topic", "/edge/state_input")),
     frame_id_(declare_parameter<std::string>("frame_id", "base_link")),
-    publish_period_ms_(declare_parameter<int>("publish_period_ms", 20)),
+    publish_frequency_hz_(declare_parameter<int>("publish_frequency_hz", 500)),
     state_provider_(network_interface_)
   {
-    if (publish_period_ms_ <= 0) {
-      throw std::runtime_error("publish_period_ms must be > 0");
+    if (publish_frequency_hz_ <= 0) {
+      throw std::runtime_error("publish_frequency_hz must be > 0");
     }
+    
+    // Calculate period in milliseconds from frequency
+    publish_period_ms_ = 1000 / publish_frequency_hz_;
 
     edge_state_pub_ = create_publisher<edge_msgs::msg::EdgeState>(publish_topic_, 50);
 
@@ -42,11 +45,11 @@ public:
 
     RCLCPP_INFO(
       get_logger(),
-      "Bridge started: rt/sportmodestate -> %s (nic=%s, domain=%d, period=%dms)",
+      "Bridge started: rt/sportmodestate -> %s (nic=%s, domain=%d, frequency=%dHz)",
       publish_topic_.c_str(),
       network_interface_.c_str(),
       domain_id_,
-      publish_period_ms_);
+      publish_frequency_hz_);
   }
 
 private:
@@ -92,6 +95,7 @@ private:
   int domain_id_;
   std::string publish_topic_;
   std::string frame_id_;
+  int publish_frequency_hz_;
   int publish_period_ms_;
   bool has_seen_state_{false};
 

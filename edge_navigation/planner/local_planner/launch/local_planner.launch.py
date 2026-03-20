@@ -54,8 +54,11 @@ def generate_launch_description():
             "useTerrainAnalysis": True,
             "checkObstacle": True,
             "checkRotObstacle": False, # False (orign)
-            "adjacentRange": 3.0,
-            "obstacleHeightThre": 0.3,
+            # "adjacentRange": 3.0,     # Original
+            "adjacentRange": 2.0,
+            # "obstacleHeightThre": 0.3,
+            "obstacleHeightThre": 0.5,
+
             "groundHeightThre": 0.1,
             "costHeightThre": 0.1,
             "costScore": 0.02,

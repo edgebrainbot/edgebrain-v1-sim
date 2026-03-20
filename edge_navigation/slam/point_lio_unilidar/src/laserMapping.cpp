@@ -932,7 +932,8 @@ int main(int argc, char **argv)
 
     signal(SIGINT, SigHandle);
 
-    rclcpp::Rate rate(5000);
+    rclcpp::Rate rate(5000); //original
+    // rclcpp::Rate rate(500);  // For debug
     while (rclcpp::ok())
     {
 

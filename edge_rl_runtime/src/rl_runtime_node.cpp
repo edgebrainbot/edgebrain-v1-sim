@@ -90,7 +90,7 @@ public:
             100,
             [this](const nav_msgs::msg::Odometry::SharedPtr msg)
             {
-                latest_odom_ = *msg;
+                curr_odom_ = *msg;
             }
         );
 
@@ -165,8 +165,8 @@ private:
 	{
         std::vector<double> obs(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
         if (obs.size() >= 2) {
-            obs[0] = latest_goal_x_ - last_edge_state_.state_value[0];
-            obs[1] = latest_goal_y_ - last_edge_state_.state_value[1];
+            obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_edge_state_
+            obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
         }
         return obs;
 	}
@@ -176,8 +176,8 @@ private:
 	{
         std::vector<double> obs_next(curr_edge_state_.state_value.begin(), curr_edge_state_.state_value.end());
         if (obs_next.size() >= 2) {
-            obs_next[0] = latest_goal_x_ - curr_edge_state_.state_value[0];
-            obs_next[1] = latest_goal_y_ - curr_edge_state_.state_value[1];
+            obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_edge_state_
+            obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
         }
         return obs_next;
 	}
@@ -191,8 +191,8 @@ private:
     // is_goal_reached
     bool is_goal_reached() const
     {
-        double goal_distance = std::hypot(latest_goal_x_ - latest_odom_.pose.pose.position.x,
-                                            latest_goal_y_ - latest_odom_.pose.pose.position.y);
+        double goal_distance = std::hypot(latest_goal_x_ - curr_odom_.pose.pose.position.x,
+                                            latest_goal_y_ - curr_odom_.pose.pose.position.y);
         return goal_distance < goal_reached_threshold_;
     }
 
@@ -259,6 +259,7 @@ private:
 
         last_edge_action_ = curr_edge_action_;
         last_edge_state_ = curr_edge_state_;
+        last_odom_ = curr_odom_;
     }
 
     /* Transition Processing */
@@ -272,12 +273,12 @@ private:
 
         if(curr_edge_state_.state_type == edge_msgs::msg::EdgeState::ROBOT_STATE)
         {
-            robot_pos <<  latest_odom_.pose.pose.position.x,   // x
-                          latest_odom_.pose.pose.position.y,  // y
+            robot_pos <<  curr_odom_.pose.pose.position.x,  // x
+                          curr_odom_.pose.pose.position.y,  // y
                           curr_edge_state_.state_value[5];  // yaw
 
-            robot_state << latest_goal_x_ - latest_odom_.pose.pose.position.x,   // delta_x
-                           latest_goal_y_ - latest_odom_.pose.pose.position.y,  // delta_y
+            robot_state << latest_goal_x_ - curr_odom_.pose.pose.position.x,   // delta_x
+                           latest_goal_y_ - curr_odom_.pose.pose.position.y,  // delta_y
                            curr_edge_state_.state_value[2],  // z
                            curr_edge_state_.state_value[3],  // roll
                            curr_edge_state_.state_value[4],  // pitch
@@ -294,8 +295,8 @@ private:
         // double goal_distance = std::hypot(latest_goal_x_ - curr_edge_state_.state_value[0],
         //                                   latest_goal_y_ - curr_edge_state_.state_value[1]);
 
-        double goal_distance = std::hypot(latest_goal_x_ - latest_odom_.pose.pose.position.x,
-                                            latest_goal_y_ - latest_odom_.pose.pose.position.y);
+        double goal_distance = std::hypot(latest_goal_x_ - curr_odom_.pose.pose.position.x,
+                                            latest_goal_y_ - curr_odom_.pose.pose.position.y);
         auto goal_distance_msg = std::make_unique<std_msgs::msg::Float32>();
         goal_distance_msg->data = static_cast<float>(goal_distance);
         distance_to_goal_pub_->publish(std::move(goal_distance_msg));
@@ -381,7 +382,8 @@ private:
     edge_msgs::msg::EdgeState last_edge_state_;
     edge_msgs::msg::EdgeState curr_edge_state_;
     Vector12d latest_state_input_ = Vector12d::Zero();
-    nav_msgs::msg::Odometry latest_odom_;
+    nav_msgs::msg::Odometry last_odom_;
+    nav_msgs::msg::Odometry curr_odom_;
 
     edge_msgs::msg::EdgeAction last_edge_action_;
     edge_msgs::msg::EdgeAction curr_edge_action_;

@@ -470,14 +470,16 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
 
-          Slow down if minimum distance to obstacle is small (threhold to be determined)
-          double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
-          double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
-          if (minObstacleDist < safeDistanceThreshold) {
-            std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
-            cmd_vel.twist.linear.x *= slowDownGain;
-            cmd_vel.twist.linear.y *= slowDownGain;
-          }
+          /// The actual reason that causes issue!!!!!!!!!!
+
+          // Slow down if minimum distance to obstacle is small (threhold to be determined)
+          // double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
+          // double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
+          // if (minObstacleDist < safeDistanceThreshold) {
+          //   std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
+          //   cmd_vel.twist.linear.x *= slowDownGain;
+          //   cmd_vel.twist.linear.y *= slowDownGain;
+          // }
         }
         cmd_vel.twist.angular.z = vehicleYawRate;
         
@@ -488,9 +490,12 @@ int main(int argc, char** argv)
         }
 
         // Truncate the velocity command to be within limits
-        cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, 0.3), 0.0);
-        if(cmd_vel.twist.linear.y > 0.15) cmd_vel.twist.linear.y = 0.15;
-        else if(cmd_vel.twist.linear.y < -0.15) cmd_vel.twist.linear.y = -0.15;
+        double vx_limit = 0.35;
+        double vy_limit = 0.25;
+        double min_forward_vx = 0.05;   // Set the minimum forwarding velocity to stop local minima
+        cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, vx_limit), min_forward_vx);  
+        if(cmd_vel.twist.linear.y > vy_limit) cmd_vel.twist.linear.y = vy_limit;
+        else if(cmd_vel.twist.linear.y < -vy_limit) cmd_vel.twist.linear.y = -vy_limit;
 
         pubSpeed->publish(cmd_vel);
 

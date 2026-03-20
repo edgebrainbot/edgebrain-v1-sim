@@ -662,7 +662,7 @@ int main(int argc, char** argv)
 
   auto pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 5);
 
-  // auto pubMinObstacleDis = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_min_distance", 50);
+  auto pubMinObstacleDis = nh->create_publisher<std_msgs::msg::Float32>("/obstacle_min_distance", 50);
 
   auto goal_distance_pub_ = nh->create_publisher<std_msgs::msg::Float32>("/goal_distance", 50);
 
@@ -797,7 +797,7 @@ int main(int argc, char** argv)
               safety_condition_obstacle = dis;
           }
         //   std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
-          // pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
+          pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
         }
       }
 
