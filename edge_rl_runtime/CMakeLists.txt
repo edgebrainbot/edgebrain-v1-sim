@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
 project(edge_rl_runtime)
 
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -16,12 +21,18 @@ find_package(edge_config REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
 find_package(control_input_msgs REQUIRED)
 
-add_executable(rl_runtime_node src/rl_runtime_node.cpp)
+add_executable(rl_runtime_node
+  src/rl_runtime_node.cpp
+  src/deadzone_discriminator.cpp
+)
 
 target_include_directories(rl_runtime_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
+
+# ensure modern C++ features
+target_compile_features(rl_runtime_node PRIVATE cxx_std_17)
 
 ament_target_dependencies(rl_runtime_node
   rclcpp

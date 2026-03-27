@@ -12,7 +12,7 @@ def generate_launch_description():
     
     indicator_mode = DeclareLaunchArgument(
         'led_indicator_mode',
-        default_value='control',
+        default_value='safety',        # 'safety' or 'control'
         description='Mode for LED indicator (safety or control)'
     )
 

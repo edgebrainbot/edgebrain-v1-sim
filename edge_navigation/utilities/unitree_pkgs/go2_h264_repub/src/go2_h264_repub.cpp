@@ -22,10 +22,8 @@ public:
         // -----------------------------
         // Get parameters
         // -----------------------------
-        multicast_iface_ =
-            this->get_parameter("multicast_iface").as_string();
-        multicast_address_ =
-            this->get_parameter("multicast_address").as_string();
+        multicast_iface_ = this->get_parameter("multicast_iface").as_string();
+        multicast_address_ = this->get_parameter("multicast_address").as_string();
         port_ = this->get_parameter("port").as_int();
         width_ = this->get_parameter("width").as_int();
         height_ = this->get_parameter("height").as_int();

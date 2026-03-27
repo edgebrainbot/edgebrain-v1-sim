@@ -23,6 +23,7 @@
 #include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "control_input_msgs/msg/inputs.hpp"
+#include "edge_rl_runtime/deadzone_discriminator.hpp"
 
 namespace edge::rl_runtime
 {
@@ -305,6 +306,9 @@ private:
 
         bool timeout = step_count_ >= episode_horizon_steps_;
 
+        // Judge whether the robot has entered the deadzone (e.g., due to collision or going off-track)
+        bool is_entered_deadzone = dz_discriminator_.is_in_deadzone(curr_odom_.pose.pose.position.x, curr_odom_.pose.pose.position.y);
+
         edge::config::RewardFactor reward_factors
         {
             {"nav_goal", nav_goal},
@@ -313,7 +317,9 @@ private:
             {"is_goal_reached", goal_reach_flag},
             {"time_elapsed", (double)step_count_},
             {"is_teacher_activated", curr_edge_action_.action_mode == 1 ? true : false},
-            {"obstacle_distance_min", obstacle_min_distance_}
+            {"obstacle_distance_min", obstacle_min_distance_},
+            {"vx", curr_edge_state_.state_value[6]},
+            {"vy", curr_edge_state_.state_value[7]}
         };
 
         std::vector<edge_msgs::msg::EdgeReward> reward_components;
@@ -327,7 +333,7 @@ private:
         {
         }
 
-        const bool is_done = goal_reach_flag || timeout;
+        const bool is_done = goal_reach_flag || timeout || is_entered_deadzone;
 
         // Publish transition
         edge_msgs::msg::Transition transition;
@@ -359,6 +365,7 @@ private:
 private:
 
     edge::config::RewardComposer reward_composer_{""};
+    edge::rl_runtime::DeadzoneDiscriminator dz_discriminator_{0.5};
 
     std::string state_input_topic_;
     int episode_horizon_steps_{120000};
@@ -400,8 +407,9 @@ private:
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;
     rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_real_robot_ready_pub_;
-    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr distance_to_goal_pub_;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr done_pub_;
+
 };
 
 }

@@ -292,7 +292,7 @@ def generate_launch_description():
         state_bridge_node,
         publish_goal_point,
         # global_rviz_node,
-        # camera_image_pub_node,
+        camera_image_pub_node,
         # navigation_launch,
         
         # rosbag_record,

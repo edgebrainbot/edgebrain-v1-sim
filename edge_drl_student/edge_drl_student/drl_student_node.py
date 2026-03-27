@@ -132,8 +132,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([0.35, -0.25, -1.0], device=self.device),
-                    torch.tensor([1.0, 0.25, 1.0], device=self.device))
+                    torch.tensor([0.35, -0.25, -0.8], device=self.device),
+                    torch.tensor([0.7, 0.25, 0.8], device=self.device))
             },
             "locomotion": {
                 "act_dim": 6,

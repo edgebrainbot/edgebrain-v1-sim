@@ -70,7 +70,7 @@ switching:
 
     # ===== Angular Velocity Limits =====
     # roll_rate limit in degrees per second (relative mode) 8.0
-    # wx:
+    # wx: 
     #   type: relative
     #   index: 9
     #   limit: 10.0
@@ -80,7 +80,7 @@ switching:
     wy:
       type: relative
       index: 10
-      limit: 10  # 7.5
+      limit: 40  # 7.5
       unit: deg/s
 
     # angular velocity limit in radians per second (relative mode)
@@ -95,13 +95,14 @@ switching:
     obstacle_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 0.35
+      limit: 0.6
       unit: m
 
     goal_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 22.0
+      limit: 23.0
+      # limit: 4.0
       unit: m
 
   # =========================================================

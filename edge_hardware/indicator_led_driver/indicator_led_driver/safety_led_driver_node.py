@@ -27,7 +27,7 @@ GPIO.setmode(GPIO.BOARD)
 GPIO.setup(SAFETY_PIN_LED, GPIO.OUT)
 
 def set_led(red_on: bool):
-    GPIO.output(SAFETY_PIN_LED, GPIO.HIGH if red_on else GPIO.LOW)
+    GPIO.output(SAFETY_PIN_LED, GPIO.LOW if red_on else GPIO.HIGH)
 
 # -------------------- Safety LED Driver Node --------------------
 class SafetyLedDriverNode(Node):
