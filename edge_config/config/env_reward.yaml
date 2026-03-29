@@ -27,7 +27,7 @@ reward:
   # lyapunov: 100
   body_state: 0.2
 
-  lateral_move: 0.01
+  lateral_move: 0.002
   # jerky_action: 0.0002
 
   # fall_down: 10000
