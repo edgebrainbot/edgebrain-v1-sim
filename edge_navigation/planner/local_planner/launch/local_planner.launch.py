@@ -105,7 +105,7 @@ def generate_launch_description():
             "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
             "pubSkipNum": 1,
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
-            "lookAheadDis": 0.5,
+            "lookAheadDis": 0.5,    # Original 0.5
             "yawRateGain": 1.5,
             "stopYawRateGain": 1.5,
             "maxYawRate": 80.0,

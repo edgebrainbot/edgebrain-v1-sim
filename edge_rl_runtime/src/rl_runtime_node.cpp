@@ -365,7 +365,7 @@ private:
 private:
 
     edge::config::RewardComposer reward_composer_{""};
-    edge::rl_runtime::DeadzoneDiscriminator dz_discriminator_{0.5};
+    edge::rl_runtime::DeadzoneDiscriminator dz_discriminator_;
 
     std::string state_input_topic_;
     int episode_horizon_steps_{120000};

@@ -561,7 +561,8 @@ class DistributedRunner:
             obs=obs_norm.unsqueeze(0),
             explore=explore
         ).squeeze(0)
-        
+
+        # policy_action[2] *= -1          
         # Compute residual action
         # tracking_error = torch.tensor(
         #     self.tracking_error_.data,

@@ -8,7 +8,7 @@ namespace edge::rl_runtime
 class DeadzoneDiscriminator
 {
 public:
-    DeadzoneDiscriminator(double threshold, double y_left = 10.5, double y_right = 10.0, double x_front = 30.0, double x_back = -10.0);
+    DeadzoneDiscriminator(double y_left = 0.5, double y_right = 6.0, double x_front = 30.0, double x_back = 10.0);
 
     /// Returns true if position (pos_x, pos_y) is considered inside the deadzone.
     bool is_in_deadzone(double pos_x, double pos_y) const;
