@@ -21,29 +21,56 @@ JoystickInput::JoystickInput() : Node("unitree_joysick_node")
 
     network_interface_ = get_parameter("network_interface").as_string();
     domain_ = get_parameter("domain").as_int();
-    RCLCPP_INFO(get_logger(), " network_interface: %s, domain: %d", network_interface_.c_str(), domain_);
-    try
+    RCLCPP_INFO(get_logger(), "network_interface: '%s', domain: %d", network_interface_.c_str(), domain_);
+
+    auto try_init_channel = [this](const std::string& nic) -> bool
     {
-        ChannelFactory::Instance()->Init(domain_, network_interface_);
-    }
-    catch (const std::exception& e)
+        try
+        {
+            ChannelFactory::Instance()->Init(domain_, nic);
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            RCLCPP_ERROR(
+                get_logger(),
+                "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): %s",
+                domain_,
+                nic.c_str(),
+                e.what());
+            return false;
+        }
+        catch (...)
+        {
+            RCLCPP_ERROR(
+                get_logger(),
+                "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): unknown exception",
+                domain_,
+                nic.c_str());
+            return false;
+        }
+    };
+
+    if (!try_init_channel(network_interface_))
     {
-        RCLCPP_ERROR(
-            get_logger(),
-            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): %s",
-            domain_,
-            network_interface_.c_str(),
-            e.what());
-        throw std::runtime_error("Unitree DDS initialization failed");
-    }
-    catch (...)
-    {
-        RCLCPP_ERROR(
-            get_logger(),
-            "Failed to initialize Unitree DDS channel factory (domain=%d, interface=%s): unknown exception",
-            domain_,
-            network_interface_.c_str());
-        throw std::runtime_error("Unitree DDS initialization failed");
+        if (!network_interface_.empty())
+        {
+            RCLCPP_WARN(
+                get_logger(),
+                "Retrying Unitree DDS channel initialization with auto-selected interface");
+
+            if (!try_init_channel(""))
+            {
+                throw std::runtime_error("Unitree DDS initialization failed");
+            }
+
+            network_interface_.clear();
+            RCLCPP_INFO(get_logger(), "Unitree DDS initialized with auto-selected interface");
+        }
+        else
+        {
+            throw std::runtime_error("Unitree DDS initialization failed");
+        }
     }
 
     subscriber_ = std::make_shared<ChannelSubscriber<unitree_go::msg::dds_::WirelessController_>>(

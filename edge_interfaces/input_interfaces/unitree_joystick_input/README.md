@@ -20,6 +20,19 @@ source ~/ros2_ws/install/setup.bash
 ros2 launch unitree_joystick_input joystick.launch.py
 ```
 
+Launch arguments:
+* `network_interface` (default: empty string): network interface for Unitree DDS. Leave empty to auto-select.
+* `domain_id` (default: `0`): DDS domain ID used by Unitree DDS runtime.
+
+Examples:
+```bash
+# Auto-select interface
+ros2 launch unitree_joystick_input joystick.launch.py network_interface:="" domain_id:=0
+
+# Force interface explicitly
+ros2 launch unitree_joystick_input joystick.launch.py network_interface:=eno1 domain_id:=0
+```
+
 ## 1. Use Instructions for Controllers
 
 ### 1.1 Unitree Guide Controller

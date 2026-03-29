@@ -43,7 +43,7 @@ public:
 private:
     void remoteWirelessHandle(const void *messages);
 
-    std::string network_interface_ = "lo";
+    std::string network_interface_;
     int domain_ = 0;
 
     unitree_go::msg::dds_::WirelessController_ wireless_controller_{};
