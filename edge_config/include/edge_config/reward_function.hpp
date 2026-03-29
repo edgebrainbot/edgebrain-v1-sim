@@ -204,7 +204,7 @@ inline void registerAllRewardFunc() {
         double omega2 = 1.0;  // weight for lateral movement
         double epsilon = 1e-6; // small constant to prevent division by zero
 
-        return -(omega1 / (forward_vel + epsilon) + omega2 * lateral_vel * lateral_vel);    // -(w1 * 1 / (forward_vel + epsilon) + w2 * lateral_vel^2) 
+        return -(omega1 / (std::abs(forward_vel) + epsilon) + omega2 * lateral_vel * lateral_vel);    // -(w1 * 1 / (forward_vel + epsilon) + w2 * lateral_vel^2) 
     });
 
     std::cout << "[Registry] Total registered: " << R.size() << "\n";

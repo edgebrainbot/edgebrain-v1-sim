@@ -106,7 +106,7 @@ def generate_launch_description():
             "pubSkipNum": 1,
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
             "lookAheadDis": 0.5,    # Original 0.5
-            "yawRateGain": 1.5,
+            "yawRateGain": 2.5,    # Original 1.5
             "stopYawRateGain": 1.5,
             "maxYawRate": 80.0,
             "maxSpeed": LaunchConfiguration("maxSpeed"),
