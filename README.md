@@ -227,7 +227,85 @@ sudo systemctl start jetson-maxperf.service
 sudo systemctl status jetson-maxperf.service
 ```
 
+## 🚀 Set Jetson AP Mode (Auto Start at Boot)
 
+This guide configures the Jetson device to automatically start a WiFi hotspot (AP mode) on boot using nmcli and a lightweight startup script.
+
+1. Create AP Startup Script
+```bash
+sudo vim /usr/local/bin/start_ap.sh
+```
+
+Paste the following content:
+```bash
+#!/bin/bash
+
+# Wait for system and network initialization
+sleep 8
+
+# Enable WiFi
+nmcli radio wifi on
+
+# Disconnect any existing connection to avoid conflicts
+nmcli device disconnect wlP1p1s0 2>/dev/null
+
+# Start hotspot
+nmcli device wifi hotspot ifname wlP1p1s0 ssid JetsonAP password edge1234
+```
+
+Make the script executable:
+```bash
+sudo chmod +x /usr/local/bin/start_ap.sh
+```
+
+2. Create rc-local Service
+Create a systemd service to enable /etc/rc.local support:
+```bash
+sudo vim /etc/systemd/system/rc-local.service
+```
+
+Add the following:
+```bash
+[Unit]
+Description=/etc/rc.local Compatibility
+ConditionPathExists=/etc/rc.local
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Create rc.local Script
+Create the rc.local entry point:
+```bash
+sudo nano /etc/rc.local
+```
+Add:
+```bash
+#!/bin/bash
+
+/usr/local/bin/start_ap.sh &
+
+exit 0
+```
+
+Make it executable:
+```bash
+sudo chmod +x /etc/rc.local
+```
+
+4. Enable and Start Service
+Reload systemd and enable the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable rc-local.service
+sudo systemctl start rc-local.service
+```
 ---
 
 ## 🎉 Acknowledgments
