@@ -147,13 +147,15 @@ private:
         switch(msg->command)
         {
             case 6:
-                is_started_ = false;
-                is_paused_ = true;
+                // is_started_ = false;
+                // is_paused_ = true;
+                is_manual_done_ = true;
                 break;
 
             case 4:
                 is_started_ = true;
                 is_paused_ = false;
+                is_manual_done_ = false;
                 break;
 
             default:
@@ -261,6 +263,14 @@ private:
         last_edge_action_ = curr_edge_action_;
         last_edge_state_ = curr_edge_state_;
         last_odom_ = curr_odom_;
+
+        // Manual Reset Done
+        if(is_manual_done_) {
+		    is_started_ = false;
+            is_paused_ = true;
+			RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
+				"Manual Done Reset...");
+		}
     }
 
     /* Transition Processing */
@@ -307,7 +317,7 @@ private:
         bool timeout = step_count_ >= episode_horizon_steps_;
 
         // Judge whether the robot has entered the deadzone (e.g., due to collision or going off-track)
-        bool is_entered_deadzone = dz_discriminator_.is_in_deadzone(curr_odom_.pose.pose.position.x, curr_odom_.pose.pose.position.y);
+        // bool is_entered_deadzone = dz_discriminator_.is_in_deadzone(curr_odom_.pose.pose.position.x, curr_odom_.pose.pose.position.y);
 
         edge::config::RewardFactor reward_factors
         {
@@ -333,7 +343,7 @@ private:
         {
         }
 
-        const bool is_done = goal_reach_flag || timeout || is_entered_deadzone;
+        const bool is_done = goal_reach_flag || timeout || is_manual_done_;
 
         // Publish transition
         edge_msgs::msg::Transition transition;
@@ -380,6 +390,7 @@ private:
 
     bool is_started_{false};
     bool is_paused_{false};
+    bool is_manual_done_{false};
 
     double latest_goal_x_{0.0};
     double latest_goal_y_{0.0};

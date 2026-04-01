@@ -123,8 +123,8 @@ class DDPGAgent(OffPolicyAgent):
             action: torch.Tensor = self.actor(obs)
             
         # Add exploration noise
-        if explore:
-            action += self.noise(action.shape)
+        # if explore:
+        #     action += self.noise(action.shape)
             
         # Clip action to [-1, 1] for valid range
         action_clipped = torch.clamp(action, -1.0, 1.0)  

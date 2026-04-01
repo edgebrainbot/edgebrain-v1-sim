@@ -95,13 +95,13 @@ switching:
     obstacle_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 0.6
+      limit: 0.65
       unit: m
 
     goal_distance:
       type: relative
       index: -1   # -1 means not used for errorState
-      limit: 24.0
+      limit: 23.0
       # limit: 4.0
       unit: m
 
