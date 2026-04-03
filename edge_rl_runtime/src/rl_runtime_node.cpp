@@ -35,6 +35,7 @@ public:
     RLRuntimeNode() : Node("rl_runtime")
     {
         task_type_ = declare_parameter<std::string>("task_type", "navigation");
+        odom_topic_ = declare_parameter<std::string>("topics.odom_topic", "/odom");
         state_input_topic_ = declare_parameter<std::string>("topics.state_input_topic", "/edge/state_input");
         tracking_error_topic_ = declare_parameter<std::string>("topics.tracking_error_topic", "/edge/tracking_error");
         terminal_action_topic_ = declare_parameter<std::string>("topics.terminal_action_topic", "/edge/terminal_action");
@@ -43,6 +44,7 @@ public:
         episode_horizon_steps_ = declare_parameter<int>("episode.horizon_steps", 120000);
 
         RCLCPP_INFO(get_logger(), "Task type for RL Runtime: %s", task_type_.c_str());
+        RCLCPP_INFO(get_logger(), "Use odometry topic: %s", odom_topic_.c_str());
         RCLCPP_INFO(get_logger(), "Use state input topic: %s", state_input_topic_.c_str());
         RCLCPP_INFO(get_logger(), "Use tracking error topic: %s", tracking_error_topic_.c_str());
         RCLCPP_INFO(get_logger(), "Use goal done threshold: %.3f", goal_reached_threshold_);
@@ -103,7 +105,7 @@ public:
 
         /* Odometry */
         odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-            "/odom",
+            odom_topic_,
             100,
             [this](const nav_msgs::msg::Odometry::SharedPtr msg)
             {
@@ -395,6 +397,7 @@ private:
 
     // Configuration parameters
     std::string task_type_;
+    std::string odom_topic_;
     std::string state_input_topic_;
     std::string tracking_error_topic_;
     std::string terminal_action_topic_;
@@ -428,13 +431,14 @@ private:
     edge_msgs::msg::EdgeAction curr_edge_action_;
 
     // Subscribers
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr state_input_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_sub_;
     rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    
 
     // Publishers
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;

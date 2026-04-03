@@ -79,8 +79,7 @@ void FSMTrotting::enter()
 void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
                         edge_msgs::msg::EdgeAction& latest_action,
                         rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-                        double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-                        bool is_goal_reached, bool is_fall)
+                        double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY)
 {
     // Increment step counter
     ++step_count_;
@@ -119,7 +118,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(edge_state_pub, latest_action, is_goal_reached, is_fall);
+    calcTau(edge_state_pub, latest_action);
     calcQQd();
     calcGain();
 }
@@ -219,7 +218,7 @@ void FSMTrotting::calcCmd()
 }
 
 void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-    const edge_msgs::msg::EdgeAction& latest_action, bool is_goal_reached, bool is_fall)
+    const edge_msgs::msg::EdgeAction& latest_action)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;

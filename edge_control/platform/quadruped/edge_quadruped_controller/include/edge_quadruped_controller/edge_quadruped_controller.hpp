@@ -209,8 +209,6 @@ namespace edge::control::quadruped
         // For subscribers
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
-        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_fall_sub_;
-        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_goal_reached_sub_;
 
         // For reset service
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
@@ -221,7 +219,6 @@ namespace edge::control::quadruped
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;
 
-        bool is_goal_reached_ = false;
         bool is_fall_ = false;
 
         edge_msgs::msg::EdgeAction latest_edge_action_;

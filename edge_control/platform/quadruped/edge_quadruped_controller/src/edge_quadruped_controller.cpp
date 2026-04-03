@@ -78,28 +78,21 @@ namespace edge::control::quadruped
             odom_frame_id_ = auto_declare<std::string>("odom_frame_id", "odom");
             base_frame_id_ = auto_declare<std::string>("base_frame_id", "base_link");
 
-            // Speed limits (declare as std::vector<double> for rclcpp compatibility,
-            // then convert to Vec2)
-            {
-                std::vector<double> vx_tmp = auto_declare<std::vector<double>>("vx_limit", {vx_limit_[0], vx_limit_[1]});
-                if (vx_tmp.size() >= 2) {
-                    vx_limit_[0] = vx_tmp[0];
-                    vx_limit_[1] = vx_tmp[1];
-                }
+            // Speed limits (declare as std::vector<double> for rclcpp compatibility, then convert to Vec2)
+            std::vector<double> vx_tmp = auto_declare<std::vector<double>>("vx_limit", {vx_limit_[0], vx_limit_[1]});
+            if (vx_tmp.size() >= 2) {
+                vx_limit_[0] = vx_tmp[0];
+                vx_limit_[1] = vx_tmp[1];
             }
-            {
-                std::vector<double> vy_tmp = auto_declare<std::vector<double>>("vy_limit", {vy_limit_[0], vy_limit_[1]});
-                if (vy_tmp.size() >= 2) {
-                    vy_limit_[0] = vy_tmp[0];
-                    vy_limit_[1] = vy_tmp[1];
-                }
+            std::vector<double> vy_tmp = auto_declare<std::vector<double>>("vy_limit", {vy_limit_[0], vy_limit_[1]});
+            if (vy_tmp.size() >= 2) {
+                vy_limit_[0] = vy_tmp[0];
+                vy_limit_[1] = vy_tmp[1];
             }
-            {
-                std::vector<double> wz_tmp = auto_declare<std::vector<double>>("wz_limit", {wz_limit_[0], wz_limit_[1]});
-                if (wz_tmp.size() >= 2) {
-                    wz_limit_[0] = wz_tmp[0];
-                    wz_limit_[1] = wz_tmp[1];
-                }
+            std::vector<double> wz_tmp = auto_declare<std::vector<double>>("wz_limit", {wz_limit_[0], wz_limit_[1]});
+            if (wz_tmp.size() >= 2) {
+                wz_limit_[0] = wz_tmp[0];
+                wz_limit_[1] = wz_tmp[1];
             }
             RCLCPP_INFO(get_node()->get_logger(), "Controller Velocity Limits - vx: [%.2f, %.2f], vy: [%.2f, %.2f], wz: [%.2f, %.2f]",
                         vx_limit_[0], vx_limit_[1], vy_limit_[0], vy_limit_[1], wz_limit_[0], wz_limit_[1]);
@@ -246,14 +239,6 @@ namespace edge::control::quadruped
                 }
             });
 
-            // Subscribe to fall status
-            is_fall_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
-                topic_ns_ + "/is_fall", 100,
-                [this](const std_msgs::msg::Bool::SharedPtr msg) -> void
-            {
-                is_fall_ = msg->data;
-            });
-
             // Subscribe to goal point
             goal_sub_ = get_node()->create_subscription<geometry_msgs::msg::PointStamped>(
                 "/goal_point", 100,
@@ -263,16 +248,6 @@ namespace edge::control::quadruped
                 latest_goal_y_ = msg->point.y;
             });
 
-
-            // Subscribe to far_reach_goal_status to update is_goal_reached_
-            is_goal_reached_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
-                "/far_reach_goal_status", 100,
-                [this](const std_msgs::msg::Bool::SharedPtr msg) -> void
-            {
-                is_goal_reached_ = msg->data;
-                // std::cout << "Received new is_goal_reached." << std::endl;
-                // std::cout << "is_goal_reached: " << is_goal_reached_ << std::endl;
-            });
 
             // Reset service
             setupResetService();
@@ -378,9 +353,7 @@ namespace edge::control::quadruped
                 trot->run(time, period, 
                           latest_edge_action_, 
                           edge_state_pub_,
-                          cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
-                          is_goal_reached_,
-                          is_fall_);
+                          cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_);
                           
             } else {
                 current_state_->run(time, period);

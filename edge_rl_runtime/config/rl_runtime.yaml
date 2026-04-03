@@ -8,6 +8,7 @@
       horizon_steps: 120000     # maximum number of steps per episode, after which the episode is terminated
 
     topics:
+      odom_topic: "/odom"  # topic name for GO2 odometry input
       state_input_topic: "/edge/state_input"  # topic name for GO2 high state input
       tracking_error_topic: "/edge/tracking_error"  # topic name for tracking error input
       terminal_action_topic: "/edge/terminal_action"  # topic name for terminal action output

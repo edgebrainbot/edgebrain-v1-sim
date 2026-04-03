@@ -59,8 +59,7 @@ public:
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
              rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
-             double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-             bool is_goal_reached, bool is_fall);
+             double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY);
 
     void exit() override;
 
@@ -85,7 +84,7 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-                 const edge_msgs::msg::EdgeAction& latest_action_, bool is_goal_reached, bool is_fall);
+                 const edge_msgs::msg::EdgeAction& latest_action_);
 
     /**
     * Calculate the joint space velocity and acceleration
