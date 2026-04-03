@@ -1009,7 +1009,7 @@ def plot_comparison(log_dir, indices, tag, window=None):
 
 # Example usage
 if __name__ == "__main__":
-    log_dir = '../logs'
+    log_dir = '/home/edgebot/edge_ws/data/exp2/outputs_drl_student/logs'
     
     print("="*70)
     print("Example 1: List all experiments")

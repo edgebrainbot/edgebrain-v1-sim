@@ -78,6 +78,32 @@ namespace edge::control::quadruped
             odom_frame_id_ = auto_declare<std::string>("odom_frame_id", "odom");
             base_frame_id_ = auto_declare<std::string>("base_frame_id", "base_link");
 
+            // Speed limits (declare as std::vector<double> for rclcpp compatibility,
+            // then convert to Vec2)
+            {
+                std::vector<double> vx_tmp = auto_declare<std::vector<double>>("vx_limit", {vx_limit_[0], vx_limit_[1]});
+                if (vx_tmp.size() >= 2) {
+                    vx_limit_[0] = vx_tmp[0];
+                    vx_limit_[1] = vx_tmp[1];
+                }
+            }
+            {
+                std::vector<double> vy_tmp = auto_declare<std::vector<double>>("vy_limit", {vy_limit_[0], vy_limit_[1]});
+                if (vy_tmp.size() >= 2) {
+                    vy_limit_[0] = vy_tmp[0];
+                    vy_limit_[1] = vy_tmp[1];
+                }
+            }
+            {
+                std::vector<double> wz_tmp = auto_declare<std::vector<double>>("wz_limit", {wz_limit_[0], wz_limit_[1]});
+                if (wz_tmp.size() >= 2) {
+                    wz_limit_[0] = wz_tmp[0];
+                    wz_limit_[1] = wz_tmp[1];
+                }
+            }
+            RCLCPP_INFO(get_node()->get_logger(), "Controller Velocity Limits - vx: [%.2f, %.2f], vy: [%.2f, %.2f], wz: [%.2f, %.2f]",
+                        vx_limit_[0], vx_limit_[1], vy_limit_[0], vy_limit_[1], wz_limit_[0], wz_limit_[1]);
+
             // Joint names and interface types
             joint_names_ = auto_declare<std::vector<std::string>>("joints", joint_names_);
             state_interface_types_ = auto_declare<std::vector<std::string>>("state_interfaces", state_interface_types_);
@@ -237,23 +263,6 @@ namespace edge::control::quadruped
                 latest_goal_y_ = msg->point.y;
             });
 
-            // Subscribe to obstacle average distance
-            obstacle_avg_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
-                "/obstacle_avg_distance", 100,
-                [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
-            {
-                obstacle_avg_distance_ = msg->data;
-                // std::cout << "Received new obstacle average distance." << std::endl;
-                // std::cout << "obstacle_avg_distance: " << obstacle_avg_distance_ << std::endl;
-            });
-
-            // Subscribe to obstacle minimum distance
-            // obstacle_min_distance_sub_ = get_node()->create_subscription<std_msgs::msg::Float32>(
-            //     "/obstacle_min_distance", 100,
-            //     [this](const std_msgs::msg::Float32::SharedPtr msg) -> void
-            // {
-            //     obstacle_min_distance_ = msg->data;
-            // });
 
             // Subscribe to far_reach_goal_status to update is_goal_reached_
             is_goal_reached_sub_ = get_node()->create_subscription<std_msgs::msg::Bool>(
@@ -287,14 +296,6 @@ namespace edge::control::quadruped
             edge_state_pub_ = get_node()->create_publisher<edge_msgs::msg::EdgeState>(
                 topic_ns_ + "/state_input", 100);
             
-
-            // Publisher for experience
-            // transition_pub_ = get_node()->create_publisher<edge_msgs::msg::Transition>(
-            //     topic_ns_ + "/transition", 100);
-
-            // Publisher for is_task_done
-            // is_task_done_pub_ = get_node()->create_publisher<std_msgs::msg::Bool>(
-            //     topic_ns_ + "/is_task_done", 100);
 
         } catch (const std::exception& e) {
             RCLCPP_ERROR(get_node()->get_logger(), "Failed to create subscription: %s", e.what());
@@ -348,7 +349,7 @@ namespace edge::control::quadruped
         state_list_.fixedStand = std::make_shared<FSMFixedStand>(ctrl_interfaces_, ctrl_component_, stand_pos_, stand_gains_[0], stand_gains_[1]);
         state_list_.freeStand = std::make_shared<FSMFreeStand>(ctrl_interfaces_, ctrl_component_, stand_gains_[0], stand_gains_[1]);
         state_list_.balanceTest = std::make_shared<FSMBalanceTest>(ctrl_interfaces_, ctrl_component_, stable_gains_);
-        state_list_.trotting = std::make_shared<FSMTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_, gait_height_);
+        state_list_.trotting = std::make_shared<FSMTrotting>(ctrl_interfaces_, ctrl_component_, swing_gains_, stable_gains_, vx_limit_, vy_limit_, wz_limit_, gait_height_);
         
         // Initialize FSM
         current_state_ = state_list_.passive;
@@ -367,6 +368,10 @@ namespace edge::control::quadruped
     /***************************************************************************************/
     controller_interface::return_type EdgeQuadrupedController::update(const rclcpp::Time& time, const rclcpp::Duration& period)
     {
+        ctrl_component_.robot_model_->update();
+        ctrl_component_.phase_scheduler_->update(time);
+        ctrl_component_.estimator_->update();
+
         if (mode_ == FSMMode::NORMAL)
         {
             if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(current_state_)) {
@@ -374,8 +379,6 @@ namespace edge::control::quadruped
                           latest_edge_action_, 
                           edge_state_pub_,
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_,
-                          obstacle_avg_distance_,
-                          obstacle_min_distance_,
                           is_goal_reached_,
                           is_fall_);
                           
@@ -604,7 +607,6 @@ namespace edge::control::quadruped
             topic_ns_.c_str(), reset_cooldown_);
     }
 }
-
 
 
 #include "pluginlib/class_list_macros.hpp"

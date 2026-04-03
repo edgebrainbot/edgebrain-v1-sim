@@ -139,6 +139,10 @@ namespace edge::control::quadruped
         // std::vector<double> stable_gains_ = {0.8, 0.8};
         std::vector<double> stable_gains_ = {100, 0.8};
 
+        Vec2 vx_limit_ = Vec2(-1.0, 1.0);  // max forward/backward speed limit
+        Vec2 vy_limit_ = Vec2(-1.0, 1.0);  // max lateral speed limit
+        Vec2 wz_limit_ = Vec2(-1.0, 1.0);  // max yaw rate limit
+
         // Gait parameters
         double gait_height_ = 0.08;
 
@@ -206,8 +210,6 @@ namespace edge::control::quadruped
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_fall_sub_;
-        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_avg_distance_sub_;
-        rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr is_goal_reached_sub_;
 
         // For reset service
@@ -219,8 +221,6 @@ namespace edge::control::quadruped
         double latest_goal_x_ = 0.0;
         double latest_goal_y_ = 0.0;
 
-        double obstacle_avg_distance_ = 0.0;
-        double obstacle_min_distance_ = 0.0;
         bool is_goal_reached_ = false;
         bool is_fall_ = false;
 

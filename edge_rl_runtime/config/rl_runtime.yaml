@@ -7,4 +7,9 @@
     episode:
       horizon_steps: 120000     # maximum number of steps per episode, after which the episode is terminated
 
-    state_input_topic: "/edge/state_input"  # topic name for GO2 high state input
+    topics:
+      state_input_topic: "/edge/state_input"  # topic name for GO2 high state input
+      tracking_error_topic: "/edge/tracking_error"  # topic name for tracking error input
+      terminal_action_topic: "/edge/terminal_action"  # topic name for terminal action output
+
+    task_type: "navigation"  # type of task, e.g., "navigation", "locomotion", etc.

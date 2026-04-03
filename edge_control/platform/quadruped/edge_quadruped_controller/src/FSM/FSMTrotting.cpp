@@ -17,6 +17,7 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
                              CtrlComponent& ctrl_component,
                              const std::vector<double>& swing_gains,
                              const std::vector<double>& stable_gains,
+                             Vec2 vx_limit, Vec2 vy_limit, Vec2 wz_limit,
                              double gait_height) 
                              : FSMState(FSMStateName::TROTTING, "FSM Trotting",
                                 ctrl_interfaces),
@@ -28,6 +29,9 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
                                 gait_generator_(ctrl_component),
                                 swing_gains_(swing_gains),
                                 stable_gains_(stable_gains),
+                                vx_limit_(vx_limit),
+                                vy_limit_(vy_limit),
+                                wz_limit_(wz_limit),
                                 gait_height_(gait_height)
     {
     Kpp = Vec3(70, 70, 70).asDiagonal();
@@ -36,19 +40,6 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     Kd_w_ = Vec3(70, 70, 70).asDiagonal();
     Kp_swing_ = Vec3(200, 200, 200).asDiagonal();
     Kd_swing_ = Vec3(10, 10, 10).asDiagonal();
-
-
-    // v_x_limit_ << -1.3, 1.3;        // max forward/backward speed 1.3 m/s (does affect stability)
-    // v_y_limit_ << -1.2, 1.2;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    // w_yaw_limit_ << -0.45, 0.45;
-
-    // v_x_limit_ << 0.1, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
-    // v_y_limit_ << -0.1, 0.1;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    // w_yaw_limit_ << -0.2, 0.2;
-
-    v_x_limit_ << 0.1, 0.3;        // max forward/backward speed 1.3 m/s (does affect stability)
-    v_y_limit_ << -0.25, 0.25;        // max lateral speed 1.2 m/s (doesn't affect stability much)
-    w_yaw_limit_ << -0.3, 0.3;
 
     dt_ = 1.0 / ctrl_interfaces_.frequency_;
 
@@ -89,7 +80,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
                         edge_msgs::msg::EdgeAction& latest_action,
                         rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-                        double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
+                        bool is_goal_reached, bool is_fall)
 {
     // Increment step counter
     ++step_count_;
@@ -128,7 +119,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(edge_state_pub, latest_action, obstacleAvgDistance, obstacleMinDistance, is_goal_reached, is_fall);
+    calcTau(edge_state_pub, latest_action, is_goal_reached, is_fall);
     calcQQd();
     calcGain();
 }
@@ -166,25 +157,25 @@ FSMStateName FSMTrotting::checkChange()
 void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
 {
     // /* Movement */
-    // v_cmd_body_(0) = invNormalize(ctrl_interfaces_.control_inputs_.ly, v_x_limit_(0), v_x_limit_(1));
-    // v_cmd_body_(1) = -invNormalize(ctrl_interfaces_.control_inputs_.lx, v_y_limit_(0), v_y_limit_(1));
+    // v_cmd_body_(0) = invNormalize(ctrl_interfaces_.control_inputs_.ly, vx_limit_(0), vx_limit_(1));
+    // v_cmd_body_(1) = -invNormalize(ctrl_interfaces_.control_inputs_.lx, vy_limit_(0), vy_limit_(1));
     // v_cmd_body_(2) = 0;
 
     // /* Turning */
-    // d_yaw_cmd_ = -invNormalize(ctrl_interfaces_.control_inputs_.rx, w_yaw_limit_(0), w_yaw_limit_(1));
+    // d_yaw_cmd_ = -invNormalize(ctrl_interfaces_.control_inputs_.rx, wz_limit_(0), wz_limit_(1));
     // d_yaw_cmd_ = 0.9 * d_yaw_cmd_past_ + (1 - 0.9) * d_yaw_cmd_;
     // d_yaw_cmd_past_ = d_yaw_cmd_;
     double vx_in = (fabs(cmd_vx) > 1e-4)
-                    ? std::clamp(cmd_vx, v_x_limit_(0), v_x_limit_(1))
-                    : invNormalize(ctrl_interfaces_.control_inputs_.ly, v_x_limit_(0), v_x_limit_(1));
+                    ? std::clamp(cmd_vx, vx_limit_(0), vx_limit_(1))
+                    : invNormalize(ctrl_interfaces_.control_inputs_.ly, vx_limit_(0), vx_limit_(1));
 
     double vy_in = (fabs(cmd_vy) > 1e-4)
-                    ? std::clamp(cmd_vy, v_y_limit_(0), v_y_limit_(1))
-                    : -invNormalize(ctrl_interfaces_.control_inputs_.lx, v_y_limit_(0), v_y_limit_(1));
+                    ? std::clamp(cmd_vy, vy_limit_(0), vy_limit_(1))
+                    : -invNormalize(ctrl_interfaces_.control_inputs_.lx, vy_limit_(0), vy_limit_(1));
 
     double wz_in = (fabs(cmd_wz) > 1e-4)
-                    ? std::clamp(cmd_wz, w_yaw_limit_(0), w_yaw_limit_(1))
-                    : -invNormalize(ctrl_interfaces_.control_inputs_.rx, w_yaw_limit_(0), w_yaw_limit_(1));
+                    ? std::clamp(cmd_wz, wz_limit_(0), wz_limit_(1))
+                    : -invNormalize(ctrl_interfaces_.control_inputs_.rx, wz_limit_(0), wz_limit_(1));
     v_cmd_body_ << vx_in, vy_in, 0.0;
 
     d_yaw_cmd_ = wz_in;
@@ -228,7 +219,7 @@ void FSMTrotting::calcCmd()
 }
 
 void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-    const edge_msgs::msg::EdgeAction& latest_action, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall)
+    const edge_msgs::msg::EdgeAction& latest_action, bool is_goal_reached, bool is_fall)
 {
     pos_error_ = pcd_ - pos_body_;
     vel_error_ = vel_cmd_global_ - vel_body_;

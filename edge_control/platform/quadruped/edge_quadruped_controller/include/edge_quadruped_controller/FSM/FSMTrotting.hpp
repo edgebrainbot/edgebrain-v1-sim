@@ -50,6 +50,7 @@ public:
                            CtrlComponent &ctrl_component,
                            const std::vector<double>& swing_gains,
                            const std::vector<double>& stable_gains,
+                           Vec2 vx_limit, Vec2 vy_limit, Vec2 wz_limit,
                            double gait_height);
 
     void enter() override;
@@ -59,7 +60,7 @@ public:
              edge_msgs::msg::EdgeAction &latest_action_, 
              rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY,
-             double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
+             bool is_goal_reached, bool is_fall);
 
     void exit() override;
 
@@ -84,7 +85,7 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-                 const edge_msgs::msg::EdgeAction& latest_action_, double obstacleAvgDistance, double obstacleMinDistance, bool is_goal_reached, bool is_fall);
+                 const edge_msgs::msg::EdgeAction& latest_action_, bool is_goal_reached, bool is_fall);
 
     /**
     * Calculate the joint space velocity and acceleration
@@ -129,7 +130,8 @@ private:
     Mat3 Kpp, Kdp, Kd_w_;
     double kp_w_;
     Mat3 Kp_swing_, Kd_swing_;
-    Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+    // Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
+    Vec2 vx_limit_, vy_limit_, wz_limit_;
 
     Vec12 last_tracking_error_tea_;
     Vec12 curr_tracking_error_tea_;
@@ -159,20 +161,6 @@ private:
     // For reward calculation
     Vec2 nav_goal_;
     Vec3 robot_pos_;
-
-    // rclcpp::Publisher<phy_teacher_interfaces::msg::TrackingError>::SharedPtr pub_;
-    // rclcpp::Subscription<phy_teacher_interfaces::msg::ControlGains>::SharedPtr sub_gain_;
-
-    // void controlGainCallback(const phy_teacher_interfaces::msg::ControlGains::SharedPtr msg) {
-    //     std::cout << "Received new control gains." << std::endl;
-    //     for (int i = 0; i < 6; i++) {
-    //         for (int j = 0; j < 6; j++) {
-    //             latest_kp_(i, j) = msg->kp[i*6 + j];
-    //             latest_kd_(i, j) = msg->kd[i*6 + j];
-    //         }
-    //     }
-    //     gain_update_ = true;
-    // }
 
     Vector12d getRobotState(bool is_global=true) const;
     Vector12d getTrackingError() const;

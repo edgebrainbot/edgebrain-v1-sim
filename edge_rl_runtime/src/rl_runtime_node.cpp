@@ -34,18 +34,24 @@ public:
 
     RLRuntimeNode() : Node("rl_runtime")
     {
-        state_input_topic_ = declare_parameter<std::string>("state_input_topic", "/edge/state_input");
+        task_type_ = declare_parameter<std::string>("task_type", "navigation");
+        state_input_topic_ = declare_parameter<std::string>("topics.state_input_topic", "/edge/state_input");
+        tracking_error_topic_ = declare_parameter<std::string>("topics.tracking_error_topic", "/edge/tracking_error");
+        terminal_action_topic_ = declare_parameter<std::string>("topics.terminal_action_topic", "/edge/terminal_action");
+
         goal_reached_threshold_ = declare_parameter<double>("navigation.goal_threshold", 0.5);
         episode_horizon_steps_ = declare_parameter<int>("episode.horizon_steps", 120000);
 
+        RCLCPP_INFO(get_logger(), "Task type for RL Runtime: %s", task_type_.c_str());
         RCLCPP_INFO(get_logger(), "Use state input topic: %s", state_input_topic_.c_str());
+        RCLCPP_INFO(get_logger(), "Use tracking error topic: %s", tracking_error_topic_.c_str());
         RCLCPP_INFO(get_logger(), "Use goal done threshold: %.3f", goal_reached_threshold_);
         RCLCPP_INFO(get_logger(), "Use episode horizon steps: %d", episode_horizon_steps_);
 
         /* ACTION SUBSCRIBER
          * action arrival triggers environment step */
         action_sub_ = create_subscription<edge_msgs::msg::EdgeAction>(
-            "terminal_action",
+            terminal_action_topic_,
             100,
             std::bind(&RLRuntimeNode::actionCallback, this, std::placeholders::_1)
         );
@@ -66,6 +72,16 @@ public:
             {
                 latest_goal_x_ = msg->point.x;
                 latest_goal_y_ = msg->point.y;
+            });
+
+        /* Tracking Error */
+        tracking_error_sub_ = create_subscription<edge_msgs::msg::EdgeState>(
+            tracking_error_topic_,
+            100,
+            [this](const edge_msgs::msg::EdgeState::SharedPtr msg)
+            {
+                // Process tracking error input if needed
+                // For example, you can store it in a member variable for reward computation
             });
 
         /* State Input */
@@ -247,7 +263,7 @@ private:
             RCLCPP_INFO(get_logger(), "Episode done at step %d!", step_count_);
         }
 
-        if(done_flag_)
+        if(done_flag_ && task_type_ == "navigation")
         {
             edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
             stop_action.action_value = {0.0, 0.0, 0.0};
@@ -377,7 +393,12 @@ private:
     edge::config::RewardComposer reward_composer_{""};
     edge::rl_runtime::DeadzoneDiscriminator dz_discriminator_;
 
+    // Configuration parameters
+    std::string task_type_;
     std::string state_input_topic_;
+    std::string tracking_error_topic_;
+    std::string terminal_action_topic_;
+
     int episode_horizon_steps_{120000};
     double goal_reached_threshold_{0.3};
 
@@ -410,6 +431,7 @@ private:
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr state_input_sub_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_sub_;
     rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;

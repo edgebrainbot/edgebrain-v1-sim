@@ -9,7 +9,7 @@
     start_with_teacher: true     # whether to start with teacher mode
 
     update_rate: 400.0           # trigger update rate in Hz
-    teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action
-    # teacher_topic_name: "/edge/phy_teacher_action"  # topic name for teacher action
+    # teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action (navigation)
+    teacher_topic_name: "/edge/phy_teacher_action"  # topic name for teacher action (locomotion)
     student_topic_name: "/edge/drl_student_action"  # topic name for student action
     terminal_action_name: "/edge/terminal_action"  # topic name for terminal action
