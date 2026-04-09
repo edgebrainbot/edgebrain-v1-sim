@@ -309,6 +309,7 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
           0, 0, 0, 0, 70, 0,
           0, 0, 0, 0, 0, 70;
     auto acc = kp * all_pos_error + kd * all_vel_error;
+    
     Vec3 dd_pcd = acc.segment(0, 3);
     Vec3 d_wbd = acc.segment(3, 3);
 

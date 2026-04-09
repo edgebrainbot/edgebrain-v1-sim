@@ -492,10 +492,14 @@ int main(int argc, char** argv)
         // Truncate the velocity command to be within limits
         double vx_limit = 0.25;
         double vy_limit = 0.15;
-        double min_forward_vx = 0.1;   // Set the minimum forwarding velocity to stop local minima
+        double min_forward_vx = 0.00;   // Set the minimum forwarding velocity to stop local minima
         cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, vx_limit), min_forward_vx);  
         if(cmd_vel.twist.linear.y > vy_limit) cmd_vel.twist.linear.y = vy_limit;
         else if(cmd_vel.twist.linear.y < -vy_limit) cmd_vel.twist.linear.y = -vy_limit;
+
+        // cmd_vel.twist.linear.x = 0.1;
+        // cmd_vel.twist.linear.y = 0.0;
+        // cmd_vel.twist.linear.z = 0.0;
 
         pubSpeed->publish(cmd_vel);
 

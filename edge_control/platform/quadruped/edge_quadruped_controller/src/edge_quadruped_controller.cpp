@@ -208,7 +208,17 @@ namespace edge::control::quadruped
                 ctrl_interfaces_.control_inputs_.ry = msg->ry;
             });
 
-            // Subscribe to "edge/command_action"
+            // Subscribe to "/cmd_vel"
+            cmd_vel_sub_ = get_node()->create_subscription<geometry_msgs::msg::TwistStamped>(
+                "/cmd_vel", 100,
+                [this](const geometry_msgs::msg::TwistStamped::SharedPtr msg) -> void
+            {
+                cmd_vx_ = msg->twist.linear.x;
+                cmd_vy_ = msg->twist.linear.y;
+                cmd_wz_ = msg->twist.angular.z;
+            });
+
+            // Subscribe to "/edge/command_action"
             action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
                 topic_ns_ + "/command_action", 100,
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
@@ -247,7 +257,6 @@ namespace edge::control::quadruped
                 latest_goal_x_ = msg->point.x;
                 latest_goal_y_ = msg->point.y;
             });
-
 
             // Reset service
             setupResetService();

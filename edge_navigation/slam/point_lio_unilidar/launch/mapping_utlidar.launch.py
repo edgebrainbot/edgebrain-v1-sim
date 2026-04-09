@@ -59,6 +59,7 @@ def generate_launch_description():
         executable="pointlio_mapping",
         name="laserMapping",
         output="screen",
+        # prefix="taskset -c 2,3,4,5",
         parameters=[
             param_yaml,
             {"use_imu_as_input": False},
@@ -67,8 +68,8 @@ def generate_launch_description():
             {"init_map_size": 10},
             {"point_filter_num": 1},
             {"space_down_sample": True},
-            {"filter_size_surf": 0.1},
-            {"filter_size_map": 0.1},
+            {"filter_size_surf": 0.3},      # Original: 0.1
+            {"filter_size_map": 0.3},       # Original: 0.1
             {"cube_side_length": 1000.0},
             {"runtime_pos_log_enable": False},
         ],

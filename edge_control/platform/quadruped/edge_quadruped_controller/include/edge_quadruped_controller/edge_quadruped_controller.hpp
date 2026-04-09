@@ -16,6 +16,7 @@
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
 
+#include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <controller_interface/controller_interface.hpp>
 #include <controller_common/FSM/FSMState.h>
@@ -180,7 +181,6 @@ namespace edge::control::quadruped
         };
 
         // For /cmd_vel subscription
-        rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_sub_;
         double cmd_vx_ = 0.0;
         double cmd_vy_ = 0.0;
         double cmd_wz_ = 0.0;
@@ -205,10 +205,10 @@ namespace edge::control::quadruped
         rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_;
         
-
         // For subscribers
         rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
+        rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_sub_;
 
         // For reset service
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;

@@ -35,7 +35,7 @@
 #include "Estimator.h"
 
 #define MAXN (720000)
-#define PUBFRAME_PERIOD (20)
+#define PUBFRAME_PERIOD (20) 
 
 const float MOV_THRESHOLD = 1.5f;
 
@@ -883,12 +883,15 @@ int main(int argc, char **argv)
     P_init.block<3, 3>(21, 21) = MD(3, 3)::Identity() * 0.0001;
     P_init.block<6, 6>(15, 15) = MD(6, 6)::Identity() * 0.001;
     P_init.block<6, 6>(6, 6) = MD(6, 6)::Identity() * 0.0001;
+
+
     kf_input.change_P(P_init);
 
     Eigen::Matrix<double, 30, 30> P_init_output = MD(30, 30)::Identity() * 0.01;
     P_init_output.block<3, 3>(21, 21) = MD(3, 3)::Identity() * 0.0001;
     P_init_output.block<6, 6>(6, 6) = MD(6, 6)::Identity() * 0.0001;
     P_init_output.block<6, 6>(24, 24) = MD(6, 6)::Identity() * 0.001;
+
     kf_input.change_P(P_init);
     kf_output.change_P(P_init_output);
 
@@ -915,7 +918,7 @@ int main(int argc, char **argv)
     auto sub_pcl = node->create_subscription<sensor_msgs::msg::PointCloud2>(lid_topic, 2000, standard_pcl_cbk);
 
     auto sub_imu = node->create_subscription<sensor_msgs::msg::Imu>(imu_topic, 2000, imu_cbk);
-
+    
     auto pubLaserCloudFullRes = node->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered", 1000);
 
     auto pubLaserCloudFullRes_body = node->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_registered_body", 1000);
@@ -924,7 +927,7 @@ int main(int argc, char **argv)
 
     auto pubLaserCloudMap = node->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 1000);
 
-    auto pubOdomAftMapped = node->create_publisher<nav_msgs::msg::Odometry>("/aft_mapped_to_init", 1000);
+    auto pubOdomAftMapped = node->create_publisher<nav_msgs::msg::Odometry>("/aft_mapped_to_init", 1000);// Original 1000
 
     auto pubPath = node->create_publisher<nav_msgs::msg::Path>("/path", 1000);
 
@@ -932,11 +935,12 @@ int main(int argc, char **argv)
 
     signal(SIGINT, SigHandle);
 
-    rclcpp::Rate rate(5000); //original
+    // rclcpp::Rate rate(5000); //original
+    rclcpp::Rate rate(5000); // For real run
+    // rclcpp::Rate rate(2000); // For debug
     // rclcpp::Rate rate(500);  // For debug
     while (rclcpp::ok())
     {
-
         if (flg_exit)
             break;
 

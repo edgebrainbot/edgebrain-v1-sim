@@ -12,6 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(PKG_DEPENDENCIES
   edge_msgs
   edge_ros_interfaces
+  geometry_msgs
   go2_sport_api
   hardware_interface
   pluginlib
@@ -116,6 +117,20 @@ ament_target_dependencies(go2_real_robot_executor
   go2_sport_api
 )
 
+# Go2 cmd_vel executor node
+add_executable(go2_cmd_vel_executor src/go2_cmd_vel_executor.cpp)
+target_include_directories(go2_cmd_vel_executor PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(go2_cmd_vel_executor
+  rclcpp
+  geometry_msgs
+  unitree_api
+  go2_sport_api
+)
+
 # Go2 state provider comprehensive test
 add_executable(test_go2_state_provider
   test/test_go2_state_provider.cpp
@@ -170,6 +185,7 @@ install(
     go2_vel_action_executor
     go2_edge_state_bridge
     go2_real_robot_executor
+    go2_cmd_vel_executor
     test_go2_state_provider
     test_range_obstacle
     test_sport_mode_state

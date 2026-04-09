@@ -55,7 +55,7 @@ public:
 
     void enter() override;
 
-    void run(const rclcpp::Time& time, const rclcpp::Duration& period) override {};
+    void run(const rclcpp::Time& /*time*/, const rclcpp::Duration& /*period*/) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
              rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,

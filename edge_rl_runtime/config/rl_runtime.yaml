@@ -5,7 +5,7 @@
       goal_threshold: 1.25     # distance threshold to consider episode done
 
     episode:
-      horizon_steps: 120000     # maximum number of steps per episode, after which the episode is terminated
+      horizon_steps: 120000000     # maximum number of steps per episode, after which the episode is terminated
 
     topics:
       odom_topic: "/odom"  # topic name for GO2 odometry input

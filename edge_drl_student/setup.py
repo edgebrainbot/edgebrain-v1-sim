@@ -28,8 +28,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'drl_student_navigation_node = edge_drl_navigation_student.drl_student_node:main',
-            'drl_student_locomotion_node = edge_drl_locomotion_student.drl_student_node:main',
+            'drl_student_node = edge_drl_student.drl_student_node:main',
         ],
     },
 )
