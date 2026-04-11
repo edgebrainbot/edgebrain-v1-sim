@@ -78,6 +78,7 @@ void FSMTrotting::enter()
 
 void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
                         edge_msgs::msg::EdgeAction& latest_action,
+                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
                         rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY)
 {
@@ -118,7 +119,7 @@ void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*peri
         phase_scheduler_->status_ = PhaseStatus::STANCE_ALL;
     }
 
-    calcTau(edge_state_pub, latest_action);
+    calcTau(edge_state_pub, tracking_error_tea_pub_, latest_action);
     calcQQd();
     calcGain();
 }
@@ -218,6 +219,7 @@ void FSMTrotting::calcCmd()
 }
 
 void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
+    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
     const edge_msgs::msg::EdgeAction& latest_action)
 {
     pos_error_ = pcd_ - pos_body_;
@@ -240,6 +242,9 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     //     std::cout << curr_tracking_error_tea_[i] << " ";
     // }
     // std::cout << std::endl;
+
+    auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
+    tracking_error_tea_pub_->publish(track_msg);
 
 
     edge_state_.header.stamp = now();
@@ -282,7 +287,8 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     edge_msgs::msg::EdgeAction latest_action_saturated = EigenToEdgeActionMsg(
         accel,
         edge_msgs::msg::EdgeAction::BASE_ACCEL,
-        latest_action.action_mode);
+        latest_action.action_mode
+    );
 
     // Vec3 dd_pcd = accel.segment(0, 3);
     // Vec3 d_wbd = accel.segment(3, 3);
@@ -317,13 +323,13 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
     //     Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
-    // dd_pcd(0) = saturation(dd_pcd(0), Vec2(-3, 3));
-    // dd_pcd(1) = saturation(dd_pcd(1), Vec2(-3, 3));
-    // dd_pcd(2) = saturation(dd_pcd(2), Vec2(-5, 5));
+    dd_pcd(0) = saturation(dd_pcd(0), Vec2(-3, 3));
+    dd_pcd(1) = saturation(dd_pcd(1), Vec2(-3, 3));
+    dd_pcd(2) = saturation(dd_pcd(2), Vec2(-5, 5));
 
-    // d_wbd(0) = saturation(d_wbd(0), Vec2(-40, 40));
-    // d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
-    // d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
+    d_wbd(0) = saturation(d_wbd(0), Vec2(-40, 40));
+    d_wbd(1) = saturation(d_wbd(1), Vec2(-40, 40));
+    d_wbd(2) = saturation(d_wbd(2), Vec2(-10, 10));
 
     // std::cout << "actual dd_pcd: " << dd_pcd.transpose() << std::endl;
     // std::cout << "actual d_wbd: " << d_wbd.transpose() << std::endl;

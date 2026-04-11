@@ -223,7 +223,6 @@ namespace edge::control::quadruped
                 topic_ns_ + "/command_action", 100,
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
             {
-                latest_edge_action_ = *msg;
                 if(msg->action_type == edge_msgs::msg::EdgeAction::CMD_VEL) {
                     if (msg->action_value.size() < 3) {
                         RCLCPP_WARN_THROTTLE(
@@ -239,6 +238,12 @@ namespace edge::control::quadruped
                     cmd_wz_ = msg->action_value[2];
                 } else if (msg->action_type == edge_msgs::msg::EdgeAction::BASE_ACCEL) {
                     // Handle base acceleration command if needed
+                    RCLCPP_WARN_THROTTLE(
+                        get_node()->get_logger(),
+                        *get_node()->get_clock(),
+                        5000,
+                        "Received /command_action with BASE_ACCEL with action_mode=%d");
+                    latest_edge_action_ = *msg;
                 } else {
                     RCLCPP_WARN_THROTTLE(
                         get_node()->get_logger(),
@@ -361,6 +366,7 @@ namespace edge::control::quadruped
             if (auto trot = std::dynamic_pointer_cast<FSMTrotting>(current_state_)) {
                 trot->run(time, period, 
                           latest_edge_action_, 
+                          tracking_error_tea_pub_,
                           edge_state_pub_,
                           cmd_vx_, cmd_vy_, cmd_wz_, latest_goal_x_, latest_goal_y_);
                           

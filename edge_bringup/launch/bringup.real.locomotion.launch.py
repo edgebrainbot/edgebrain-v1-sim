@@ -12,7 +12,6 @@ from launch.actions import (
     IncludeLaunchDescription,
     RegisterEventHandler,
     SetEnvironmentVariable,
-    TimerAction,
 )
 from datetime import datetime
 from launch_ros.actions import Node
@@ -117,13 +116,47 @@ def generate_launch_description():
         }.items()
     )
     
+    # -------- Edge Quadruped Controller Launch --------
+    controller_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_quadruped_controller"),
+                "launch",
+                "mujoco.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot,
+            "use_real_robot": use_real_robot,
+            "network_interface": network_interface,
+            "dds_domain_id": dds_domain_id,
+
+        }.items()
+    )
+    
+    # -------- PHY Teacher Launch --------
+    phy_teacher_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_phy_teacher"),
+                "launch",
+                "phy_teacher.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "namespace": namespace,
+            "robot": robot
+        }.items()
+    )
+    
     # -------- DRL Student Launch --------
     drl_student_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([
                 FindPackageShare("edge_drl_student"),
                 "launch",
-                "drl_student_vel.launch.py"
+                "drl_student.launch.py"
             ])
         ),
         launch_arguments={
@@ -155,22 +188,12 @@ def generate_launch_description():
                 "launch",
                 "rl_runtime.launch.py"
             ])
-        ),
-        launch_arguments={
-            "go2_network_interface": network_interface,
-        }.items()
+        )
+        # launch_arguments={
+        #     "go2_network_interface": network_interface,
+        # }.items()
     )
 
-    # -------- Real Robot Executor Launch --------
-    real_robot_executor_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare("edge_rl_runtime"),
-                "launch",
-                "real_robot_executor.launch.py"
-            ])
-        )
-    )
 
     # --------- Navigation Module Launch ---------
     navigation_launch = IncludeLaunchDescription(
@@ -190,30 +213,6 @@ def generate_launch_description():
     # -----------------------------------
     # --       Node Definitions        --
     # -----------------------------------
-
-    # -------- State Bridge Node --------_
-    state_bridge_node = Node(
-        package='unitree_go2_hardware',
-        executable='go2_edge_state_bridge',
-        name='go2_edge_state_bridge',
-        output='screen',
-    )
-
-    # -------- Goal Publisher Node --------
-    goal = [24.0, 0.0, 0.0]
-    # goal = [6, 0.0, 0.0]
-    publish_goal_point = TimerAction(
-        period=1.0,
-        actions=[ExecuteProcess(
-            cmd=[
-                'ros2', 'topic', 'pub', '-r', '1',
-                '/goal_point',
-                'geometry_msgs/msg/PointStamped',
-                f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'
-            ],
-            # output='screen'
-        )]
-    )
 
     # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
@@ -277,24 +276,22 @@ def generate_launch_description():
         use_global_rviz_arg, 
 
         # -- Runtime Environment --
-        # set_rmw_implementation,
+        set_rmw_implementation,
     
         # -- Launch Components --
         led_launch,
-        # controller_launch,
-        # phy_teacher_launch,
+        controller_launch,
+        phy_teacher_launch,
         # drl_student_launch,
         
         trigger_launch,
         rl_runtime_launch,
-        # real_robot_executor_launch,
-        # virtual_status_indicator_node,
-        state_bridge_node,
-        publish_goal_point,
-        # global_rviz_node,
-        camera_image_pub_node,
+        virtual_status_indicator_node,
+        
+        global_rviz_node,
+        # camera_image_pub_node,
         # navigation_launch,
         
-        # rosbag_record,
+        rosbag_record,
 
     ])

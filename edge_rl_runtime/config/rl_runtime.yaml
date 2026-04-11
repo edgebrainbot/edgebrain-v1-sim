@@ -13,4 +13,4 @@
       tracking_error_topic: "/edge/tracking_error"  # topic name for tracking error input
       terminal_action_topic: "/edge/terminal_action"  # topic name for terminal action output
 
-    task_type: "navigation"  # type of task, e.g., "navigation", "locomotion", etc.
+    task_type: "locomotion"  # type of task, e.g., "navigation", "locomotion", etc.

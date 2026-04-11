@@ -20,7 +20,7 @@ imu_sensor_broadcaster:
 
 edge_quadruped_controller:
   ros__parameters:
-    update_rate: 400  # Hz
+    update_rate: 500  # Hz
 
     vx_limit: [-0.8, 0.8]  # m/s
     vy_limit: [-0.2, 0.2]  # m/s

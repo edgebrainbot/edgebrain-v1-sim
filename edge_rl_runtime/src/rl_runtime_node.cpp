@@ -77,10 +77,10 @@ public:
             });
 
         /* Tracking Error */
-        tracking_error_sub_ = create_subscription<edge_msgs::msg::EdgeState>(
+        tracking_error_sub_ = create_subscription<edge_msgs::msg::Vec12Msg>(
             tracking_error_topic_,
             100,
-            [this](const edge_msgs::msg::EdgeState::SharedPtr msg)
+            [this](const edge_msgs::msg::Vec12Msg::SharedPtr msg)
             {
                 // Process tracking error input if needed
                 // For example, you can store it in a member variable for reward computation
@@ -435,10 +435,9 @@ private:
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr action_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr goal_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr state_input_sub_;
-    rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_sub_;
+    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_sub_;
     rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_min_distance_sub_;
-    
 
     // Publishers
     rclcpp::Publisher<edge_msgs::msg::EdgeAction>::SharedPtr command_action_pub_;

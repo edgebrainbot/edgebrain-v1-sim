@@ -19,7 +19,7 @@ public:
   : Node("mock_publisher"),
     gen_(rd_()), dist_(-0.1, 0.1)
   {
-    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("edge/control_state", 30);
+    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("/edge/control_state", 30);
     timer_ = this->create_wall_timer(100ms, std::bind(&MockPublisher::timer_callback, this));
     RCLCPP_INFO(this->get_logger(), "MockPublisher started.");
   }

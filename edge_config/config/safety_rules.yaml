@@ -55,11 +55,11 @@ switching:
     #   unit: m/s
 
     # velocity limit in meters per second (relative mode)
-    # vx:
-    #   type: relative
-    #   index: 6
-    #   limit: 1.3
-    #   unit: m/s
+    vx:
+      type: relative
+      index: 6
+      limit: 0.1
+      unit: m/s
 
     # velocity limit in meters per second (relative mode)
     # vy:
@@ -84,11 +84,11 @@ switching:
       unit: deg/s
 
     # angular velocity limit in radians per second (relative mode)
-    # wz:
-    #   type: relative
-    #   index: 11
-    #   limit: 2.0
-    #   unit: rad/s
+    wz:
+      type: relative
+      index: 11
+      limit: 2.0
+      unit: rad/s
 
     # ===== Obstacle Avoidance =====
     # distance limit to obstacles in meters (reference to local planner)

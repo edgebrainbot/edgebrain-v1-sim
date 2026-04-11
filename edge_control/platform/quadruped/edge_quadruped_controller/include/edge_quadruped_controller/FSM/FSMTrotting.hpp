@@ -58,6 +58,7 @@ public:
     void run(const rclcpp::Time& /*time*/, const rclcpp::Duration& /*period*/) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
+             rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
              rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY);
 
@@ -84,6 +85,7 @@ private:
     * Calculate the torque command
     */
     void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
+                 rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub,
                  const edge_msgs::msg::EdgeAction& latest_action_);
 
     /**
