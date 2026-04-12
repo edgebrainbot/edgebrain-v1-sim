@@ -50,7 +50,6 @@ public:
 private:
 
     void updateLoop();     // Main periodic update loop for trigger
-
     bool checkSafety();    // Check safety for switching
     void resetStats();     // Reset switching statistics
     void updateStats(edge::utils::ActionMode);      // Update switching statistics
@@ -59,9 +58,9 @@ private:
 
     
     // ROS2 Callbacks
-    void studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
-    void teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void edgeStateCallback(const edge_msgs::msg::EdgeState::SharedPtr msg);
+    void studentActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
+    void teacherActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void getStatsCallback(
@@ -78,9 +77,9 @@ private:
     double obstacle_distance_;                            // last received distance to obstacle
     bool is_last_state_safe_;                             // last alert state (is safe or not)
     bool is_last_state_fall_;                             // last fall state (is fall or not)
-    edge_msgs::msg::EdgeState        last_edge_state_;    // last received edge state
-    edge::ros_interfaces::VectorXd   last_stu_action_;    // last received student action
-    edge::ros_interfaces::VectorXd   last_tea_action_;    // last received teacher action
+    edge_msgs::msg::EdgeState    last_edge_state_;        // last received edge state 
+    edge_msgs::msg::EdgeAction   last_stu_action_;        // last received student action
+    edge_msgs::msg::EdgeAction   last_tea_action_;        // last received teacher action
 
     // Statistical tracking
     double student_duration_;                              // Student Mode Accumulated Duration (s)
@@ -95,8 +94,8 @@ private:
     std::map<std::string, uint32_t> switching_reasons_;    // Switching reasons statistics
 
     // ROS subscribers
-    rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_;
-    rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_student_action_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr sub_teacher_action_;
     rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr sub_edge_state_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_obstacle_distance_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr sub_goal_distance_;
@@ -118,8 +117,9 @@ private:
     bool print_processing_;                         // whether to print processing info
     bool is_start_with_teacher_;                    // whether to start with teacher mode
     bool is_robot_state_initialized_{false};        // whether robot state has been initialized
+    bool is_stu_action_initialized_{false};         // whether student action has been initialized
+    bool is_tea_action_initialized_{false};         // whether teacher action has been initialized
     
-    edge::utils::ActionType action_type_;           // action type: 0 -- base acceleration
     std::string student_topic_name_;                // topic name for student action
     std::string teacher_topic_name_;                // topic name for teacher action
     std::string terminal_action_name_;              // topic name for publishing terminal action

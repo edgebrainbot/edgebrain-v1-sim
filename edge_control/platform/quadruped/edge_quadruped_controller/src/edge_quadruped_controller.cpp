@@ -4,6 +4,7 @@
  */
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <sstream>
 #include "edge_quadruped_controller/edge_quadruped_controller.hpp"
 
 namespace edge::control::quadruped
@@ -224,26 +225,59 @@ namespace edge::control::quadruped
                 [this](const edge_msgs::msg::EdgeAction::SharedPtr msg) -> void
             {
                 if(msg->action_type == edge_msgs::msg::EdgeAction::CMD_VEL) {
-                    if (msg->action_value.size() < 3) {
+                    if (msg->action_value.size() != 3) {
                         RCLCPP_WARN_THROTTLE(
                             get_node()->get_logger(),
                             *get_node()->get_clock(),
                             5000,
-                            "Received /command_action EdgeAction with size=%zu (<3), ignoring",
+                            "Received /command_action EdgeAction with size=%zu (!=3), ignoring",
                             msg->action_value.size());
                         return;
                     }
                     cmd_vx_ = msg->action_value[0];
                     cmd_vy_ = msg->action_value[1];
                     cmd_wz_ = msg->action_value[2];
-                } else if (msg->action_type == edge_msgs::msg::EdgeAction::BASE_ACCEL) {
-                    // Handle base acceleration command if needed
-                    RCLCPP_WARN_THROTTLE(
+                    RCLCPP_INFO_THROTTLE(
                         get_node()->get_logger(),
                         *get_node()->get_clock(),
                         5000,
-                        "Received /command_action with BASE_ACCEL with action_mode=%d");
+                        "Received /command_action with CMD_VEL: vx=%.2f, vy=%.2f, wz=%.2f",
+                        cmd_vx_, cmd_vy_, cmd_wz_);
+                } else if (msg->action_type == edge_msgs::msg::EdgeAction::BASE_ACCEL) {
+                    // Handle base acceleration command if needed
+                    if (msg->action_value.size() != 6) {
+                        RCLCPP_WARN_THROTTLE(
+                            get_node()->get_logger(),
+                            *get_node()->get_clock(),
+                            5000,
+                            "Received /command_action EdgeAction with size=%zu (!=6), ignoring",
+                            msg->action_value.size());
+                        return;
+                    }
+                    // Store the latest edge action for use
                     latest_edge_action_ = *msg;
+
+                    // Log the received action values
+                    const std::string action_value_string = [msg]() {
+                        std::ostringstream stream;
+                        stream << "[";
+                        for (size_t index = 0; index < msg->action_value.size(); ++index)
+                        {
+                            if (index > 0)
+                            {
+                                stream << ", ";
+                            }
+                            stream << msg->action_value[index];
+                        }
+                        stream << "]";
+                        return stream.str();
+                    }();
+                    RCLCPP_INFO_THROTTLE(
+                        get_node()->get_logger(),
+                        *get_node()->get_clock(),
+                        5000,
+                        "Received /command_action with BASE_ACCEL: [%s], mode=%d",
+                        action_value_string.c_str(), msg->action_mode);
                 } else {
                     RCLCPP_WARN_THROTTLE(
                         get_node()->get_logger(),

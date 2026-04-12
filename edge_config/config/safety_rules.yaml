@@ -58,7 +58,7 @@ switching:
     vx:
       type: relative
       index: 6
-      limit: 0.1
+      limit: 0.05
       unit: m/s
 
     # velocity limit in meters per second (relative mode)
@@ -92,18 +92,18 @@ switching:
 
     # ===== Obstacle Avoidance =====
     # distance limit to obstacles in meters (reference to local planner)
-    obstacle_distance:
-      type: relative
-      index: -1   # -1 means not used for errorState
-      limit: 1.2    # 1.2 has good result
-      unit: m
+    # obstacle_distance:
+    #   type: relative
+    #   index: -1   # -1 means not used for errorState
+    #   limit: 1.2    # 1.2 has good result
+    #   unit: m
 
-    goal_distance:
-      type: relative
-      index: -1   # -1 means not used for errorState
-      limit: 23.0
-      # limit: 4.0
-      unit: m
+    # goal_distance:
+    #   type: relative
+    #   index: -1   # -1 means not used for errorState
+    #   limit: 23.0
+    #   # limit: 4.0
+    #   unit: m
 
   # =========================================================
   # EXAMPLE: Absolute bound rules (uncomment to use)

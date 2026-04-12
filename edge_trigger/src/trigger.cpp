@@ -24,11 +24,9 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
     terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
 
-    int action_type_param = this->declare_parameter<int>("action_type", 0);
     std::string trigger_mode_str = this->declare_parameter<std::string>("trigger_mode", "self");
     
     try {
-        action_type_  = edge::utils::ActionType(action_type_param);
         trigger_mode_ = TriggerModeFromString(trigger_mode_str);
     }
     catch (const std::exception& e)
@@ -38,8 +36,6 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     }
     
 
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger action type is set to %s: %d", 
-        edge::utils::ToString(action_type_).c_str(), static_cast<int>(action_type_));
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
         (action_source_ == 1) ? "teacher" :
         (action_source_ == 0) ? "student" : "auto");
@@ -65,11 +61,11 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     sub_edge_state_ = this->create_subscription<edge_msgs::msg::EdgeState>(
         "state_input", 50, std::bind(&Trigger::edgeStateCallback, this, _1));
 
-    sub_teacher_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
-        teacher_topic_name_, 50, std::bind(&Trigger::teacherCallback, this, _1));
+    sub_teacher_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
+        teacher_topic_name_, 50, std::bind(&Trigger::teacherActionCallback, this, _1));
 
-    sub_student_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
-        student_topic_name_, 50, std::bind(&Trigger::studentCallback, this, _1));
+    sub_student_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
+        student_topic_name_, 50, std::bind(&Trigger::studentActionCallback, this, _1));
 
     sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
         "/obstacle_min_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
@@ -103,14 +99,16 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
 }
 
-void Trigger::studentCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
+void Trigger::studentActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-    last_stu_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
+    last_stu_action_ = *msg;
+    if (!is_stu_action_initialized_) is_stu_action_initialized_ = true;
 }
 
-void Trigger::teacherCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
+void Trigger::teacherActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-    last_tea_action_ = edge::ros_interfaces::EdgeActionMsgToEigen(*msg);
+    last_tea_action_ = *msg;
+    if (!is_tea_action_initialized_) is_tea_action_initialized_ = true;
 }
 
 void Trigger::edgeStateCallback(const edge_msgs::msg::EdgeState::SharedPtr msg)
@@ -213,17 +211,16 @@ void Trigger::getStatsCallback(
 
 void Trigger::resetCachedVariables()
 {
-    goal_distance_ = is_start_with_teacher_ ? 0.0 : MAX_VAL;
-    obstacle_distance_ = is_start_with_teacher_ ? 0.0 : MAX_VAL;
+    goal_distance_      = is_start_with_teacher_ ? 0.0 : MAX_VAL;
+    obstacle_distance_  = is_start_with_teacher_ ? 0.0 : MAX_VAL;
     is_last_state_fall_ = false;     // initial fall state
     is_last_state_safe_ = !is_start_with_teacher_;      // initial alert state
     
     last_edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
     last_edge_state_.state_value.assign(12, 0.0);
 
-    int dim = edge::utils::dimension(action_type_, 12);
-    last_stu_action_  = Eigen::VectorXd::Zero(dim);     // initial student action
-    last_tea_action_  = Eigen::VectorXd::Zero(dim);     // initial teacher action            
+    last_stu_action_  = edge_msgs::msg::EdgeAction{};     // initial student action
+    last_tea_action_  = edge_msgs::msg::EdgeAction{};     // initial teacher action            
 }
 
 void Trigger::resetStats()
@@ -354,6 +351,16 @@ void Trigger::updateLoop()
         RCLCPP_INFO(this->get_logger(), "Trigger: is_safe = %s", is_last_state_safe_ ? "true" : "false");
     }
 
+    // Publish alert status (still report safety evaluation)
+    std_msgs::msg::Bool alert_msg;
+    alert_msg.data = is_last_state_safe_;
+    pub_alert_->publish(alert_msg);
+
+    // Publish fall status
+    std_msgs::msg::Bool fall_msg;
+    fall_msg.data = is_last_state_fall_;
+    pub_fall_->publish(fall_msg);
+
     // Determine terminal action and mode
     edge::utils::ActionMode terminal_mode;
     edge_msgs::msg::EdgeAction terminal_action;
@@ -369,15 +376,29 @@ void Trigger::updateLoop()
         terminal_mode = selectAction();
     }
 
+    // Check if the required action has been initialized before publishing
+    bool can_publish = (terminal_mode == edge::utils::ActionMode::STUDENT)
+                        ? is_stu_action_initialized_
+                        : is_tea_action_initialized_;
+    if (!can_publish) {
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+            "Waiting for %s action to be initialized...",
+            terminal_mode == edge::utils::ActionMode::STUDENT ? "student" : "teacher");
+        return;
+    }
+
     // Prepare terminal action message
     if (terminal_mode == edge::utils::ActionMode::STUDENT) {
-        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(
-            last_stu_action_, edge::utils::ToMsg(action_type_), edge::utils::ToMsg(terminal_mode));
+        terminal_action = last_stu_action_;
+        terminal_action.action_mode = edge_msgs::msg::EdgeAction::STUDENT;
     }
     else {
-        terminal_action = edge::ros_interfaces::EigenToEdgeActionMsg(
-            last_tea_action_, edge::utils::ToMsg(action_type_), edge::utils::ToMsg(terminal_mode));
+        terminal_action = last_tea_action_;
+        terminal_action.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
     }
+
+    // Set timestamp for terminal action
+    terminal_action.header.stamp = this->now();
 
     // Update switching statistics
     updateStats(terminal_mode);
@@ -385,15 +406,6 @@ void Trigger::updateLoop()
     // Publish terminal action
     pub_action_->publish(terminal_action);
 
-    // Publish alert status (still report safety evaluation)
-    std_msgs::msg::Bool alert_msg;
-    alert_msg.data = is_last_state_safe_;
-    pub_alert_->publish(alert_msg);
-
-    // Publish fall status
-    std_msgs::msg::Bool fall_msg;
-    fall_msg.data = is_last_state_fall_;
-    pub_fall_->publish(fall_msg);
 }
 
 

@@ -146,8 +146,8 @@ private:
 
     void actionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
     {
-        if(msg->action_value.size() < 3) {
-            RCLCPP_WARN(get_logger(),"action size < 3");
+        if(msg->action_value.empty()) {
+            RCLCPP_WARN(get_logger(), "Received empty action, skipping");
             return;
         }
 
@@ -268,7 +268,7 @@ private:
         if(done_flag_ && task_type_ == "navigation")
         {
             edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
-            stop_action.action_value = {0.0, 0.0, 0.0};
+            stop_action.action_value.assign(curr_edge_action_.action_value.size(), 0.0);    // set all action values to zero
             command_action_pub_->publish(stop_action);
             RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
                 "Episode done: skip transition publish and send stop action [0, 0, 0]");
@@ -294,6 +294,8 @@ private:
     /* Transition Processing */
     bool processTransition()
     {
+
+
         Vector2d nav_goal;
         nav_goal << latest_goal_x_, latest_goal_y_;
 
@@ -366,10 +368,15 @@ private:
         // Publish transition
         edge_msgs::msg::Transition transition;
 
+        edge_msgs::msg::EdgeAction action_to_record =
+        last_edge_action_.action_value.empty() ? curr_edge_action_ : last_edge_action_;
+
+        transition.action = action_to_record;
+
         transition.header.stamp = now();
         transition.obs = getObservation();
         transition.next_obs = getObservationNext();
-        transition.action = last_edge_action_;
+        // transition.action = last_edge_action_;
         transition.reward_components = std::move(reward_components);
         transition.done = is_done;
 
@@ -388,6 +395,8 @@ private:
 
         last_edge_state_.state_value.assign(12, 0.0);
         curr_edge_state_.state_value.assign(12, 0.0);
+
+        last_edge_action_ = edge_msgs::msg::EdgeAction{};   // reset to default action
     }
 
 private:

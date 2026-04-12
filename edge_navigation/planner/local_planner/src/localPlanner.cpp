@@ -105,10 +105,8 @@ float joySpeed = 0;
 float joySpeedRaw = 0;
 float joyDir = 0;
 
-// const int pathNum = 343;   // Original
-// const int groupNum = 7;    // Original
-const int pathNum = 27;     // For testing with fewer paths
-const int groupNum = 3;     // For testing with fewer groups
+const int pathNum = 343;
+const int groupNum = 7;
 
 float gridVoxelSize = 0.02;
 float searchRadius = 0.55;
