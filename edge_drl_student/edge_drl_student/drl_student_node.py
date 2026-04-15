@@ -15,12 +15,15 @@ from rclpy.node import Node
 
 from edge_msgs.msg import EdgeState, EdgeAction
 from edge_drl_student.common.logger import Logger
+from edge_drl_student.utils.utils import ExperimentRunType
 from edge_drl_student.common.reset_manager import ResetManager
 from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
 from edge_drl_student.runners.distributed_runner import DistributedRunner
+from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
+
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -149,6 +152,9 @@ class DRLStudentNode(Node):
         if self.task not in task_config:
             raise ValueError(f"Unsupported task: {self.task}")
 
+
+        self.run_type = ExperimentRunType[self.run.upper()]      # Convert to enum for better type readability
+        self.get_logger().info(f"🚀 Starting DRL Student Node with RUN={self.run_type}")
         cfg = task_config[self.task]
 
         self.act_dim = cfg["act_dim"]
@@ -163,7 +169,8 @@ class DRLStudentNode(Node):
         # ============================================================
         self.body_state_dim = 12
         self.vision_feature_dim = 24
-        self.obs_dim = self.body_state_dim + self.vision_feature_dim
+        # self.obs_dim = self.body_state_dim + self.vision_feature_dim
+        self.obs_dim = self.body_state_dim
 
         self.get_logger().info(
             f"📐 Dimensions: obs_dim={self.obs_dim}, act_dim={self.act_dim}"
@@ -181,32 +188,47 @@ class DRLStudentNode(Node):
         # ============================================================
         # Replay Buffer
         # ============================================================
-        self.batch_size = 512
-        stu_buf_size = int(1e5) 
-        tea_buf_size = int(1e5)
-        teacher_prefill_size = 200
-        
-        # self.batch_size = 512
-        # stu_buf_size = int(2e5) 
-        # tea_buf_size = int(2e5)
-        # teacher_prefill_size = 200
-
-        stu_blending_weight = 0.0
-        tea_blending_weight = 1.0
-
-        if self.run == "dual":
-            self.buffer = DualReplayBuffer(
-                student_buf_size=stu_buf_size,
-                student_prefill_size=self.batch_size,
-                teacher_buf_size=tea_buf_size,
-                teacher_prefill_size=teacher_prefill_size,
+        if self.run_type in {ExperimentRunType.RLM, ExperimentRunType.SHIELDING}:
+            self.batch_size = 512
+            buf_size = int(2e5)
+            prefill_size = self.batch_size
+            self.buffer = SoloReplayBuffer(
+                buffer_size=buf_size,
+                prefill_size=prefill_size,
                 obs_dim=self.obs_dim,
                 action_dim=self.act_dim,
+                name="Shielding Buffer",
                 device=self.device,
             )
+            
+        elif self.run_type in {ExperimentRunType.DUAL, ExperimentRunType.COGNITIVE}:
+            
+            self.batch_size = 512
+            stu_buf_size = int(1e5) 
+            tea_buf_size = int(1e5)
+            teacher_prefill_size = 200
+            
+            # self.batch_size = 512
+            # stu_buf_size = int(2e5) 
+            # tea_buf_size = int(2e5)
+            # teacher_prefill_size = 200
 
-        elif self.run == "cognitive":
-            self.buffer = CognitiveReplayBuffer(
+            stu_blending_weight = 0.0
+            tea_blending_weight = 1.0
+            
+            if self.run_type == ExperimentRunType.DUAL:
+                self.buffer = DualReplayBuffer(
+                    student_buf_size=stu_buf_size,
+                    student_prefill_size=self.batch_size,
+                    teacher_buf_size=tea_buf_size,
+                    teacher_prefill_size=teacher_prefill_size,
+                    obs_dim=self.obs_dim,
+                    action_dim=self.act_dim,
+                    device=self.device,
+                )
+                
+            else:
+                self.buffer = CognitiveReplayBuffer(
                 student_buf_size=stu_buf_size,
                 student_prefill_size=self.batch_size,
                 teacher_buf_size=tea_buf_size,
@@ -217,11 +239,11 @@ class DRLStudentNode(Node):
                 action_dim=self.act_dim,
                 device=self.device,
             )
-
+                
         else:
-            raise ValueError(f"Unsupported RUN type: {self.run}")
+            raise ValueError(f"Unsupported RUN type: {self.run_type}")
 
-        self.get_logger().info(f"✅ Replay buffer initialized: {self.run}")
+        self.get_logger().info(f"✅ Replay buffer initialized for {self.run_type}")
 
         # ============================================================
         # Vision Processor
@@ -301,6 +323,7 @@ class DRLStudentNode(Node):
             act_dim=self.act_dim,
             state_type=self.edge_state_type,
             action_type=self.edge_action_type,
+            run_type=self.run_type,
             
             body_state_dim=self.body_state_dim,
             reset_manager=self.reset_manager,

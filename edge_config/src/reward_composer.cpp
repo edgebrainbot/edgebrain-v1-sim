@@ -56,6 +56,8 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
         const std::string& name = kv.first;
         double scale = kv.second;
 
+        std::cout << "[RewardComposer] Computing reward for '" << name << "' with scale " << scale << "\n";
+
         // Lookup the reward function
         auto rew_fn = registry.lookupRewardFunc(name);
         if (!rew_fn) {
@@ -67,6 +69,9 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
 
         // Compute the reward
         double r = rew_fn->compute(factors);
+
+        std::cout << "[RewardComposer] Reward '" << name << "': " << r 
+                << " (scale: " << scale << ", scaled: " << r*scale << ")\n";
 
         // Validate the reward value
         bool valid = std::isfinite(r);

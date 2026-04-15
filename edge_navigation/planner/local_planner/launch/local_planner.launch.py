@@ -24,7 +24,7 @@ def generate_launch_description():
         DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
         # DeclareLaunchArgument("autonomySpeed", default_value="0.5"),  # For testing
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
-        DeclareLaunchArgument("goalCloseDis", default_value="0.4"),
+        DeclareLaunchArgument("goalCloseDis", default_value="2.0"),
         DeclareLaunchArgument("goalX", default_value="0.0"),
         DeclareLaunchArgument("goalY", default_value="0.0"),
         DeclareLaunchArgument("test_unitree_controller", default_value="false"),

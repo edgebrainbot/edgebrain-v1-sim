@@ -83,7 +83,10 @@ public:
             [this](const edge_msgs::msg::Vec12Msg::SharedPtr msg)
             {
                 // Process tracking error input if needed
-                // For example, you can store it in a member variable for reward computation
+
+                for (size_t i = 0; i < 12 && i < msg->data.size(); ++i) {
+                    curr_tracking_error_[i] = msg->data[i];
+                }
             });
 
         /* State Input */
@@ -132,6 +135,7 @@ private:
 
     using Vector2d = edge::ros_interfaces::Vector2d;
     using Vector3d = edge::ros_interfaces::Vector3d;
+    using Vector6d = edge::ros_interfaces::Vector6d;
     using Vector12d = edge::ros_interfaces::Vector12d;
 
     static double clamp(double v,double lo,double hi)
@@ -184,10 +188,14 @@ private:
     // obs
 	std::vector<double> getObservation() const
 	{
-        std::vector<double> obs(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
-        if (obs.size() >= 2) {
-            obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_edge_state_
-            obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
+        // std::vector<double> obs(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
+        // if (obs.size() >= 2) {
+        //     obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_edge_state_
+        //     obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
+        // }
+        std::vector<double> obs(12, 0.0);
+        for (size_t i = 0; i < 12; ++i) {
+            obs[i] = last_tracking_error_[i];
         }
         return obs;
 	}
@@ -195,10 +203,14 @@ private:
 	// obs_next
 	std::vector<double> getObservationNext() const
 	{
-        std::vector<double> obs_next(curr_edge_state_.state_value.begin(), curr_edge_state_.state_value.end());
-        if (obs_next.size() >= 2) {
-            obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_edge_state_
-            obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
+        // std::vector<double> obs_next(curr_edge_state_.state_value.begin(), curr_edge_state_.state_value.end());
+        // if (obs_next.size() >= 2) {
+        //     obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_edge_state_
+        //     obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
+        // }
+        std::vector<double> obs_next(12, 0.0);
+        for (size_t i = 0; i < 12; ++i) {
+            obs_next[i] = curr_tracking_error_[i];
         }
         return obs_next;
 	}
@@ -280,6 +292,7 @@ private:
 
         last_edge_action_ = curr_edge_action_;
         last_edge_state_ = curr_edge_state_;
+        last_tracking_error_ = curr_tracking_error_;
         last_odom_ = curr_odom_;
 
         // Manual Reset Done
@@ -294,13 +307,20 @@ private:
     /* Transition Processing */
     bool processTransition()
     {
-
-
         Vector2d nav_goal;
         nav_goal << latest_goal_x_, latest_goal_y_;
 
         Vector3d robot_pos;
         Vector12d robot_state;
+        Vector6d delta_action = Vector6d::Zero();
+
+        // Action smoothness factor: current action - last action (first 6 dims).
+        if (!last_edge_action_.action_value.empty() && !curr_edge_action_.action_value.empty()) {
+            const size_t n = std::min<size_t>(6, std::min(last_edge_action_.action_value.size(), curr_edge_action_.action_value.size()));
+            for (size_t i = 0; i < n; ++i) {
+                delta_action[i] = curr_edge_action_.action_value[i] - last_edge_action_.action_value[i];
+            }
+        }
 
         if(curr_edge_state_.state_type == edge_msgs::msg::EdgeState::ROBOT_STATE)
         {
@@ -344,6 +364,7 @@ private:
             {"nav_goal", nav_goal},
             {"robot_pos", robot_pos},
             {"robot_state", robot_state},
+            {"delta_action", delta_action},
             {"is_goal_reached", goal_reach_flag},
             {"time_elapsed", (double)step_count_},
             {"is_teacher_activated", curr_edge_action_.action_mode == 1 ? true : false},
@@ -432,6 +453,8 @@ private:
 
     edge_msgs::msg::EdgeState last_edge_state_;
     edge_msgs::msg::EdgeState curr_edge_state_;
+    Vector12d last_tracking_error_ = Vector12d::Zero();
+    Vector12d curr_tracking_error_ = Vector12d::Zero();
     Vector12d latest_state_input_ = Vector12d::Zero();
     nav_msgs::msg::Odometry last_odom_;
     nav_msgs::msg::Odometry curr_odom_;
