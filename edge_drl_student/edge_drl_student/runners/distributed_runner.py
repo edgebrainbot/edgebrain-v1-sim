@@ -25,11 +25,11 @@ from edge_drl_student.common.normalizer import EmpiricalNormalizer
 from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
 from edge_drl_student.common.normalizer import RunningMeanStdNormalizer
-from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode
 from edge_drl_student.agents.distributed.ddpg_actor_learner import DDPGActorLearner
+from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
-
+from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode, ExperimentRunType
 
 RESIDUAL_GAIN = torch.tensor([
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -55,8 +55,9 @@ class DistributedRunner:
         body_state_dim: int,
         state_type: int,
         action_type: int,
+        run_type: ExperimentRunType,
         
-        replay_buffer: Union[DualReplayBuffer, CognitiveReplayBuffer],
+        replay_buffer: Union[SoloReplayBuffer, DualReplayBuffer, CognitiveReplayBuffer],
         action_bound: Union[Tuple[float, float], Tuple[torch.Tensor, torch.Tensor]],
         reset_manager: Optional[ResetManager],
         episode_manager: Optional[EpisodeManager],
@@ -100,6 +101,7 @@ class DistributedRunner:
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         self.body_state_dim = body_state_dim
+        self.run_type = run_type
         self.device = device
         
         self.batch_size = batch_size
@@ -128,7 +130,7 @@ class DistributedRunner:
                 device=device
             )
             self.node.get_logger().info(
-                f"✅ Observation normalizer created (RunningMeanStd)"
+                f"✅ Observation normalizer created (RunningMeanStd) with obs_dim={obs_dim}"
             )
         else:
             self.obs_normalizer = None
@@ -140,7 +142,7 @@ class DistributedRunner:
                 device=device
             )
             self.node.get_logger().info(
-                f"✅ Reward normalizer created (RunningMeanStd)"
+                f"✅ Reward normalizer created (RunningMeanStd) with reward_dim={1}"
             )
         else:
             self.reward_normalizer = None
@@ -278,7 +280,7 @@ class DistributedRunner:
         if msg.state_type == EdgeState.ROBOT_STATE:
             self.state_input: List[float] = list(msg.state_value)
             # print(f"Received ROBOT_STATE: {self.state_input}")
-            # self.node.get_logger().debug(f"Received ROBOT_STATE: {self.state_input}")
+            self.node.get_logger().debug(f"Received ROBOT_STATE: {self.state_input}")
             
         elif msg.state_type == EdgeState.TRACKING_ERROR:
             self.state_input: List[float] = list(msg.state_value)
@@ -385,23 +387,34 @@ class DistributedRunner:
             success: Whether processing and storing transition was successful
         """
         # Create observation (body_state + vision_feature)
-        observation = torch.cat((
-            torch.tensor(
-                np.array(msg.obs, dtype=np.float32),
-                dtype=torch.float32,
-                device=self.device
-            ),
-            self.vision_processor.get_last_features()
-        ), dim=0)
+        # observation = torch.cat((
+        #     torch.tensor(
+        #         np.array(msg.obs, dtype=np.float32),
+        #         dtype=torch.float32,
+        #         device=self.device
+        #     ),
+        #     self.vision_processor.get_last_features()
+        # ), dim=0)
         
-        next_observation = torch.cat((
-            torch.tensor(
-                np.array(msg.next_obs, dtype=np.float32),
-                dtype=torch.float32,
-                device=self.device
-            ),
-            self.vision_processor.get_current_features()
-        ), dim=0)
+        # next_observation = torch.cat((
+        #     torch.tensor(
+        #         np.array(msg.next_obs, dtype=np.float32),
+        #         dtype=torch.float32,
+        #         device=self.device
+        #     ),
+        #     self.vision_processor.get_current_features()
+        # ), dim=0)
+        observation = torch.tensor(
+            np.array(msg.obs, dtype=np.float32),
+            dtype=torch.float32,
+            device=self.device
+        )
+        
+        next_observation = torch.tensor(
+            np.array(msg.next_obs, dtype=np.float32),
+            dtype=torch.float32,
+            device=self.device
+        )
         
         # Normalize observations
         if self.obs_normalizer is not None:
@@ -424,26 +437,62 @@ class DistributedRunner:
             next_obs=next_obs_norm,
             done=msg.done
         )
-        
         action_mode = ActionMode(msg.action.action_mode)
         
-        # Add transition to the appropriate buffer
-        if action_mode == ActionMode.STUDENT:
-            self.replay_buffer.add_transition(t, action_mode=ActionMode.STUDENT)
-            if not self.replay_buffer.stu_buf.is_ready:
+        # Model Predictive Shielding (MPS) logic
+        if self.run_type == ExperimentRunType.SHIELDING:
+            if action_mode == ActionMode.STUDENT:
+                self.replay_buffer.add_transition(t, action_mode=ActionMode.STUDENT)
                 self.node.get_logger().info(
-                    f"[Transition] Added to student buffer. "
-                    f"Size: {self.replay_buffer.stu_buf_size}"
+                    f"[Transition] Received student transition. "
+                    f"Reward: {stepwise_total_reward:.3f}, "
+                    f"Done: {msg.done}"
                 )
-        elif action_mode == ActionMode.TEACHER:
-            self.replay_buffer.add_transition(t, action_mode=ActionMode.TEACHER)
-            if not self.replay_buffer.tea_buf.is_ready:
+            else:
+                self.node.get_logger().warning(
+                    f"Received non-student transition in SHIELDING run, ignoring."
+                )
+                return False
+            
+        # Runtime Learning Machine (RLM) logic
+        elif self.run_type == ExperimentRunType.RLM:
+            if action_mode in [ActionMode.STUDENT, ActionMode.TEACHER]:
+                self.replay_buffer.add_transition(t, action_mode=action_mode)
                 self.node.get_logger().info(
-                    f"[Transition] Added to teacher buffer. "
-                    f"Size: {self.replay_buffer.tea_buf_size}"
+                    f"[Transition] Received {action_mode.name.lower()} transition. "
+                    f"Reward: {stepwise_total_reward:.3f}, "
+                    f"Done: {msg.done}"
                 )
+            else:
+                self.node.get_logger().warning(
+                    f"Received uncertain transition in RLM run, ignoring."
+                )
+                return False
+        
+        # Dual and Cognitive logic (store in respective buffers)
+        elif self.run_type in [ExperimentRunType.COGNITIVE, ExperimentRunType.DUAL]:
+        
+            # Add transition to the appropriate buffer
+            if action_mode == ActionMode.STUDENT:
+                self.replay_buffer.add_transition(t, action_mode=ActionMode.STUDENT)
+                if not self.replay_buffer.stu_buf.is_ready:
+                    self.node.get_logger().info(
+                        f"[Transition] Added to student buffer. "
+                        f"Size: {self.replay_buffer.stu_buf_size}"
+                    )
+            elif action_mode == ActionMode.TEACHER:
+                self.replay_buffer.add_transition(t, action_mode=ActionMode.TEACHER)
+                if not self.replay_buffer.tea_buf.is_ready:
+                    self.node.get_logger().info(
+                        f"[Transition] Added to teacher buffer. "
+                        f"Size: {self.replay_buffer.tea_buf_size}"
+                    )
+            else:
+                self.node.get_logger().error(f'Unknown action mode: {msg.action.action_mode}')
+                return False
+            
         else:
-            self.node.get_logger().error(f'Unknown action mode: {msg.action.action_mode}')
+            self.node.get_logger().error(f"Unsupported run type: {self.run_type}")
             return False
         
         return True
@@ -489,8 +538,26 @@ class DistributedRunner:
             )
             return
         
+        # Handle special case for SHIELDING run: ignore teacher transitions for reward calculation
+        if self.run_type == ExperimentRunType.SHIELDING:
+            if msg.action.action_mode == ActionMode.TEACHER:
+                self.node.get_logger().warning(
+                    f"Received teacher transition in SHIELDING run, ignoring for reward calculation."
+                )
+                if self.is_learning_running:
+                    self.node.get_logger().info('⏸️  Learning loop paused during teacher transition in SHIELDING run')
+                    self.pause_learning_loop()
+                return
+            elif msg.action.action_mode == ActionMode.STUDENT:
+                if not self.is_learning_running:
+                    self.node.get_logger().info('▶️ Resuming learning loop after teacher transition in SHIELDING run')
+                    self.resume_learning_loop()
+                self.node.get_logger().info(
+                    f"[Transition] Received student transition in SHIELDING run. "
+                )
+
         # Extract reward components
-        rew_comp: List[EdgeReward] = msg.reward_components
+        rew_comp: List[EdgeReward] = msg.reward_components   
         reward_components = {c.name: c.value for c in rew_comp}
                 
         # Calculate stepwise total reward
@@ -541,14 +608,19 @@ class DistributedRunner:
         explore = (mode == DRLMode.TRAIN) and not isinstance(self.replay_buffer, CognitiveReplayBuffer)
         
         # Get current observation
-        observation = torch.cat((
-            torch.tensor(
+        # observation = torch.cat((
+        #     torch.tensor(
+        #         np.array(self.state_input, dtype=np.float32),
+        #         dtype=torch.float32,
+        #         device=self.device
+        #     ),
+        #     self.vision_processor.curr_vision_feature
+        # ), dim=0)
+        observation = torch.tensor(
                 np.array(self.state_input, dtype=np.float32),
                 dtype=torch.float32,
                 device=self.device
-            ),
-            self.vision_processor.curr_vision_feature
-        ), dim=0)
+        )
         
         # Normalize observation
         if self.obs_normalizer is not None:
@@ -567,7 +639,7 @@ class DistributedRunner:
         # tracking_error = torch.tensor(
         #     self.tracking_error_.data,
         #     dtype=torch.float32,
-        #     device=self.device
+        #     device=self.devicef
         # )
         # residual_action = (self.residual_gain @ tracking_error.unsqueeze(-1)).flatten()
     
@@ -575,8 +647,10 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            # learned_action = 1.0 * policy_action + 0.1 * blended_action
-            learned_action = 0.5 * policy_action
+            # print("policy...............................",policy_action.size())
+            # print("blended.............................",blended_action.size())
+            learned_action = 0.5 * policy_action + 0.5 * blended_action
+            # learned_action = 0.5 * policy_action
         else:
             learned_action = policy_action
         
@@ -652,23 +726,36 @@ class DistributedRunner:
             return
         
         # Log buffer sizes
-        self.logger.writer.add_scalar('Learn/buffer_size/student', self.replay_buffer.stu_buf_size, self.actor_learner.update_count)
-        self.logger.writer.add_scalar('Learn/buffer_size/teacher', self.replay_buffer.tea_buf_size, self.actor_learner.update_count)
+        if self.run_type in {ExperimentRunType.SHIELDING, ExperimentRunType.RLM}:
+            self.logger.writer.add_scalar('Learn/buffer_size/solo_buf', self.replay_buffer.buffer_size, self.actor_learner.update_count)
+        
+        else:
+            self.logger.writer.add_scalar('Learn/buffer_size/student', self.replay_buffer.stu_buf_size, self.actor_learner.update_count)
+            self.logger.writer.add_scalar('Learn/buffer_size/teacher', self.replay_buffer.tea_buf_size, self.actor_learner.update_count)
 
         # Check if buffers are ready
-        if not self.replay_buffer.stu_buf.is_ready:
-            self.node.get_logger().info(
-                f"Student Buffer not ready. "
-                f"Size: {self.replay_buffer.stu_buf_size}/{self.replay_buffer.stu_buf.prefill_size}"
-            )
-            return
+        if self.run_type in {ExperimentRunType.SHIELDING, ExperimentRunType.RLM}:
+            if not self.replay_buffer.is_ready:
+                self.node.get_logger().info(
+                    f"Replay buffer not ready. "
+                    f"Size: {self.replay_buffer.size}/{self.replay_buffer.prefill_size}"
+                )
+                return
         
-        if not self.replay_buffer.tea_buf.is_ready:
-            self.node.get_logger().info(
-                f"Teacher Buffer not ready. "
-                f"Size: {self.replay_buffer.tea_buf_size}/{self.replay_buffer.tea_buf.prefill_size}"
-            )
-            return
+        else:
+            if not self.replay_buffer.stu_buf.is_ready:
+                self.node.get_logger().info(
+                    f"Student Buffer not ready. "
+                    f"Size: {self.replay_buffer.stu_buf_size}/{self.replay_buffer.stu_buf.prefill_size}"
+                )
+                return
+            
+            if not self.replay_buffer.tea_buf.is_ready:
+                self.node.get_logger().info(
+                    f"Teacher Buffer not ready. "
+                    f"Size: {self.replay_buffer.tea_buf_size}/{self.replay_buffer.tea_buf.prefill_size}"
+                )
+                return
 
         learn_start = time.time()
         
@@ -1179,9 +1266,9 @@ class DistributedRunner:
                 f"   Total Falls:     {fall_stats['fall_count']}\n"
                 f"   Auto Reset:      {'Enabled' if fall_stats['auto_reset_on_fall'] else 'Disabled'}\n"
                 f"─────────────────────────────────────────────────────────────────────\n"
-                f"💾 Buffer Status:\n"
-                f"   Student Size:    {len(self.replay_buffer.stu_buf)}/{self.replay_buffer.stu_buf.capacity}\n"
-                f"   Teacher Size:    {len(self.replay_buffer.tea_buf)}/{self.replay_buffer.tea_buf.capacity}\n"
+                # f"💾 Buffer Status:\n"
+                # f"   Student Size:    {len(self.replay_buffer.stu_buf)}/{self.replay_buffer.stu_buf.capacity}\n"
+                # f"   Teacher Size:    {len(self.replay_buffer.tea_buf)}/{self.replay_buffer.tea_buf.capacity}\n"
                 f"{'='*70}"
             )
     

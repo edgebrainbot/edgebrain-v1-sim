@@ -12,6 +12,15 @@ class ActionMode(enum.Enum):
     TEACHER = 1
     UNCERTAIN = 2
     
+
+class ExperimentRunType(enum.Enum):
+    """Experiment Run Type Enumeration"""
+    COGNITIVE = 0
+    DUAL = 1
+    RLM = 2
+    SHIELDING = 3
+    
+    
 class DRLMode(enum.Enum):
     """ DRL Mode Enumeration"""
     TRAIN = 0

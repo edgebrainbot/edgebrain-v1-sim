@@ -37,12 +37,12 @@ def generate_launch_description():
     run_arg = DeclareLaunchArgument(
         "run",
         default_value="cognitive",
-        description="Replay buffer type: cognitive or dual"
+        description="Runtime Learning type: cognitive, dual, rlm, shielding"
     )
     
     is_real_robot_arg = DeclareLaunchArgument(
         "is_real_robot",
-        default_value="true",
+        default_value="false",
         description="Whether to run on a real robot"
     )
 

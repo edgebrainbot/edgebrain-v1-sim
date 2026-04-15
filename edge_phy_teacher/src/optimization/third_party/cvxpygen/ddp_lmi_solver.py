@@ -54,7 +54,7 @@ def cvxpy_ddp(random=False, threshold=0.1):
     # Sampling period
     Ts = 1 / 40  # work in 25 to 30
 
-    alpha = 0.65
+    alpha = 0.7
     hd = 1e-10
     phi = 0.15
         

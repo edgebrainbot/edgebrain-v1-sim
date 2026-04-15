@@ -22,15 +22,19 @@ edge_quadruped_controller:
   ros__parameters:
     update_rate: 500  # Hz
 
-    vx_limit: [-0.8, 0.8]  # m/s
-    vy_limit: [-0.2, 0.2]  # m/s
-    wz_limit: [-1.0, 1.0]  # rad/s
+    # vx_limit: [-0.8, 0.8]  # m/s
+    # vy_limit: [-0.2, 0.2]  # m/s
+    # wz_limit: [-1.0, 1.0]  # rad/s
+
+    vx_limit: [0.1, 0.3]  # m/s
+    vy_limit: [-0.3, 0.3]  # m/s
+    wz_limit: [-0.5, 0.5]  # rad/s
 
     topic_namespace: "edge"
     odom_frame_id: "leg_odom"
     base_frame_id: "base_link"
 
-    gait_height: 0.06
+    gait_height: 0.1
     robot_name: "go2"
     down_pos:
       - -0.01
