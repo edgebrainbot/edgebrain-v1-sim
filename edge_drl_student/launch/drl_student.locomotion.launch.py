@@ -36,7 +36,7 @@ def generate_launch_description():
 
     run_arg = DeclareLaunchArgument(
         "run",
-        default_value="cognitive",
+        default_value="dual",
         description="Runtime Learning type: cognitive, dual, rlm, shielding"
     )
     
