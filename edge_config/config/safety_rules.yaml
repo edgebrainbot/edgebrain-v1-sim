@@ -32,11 +32,11 @@ switching:
     #   unit: deg
 
     # pitch limit in degrees (relative mode)
-    # pitch:
-    #   type: relative
-    #   index: 4
-    #   limit: 10.0
-    # unit: deg
+    pitch:
+      type: relative
+      index: 4
+      limit: 6.0
+      unit: deg
 
     # ===== Position Limits =====
     # height limit in meters (relative mode)
@@ -58,7 +58,7 @@ switching:
     vx:
       type: relative
       index: 6
-      limit: 0.01
+      limit: 0.1
       unit: m/s
 
     # velocity limit in meters per second (relative mode)

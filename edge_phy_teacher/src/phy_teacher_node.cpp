@@ -18,10 +18,8 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     update_rate_        = this->declare_parameter<int>("update_rate", 200);
 
     // PhyTeacher config
-    tau_                 = this->declare_parameter<int>("tau", 20);
     chi_                 = this->declare_parameter<double>("chi", 0.25);
     teacher_enable_      = this->declare_parameter<bool>("teacher_enable", true);
-    trigger_type_        = this->declare_parameter<std::string>("trigger_type", "event");
     curr_action_         = edge::ros_interfaces::Vector6d::Zero();
     last_action_         = edge::ros_interfaces::Vector6d::Zero();
 
@@ -102,28 +100,28 @@ void PhyTeacher::controlCallback() {
     bool is_current_safe = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, 
                                                            err_state_, obstacle_distance_, goal_distance_);
 
-    // If teacher is not active
-    if (!teacher_active_) {
-        // If system is unsafe, activate teacher and set patch center
+    // If patch is not active
+    if (!patch_active_) {
+        // If system is unsafe, activate patch and set patch center
         if (!is_current_safe) {
             patch_center_ = chi_ * error_state_;
-            teacher_active_ = true;
+            patch_active_ = true;
             gain_synthesizer_pub_->publish(edge::ros_interfaces::EigenToVec12Msg(error_state_));
-            RCLCPP_WARN(this->get_logger(), "⚠️ System is UNSAFE! Phy-Teacher is Activated.");
+            RCLCPP_WARN(this->get_logger(), "⚠️ System is UNSAFE! Patch is Activated.");
         }
         // If the system is safe, do nothing
         else {
-            RCLCPP_INFO(this->get_logger(), "✅ System is SAFE. Phy-Teacher is Inactive.");
+            RCLCPP_INFO(this->get_logger(), "✅ System is SAFE. Patch is Inactive.");
         }
     } 
-    // If teacher is active
+    // If patch is active
     else {
         // Check if system has returned to safe state, deactivate if so
         if (is_current_safe) {
-            teacher_active_ = false;
-            RCLCPP_INFO(this->get_logger(), "↩️ System returned to SAFE state. Phy-Teacher is Deactivated.");
+            patch_active_ = false;
+            RCLCPP_INFO(this->get_logger(), "↩️ System returned to SAFE state. Patch is Deactivated.");
         } else {
-            RCLCPP_INFO(this->get_logger(), "⚠️ Phy-Teacher is Active. System is still UNSAFE.");
+            RCLCPP_INFO(this->get_logger(), "⚠️ Patch is Active. System is still UNSAFE.");
         }
     }
 
@@ -131,30 +129,25 @@ void PhyTeacher::controlCallback() {
     edge_msgs::msg::EdgeAction teacher_action_msg;
     edge::utils::ActionMode teacher_mode = edge::utils::ActionMode::TEACHER;
 
-    // Compute control gains if teacher is active
-    if (teacher_active_) {
-        // Compute the action according to the center of the safety patch
-        edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
-        if (opt_status_ == 0) {
-            RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
-            // auto kp_term = F_kp * error_from_patch.head(6);
-            // auto kd_term = F_kd * error_from_patch.tail(6);
-            auto kp_term = default_F_kp * error_from_patch.head(6);
-            auto kd_term = default_F_kd * error_from_patch.tail(6);
-            curr_action_ = kp_term + kd_term;
-        } else {
-            RCLCPP_ERROR(this->get_logger(), "LMI optimization failed! Using default gains.");
-            auto kp_term = default_F_kp * error_from_patch.head(6);
-            auto kd_term = default_F_kd * error_from_patch.tail(6);
-            curr_action_ = kp_term + kd_term;
-        }
+    // Compute the action according to the center of the safety patch
+    edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
+    if (opt_status_ == 0) {
+        RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
+        auto kp_term = F_kp * error_from_patch.head(6);     // Apply LMI-solved Kp to position error
+        auto kd_term = F_kd * error_from_patch.tail(6);     // Apply LMI-solved Kd to velocity error
+        // auto kp_term = default_F_kp * error_from_patch.head(6);
+        // auto kd_term = default_F_kd * error_from_patch.tail(6);
+        curr_action_ = kp_term + kd_term;
     } else {
-        // If teacher is not active, maintain last action
-        curr_action_ = last_action_;
+        RCLCPP_ERROR(this->get_logger(), "LMI optimization failed! Using default gains.");
+        auto kp_term = default_F_kp * error_from_patch.head(6);
+        auto kd_term = default_F_kd * error_from_patch.tail(6);
+        curr_action_ = kp_term + kd_term;
     }
 
     teacher_action_msg = edge::ros_interfaces::EigenToEdgeActionMsg(
         curr_action_,  edge_msgs::msg::EdgeAction::BASE_ACCEL, edge::utils::ToMsg(teacher_mode));
+
     action_pub_->publish(teacher_action_msg);
 
     got_msg_ = false;   // Reset flag until next message is received

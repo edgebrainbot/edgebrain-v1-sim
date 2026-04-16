@@ -37,14 +37,12 @@ private:
     void sythesizedGainCallback(const edge_msgs::msg::ControlGain::SharedPtr msg);
     
     // For phy-teacher logistics
-    int tau_ = 20;                            // Time steps for safety patch
     double chi_ = 0.25;                       // Hyperparameter χ
     bool teacher_enable_ = true;              // Whether the teacher is enabled
-    std::string trigger_type_ = "event";      // Trigger type: "event" or "periodic"
 
     int update_rate_;                         // Update rate in Hz
     bool got_msg_ = false;
-    bool teacher_active_ = false;             // Whether the teacher is active
+    bool patch_active_ = false;              // Whether the patch is active
 
     // For control and optimization
     int opt_status_ = -1;                    // Status of the optimization (0: success, non-zero: failure)
