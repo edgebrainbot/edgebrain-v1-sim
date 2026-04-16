@@ -180,14 +180,12 @@ void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
 
     d_yaw_cmd_ = wz_in;
 
-
     // Smoothing -- vx vy
     double alpha_vx = 0.9;
     double alpha_vy = 0.9;
     v_cmd_body_(0) = alpha_vx * v_cmd_body_past_(0) + (1 - alpha_vx) * v_cmd_body_(0);
     v_cmd_body_(1) = alpha_vy * v_cmd_body_past_(1) + (1 - alpha_vy) * v_cmd_body_(1);
     v_cmd_body_past_ = v_cmd_body_;
-
 
     // Smoothing -- wz
     double alpha_wz = 0.9;
@@ -245,7 +243,6 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
 
     auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
     tracking_error_tea_pub_->publish(track_msg);
-
 
     edge_state_.header.stamp = now();
     edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;

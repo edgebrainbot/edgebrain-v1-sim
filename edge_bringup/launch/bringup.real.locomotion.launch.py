@@ -281,7 +281,7 @@ def generate_launch_description():
         # -- Launch Components --
         led_launch,
         controller_launch,
-        # phy_teacher_launch,
+        phy_teacher_launch,
         # drl_student_launch,
         
         trigger_launch,

@@ -137,10 +137,10 @@ void PhyTeacher::controlCallback() {
         edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
         if (opt_status_ == 0) {
             RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
-            auto kp_term = F_kp * error_from_patch.head(6);
-            auto kd_term = F_kd * error_from_patch.tail(6);
-            // auto kp_term = default_F_kp * error_from_patch.head(6);
-            // auto kd_term = default_F_kd * error_from_patch.tail(6);
+            // auto kp_term = F_kp * error_from_patch.head(6);
+            // auto kd_term = F_kd * error_from_patch.tail(6);
+            auto kp_term = default_F_kp * error_from_patch.head(6);
+            auto kd_term = default_F_kd * error_from_patch.tail(6);
             curr_action_ = kp_term + kd_term;
         } else {
             RCLCPP_ERROR(this->get_logger(), "LMI optimization failed! Using default gains.");

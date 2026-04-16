@@ -4,7 +4,7 @@
 
     update_rate: 400          # update rate in Hz
 
-    chi: 0.2                # safety scaling factor
+    chi: 0.0                # safety scaling factor
     tau: 20                   # dwelling time in control update (reserved)
     enable: true              # whether to enable the safety controller
     trigger_type: 'event'     # trigger type: 'self' or 'event'

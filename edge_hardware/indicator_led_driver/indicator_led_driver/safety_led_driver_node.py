@@ -38,35 +38,37 @@ class SafetyLedDriverNode(Node):
         self.led_indicator_mode = LEDIndicatorMode[
             self.declare_parameter("led_indicator_mode", "safety").value.upper()
         ]
-        self.ns = self.get_namespace()
         
         self.get_logger().info(f"💡 Safety LED Indicator Mode: {self.led_indicator_mode}")
         self.get_logger().info("🟢/🔴 Safety LED Driver Node started.")
         
+        ns = self.get_namespace()
+        ns_prefix = f"{ns}" if ns != "/" else ""
+        
         # Subscriptions based on mode
         if self.led_indicator_mode == LEDIndicatorMode.SAFETY:
-            self.get_logger().info(f"⚪ Subscribing to '{self.ns}/is_safe' topic for safety status.")
+            self.get_logger().info(f"⚪ Subscribing to '{ns_prefix}/is_safe' topic for safety status.")
             self.create_subscription(
                 msg_type = Bool,
-                topic = f"{self.ns}/is_safe",
+                topic = f"is_safe",
                 callback = self.safety_callback,
                 qos_profile = 10,
             )
             
         elif self.led_indicator_mode == LEDIndicatorMode.CONTROL:
-            self.get_logger().info(f"⚪ Subscribing to '{self.ns}/command_action' topic for control status.")
+            self.get_logger().info(f"⚪ Subscribing to '{ns_prefix}/command_action' topic for control status.")
             self.create_subscription(
                 msg_type = EdgeAction,
-                topic = f"{self.ns}/command_action",
+                topic = f"command_action",
                 callback = self.control_callback,
                 qos_profile = 10,
             )
         else:
-            self.get_logger().error("❌ Invalid LED indicator mode! Defaulting to SAFETY mode.")
+            self.get_logger().error(f"❌ Invalid LED indicator mode! Defaulting to SAFETY mode., and subscribing to '{ns_prefix}/is_safe' topic.")
             self.led_indicator_mode = LEDIndicatorMode.SAFETY
             self.create_subscription(
                 msg_type = Bool,
-                topic = f"{self.ns}/is_safe",
+                topic = f"is_safe",
                 callback = self.safety_callback,
                 qos_profile = 10,
             )

@@ -21,8 +21,8 @@
 #include "edge_msgs/msg/transition.hpp"
 #include "edge_msgs/msg/edge_state.hpp"
 #include "edge_config/reward_composer.hpp"
-#include "edge_ros_interfaces/msg_conversion.hpp"
 #include "control_input_msgs/msg/inputs.hpp"
+#include "edge_ros_interfaces/msg_conversion.hpp"
 #include "edge_rl_runtime/deadzone_discriminator.hpp"
 
 namespace edge::rl_runtime
