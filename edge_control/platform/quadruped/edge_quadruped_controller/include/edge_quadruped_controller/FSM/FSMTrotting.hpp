@@ -12,7 +12,6 @@
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/transition.hpp"
-#include "edge_config/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "controller_common/FSM/FSMState.h"
 
@@ -33,7 +32,7 @@ namespace edge::control::quadruped
     class Estimator;
 }
 
-namespace edge::config
+namespace edge::rl_runtime
 {
     class RewardComposer;
 }
@@ -41,7 +40,7 @@ namespace edge::config
 
 using namespace edge::control::quadruped;
 using namespace edge::ros_interfaces;
-using namespace edge::config;
+using namespace edge::rl_runtime;
 
 class FSMTrotting final : public FSMState {
 
@@ -174,8 +173,6 @@ private:
      * @return DRL action message (terminal_action - residual_gain * tracking_error)
      */
     edge_msgs::msg::EdgeAction getLearnedDRLAction() const;
-    
-    RewardComposer reward_composer_{""};
 
     Mat6 latest_kp_;
     Mat6 latest_kd_;

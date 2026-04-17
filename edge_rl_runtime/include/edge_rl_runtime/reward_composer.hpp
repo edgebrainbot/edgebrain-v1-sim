@@ -12,7 +12,7 @@
 #include <functional>
 #include <edge_msgs/msg/edge_reward.hpp>
 
-namespace edge::config {
+namespace edge::rl_runtime {
 
 using RewardFactor = std::unordered_map<std::string, std::any>;
 
@@ -81,4 +81,4 @@ public:
 inline void registerAllRewardFunc();
 
 
-} // namespace edge::config
+} // namespace edge::rl_runtime

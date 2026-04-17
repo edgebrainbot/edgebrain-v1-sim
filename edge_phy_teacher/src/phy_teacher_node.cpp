@@ -24,7 +24,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     last_action_         = edge::ros_interfaces::Vector6d::Zero();
 
     // Initialize Safety Monitor
-    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
+    safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
 
     RCLCPP_INFO(this->get_logger(), "Update rate: %d Hz", update_rate_);
 
@@ -97,7 +97,7 @@ void PhyTeacher::controlCallback() {
     if (!got_msg_) return;
 
     auto err_state_ = edge::ros_interfaces::EigenToVector(error_state_);
-    bool is_current_safe = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, 
+    bool is_current_safe = safety_monitor_->evaluateSafety(edge::trigger::RuleType::RELATIVE, 
                                                            err_state_, obstacle_distance_, goal_distance_);
 
     // If patch is not active

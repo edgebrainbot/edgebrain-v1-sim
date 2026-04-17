@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
-#include "edge_config/safety_monitor.hpp"
+#include "edge_trigger/safety_monitor.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #define SM_DEBUG(msg) \
@@ -57,7 +57,7 @@ static std::string padTo(const std::string& s, size_t width) {
     return std::string(left, ' ') + s + std::string(right, ' ');
 }
 
-namespace edge::config
+namespace edge::trigger
 {
 
 SafetyMonitor::SafetyMonitor(const std::string& yaml_path)
@@ -77,7 +77,7 @@ std::string SafetyMonitor::parseYamlPath(const std::string& user_path)
     }
 
     // default YAML path
-    std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_config");
+    std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_trigger");
     return pkg_share + "/config/safety_rules.yaml";
 }
 
@@ -516,4 +516,4 @@ void SafetyMonitor::printLoadedRules() const
     std::cout << std::endl;
 }
 
-}  // namespace edge::config
+}  // namespace edge::trigger

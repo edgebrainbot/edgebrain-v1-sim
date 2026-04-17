@@ -11,11 +11,11 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>edge_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>edge_msgs</depend>
-  <depend>edge_config</depend>
   <depend>edge_ros_interfaces</depend>
+  <depend>edge_trigger</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

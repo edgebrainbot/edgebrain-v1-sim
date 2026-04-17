@@ -13,7 +13,7 @@
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
 #include "edge_msgs/msg/control_gain.hpp"
-#include "edge_config/safety_monitor.hpp"
+#include "edge_trigger/safety_monitor.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 using namespace lmi;
@@ -64,7 +64,7 @@ private:
     double goal_distance_;
     double obstacle_distance_;
     bool is_last_safe_ = true;
-    std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;
+    std::shared_ptr<edge::trigger::SafetyMonitor> safety_monitor_;
 
     // Subscribers
     rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr state_sub_;

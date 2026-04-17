@@ -9,8 +9,12 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>rclcpp</depend>
+  <depend>yaml-cpp</depend>
+  <depend>std_msgs</depend>
   <depend>edge_msgs</depend>
-  <depend>edge_config</depend>
+  <depend>ament_index_cpp</depend>
+  <depend>visualization_msgs</depend>
   <depend>edge_ros_interfaces</depend>
 
   <test_depend>ament_lint_auto</test_depend>

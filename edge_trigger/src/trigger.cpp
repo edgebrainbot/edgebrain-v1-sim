@@ -93,7 +93,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
 
     // Initialize Safety Monitor
-    safety_monitor_ = std::make_shared<edge::config::SafetyMonitor>();
+    safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
 
     RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
 
@@ -344,7 +344,7 @@ void Trigger::updateLoop()
     std::vector<double> robot_state(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
     
     // Evaluate safety and fall status
-    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::config::RuleType::RELATIVE, robot_state, obstacle_distance_, goal_distance_);
+    is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::trigger::RuleType::RELATIVE, robot_state, obstacle_distance_, goal_distance_);
     is_last_state_fall_ = is_robot_state_initialized_ ? safety_monitor_->detectFall(robot_state) : false;
 
     if (print_processing_) {

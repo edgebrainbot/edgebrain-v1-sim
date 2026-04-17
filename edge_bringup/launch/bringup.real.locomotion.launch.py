@@ -216,7 +216,7 @@ def generate_launch_description():
 
     # -------- Virtual Status Indicator Node --------
     virtual_status_indicator_node = Node(
-        package='edge_config',
+        package='edge_trigger',
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
         output='screen',

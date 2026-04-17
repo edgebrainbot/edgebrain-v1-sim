@@ -18,7 +18,7 @@
 #define C_UNIT    "\033[0;32m"   // Green
 
 
-namespace edge::config
+namespace edge::trigger
 {
 
 // Rule type: 
@@ -88,4 +88,4 @@ private:
     void printLoadedRules() const;
 };
 
-}  // namespace edge::config
+}  // namespace edge::trigger

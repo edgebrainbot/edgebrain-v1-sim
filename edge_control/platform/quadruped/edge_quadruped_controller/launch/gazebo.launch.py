@@ -101,7 +101,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
     ])
 
     physical_model_config = PathJoinSubstitution([
-        FindPackageShare('edge_config'),
+        FindPackageShare('edge_phy_teacher'),
         'config',
         'physical_model.yaml'
     ])

@@ -10,13 +10,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 # ------------------ Dependencies ------------------
 find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(BLAS REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(edge_msgs REQUIRED)
-find_package(edge_config REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
+find_package(edge_trigger REQUIRED)
 
 # ------------------ ecvxcone C library ------------------
 set(ecvxcone_headers
@@ -70,33 +71,25 @@ ament_target_dependencies(lmi_solver_lib
 )
 
 # ------------------ Executable ------------------
+
+# Physical teacher node
 add_executable(phy_teacher src/phy_teacher_node.cpp)
 target_include_directories(phy_teacher PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${EIGEN3_INCLUDE_DIRS}
 )
-target_link_libraries(phy_teacher lmi_solver_lib)
+target_link_libraries(phy_teacher
+  lmi_solver_lib
+)
+
+ament_target_dependencies(phy_teacher rclcpp edge_msgs edge_ros_interfaces edge_trigger)
 
 # Ensure RPATH includes relative lib/
 set_target_properties(phy_teacher PROPERTIES
   INSTALL_RPATH "$ORIGIN/../lib"
 )
-ament_target_dependencies(phy_teacher rclcpp edge_msgs edge_ros_interfaces edge_config)
 
-add_executable(mock_publisher test/mock_publisher.cpp)
-ament_target_dependencies( 
-  mock_publisher 
-  rclcpp 
-  std_msgs
-  edge_config
-  edge_msgs
-)
-
-add_executable(control_gain_listener test/control_gain_listener.cpp)
-target_link_libraries(control_gain_listener lmi_solver_lib)
-ament_target_dependencies(control_gain_listener rclcpp edge_msgs)
-target_include_directories(control_gain_listener PUBLIC include)
-
+# Gain synthesizer
 add_executable(gain_synthesizer src/gain_synthesizer_node.cpp)
 target_include_directories(gain_synthesizer PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -104,6 +97,21 @@ target_include_directories(gain_synthesizer PUBLIC
 )
 target_link_libraries(gain_synthesizer lmi_solver_lib)
 ament_target_dependencies(gain_synthesizer rclcpp edge_msgs)
+
+
+# ------------------ Testing ------------------
+add_executable(mock_publisher test/mock_publisher.cpp)
+ament_target_dependencies( 
+  mock_publisher 
+  rclcpp 
+  std_msgs
+  edge_msgs
+)
+
+add_executable(control_gain_listener test/control_gain_listener.cpp)
+target_link_libraries(control_gain_listener lmi_solver_lib)
+ament_target_dependencies(control_gain_listener rclcpp edge_msgs)
+target_include_directories(control_gain_listener PUBLIC include)
 
 
 # ------------------ Install ------------------

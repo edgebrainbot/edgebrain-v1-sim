@@ -17,10 +17,32 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(edge_msgs REQUIRED)
-find_package(edge_config REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(edge_ros_interfaces REQUIRED)
 find_package(control_input_msgs REQUIRED)
 
+# Reward composer library
+add_library(reward_composer SHARED
+  src/reward_composer.cpp
+)
+
+target_include_directories(reward_composer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(reward_composer
+  yaml-cpp
+)
+
+ament_target_dependencies(reward_composer
+  rclcpp
+  edge_msgs
+  edge_ros_interfaces
+)
+
+
+# RL runtime node
 add_executable(rl_runtime_node
   src/rl_runtime_node.cpp
   src/deadzone_discriminator.cpp
@@ -29,6 +51,10 @@ add_executable(rl_runtime_node
 target_include_directories(rl_runtime_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(rl_runtime_node
+  reward_composer
 )
 
 # ensure modern C++ features
@@ -40,7 +66,6 @@ ament_target_dependencies(rl_runtime_node
   geometry_msgs
   std_msgs
   edge_msgs
-  edge_config
   edge_ros_interfaces
   control_input_msgs
 )

@@ -7,12 +7,12 @@
 
 #include <cmath>
 #include <Eigen/Dense>
-#include "edge_config/reward_composer.hpp"
+#include "edge_rl_runtime/reward_composer.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 
 using namespace edge::ros_interfaces;
 
-namespace edge::config {
+namespace edge::rl_runtime {
 
 // static const double P_MAT[12][12] = {
 //     {0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0},     // x

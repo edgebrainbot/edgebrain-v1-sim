@@ -20,7 +20,7 @@ def generate_launch_description():
     # Parameter file
     # ------------------------------------------------
     physical_model_file = os.path.join(
-        get_package_share_directory("edge_config"),
+        get_package_share_directory("edge_phy_teacher"),
         "config",
         "physical_model.yaml"
     )

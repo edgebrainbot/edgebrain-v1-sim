@@ -10,23 +10,21 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find the dependencies
 set(CONTROLLER_DEPENDENCIES
-    std_srvs
-    rclcpp
-    pluginlib
-    rcpputils
-    controller_interface
-    realtime_tools
-    std_msgs
-    control_input_msgs
-    controller_common
-    pinocchio
-    nav_msgs
-    tf2_ros
-    geometry_msgs
-    edge_msgs
-    edge_ros_interfaces
-    edge_config
-    # phy_teacher_interfaces
+  std_srvs
+  rclcpp
+  pluginlib
+  rcpputils
+  controller_interface
+  realtime_tools
+  std_msgs
+  control_input_msgs
+  controller_common
+  pinocchio
+  nav_msgs
+  tf2_ros
+  geometry_msgs
+  edge_msgs
+  edge_ros_interfaces
 )
 
 # find dependencies

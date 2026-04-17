@@ -10,11 +10,11 @@
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
 
-#include "edge_config/reward_composer.hpp"
-#include "edge_config/reward_function.hpp"
+#include "edge_rl_runtime/reward_composer.hpp"
+#include "edge_rl_runtime/reward_function.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-namespace edge::config {
+namespace edge::rl_runtime {
 
 RewardComposer::RewardComposer(const std::string& yaml_path) {
 
@@ -22,7 +22,7 @@ RewardComposer::RewardComposer(const std::string& yaml_path) {
 
     std::string final_path;
     if (yaml_path.empty()) {
-        std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_config");
+        std::string pkg_share = ament_index_cpp::get_package_share_directory("edge_rl_runtime");
         final_path = pkg_share + "/config/env_reward.yaml";
 
         std::cout << "[RewardComposer] Using default reward file: " 
@@ -90,4 +90,4 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
 
     return reward_msgs;
 }
-} // namespace edge::config
+} // namespace edge::rl_runtime

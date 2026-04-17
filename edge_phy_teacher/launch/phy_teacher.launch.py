@@ -15,7 +15,7 @@ def generate_launch_description():
 
     # default config path
     default_config_path = os.path.join(
-        get_package_share_directory('edge_config'),
+        get_package_share_directory('edge_phy_teacher'),
         'config',
         'physical_model.yaml'
     )

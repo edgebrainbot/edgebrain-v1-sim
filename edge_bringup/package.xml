@@ -17,7 +17,6 @@
   <exec_depend>edge_drl_student</exec_depend>
   <exec_depend>edge_phy_teacher</exec_depend>
   <exec_depend>edge_trigger</exec_depend>
-  <exec_depend>edge_config</exec_depend>
   <exec_depend>edge_gazebo</exec_depend>
   <exec_depend>edge_quadruped_controller</exec_depend>
   <exec_depend>indicator_led_driver</exec_depend>

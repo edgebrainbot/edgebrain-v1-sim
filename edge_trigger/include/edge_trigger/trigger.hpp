@@ -19,7 +19,7 @@
 
 #include "edge_msgs/msg/edge_state.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
-#include "edge_config/safety_monitor.hpp"
+#include "edge_trigger/safety_monitor.hpp"
 #include "edge_msgs/srv/get_switching_stats.hpp"
 #include "edge_msgs/srv/reset_switching_stats.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
@@ -127,7 +127,7 @@ private:
 
 
     rclcpp::TimerBase::SharedPtr timer_;    // Periodic timer
-    std::shared_ptr<edge::config::SafetyMonitor> safety_monitor_;       // Safety monitor
+    std::shared_ptr<edge::trigger::SafetyMonitor> safety_monitor_;       // Safety monitor
 };
 
 }  // namespace edge::trigger

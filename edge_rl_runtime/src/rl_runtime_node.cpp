@@ -20,7 +20,7 @@
 
 #include "edge_msgs/msg/transition.hpp"
 #include "edge_msgs/msg/edge_state.hpp"
-#include "edge_config/reward_composer.hpp"
+#include "edge_rl_runtime/reward_composer.hpp"
 #include "control_input_msgs/msg/inputs.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
 #include "edge_rl_runtime/deadzone_discriminator.hpp"
@@ -359,7 +359,7 @@ private:
         // Judge whether the robot has entered the deadzone (e.g., due to collision or going off-track)
         // bool is_entered_deadzone = dz_discriminator_.is_in_deadzone(curr_odom_.pose.pose.position.x, curr_odom_.pose.pose.position.y);
 
-        edge::config::RewardFactor reward_factors
+        edge::rl_runtime::RewardFactor reward_factors
         {
             {"nav_goal", nav_goal},
             {"robot_pos", robot_pos},
@@ -422,7 +422,7 @@ private:
 
 private:
 
-    edge::config::RewardComposer reward_composer_{""};
+    edge::rl_runtime::RewardComposer reward_composer_{""};
     edge::rl_runtime::DeadzoneDiscriminator dz_discriminator_;
 
     // Configuration parameters

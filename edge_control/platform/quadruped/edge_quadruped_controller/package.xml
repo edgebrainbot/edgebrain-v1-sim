@@ -8,8 +8,7 @@
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <depend>edge_config</depend>
+  
   <depend>edge_msgs</depend>
   <depend>std_srvs</depend>
   <depend>edge_ros_interfaces</depend>
