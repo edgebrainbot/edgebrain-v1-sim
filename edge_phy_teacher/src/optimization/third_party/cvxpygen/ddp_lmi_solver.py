@@ -54,14 +54,14 @@ def cvxpy_ddp(random=False, threshold=0.1):
     # Sampling period
     Ts = 1 / 40  # work in 25 to 30
 
-    alpha = 0.7
+    alpha = 0.65
     hd = 1e-10
     phi = 0.15
         
     # State
     b1 = 1 / 0.5         # height
     b2 = 1 / 10000.0         # roll
-    b3 = 1 / 10000.0         # pitch
+    b3 = 1 / 0.4         # pitch
     b4 = 1 / 10000.0         # yaw
     b5 = 1 / 5.0         # vx
     b6 = 1 / 5.0         # vy

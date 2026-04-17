@@ -34,8 +34,8 @@ class ACTRCognitiveSampler(BaseSampler):
                  memory_decay_factor: float = -0.5,
                 #  fr_weight: float = 0.3,
                 #  sm_weight: float = 0.7,
-                 fr_weight: float = 0.05,
-                 sm_weight: float = 0.95,
+                 fr_weight: float = 0.1,
+                 sm_weight: float = 0.9,
                  blending_size: int = 5,  #good: 10, 20
                  device: str = "cpu"):
         
