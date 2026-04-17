@@ -104,12 +104,12 @@
       <link name="body">
         <visual name="visual">
           <geometry>
-            <mesh><uri>file:///home/edgebot/edge_ws/install/edge_gazebo/share/edge_gazebo/worlds/terrains/rough_25cm/rough_25cm.stl</uri></mesh>
+            <mesh><uri>rough_25cm.stl</uri></mesh>
           </geometry>
         </visual>
         <collision name="collision">
           <geometry>
-            <mesh><uri>file:///home/edgebot/edge_ws/install/edge_gazebo/share/edge_gazebo/worlds/terrains/rough_25cm/rough_25cm.stl</uri></mesh>
+            <mesh><uri>rough_25cm.stl</uri></mesh>
           </geometry>
           <surface>
             <friction>

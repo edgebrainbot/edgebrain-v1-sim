@@ -17,14 +17,14 @@ class LidarToLegodom(Node):
         self.declare_parameter('target_frame', 'leg_odom')
         self.declare_parameter('input_topic', '/scan/points')
         self.declare_parameter('output_topic', '/registered_scan')
-        self.declare_parameter('timeout', 0.1)  # TF 查找超时时间(秒)
+        self.declare_parameter('timeout', 0.1)  # TF Search Timeout in seconds
         
         self.target_frame = self.get_parameter('target_frame').value
         input_topic = self.get_parameter('input_topic').value
         output_topic = self.get_parameter('output_topic').value
         self.tf_timeout = self.get_parameter('timeout').value
 
-        # TF Buffer 和 Listener
+        # TF Buffer and Listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
@@ -46,8 +46,8 @@ class LidarToLegodom(Node):
         self.last_log_time = self.get_clock().now()
 
         self.get_logger().info(
-            f'点云转换节点已启动: {input_topic} → {output_topic} '
-            f'(目标坐标系: {self.target_frame})'
+            f'The lidar_to_map node is running: {input_topic} → {output_topic} '
+            f'(Target Frame: {self.target_frame})'
         )
 
     def parse_gazebo_cloud(self, msg):
@@ -61,7 +61,7 @@ class LidarToLegodom(Node):
 
         pts = np.zeros((N, 3), dtype=np.float32)
 
-        # XYZ offsets (假设 XYZRGB 或 XYZ 格式)
+        # XYZ offsets (Assume XYZRGB or XYZ format, adjust if different)
         ox, oy, oz = 0, 4, 8
 
         for i in range(N):
@@ -73,11 +73,11 @@ class LidarToLegodom(Node):
         return pts
 
     def transform_to_matrix(self, transform):
-        """将 TransformStamped 转换为 4x4 齐次变换矩阵"""
+        """Turn TransformStamped to 4x4 Homogeneous Matrix"""
         t = transform.transform.translation
         q = transform.transform.rotation
         
-        # 使用 scipy 的 Rotation
+        # Use scipy's Rotation
         r = R.from_quat([q.x, q.y, q.z, q.w])
         rot_matrix = r.as_matrix()
         
@@ -88,72 +88,72 @@ class LidarToLegodom(Node):
         return T
 
     def callback(self, msg):
-        # 1. 检查点云是否为空
+        # 1. Check for empty cloud
         if msg.width == 0 or len(msg.data) == 0:
-            self.get_logger().warn("收到空点云，跳过", throttle_duration_sec=5.0)
+            self.get_logger().warn("Received empty point cloud, skipping", throttle_duration_sec=5.0)
             return
 
-        # 2. 解析点云
+        # 2. Parse the incoming PointCloud2 message
         try:
             pts = self.parse_gazebo_cloud(msg)
             if pts.shape[0] == 0:
                 return
         except Exception as e:
             self.fail_count += 1
-            self.get_logger().error(f"解析点云失败: {e}")
+            self.get_logger().error(f"Failed to parse point cloud: {e}")
             return
 
         try:
-            # 使用点云消息的时间戳
+            # Use the timestamp from the point cloud message for TF lookup
             transform = self.tf_buffer.lookup_transform(
-                self.target_frame,          # 目标坐标系
-                msg.header.frame_id,        # 源坐标系
-                msg.header.stamp,           # 使用点云的时间戳
+                self.target_frame,          # Target frame
+                msg.header.frame_id,        # Source frame from the point cloud message
+                msg.header.stamp,           # Use the timestamp from the point cloud message
                 timeout=Duration(seconds=self.tf_timeout)
             )
         except tf2_ros.LookupException as e:
             self.fail_count += 1
             self.get_logger().warn(
-                f"TF 查找失败: {e}",
+                f"TF lookup failed: {e}",
                 throttle_duration_sec=2.0
             )
             return
         except tf2_ros.ExtrapolationException as e:
             self.fail_count += 1
             self.get_logger().warn(
-                f"TF 外推失败: {e}",
+                f"TF extrapolation failed: {e}",
                 throttle_duration_sec=2.0
             )
             return
         except Exception as e:
             self.fail_count += 1
-            self.get_logger().error(f"TF 获取异常: {e}")
+            self.get_logger().error(f"TF lookup exception: {e}")
             return
 
-        # 4. 转换为变换矩阵
+        # 4. Calculate transformation matrix
         try:
             T = self.transform_to_matrix(transform)
         except Exception as e:
             self.fail_count += 1
-            self.get_logger().error(f"变换矩阵计算失败: {e}")
+            self.get_logger().error(f"Failed to calculate transformation matrix: {e}")
             return
 
-        # 5. 应用变换
+        # 5. Apply transformation
         try:
-            # 转为齐次坐标 (N, 4)
+            # Convert to homogeneous coordinates (N, 4)
             pts_h = np.hstack([pts, np.ones((pts.shape[0], 1), dtype=np.float32)])
             
-            # 变换: (4, 4) @ (N, 4).T = (4, N) -> (N, 4) -> 取前3列
+            # Transform: (4, 4) @ (N, 4).T = (4, N) -> (N, 4) -> Get the first 3 columns
             pts_transformed = (T @ pts_h.T).T[:, :3]
 
-            # pts_transformed[:, 0] = -pts_transformed[:, 0]  # X 轴取反以适应 leg_odom 坐标系
+            # pts_transformed[:, 0] = -pts_transformed[:, 0]  # X-axis flip for leg_odom coordinate system
             
         except Exception as e:
             self.fail_count += 1
-            self.get_logger().error(f"点云变换失败: {e}")
+            self.get_logger().error(f"Failed to transform point cloud: {e}")
             return
 
-        # 6. 构造新的 PointCloud2 消息
+        # 6. Create PointCloud2 message
         try:
             fields = [
                 PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
@@ -161,30 +161,30 @@ class LidarToLegodom(Node):
                 PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
             ]
 
-            # 创建新 header,注意 frame_id 要与目标坐标系一致
+            # Create header, note that frame_id should be the target frame
             header = msg.header
             header.frame_id = 'map'
 
             cloud_msg = create_cloud(header, fields, pts_transformed.tolist())
             
-            # 发布
+            # Publish the transformed point cloud
             self.pub.publish(cloud_msg)
             
             self.success_count += 1
             
-            # 定期输出统计信息
+            # Output statistics every 5 seconds
             now = self.get_clock().now()
-            if (now - self.last_log_time).nanoseconds > 5e9:  # 每5秒
+            if (now - self.last_log_time).nanoseconds > 5e9:  # 5 seconds
                 self.get_logger().info(
-                    f'转换统计 - 成功: {self.success_count}, '
-                    f'失败: {self.fail_count}, '
-                    f'当前点数: {pts_transformed.shape[0]}'
+                    f'The statistics - Success: {self.success_count}, '
+                    f'Failed: {self.fail_count}, '
+                    f'Current point count: {pts_transformed.shape[0]}'
                 )
                 self.last_log_time = now
                 
         except Exception as e:
             self.fail_count += 1
-            self.get_logger().error(f"构造点云消息失败: {e}")
+            self.get_logger().error(f"Failed to create point cloud message: {e}")
             return
 
 def main():
@@ -197,8 +197,8 @@ def main():
         pass
     finally:
         node.get_logger().info(
-            f'节点退出 - 总成功: {node.success_count}, '
-            f'总失败: {node.fail_count}'
+            f'Node shutdown - Total success: {node.success_count}, '
+            f'Total failed: {node.fail_count}'
         )
         node.destroy_node()
         if rclpy.ok():
