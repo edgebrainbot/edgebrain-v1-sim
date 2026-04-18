@@ -1,7 +1,7 @@
 
 # 🚀 Setup Jetson AP Mode (Auto Start at Boot)
 
-This guide configures the Jetson device to automatically start a WiFi hotspot (AP mode) on boot using nmcli and a startup script. 
+This guide configures the Jetson device to automatically start a WiFi hotspot (AP mode) on boot using nmcli and a systemd service. 
 
 > [!NOTE]
 > This setup provides a reliable connection between a laptop and the Jetson, enabling the use of remote access tools (e.g., [AnyDesk](https://anydesk.com/en/downloads/linux)) for convenient GUI interaction. It is essential for *on-device debugging* in the network-constrained environments such as *remote* or *field deployments*.

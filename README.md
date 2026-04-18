@@ -59,7 +59,7 @@ A convenient build script is provided to compile the ROS 2 workspace:
 ```
 
 **Options:**
-- `-w, --workspace DIR` : Specify the ROS 2 workspace directory (must contain `ros2_ws` in name)
+- `-w, --workspace DIR` : Specify the ROS 2 workspace directory (must contain `edge_ws` in name)
 - `-h, --help` : Display help message
 
 **Note:** Ensure the script has execute permissions: `chmod +x scripts/build.sh`
@@ -75,7 +75,7 @@ Digital Twin Video (In Rviz):
 
 https://github.com/user-attachments/assets/6d2f6dc1-04ef-45a7-abfa-cc55f1900507
 
-## Features
+## 🧩 Features
 
 There're several features that this repository shares:
 
@@ -116,7 +116,7 @@ Please star or cite below papers if you find this repo helpful
 }
 ``` -->
 
-## 🖥️ Jetson Deployment Guide
+## 💻 Jetson Deployment Guide
 
 To ensure optimal performance on Jetson platforms, it is strongly recommended to use an NVMe SSD instead of the onboard 64GB eMMC. NVMe storage provides significantly higher read/write throughput. After installing the NVMe drive, use [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe device.
 

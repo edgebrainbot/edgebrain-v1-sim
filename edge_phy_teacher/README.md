@@ -60,9 +60,9 @@ $$
 \end{aligned}
 $$
 
-<table>
+<table align="center">
   <tr>
-    <td>
+    <td align="center">
 
 <!-- Left: Markdown Table -->
   
@@ -77,7 +77,7 @@ $$
 | $\mathbf{Q}_k$, $\mathbf{T}_k$   | Auxiliary matrix variables for LMIs |
 | $\mathbf{F}_k$                   | Feedback gain matrix from controller |
 
-</td>
+</td align="center">
 <td style="vertical-align: top; padding-left: 0px;">
 
 <!-- Right: Image -->
