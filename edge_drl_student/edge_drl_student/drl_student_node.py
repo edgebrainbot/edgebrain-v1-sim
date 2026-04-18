@@ -143,8 +143,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.TRACKING_ERROR,
                 "edge_action_type": EdgeAction.BASE_ACCEL,
                 "action_bound":(
-                    torch.tensor([-10., -10., -10., -15., -15., -15.], device=self.device),
-                    torch.tensor([10., 10., 10., 15., 15., 15.], device=self.device)
+                    torch.tensor([-10., -10., -3., -15., -15., -15.], device=self.device),
+                    torch.tensor([10., 10., 3., 15., 15., 15.], device=self.device)
                 )
             },
         }
@@ -203,7 +203,7 @@ class DRLStudentNode(Node):
             
         elif self.run_type in {ExperimentRunType.DUAL, ExperimentRunType.COGNITIVE}:
             
-            self.batch_size = 512
+            self.batch_size = 256
             stu_buf_size = int(1e5) 
             tea_buf_size = int(1e5)
             teacher_prefill_size = 200

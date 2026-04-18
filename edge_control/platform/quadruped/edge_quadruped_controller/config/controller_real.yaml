@@ -32,7 +32,7 @@ edge_quadruped_controller:
     odom_frame_id: "leg_odom"
     base_frame_id: "base_link"
 
-    gait_height: 0.06
+    gait_height: 0.1
     robot_name: "go2"
     down_pos:
       - -0.01
