@@ -102,7 +102,7 @@ switching:
       type: relative
       index: -1   # -1 means not used for errorState
       # limit: 23.0
-      limit: 4.0
+      limit: 9.0
       unit: m
 
   # =========================================================

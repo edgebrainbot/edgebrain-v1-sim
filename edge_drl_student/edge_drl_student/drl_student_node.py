@@ -189,7 +189,7 @@ class DRLStudentNode(Node):
         # Replay Buffer
         # ============================================================
         if self.run_type in {ExperimentRunType.RLM, ExperimentRunType.SHIELDING}:
-            self.batch_size = 512
+            self.batch_size = 256
             buf_size = int(2e5)
             prefill_size = self.batch_size
             self.buffer = SoloReplayBuffer(

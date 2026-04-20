@@ -12,6 +12,7 @@ from launch.actions import (
     IncludeLaunchDescription,
     RegisterEventHandler,
     SetEnvironmentVariable,
+    TimerAction
 )
 from datetime import datetime
 from launch_ros.actions import Node
@@ -194,6 +195,22 @@ def generate_launch_description():
         # }.items()
     )
 
+    # -------- Goal Publisher Node --------
+    goal = [8.0, 3.0, 0.0]
+    # goal = [6, 0.0, 0.0]
+    publish_goal_point = TimerAction(
+        period=1.0,
+        actions=[ExecuteProcess(
+            cmd=[
+                'ros2', 'topic', 'pub', '-r', '1',
+                '/goal_point',
+                'geometry_msgs/msg/PointStamped',
+                f'{{header: {{stamp: {{sec: 0, nanosec: 0}}, frame_id: "map"}}, point: {{x: {goal[0]}, y: {goal[1]}, z: {goal[2]}}}}}'
+            ],
+            # output='screen'
+        )]
+    )
+
 
     # --------- Navigation Module Launch ---------
     navigation_launch = IncludeLaunchDescription(
@@ -289,6 +306,7 @@ def generate_launch_description():
         virtual_status_indicator_node,
         
         global_rviz_node,
+        publish_goal_point,
         # camera_image_pub_node,
         # navigation_launch,
         

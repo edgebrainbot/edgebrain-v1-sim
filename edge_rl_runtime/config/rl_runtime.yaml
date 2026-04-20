@@ -3,7 +3,7 @@
 
     navigation:
       # goal_threshold: 1.25     # distance threshold to consider episode done in real world
-      goal_threshold: 0.8   # distance threshold to consider episode done
+      goal_threshold: 1.0   # distance threshold to consider episode done
 
     episode:
       horizon_steps: 120000000     # maximum number of steps per episode, after which the episode is terminated

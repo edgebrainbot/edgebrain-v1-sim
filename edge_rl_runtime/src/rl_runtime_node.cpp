@@ -264,7 +264,7 @@ private:
         is_real_robot_ready_pub_->publish(ready_msg);
 
         // Process transition and compute reward
-        done_ = processTransition();
+        done_ = processTransition(!done_flag_);
 
         // Publish whether episode is done
         std_msgs::msg::Bool done_msg;
@@ -305,7 +305,7 @@ private:
     }
 
     /* Transition Processing */
-    bool processTransition()
+    bool processTransition(bool publish_transition=true)
     {
         Vector2d nav_goal;
         nav_goal << latest_goal_x_, latest_goal_y_;
@@ -387,21 +387,24 @@ private:
         const bool is_done = goal_reach_flag || timeout || is_manual_done_;
 
         // Publish transition
-        edge_msgs::msg::Transition transition;
+        if(publish_transition) {
+            edge_msgs::msg::Transition transition;
 
-        edge_msgs::msg::EdgeAction action_to_record =
-        last_edge_action_.action_value.empty() ? curr_edge_action_ : last_edge_action_;
+            edge_msgs::msg::EdgeAction action_to_record =
+            last_edge_action_.action_value.empty() ? curr_edge_action_ : last_edge_action_;
 
-        transition.action = action_to_record;
+            transition.action = action_to_record;
 
-        transition.header.stamp = now();
-        transition.obs = getObservation();
-        transition.next_obs = getObservationNext();
-        // transition.action = last_edge_action_;
-        transition.reward_components = std::move(reward_components);
-        transition.done = is_done;
+            transition.header.stamp = now();
+            transition.obs = getObservation();
+            transition.next_obs = getObservationNext();
+            // transition.action = last_edge_action_;
+            transition.reward_components = std::move(reward_components);
+            transition.done = is_done;
 
-        transition_pub_->publish(transition);
+            transition_pub_->publish(transition);
+        }
+        
 
         return is_done;
     }
