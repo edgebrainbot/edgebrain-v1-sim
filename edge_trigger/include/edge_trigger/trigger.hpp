@@ -123,6 +123,7 @@ private:
     std::string student_topic_name_;                // topic name for student action
     std::string teacher_topic_name_;                // topic name for teacher action
     std::string terminal_action_name_;              // topic name for publishing terminal action
+    std::string monitor_state_topic_name_;          // topic name for robot state input to safety monitor
     TriggerMode trigger_mode_;                      // trigger mode: self-trigger or event-trigger
 
 

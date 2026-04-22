@@ -57,8 +57,8 @@ public:
     void run(const rclcpp::Time& /*time*/, const rclcpp::Duration& /*period*/) override {};
     void run(const rclcpp::Time &time, const rclcpp::Duration &period, 
              edge_msgs::msg::EdgeAction &latest_action_, 
-             rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
-             rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_,
+             rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_tea_pub_,
+             rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr robot_state_pub_,
              double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY);
 
     void exit() override;
@@ -83,8 +83,8 @@ private:
     /**
     * Calculate the torque command
     */
-    void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-                 rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub,
+    void calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr robot_state_pub,
+                 rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_tea_pub,
                  const edge_msgs::msg::EdgeAction& latest_action_);
 
     /**
@@ -133,13 +133,14 @@ private:
     // Vec2 v_x_limit_, v_y_limit_, w_yaw_limit_;
     Vec2 vx_limit_, vy_limit_, wz_limit_;
 
-    Vec12 last_tracking_error_tea_;
-    Vec12 curr_tracking_error_tea_;
+    Vector12d last_tracking_error_tea_;
+    Vector12d curr_tracking_error_tea_;
 
-    Vec12 last_robot_state_;
-    Vec12 curr_robot_state_;
+    Vector12d last_robot_state_;
+    Vector12d curr_robot_state_;
 
-    edge_msgs::msg::EdgeState edge_state_;
+    edge_msgs::msg::EdgeState tracking_error_msg_;
+    edge_msgs::msg::EdgeState robot_state_msg_;
 
     edge_msgs::msg::EdgeAction last_edge_action_;
     edge_msgs::msg::EdgeAction curr_edge_action_;
@@ -162,11 +163,9 @@ private:
     Vec2 nav_goal_;
     Vec3 robot_pos_;
 
-    Vector12d getRobotState(bool is_global=true) const;
     Vector12d getTrackingError() const;
     Vector12d getDRLStudentGoalState() const;
-    std::vector<double> getObservation() const;
-    std::vector<double> getObservationNext() const;
+    Vector12d getRobotState(bool is_global=true) const;
     
     /**
      * Get Learned DRL action by removing residual effect from teacher action

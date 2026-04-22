@@ -23,6 +23,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
     student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
     terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
+    monitor_state_topic_name_ = this->declare_parameter<std::string>("monitor_state_name", "/edge/robot_state");
 
     std::string trigger_mode_str = this->declare_parameter<std::string>("trigger_mode", "self");
     
@@ -50,7 +51,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger teacher topic: %s", teacher_topic_name_.c_str());
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger student topic: %s", student_topic_name_.c_str());
     RCLCPP_INFO(this->get_logger(), "🔘 Trigger terminal action topic: %s", terminal_action_name_.c_str());
-    
+    RCLCPP_INFO(this->get_logger(), "🔘 Trigger monitor state topic: %s", monitor_state_topic_name_.c_str());
     // Initialize statistical tracking variables
     resetStats();
 
@@ -59,7 +60,7 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
     // Subscribers (state, teacher action, student action, obstacle distance)
     sub_edge_state_ = this->create_subscription<edge_msgs::msg::EdgeState>(
-        "state_input", 50, std::bind(&Trigger::edgeStateCallback, this, _1));
+        monitor_state_topic_name_, 50, std::bind(&Trigger::edgeStateCallback, this, _1));
 
     sub_teacher_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
         teacher_topic_name_, 50, std::bind(&Trigger::teacherActionCallback, this, _1));

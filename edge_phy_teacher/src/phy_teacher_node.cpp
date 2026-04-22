@@ -41,7 +41,7 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     );
 
     // Subscribers
-    state_sub_ = this->create_subscription<edge_msgs::msg::Vec12Msg>("tracking_error", 10,
+    state_sub_ = this->create_subscription<edge_msgs::msg::EdgeState>("tracking_error", 10,
       std::bind(&PhyTeacher::errorCallback, this, std::placeholders::_1)
     );
 
@@ -67,9 +67,15 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
 PhyTeacher::~PhyTeacher() {}
 
 // Subscription callback to receive tracking error
-void PhyTeacher::errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg) {
+void PhyTeacher::errorCallback(const edge_msgs::msg::EdgeState::SharedPtr msg) {
+    if (msg->state_type != edge_msgs::msg::EdgeState::TRACKING_ERROR) {
+        RCLCPP_WARN(this->get_logger(), "Received EdgeState message with unexpected state_type: %d", msg->state_type);
+        return;
+    }
     // Update error state
-    error_state_ = edge::ros_interfaces::Vec12MsgToEigen(*msg);
+    for (size_t i = 0; i < 12; ++i) {
+        error_state_(i) = msg->state_value[i];
+    }
     RCLCPP_INFO(this->get_logger(), "Received tracking error message.");
     got_msg_ = true;
 }

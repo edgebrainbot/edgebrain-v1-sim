@@ -1009,50 +1009,50 @@ def plot_comparison(log_dir, indices, tag, window=None):
 
 # Example usage
 if __name__ == "__main__":
-    log_dir = '/home/edgebot/edge_ws/data/exp2/outputs_drl_student/logs'
+    log_dir = '/home/edgebot/edge_ws/data/locomotion/shielding/outputs/logs'
     
-    print("="*70)
-    print("Example 1: List all experiments")
-    print("="*70)
-    experiments = list_experiments(log_dir)
+    # print("="*70)
+    # print("Example 1: List all experiments")
+    # print("="*70)
+    # experiments = list_experiments(log_dir)
     
-    print("\n" + "="*70)
-    print("Example 2: Load experiment by name pattern")
-    print("="*70)
-    try:
-        reader = LogReader(log_dir, experiment_name='dual')
-        reader.print_summary()
-    except ValueError as e:
-        print(f"Error: {e}")
+    # print("\n" + "="*70)
+    # print("Example 2: Load experiment by name pattern")
+    # print("="*70)
+    # try:
+    #     reader = LogReader(log_dir, experiment_name='dual')
+    #     reader.print_summary()
+    # except ValueError as e:
+    #     print(f"Error: {e}")
     
-    print("\n" + "="*70)
-    print("Example 3: Load newest experiment and export")
-    print("="*70)
-    reader = LogReader(log_dir)  # Load most recent
-    reader.export_all()
+    # print("\n" + "="*70)
+    # print("Example 3: Load newest experiment and export")
+    # print("="*70)
+    # reader = LogReader(log_dir)  # Load most recent
+    # reader.export_all()
     
     print("\n" + "="*70)
     print("Example 4: Export ALL experiments")
     print("="*70)
-    export_all_experiments(log_dir, file_format='csv')
+    export_all_experiments(log_dir, file_format='csv', output_dir='shielding')
     
-    print("\n" + "="*70)
-    print("Example 5: Export only 'dual' experiments")
-    print("="*70)
-    export_all_experiments(log_dir, name_pattern='dual', file_format='csv')
+    # print("\n" + "="*70)
+    # print("Example 5: Export only 'dual' experiments")
+    # print("="*70)
+    # export_all_experiments(log_dir, name_pattern='dual', file_format='csv')
     
-    print("\n" + "="*70)
-    print("Example 6: Export only 'cognitive' experiments to custom directory")
-    print("="*70)
-    export_all_experiments(
-        log_dir, 
-        output_dir='./my_exports',
-        name_pattern='cognitive',
-        file_format='csv'
-    )
+    # print("\n" + "="*70)
+    # print("Example 6: Export only 'cognitive' experiments to custom directory")
+    # print("="*70)
+    # export_all_experiments(
+    #     log_dir, 
+    #     output_dir='./my_exports',
+    #     name_pattern='cognitive',
+    #     file_format='csv'
+    # )
     
-    print("\n" + "="*70)
-    print("Example 7: Export specific tags from all experiments")
-    print("="*70)
-    specific_tags = ['train/loss', 'train/reward']
-    export_all_experiments(log_dir, tags=specific_tags)
+    # print("\n" + "="*70)
+    # print("Example 7: Export specific tags from all experiments")
+    # print("="*70)
+    # specific_tags = ['train/loss', 'train/reward']
+    # export_all_experiments(log_dir, tags=specific_tags)

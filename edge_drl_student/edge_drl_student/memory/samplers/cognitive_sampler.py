@@ -29,14 +29,14 @@ class ACTRCognitiveSampler(BaseSampler):
                  replay_buf: SoloReplayBuffer,
                  obs_weight: float = 0.999,
                  action_weight: float = 0.001,
-                 family_criteria: float = 0.14,
+                 family_criteria: float = 0.18,
                  family_number: int = 50,
                  memory_decay_factor: float = -0.5,
-                #  fr_weight: float = 0.3,
-                #  sm_weight: float = 0.7,
-                 fr_weight: float = 0.1,
-                 sm_weight: float = 0.9,
-                 blending_size: int = 5,  #good: 10, 20
+                 fr_weight: float = 0.7,
+                 sm_weight: float = 0.3,
+                #  fr_weight: float = 0.1  
+                #  sm_weight: float = 0.9,
+                 blending_size: int = 10,  #good: 10, 20
                  device: str = "cpu"):
         
         self.replay_buf = replay_buf
@@ -56,7 +56,7 @@ class ACTRCognitiveSampler(BaseSampler):
 
         self._last_blending_action = torch.Tensor([0.] * 6).to(device)     # Blended action output
         # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
-        print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
+        # print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
         self._last_time = time.time()
 

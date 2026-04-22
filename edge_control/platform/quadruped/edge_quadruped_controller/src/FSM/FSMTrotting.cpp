@@ -52,8 +52,13 @@ FSMTrotting::FSMTrotting(CtrlInterfaces& ctrl_interfaces,
     curr_robot_state_.setZero();
     curr_tracking_error_tea_.setZero();
 
-    edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
-    edge_state_.state_value.assign(12, 0.0);
+    // Initialize ROS messages for tracking error
+    tracking_error_msg_.state_type = edge_msgs::msg::EdgeState::TRACKING_ERROR;
+    tracking_error_msg_.state_value.assign(12, 0.0);
+
+    // Initialize ROS messages for robot state
+    robot_state_msg_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
+    robot_state_msg_.state_value.assign(12, 0.0);
 }
 
 void FSMTrotting::enter()
@@ -78,7 +83,7 @@ void FSMTrotting::enter()
 
 void FSMTrotting::run(const rclcpp::Time&/*time*/, const rclcpp::Duration&/*period*/, 
                         edge_msgs::msg::EdgeAction& latest_action,
-                        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
+                        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_tea_pub_,
                         rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
                         double cmd_vx, double cmd_vy, double cmd_wz, double goalX, double goalY)
 {
@@ -216,8 +221,8 @@ void FSMTrotting::calcCmd()
     w_cmd_global_(2) = d_yaw_cmd_;
 }
 
-void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub,
-    rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_,
+void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr robot_state_pub,
+    rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_tea_pub_,
     const edge_msgs::msg::EdgeAction& latest_action)
 {
     pos_error_ = pcd_ - pos_body_;
@@ -232,25 +237,24 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     // Vec3 d_wbd = kp_w_ * rotMatToExp(Rd * G2B_RotMat) +
         // Kd_w_ * (w_cmd_global_ - estimator_->getGyroGlobal());
 
+    // Get current robot state and tracking error
     curr_robot_state_ = getRobotState(true);
     curr_tracking_error_tea_ = getTrackingError();
     auto curr_tracking_error_stu_ = getDRLStudentGoalState() - curr_robot_state_;
-    // std::cout << "tracking error: ";
-    // for (int i = 0; i < 12; i++) {
-    //     std::cout << curr_tracking_error_tea_[i] << " ";
-    // }
-    // std::cout << std::endl;
 
-    auto track_msg = EigenToVec12Msg(curr_tracking_error_tea_);
-    tracking_error_tea_pub_->publish(track_msg);
-
-    edge_state_.header.stamp = now();
-    edge_state_.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
-    for (int i=0; i<12; ++i){
-        edge_state_.state_value[i] = curr_robot_state_[i];
+    // Publish tracking error
+    tracking_error_msg_.header.stamp = now();
+    for (int i = 0; i < 12; ++i) {
+        tracking_error_msg_.state_value[i] = curr_tracking_error_tea_[i];
     }
-    // edge_state_.state_value = EigenToVec12Msg(curr_robot_state_);
-    edge_state_pub->publish(edge_state_);
+    tracking_error_tea_pub_->publish(tracking_error_msg_);
+
+    // Publish robot state
+    robot_state_msg_.header.stamp = now();
+    for (int i=0; i < 12; ++i){
+        robot_state_msg_.state_value[i] = curr_robot_state_[i];
+    }
+    robot_state_pub->publish(robot_state_msg_);
 
     // std::cout << "rotMatToRPY(Rd * G2B_RotMat)(0): " << rotMatToRPY(Rd * G2B_RotMat)(0) << std::endl;
     // std::cout << "rotMatToExp(Rd * G2B_RotMat)(0): " << rotMatToExp(Rd * G2B_RotMat)(0) << std::endl;
@@ -266,8 +270,6 @@ void FSMTrotting::calcTau(rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPt
     for (size_t i = 0; i < copy_size; ++i) {
         accel(static_cast<int>(i)) = latest_action.action_value[i];
     }
-    // std::cout << "acc from PHY-Teacher: " << accel.transpose() << std::endl;
-    // std::cout << "velocity cmd global: " << vel_cmd_global_.transpose() << std::endl;
 
     accel(0) = saturation(accel(0), Vec2(-3, 3));
     accel(1) = saturation(accel(1), Vec2(-3, 3));
@@ -434,8 +436,8 @@ Vector12d FSMTrotting::getTrackingError() const
     Vec2 dist_to_goal = nav_goal_ - pos_body_.head<2>();
 
     // X and Y position error to goal
-    // tracking_error[0] = dist_to_goal(0);  // X position error to goal
-    // tracking_error[1] = dist_to_goal(1);  // Y position error to goal
+    // tracking_error[0] = dist_to_goal(0);
+    // tracking_error[1] = dist_to_goal(1);
 
     // Height Position error  
     tracking_error[2] = pos_error_(2);
@@ -452,18 +454,6 @@ Vector12d FSMTrotting::getTrackingError() const
     return tracking_error;
 }
 
-
-std::vector<double> FSMTrotting::getObservation() const
-{
-    Vector12d last_base_observation =  getDRLStudentGoalState() - last_robot_state_;
-    return EigenToVector(last_base_observation);
-}
-
-std::vector<double> FSMTrotting::getObservationNext() const
-{
-    Vector12d curr_base_observation =  getDRLStudentGoalState() - curr_robot_state_;
-    return EigenToVector(curr_base_observation);
-}
 
 edge_msgs::msg::EdgeAction FSMTrotting::getLearnedDRLAction() const
 {

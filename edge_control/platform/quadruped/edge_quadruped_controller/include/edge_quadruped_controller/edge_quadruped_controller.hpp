@@ -198,11 +198,10 @@ namespace edge::control::quadruped
         // }
 
         // For publishers 
-        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_tea_pub_;
-        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr tracking_error_stu_pub_;
+        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_tea_pub_;
+        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_stu_pub_;
         rclcpp::Publisher<edge_msgs::msg::Transition>::SharedPtr transition_pub_;
-        rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr robot_state_pub_;
-        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_;
+        rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr robot_state_pub_;
         rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr is_task_done_pub_;
         
         // For subscribers

@@ -89,16 +89,16 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         condition=IfCondition(use_rviz)
     )
     
-    # world_file = PathJoinSubstitution([
-    #     FindPackageShare(pkg_gazebo),
-    #     'worlds',
-    #     world_file_name  
-    # ])
     world_file = PathJoinSubstitution([
         FindPackageShare(pkg_gazebo),
-        'worlds/terrains/rough_25cm',
-        "rough_25cm.world" 
+        'worlds',
+        world_file_name  
     ])
+    # world_file = PathJoinSubstitution([
+    #     FindPackageShare(pkg_gazebo),
+    #     'worlds/terrains/rough_25cm',
+    #     "rough_25cm.world" 
+    # ])
 
     physical_model_config = PathJoinSubstitution([
         FindPackageShare('edge_phy_teacher'),

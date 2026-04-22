@@ -387,34 +387,34 @@ class DistributedRunner:
             success: Whether processing and storing transition was successful
         """
         # Create observation (body_state + vision_feature)
-        # observation = torch.cat((
-        #     torch.tensor(
-        #         np.array(msg.obs, dtype=np.float32),
-        #         dtype=torch.float32,
-        #         device=self.device
-        #     ),
-        #     self.vision_processor.get_last_features()
-        # ), dim=0)
+        observation = torch.cat((
+            torch.tensor(
+                np.array(msg.obs, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.vision_processor.get_last_features()
+        ), dim=0)
         
-        # next_observation = torch.cat((
-        #     torch.tensor(
-        #         np.array(msg.next_obs, dtype=np.float32),
-        #         dtype=torch.float32,
-        #         device=self.device
-        #     ),
-        #     self.vision_processor.get_current_features()
-        # ), dim=0)
-        observation = torch.tensor(
-            np.array(msg.obs, dtype=np.float32),
-            dtype=torch.float32,
-            device=self.device
-        )
+        next_observation = torch.cat((
+            torch.tensor(
+                np.array(msg.next_obs, dtype=np.float32),
+                dtype=torch.float32,
+                device=self.device
+            ),
+            self.vision_processor.get_current_features()
+        ), dim=0)
+        # observation = torch.tensor(
+        #     np.array(msg.obs, dtype=np.float32),
+        #     dtype=torch.float32,
+        #     device=self.device
+        # )
         
-        next_observation = torch.tensor(
-            np.array(msg.next_obs, dtype=np.float32),
-            dtype=torch.float32,
-            device=self.device
-        )
+        # next_observation = torch.tensor(
+        #     np.array(msg.next_obs, dtype=np.float32),
+        #     dtype=torch.float32,
+        #     device=self.device
+        # )
         
         # Normalize observations
         if self.obs_normalizer is not None:
@@ -608,19 +608,19 @@ class DistributedRunner:
         explore = (mode == DRLMode.TRAIN) and not isinstance(self.replay_buffer, CognitiveReplayBuffer)
         
         # Get current observation
-        # observation = torch.cat((
-        #     torch.tensor(
-        #         np.array(self.state_input, dtype=np.float32),
-        #         dtype=torch.float32,
-        #         device=self.device
-        #     ),
-        #     self.vision_processor.curr_vision_feature
-        # ), dim=0)
-        observation = torch.tensor(
+        observation = torch.cat((
+            torch.tensor(
                 np.array(self.state_input, dtype=np.float32),
                 dtype=torch.float32,
                 device=self.device
-        )
+            ),
+            self.vision_processor.curr_vision_feature
+        ), dim=0)
+        # observation = torch.tensor(
+        #         np.array(self.state_input, dtype=np.float32),
+        #         dtype=torch.float32,
+        #         device=self.device
+        # )
         
         # Normalize observation
         if self.obs_normalizer is not None:
@@ -647,10 +647,21 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            # print("policy...............................",policy_action.size())
-            # print("blended.............................",blended_action.size())
             learned_action = 0.5 * policy_action + 0.5 * blended_action
-            # learned_action = 0.5 * policy_action
+            # learned_action = 1.0 * policy_action + 0.0 * blended_action
+            
+
+            # a1 = 0.5 * policy_action
+            # a2 = 0.2 * blended_action
+
+            # print("aaaaaaaaaaaa",a1)
+            # print("bbbbbbbbbbbb",a2)
+
+
+            
+
+
+
         else:
             learned_action = policy_action
         

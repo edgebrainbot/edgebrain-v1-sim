@@ -1,0 +1,2 @@
+metric,min,max,mean,std,latest,count
+Perf_action_generation_ms,3.002167,209.065674,5.432071,13.893900,3.222227,245

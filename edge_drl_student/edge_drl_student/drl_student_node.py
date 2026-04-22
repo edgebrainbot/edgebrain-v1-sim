@@ -147,6 +147,15 @@ class DRLStudentNode(Node):
                     torch.tensor([10., 10., 3., 15., 15., 15.], device=self.device)
                 )
             },
+            "end2end": {
+                "act_dim": 6,
+                "edge_state_type": EdgeState.ROBOT_STATE,
+                "edge_action_type": EdgeAction.BASE_ACCEL,
+                "action_bound":(
+                    torch.tensor([-10., -10., -10., -15., -15., -15.], device=self.device),
+                    torch.tensor([10., 10., 10., 15., 15., 15.], device=self.device)
+                )
+            },
         }
 
         if self.task not in task_config:
@@ -169,8 +178,11 @@ class DRLStudentNode(Node):
         # ============================================================
         self.body_state_dim = 12
         self.vision_feature_dim = 24
-        # self.obs_dim = self.body_state_dim + self.vision_feature_dim
-        self.obs_dim = self.body_state_dim
+        
+        if self.task == "locomotion":
+            self.obs_dim = self.body_state_dim
+        elif self.task in {"navigation", "end2end"}:
+            self.obs_dim = self.body_state_dim + self.vision_feature_dim
 
         self.get_logger().info(
             f"📐 Dimensions: obs_dim={self.obs_dim}, act_dim={self.act_dim}"
@@ -197,13 +209,13 @@ class DRLStudentNode(Node):
                 prefill_size=prefill_size,
                 obs_dim=self.obs_dim,
                 action_dim=self.act_dim,
-                name="Shielding Buffer",
+                name="Buffer",
                 device=self.device,
             )
             
         elif self.run_type in {ExperimentRunType.DUAL, ExperimentRunType.COGNITIVE}:
             
-            self.batch_size = 256
+            self.batch_size = 512
             stu_buf_size = int(1e5) 
             tea_buf_size = int(1e5)
             teacher_prefill_size = 200
@@ -263,7 +275,8 @@ class DRLStudentNode(Node):
 
         self.episode_manager = EpisodeManager(
             logger=self.logger,
-            max_episode_length=int(3e5),
+            # max_episode_length=int(3e5),
+            max_episode_length=int(1e5),
             training_episode=10000,
             eval_during_train=True,
             eval_interval=eval_interval,
@@ -288,7 +301,7 @@ class DRLStudentNode(Node):
         ros2_topic_name = {
             "transition_topic": "/edge/transition",
             "drl_action_topic": "/edge/drl_student_action",
-            "edge_state_topic": "/edge/state_input",
+            "edge_state_topic": "/edge/robot_state",
             "drl_learned_action_topic": "/edge/drl_student_learned_action",
             "fall_detection_topic": "/edge/is_fall",
         }

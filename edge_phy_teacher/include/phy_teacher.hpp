@@ -12,6 +12,7 @@
 #include "std_msgs/msg/float32.hpp"
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "edge_msgs/msg/edge_action.hpp"
+#include "edge_msgs/msg/edge_state.hpp"
 #include "edge_msgs/msg/control_gain.hpp"
 #include "edge_trigger/safety_monitor.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
@@ -31,7 +32,7 @@ public:
 
 private:
     void controlCallback();
-    void errorCallback(const edge_msgs::msg::Vec12Msg::SharedPtr msg);
+    void errorCallback(const edge_msgs::msg::EdgeState::SharedPtr msg);
     void obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void sythesizedGainCallback(const edge_msgs::msg::ControlGain::SharedPtr msg);
@@ -67,7 +68,7 @@ private:
     std::shared_ptr<edge::trigger::SafetyMonitor> safety_monitor_;
 
     // Subscribers
-    rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr state_sub_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeState>::SharedPtr state_sub_;
     rclcpp::Subscription<edge_msgs::msg::ControlGain>::SharedPtr gain_synthesizer_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr obstacle_sub_;
     rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr goal_sub_;
