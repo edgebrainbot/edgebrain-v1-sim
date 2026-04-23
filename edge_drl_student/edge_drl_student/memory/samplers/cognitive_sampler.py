@@ -27,8 +27,8 @@ class ACTRCognitiveSampler(BaseSampler):
 
     def __init__(self, 
                  replay_buf: SoloReplayBuffer,
-                 obs_weight: float = 0.999,
-                 action_weight: float = 0.001,
+                 obs_weight: float = 0.9,
+                 action_weight: float = 0.1,
                  family_criteria: float = 0.18,
                  family_number: int = 50,
                  memory_decay_factor: float = -0.5,
@@ -126,7 +126,7 @@ class ACTRCognitiveSampler(BaseSampler):
         
         compacted_tuple *= rewards.squeeze()
         # print(f"rewards after exp weighting: {rewards.squeeze()}")
-        print(f"compacted_item after reward weighting: {compacted_tuple}")
+        # print(f"compacted_item after reward weighting: {compacted_tuple}")
         
         family_ID = (compacted_tuple / self.family_criteria).floor()
         # print(f"family_ID: {family_ID}")
