@@ -196,7 +196,7 @@ def generate_launch_description():
     )
 
     # -------- Goal Publisher Node --------
-    goal = [8.0, 3.0, 0.0]
+    goal = [10.0, 3.0, 0.0]
     # goal = [6, 0.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0,

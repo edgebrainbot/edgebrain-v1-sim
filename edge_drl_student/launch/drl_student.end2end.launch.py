@@ -42,7 +42,7 @@ def generate_launch_description():
     
     is_real_robot_arg = DeclareLaunchArgument(
         "is_real_robot",
-        default_value="false",
+        default_value="true",
         description="Whether to run on a real robot"
     )
 

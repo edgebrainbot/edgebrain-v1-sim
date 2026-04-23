@@ -215,7 +215,7 @@ class DRLStudentNode(Node):
             
         elif self.run_type in {ExperimentRunType.DUAL, ExperimentRunType.COGNITIVE}:
             
-            self.batch_size = 512
+            self.batch_size = 256
             stu_buf_size = int(1e5) 
             tea_buf_size = int(1e5)
             teacher_prefill_size = 200

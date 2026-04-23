@@ -20,14 +20,14 @@ reward:
   # student_activation_reward: 0.1
 
   # time_travel: 0.1
-  obstacle_min_distance: 0.05
+  # obstacle_min_distance: 0.05
   # obstacle_avg_distance: 0.01
-  goal_distance: 0.01
+  # goal_distance: 0.01
 
   # lyapunov: 100
-  body_state: 0.08
+  body_state: 0.04
 
-  lateral_move: 0.002
+  # lateral_move: 0.002
   jerky_action: 0.0002
 
   # fall_down: 10000
