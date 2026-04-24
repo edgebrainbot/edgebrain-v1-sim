@@ -78,7 +78,6 @@ def generate_launch_description():
             description='Whether to print the process time'
         ),
         
-        
         phy_teacher_node, 
         gain_synthesizer_node
         

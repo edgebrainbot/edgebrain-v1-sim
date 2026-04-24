@@ -19,8 +19,12 @@ public:
   : Node("mock_publisher"),
     gen_(rd_()), dist_(-0.1, 0.1)
   {
-    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>("/edge/control_state", 30);
+    synthesis_state_topic_ = this->declare_parameter<std::string>("synthesis_state_topic", "/edge/synthesis_state");
+    publisher_ = this->create_publisher<edge_msgs::msg::Vec12Msg>(synthesis_state_topic_, 30);
     timer_ = this->create_wall_timer(100ms, std::bind(&MockPublisher::timer_callback, this));
+
+    RCLCPP_INFO(this->get_logger(), "The frequency of publishing is set to 10 Hz (100 ms period).");
+    RCLCPP_INFO(this->get_logger(), "Publishing to topic: %s", synthesis_state_topic_.c_str());
     RCLCPP_INFO(this->get_logger(), "MockPublisher started.");
   }
 
@@ -50,7 +54,7 @@ void timer_callback() {
   RCLCPP_INFO(this->get_logger(), "Published tracking_error: %s", ss.str().c_str());
 
 }
-
+  std::string synthesis_state_topic_;
   rclcpp::Publisher<edge_msgs::msg::Vec12Msg>::SharedPtr publisher_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::random_device rd_;

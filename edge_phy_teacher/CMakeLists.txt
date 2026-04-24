@@ -73,7 +73,7 @@ ament_target_dependencies(lmi_solver_lib
 # ------------------ Executable ------------------
 
 # Physical teacher node
-add_executable(phy_teacher src/phy_teacher_node.cpp)
+add_executable(phy_teacher src/phy_teacher.cpp)
 target_include_directories(phy_teacher PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${EIGEN3_INCLUDE_DIRS}
@@ -90,7 +90,7 @@ set_target_properties(phy_teacher PROPERTIES
 )
 
 # Gain synthesizer
-add_executable(gain_synthesizer src/gain_synthesizer_node.cpp)
+add_executable(gain_synthesizer src/gain_synthesizer.cpp)
 target_include_directories(gain_synthesizer PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${EIGEN3_INCLUDE_DIRS}
@@ -133,6 +133,10 @@ install(DIRECTORY include/
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
+)
+
+install(DIRECTORY scripts
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY config

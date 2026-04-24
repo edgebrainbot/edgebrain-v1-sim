@@ -51,7 +51,7 @@ class LidarToLegodom(Node):
         )
 
     def parse_gazebo_cloud(self, msg):
-        """从 Gazebo 的 PointCloud2 解析 Nx3 xyz numpy 数组"""
+        """Parse Gazebo's PointCloud2 into an Nx3 xyz numpy array"""
         step = msg.point_step
         data = msg.data
         N = msg.width

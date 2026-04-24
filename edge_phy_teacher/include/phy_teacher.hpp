@@ -6,6 +6,8 @@
 #ifndef PHY_TEACHER_HPP
 #define PHY_TEACHER_HPP
 
+#include <string>
+#include <memory>
 #include "lmi_gain_solver.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -37,10 +39,13 @@ private:
     void goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg);
     void sythesizedGainCallback(const edge_msgs::msg::ControlGain::SharedPtr msg);
     
-    // For phy-teacher logistics
+    // For real-time patch
     double chi_ = 0.25;                       // Hyperparameter χ
-    bool teacher_enable_ = true;              // Whether the teacher is enabled
+    bool rt_patch_enable_ = true;             // Whether the real-time patch method is enabled
+    std::string synthesis_state_topic_;       // topic name for subscribing the state used for gain synthesis
+    std::string synthesized_gain_topic_;      // topic name for publishing synthesized gain
 
+    // For phy-teacher logistics
     int update_rate_;                         // Update rate in Hz
     bool got_msg_ = false;
     bool patch_active_ = false;              // Whether the patch is active

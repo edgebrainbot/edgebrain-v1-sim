@@ -21,6 +21,9 @@ public:
       "/edge/synthesized_gain", 10,
       std::bind(&ControlGainListener::on_gain_update, this, std::placeholders::_1));
 
+    synthesized_gain_topic_ = this->declare_parameter<std::string>("synthesized_gain_topic", "/edge/synthesized_gain");
+
+    RCLCPP_INFO(this->get_logger(), "Subscribed to topic: %s", synthesized_gain_topic_.c_str());
     RCLCPP_INFO(this->get_logger(), "Synthesized Gain Listener initialized.");
   }
 
@@ -45,6 +48,7 @@ private:
 
   lmi::Mat6x6 F_kp;
   lmi::Mat6x6 F_kd;
+  std::string synthesized_gain_topic_;
   rclcpp::Subscription<edge_msgs::msg::ControlGain>::SharedPtr subscription_;
 };
 
