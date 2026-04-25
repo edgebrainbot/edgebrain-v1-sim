@@ -10,28 +10,31 @@
 #include "edge_msgs/msg/vec12_msg.hpp"
 #include "lmi_gain_solver.hpp"
 
-class GainSynthesizerNode : public rclcpp::Node {
+class GainSynthesizer : public rclcpp::Node {
 public:
-  GainSynthesizerNode() : Node("gain_synthesizer") {
+  GainSynthesizer() : Node("gain_synthesizer") {
 
     // Declare parameter and get sampling rate and whether to print process time
-    print_process_time_ = this->declare_parameter<bool>("print_process_time", false);
-    RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
-
     sampling_rate_ = this->declare_parameter<int>("sampling_rate", 50);
-    RCLCPP_INFO(this->get_logger(), "Sampling rate: %d Hz", sampling_rate_);
+    print_process_time_ = this->declare_parameter<bool>("print_process_time", false);
+    synthesis_state_topic_ = this->declare_parameter<std::string>("synthesis_state_topic", "/edge/synthesis_state");
+    synthesized_gain_topic_ = this->declare_parameter<std::string>("synthesized_gain_topic", "/edge/synthesized_gain");
 
     lmi_gain_solver_ = std::make_unique<lmi::LMIGainSolver>(1.0 / static_cast<double>(sampling_rate_));
 
     state_sub_ = this->create_subscription<edge_msgs::msg::Vec12Msg>(
-      "control_state", 10,
-      std::bind(&GainSynthesizerNode::gain_scheduler_callback, this, std::placeholders::_1)
+      synthesis_state_topic_, 10,
+      std::bind(&GainSynthesizer::gain_scheduler_callback, this, std::placeholders::_1)
     );
 
     gain_pub_ = this->create_publisher<edge_msgs::msg::ControlGain>(
-      "synthesized_gain", 10
+      synthesized_gain_topic_, 10
     );
 
+    RCLCPP_INFO(this->get_logger(), "Sampling rate: %d Hz", sampling_rate_);
+    RCLCPP_INFO(this->get_logger(), "Print process time: %s", print_process_time_ ? "true" : "false");
+    RCLCPP_INFO(this->get_logger(), "Synthesis state topic: %s", synthesis_state_topic_.c_str());
+    RCLCPP_INFO(this->get_logger(), "Synthesized gain topic: %s", synthesized_gain_topic_.c_str());
     RCLCPP_INFO(this->get_logger(), "🔩 Gain Synthesizer Node initialized.");
   }
 
@@ -70,8 +73,11 @@ private:
     }
   }
 
-  bool print_process_time_ = false;
   int sampling_rate_ = 50;
+  bool print_process_time_ = false;
+  std::string synthesis_state_topic_;
+  std::string synthesized_gain_topic_;
+
   std::unique_ptr<lmi::LMIGainSolver> lmi_gain_solver_;
 
   rclcpp::Subscription<edge_msgs::msg::Vec12Msg>::SharedPtr state_sub_;
@@ -80,7 +86,7 @@ private:
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<GainSynthesizerNode>());
+  rclcpp::spin(std::make_shared<GainSynthesizer>());
   rclcpp::shutdown();
   return 0;
 }

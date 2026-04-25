@@ -152,8 +152,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.BASE_ACCEL,
                 "action_bound":(
-                    torch.tensor([-10., -10., -10., -15., -15., -15.], device=self.device),
-                    torch.tensor([10., 10., 10., 15., 15., 15.], device=self.device)
+                    torch.tensor([-10., -10., -5., -15., -15., -15.], device=self.device),
+                    torch.tensor([10., 10., 5., 15., 15., 15.], device=self.device)
                 )
             },
         }
