@@ -38,10 +38,6 @@
     <!-- Gazebo Sensor Plugin -->
     <gazebo reference="${lidar_name}_link">
 
-      <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
-        <render_engine>ogre</render_engine>
-      </plugin>
-
       <sensor name="${lidar_name}" type="gpu_lidar">
         <topic>${lidar_name}/scan</topic>
         <update_rate>10</update_rate>

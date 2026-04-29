@@ -762,12 +762,13 @@ int main(int argc, char** argv)
       plannerCloudCrop->clear();
       int plannerCloudSize = plannerCloud->points.size();
     //   int plannerCloudSize = std::max(1, (int)plannerCloud->points.size());  
-    //   std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
+      std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
       
       // Publish global goal distance for monitoring
       goal_distance_pub_->publish(std_msgs::msg::Float32().set__data(
         sqrt((globalGoalX - vehicleX) * (globalGoalX - vehicleX) + (globalGoalY - vehicleY) * (globalGoalY - vehicleY)))
       );
+      std::cout << "globalGoalX: " << globalGoalX << ", globalGoalY: " << globalGoalY << std::endl;
 
       std::cout << "Processing planner cloud points..." << std::endl;
       for (int i = 0; i < plannerCloudSize; i++) {
@@ -871,6 +872,8 @@ int main(int argc, char** argv)
         float relativeGoalX = ((goalX - vehicleX) * cosVehicleYaw + (goalY - vehicleY) * sinVehicleYaw);
         float relativeGoalY = (-(goalX - vehicleX) * sinVehicleYaw + (goalY - vehicleY) * cosVehicleYaw);
         relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
+        std::cout << "Relative goal X: " << relativeGoalX << " m, Relative goal Y: " << relativeGoalY << " m." << std::endl;
+        std::cout << "Relative goal distance: " << relativeGoalDis << " m." << std::endl;
 
         // Publish relative goal distance for rewarding function
         // pubRelativeGoalDis->publish(std_msgs::msg::Float32().set__data(relativeGoalDis));
@@ -906,7 +909,7 @@ int main(int argc, char** argv)
         float diameter = sqrt(vehicleLength / 2.0 * vehicleLength / 2.0 + vehicleWidth / 2.0 * vehicleWidth / 2.0);
         float angOffset = atan2(vehicleWidth, vehicleLength) * 180.0 / PI;
         int plannerCloudCropSize = plannerCloudCrop->points.size();
-        // std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
+        std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
         for (int i = 0; i < plannerCloudCropSize; i++) {
           float x = plannerCloudCrop->points[i].x / pathScale;
           float y = plannerCloudCrop->points[i].y / pathScale;
@@ -1021,6 +1024,14 @@ int main(int argc, char** argv)
           selectedGroupID = selectedGroupID % groupNum;
           int selectedPathLength = startPaths[selectedGroupID]->points.size();
           path.poses.resize(selectedPathLength);
+          std::cout << "Selected path group ID: " << selectedGroupID << ", score: " << maxScore << std::endl;
+          std::cout << "Selected path length: " << selectedPathLength << std::endl;
+
+          std::cout << "pathRange: " << pathRange << std::endl;
+          std::cout << "pathScale: " << pathScale << std::endl;
+          std::cout << "relativeGoalDis: " << relativeGoalDis << std::endl;
+          std::cout << "selectedPathLength: " << selectedPathLength << std::endl;
+
           for (int i = 0; i < selectedPathLength; i++) {
             float x = startPaths[selectedGroupID]->points[i].x;
             float y = startPaths[selectedGroupID]->points[i].y;
@@ -1035,6 +1046,10 @@ int main(int argc, char** argv)
               path.poses.resize(i);
               break;
             }
+            std::cout << "Path point " << i << ": (" << path.poses[i].pose.position.x << ", " << path.poses[i].pose.position.y << ", " << path.poses[i].pose.position.z << ")" << std::endl;
+            std::cout << "Point " << i << " dis=" << dis 
+                      << " limit1=" << pathRange/pathScale 
+                      << " limit2=" << relativeGoalDis/pathScale << std::endl;
           }
 
           path.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));

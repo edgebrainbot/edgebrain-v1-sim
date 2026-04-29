@@ -12,7 +12,7 @@ def generate_launch_description():
     # -----------------------------
     #      Declare Arguments 
     # -----------------------------
-    use_rviz = DeclareLaunchArgument("use_rviz", default_value="false", description="Whether to launch RViz for visualization")
+    use_rviz = DeclareLaunchArgument("use_rviz", default_value="true", description="Whether to launch RViz for visualization")
     world_name = DeclareLaunchArgument("world_name", default_value="unity", description="Gazebo world name")
     vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.30", description="Height of the vehicle")
     sensorOffsetX = DeclareLaunchArgument("sensorOffsetX", default_value="0.0", description="Sensor offset in X direction")

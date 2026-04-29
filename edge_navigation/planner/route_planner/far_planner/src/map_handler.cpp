@@ -141,11 +141,26 @@ void MapHandler::SetMapOrigin(const Point3D& ori_robot_pos) {
 
 void MapHandler::UpdateRobotPosition(const Point3D& odom_pos) {
     if (!is_init_) this->SetMapOrigin(odom_pos);
+
+    std::cout << "is_init_=" << is_init_ << " neighbor_obs size=" << neighbor_obs_indices_.size() << std::endl;
+
+
     robot_cell_sub_ = world_obs_cloud_grid_->Pos2Sub(Eigen::Vector3d(odom_pos.x, odom_pos.y, odom_pos.z));
+
+
+    std::cout << "robot_cell_sub: " << robot_cell_sub_.x() << " " << robot_cell_sub_.y() << " " << robot_cell_sub_.z() << std::endl;
+    std::cout << "grid size: " << world_obs_cloud_grid_->GetSize().x() << " " 
+            << world_obs_cloud_grid_->GetSize().y() << " " 
+            << world_obs_cloud_grid_->GetSize().z() << std::endl;
+
     // Get neighbor indices
     neighbor_free_indices_.clear(), neighbor_obs_indices_.clear();
     const int N = neighbor_Lnum_ / 2;
     const int H = neighbor_Hnum_ / 2;
+
+    std::cout << "N=" << N << " H=" << H << " robot_sub=" << robot_cell_sub_.x() << "," << robot_cell_sub_.y() << "," << robot_cell_sub_.z() << std::endl;
+
+
     Eigen::Vector3i neighbor_sub;
     for (int i = -N; i <= N; i++) {
         neighbor_sub.x() = robot_cell_sub_.x() + i;
@@ -166,7 +181,12 @@ void MapHandler::UpdateRobotPosition(const Point3D& odom_pos) {
             }
         }
     }
+    
+    std::cout << "neighbor_obs_indices_ size after loop: " << neighbor_obs_indices_.size() << std::endl;
+
     this->SetTerrainHeightGridOrigin(odom_pos);
+    std::cout << "neighbor_obs size=" << neighbor_obs_indices_.size() << std::endl;
+
 }
 
 void MapHandler::SetTerrainHeightGridOrigin(const Point3D& robot_pos) {
@@ -413,12 +433,14 @@ void MapHandler::UpdateTerrainHeightGrid(const PointCloudPtr& freeCloudIn, const
     this->TraversableAnalysis(terrainHeightOut);
     if (terrainHeightOut->empty()) { // set terrain height kdtree
         FARUtil::ClearKdTree(flat_terrain_cloud_, kdtree_terrain_clould_);
+        // return;      // Add this return to avoid empty terrain cloud causing issues in kdtree search, but it may cause some edge cases where no terrain height is detected
     } else {
         this->AssignFlatTerrainCloud(terrainHeightOut, flat_terrain_cloud_);
         kdtree_terrain_clould_->setInputCloud(flat_terrain_cloud_);
     }
     // update surrounding obs cloud grid indices based on terrain
     this->ObsNeighborCloudWithTerrain(neighbor_obs_indices_, extend_obs_indices_);
+
 }
 
 void MapHandler::TraversableAnalysis(const PointCloudPtr& terrainHeightOut) {

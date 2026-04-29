@@ -58,7 +58,7 @@ switching:
     vx:
       type: relative
       index: 6
-      limit: 0.15
+      limit: 0.0
       unit: m/s
 
     # velocity limit in meters per second (relative mode)

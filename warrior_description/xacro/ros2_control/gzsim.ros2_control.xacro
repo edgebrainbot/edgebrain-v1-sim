@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- ros2_control configuration for diff drive -->
+    <ros2_control name="warrior_gazebo_ros2_control" type="system">
+        <hardware>
+            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </hardware>
+        <joint name="left_steer_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="left_drive_joint">
+            <command_interface name="velocity"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="right_steer_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="right_drive_joint">
+            <command_interface name="velocity"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="front_steer_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="front_drive_joint">
+            <command_interface name="velocity"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+    </ros2_control>
+
+    <gazebo>
+        <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+            <parameters>$(find warrior_control)/config/warrior_controllers.yaml</parameters>
+        </plugin>
+
+        <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+        <!-- <plugin filename="gz-sim-forcetorque-system" name="gz::sim::systems::ForceTorque"/> -->
+
+        <plugin filename="ignition-gazebo-forcetorque-system" name="ignition::gazebo::systems::ForceTorque"/>
+        <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+        <plugin filename="gz-sim-touchplugin-system" name="gz::sim::systems::TouchPlugin">
+        <target>vehicle_blue</target>
+        <namespace>wall</namespace>
+        <time>0.001</time>
+        <enabled>true</enabled>
+        </plugin>
+
+        <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+        <render_engine>ogre</render_engine>
+        </plugin>
+
+    </gazebo>
+
+    
+
+</robot>

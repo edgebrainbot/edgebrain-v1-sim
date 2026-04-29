@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" >
+
+  <!-- ========== IMU Macro ========== -->
+  <xacro:property name="imu_length" value="0.05"/>
+  <xacro:property name="imu_width" value="0.05"/>
+  <xacro:property name="imu_height" value="0.02"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link ="imu_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="imu_link">
+    <visual>
+      <geometry>
+        <box size="${imu_length} ${imu_width} ${imu_height}" />
+      </geometry>
+      <material name="orange"/>
+    </visual>
+  </link>
+
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <pose>0 0 0 0 0 0</pose>
+      <update_rate>100</update_rate>
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0.0</mean><stddev>0.0002</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0.0</mean><stddev>0.017</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+      <topic>imu</topic>
+      <gz_frame_id>imu_link</gz_frame_id>
+    </sensor>
+    
+  </gazebo>
+
+  <gazebo>
+    <!-- Odometry Publisher -->
+    <plugin
+      filename="ignition-gazebo-odometry-publisher-system"
+      name="ignition::gazebo::systems::OdometryPublisher">
+      <odom_frame>odom</odom_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <odom_topic>/odom_gt</odom_topic>
+      <odom_publish_frequency>50</odom_publish_frequency>
+    </plugin>
+  </gazebo>
+
+</robot>
+

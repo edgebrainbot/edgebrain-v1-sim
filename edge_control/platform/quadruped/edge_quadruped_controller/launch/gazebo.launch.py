@@ -188,7 +188,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
 
     return [
         tf_static,
-        tf_to_map_node,
+        # tf_to_map_node,
         
         disable_gz_logs,
         limit_gz_log_level,
@@ -204,9 +204,9 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                         '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
                         '/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                        ],
-            # remappings=[
-            #     ('/scan/points', '/registered_scan')
-            # ],
+            remappings=[
+                ('/scan/points', '/registered_scan')
+            ],
             parameters=[{'use_sim_time': True}],
             output='screen'
         ),

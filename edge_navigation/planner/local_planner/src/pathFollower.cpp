@@ -470,8 +470,6 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
 
-          /// The actual reason that causes issue!!!!!!!!!!
-
           // Slow down if minimum distance to obstacle is small (threhold to be determined)
           // double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
           // double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
@@ -490,9 +488,9 @@ int main(int argc, char** argv)
         }
 
         // Truncate the velocity command to be within limits
-        double vx_limit = 0.2;
+        double vx_limit = 0.25;
         double vy_limit = 0.15;
-        double min_forward_vx = 0.00;   // Set the minimum forwarding velocity to stop local minima
+        double min_forward_vx = 0.05;   // Set the minimum forwarding velocity to stop local minima
         cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, vx_limit), min_forward_vx);  
         if(cmd_vel.twist.linear.y > vy_limit) cmd_vel.twist.linear.y = vy_limit;
         else if(cmd_vel.twist.linear.y < -vy_limit) cmd_vel.twist.linear.y = -vy_limit;

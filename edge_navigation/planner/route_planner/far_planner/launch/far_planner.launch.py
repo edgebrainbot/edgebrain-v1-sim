@@ -24,6 +24,7 @@ def generate_launch_description():
     ])
     
     return LaunchDescription([
+        DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation time'),
         DeclareLaunchArgument('odom_topic', default_value='odom', description='Odometry topic to use'),
         DeclareLaunchArgument('config', default_value='default', description='Configuration file for RViz and Far Planner'),
         DeclareLaunchArgument('use_rviz', default_value='true', description='Whether to launch RViz'),
@@ -36,6 +37,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 config_file,
+                {'use_sim_time': LaunchConfiguration('use_sim_time')}
             ],
             remappings=[
                 # ('/odom_world', '/state_estimation'),
@@ -51,7 +53,7 @@ def generate_launch_description():
             executable='rviz2',
             name='far_rviz',
             arguments=['-d', rviz_config],
-            parameters=[{'use_sim_time': True}],
+            parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
             output='screen',
             respawn=False,
             condition=IfCondition(LaunchConfiguration('use_rviz'))
