@@ -8,11 +8,12 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.actions import ExecuteProcess
 from launch.event_handlers import OnProcessExit
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     # Launch Arguments
-    use_sim_time = LaunchConfiguration('use_sim_time', default=True)
+    use_sim_time = LaunchConfiguration('use_sim_time')
     
     # ----------------- path -----------------
     pkg_gz_ros = FindPackageShare("ros_gz_sim")
@@ -37,7 +38,7 @@ def generate_launch_description():
         executable="robot_state_publisher",
         output="screen",
         parameters=[{"robot_description": robot_description}, 
-                    {"use_sim_time": use_sim_time}],
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
     )
 
     joint_state_broadcaster_spawner = Node(
@@ -60,7 +61,7 @@ def generate_launch_description():
         output="screen",
         arguments=["-d", rviz2_config_file],
         parameters=[{"robot_description": robot_description},
-                    {"use_sim_time": use_sim_time}],
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
     )
     
     teleop_node = Node(
@@ -74,7 +75,7 @@ def generate_launch_description():
         ],
         parameters=[
             {'stamped': True},
-            {'use_sim_time': use_sim_time}
+            {'use_sim_time': ParameterValue(use_sim_time, value_type=bool)}
         ]
     )
     
@@ -96,7 +97,7 @@ def generate_launch_description():
             "-allow_renaming", "true",
         ],
         output="screen",
-        parameters=[{"use_sim_time": use_sim_time}],
+        parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
     )
     
     
@@ -112,7 +113,7 @@ def generate_launch_description():
         arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                    '/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
                    '/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo'],
-        parameters=[{"use_sim_time": use_sim_time}],
+        parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
         output='screen',
     )
 
@@ -120,7 +121,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
-            default_value=use_sim_time,
+            default_value='true',
             description='If true, use simulated clock'),
         gazebo,
         robot_state_publisher,

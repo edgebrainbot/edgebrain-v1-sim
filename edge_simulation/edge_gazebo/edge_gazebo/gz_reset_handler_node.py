@@ -11,7 +11,8 @@ import subprocess
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
-from std_srvs.srv import Empty, Trigger
+from std_srvs.srv import Empty as EmptySrv, Trigger
+from std_msgs.msg import Empty as EmptyMsg
 from pathlib import Path  
 
 
@@ -33,7 +34,7 @@ class GzResetHandlerNode(Node):
         # ========== Parameter Declaration ==========
         # Gazebo parameters
         self.declare_parameter('world_name', 'openwild_outdoor.world')
-        self.declare_parameter('robot_name', 'go2')
+        self.declare_parameter('robot_name', 'warrior')
         self.declare_parameter('reset_position_x', 0.0)
         self.declare_parameter('reset_position_y', 0.0)
         self.declare_parameter('reset_position_z', 0.3)
@@ -100,12 +101,38 @@ class GzResetHandlerNode(Node):
         self.start_after_reset = self.get_parameter('start_after_reset').value
         self.delay_after_reset = self.get_parameter('delay_after_reset').value
         
+        self.get_logger().info('📜 Loaded parameters:')
+        self.get_logger().info(f'  World Name: {self.world_name}')
+        self.get_logger().info(f'  Robot Name: {self.robot_name}')
+        self.get_logger().info(f'  Reset Position: ({self.reset_pos_x}, {self.reset_pos_y}, {self.reset_pos_z})')
+        self.get_logger().info(f'  Reset Orientation: ({self.reset_ori_x}, {self.reset_ori_y}, {self.reset_ori_z}, {self.reset_ori_w})')
+        self.get_logger().info(f'  Service Timeout: {self.timeout}s')
+        self.get_logger().info(f'  Reset World Flag: {self.reset_world_flag}')
+        self.get_logger().info(f'  Reset Robot Pose Flag: {self.reset_robot_pose_flag}')
+        self.get_logger().info(f'  Wait After Reset: {self.wait_after_reset}s')
+        self.get_logger().info(f'  Reset Attempts: {self.reset_attempts}')
+        self.get_logger().info(f'  Wait Between Attempts: {self.wait_between_attempts}s')
+        self.get_logger().info(f'  Clear Velocities: {self.clear_velocities}')
+        self.get_logger().info(f'  Pause Physics During Reset: {self.pause_physics}')
+        self.get_logger().info(f'  Wait After Pause: {self.wait_after_pause}s')
+        self.get_logger().info(f'  Wait After World Reset: {self.wait_after_world_reset}s')
+        self.get_logger().info(f'  Wait After Pose Reset: {self.wait_after_pose_reset}s')
+        self.get_logger().info(f'  Controller Reset Service: {self.controller_reset_service_name}')
+        
+        
         # ========== Create Main Service ==========
         self.edge_reset_srv = self.create_service(
             Trigger,
             '/edge/reset/gz_handler',
             self.edge_reset_callback,
             callback_group=self.callback_group
+        )
+        
+        # ========== Create Visibility Graph Publisher ==========
+        self.reset_visibility_graph_publisher = self.create_publisher(
+            EmptyMsg,
+            '/reset_visibility_graph',
+            10
         )
         
         # ========== Create Service Clients ==========
@@ -122,7 +149,7 @@ class GzResetHandlerNode(Node):
         )
         
         self.gz_reset_client = self.create_client(
-            Empty,
+            EmptySrv,
             '/reset_world',
             callback_group=self.callback_group
         )
@@ -198,6 +225,7 @@ class GzResetHandlerNode(Node):
         controller_start_duration = 0.0
         
         try:
+            
             # ========== Step 1 & 2: Reset Controller and Gazebo ==========
             if self.reset_order == 'controller_first':
                 # Reset Controller
@@ -209,7 +237,7 @@ class GzResetHandlerNode(Node):
                     if not controller_success:
                         self.controller_reset_failures += 1
                         self.failed_resets += 1
-                        return False, f'Controller reset failed: {controller_message}'
+                        # return False, f'Controller reset failed: {controller_message}'
                 
                 time.sleep(5)  # Small delay between resets
                 
@@ -261,7 +289,10 @@ class GzResetHandlerNode(Node):
                 if not start_success:
                     self.controller_start_failures += 1
                     self.failed_resets += 1
-                    return False, f'Controller start failed: {start_message}'
+                    # return False, f'Controller start failed: {start_message}'
+            
+            # ========== Reset visibility graph ==========
+            self.reset_visibility_graph_publisher.publish(EmptyMsg())
             
             # ========== Success ==========
             elapsed_time = time.time() - start_time
@@ -613,7 +644,7 @@ class GzResetHandlerNode(Node):
         # Try ROS2 service first
         if self.gz_reset_client.wait_for_service(timeout_sec=1.0):
             try:
-                future = self.gz_reset_client.call_async(Empty.Request())
+                future = self.gz_reset_client.call_async(EmptySrv.Request())
                 
                 timeout_end = time.time() + 5.0
                 while not future.done():

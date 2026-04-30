@@ -169,7 +169,6 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
 
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
 { 
-//   std::cout << "---------- laserCloudHandler called ---------" << std::endl;
   if (!useTerrainAnalysis) {
     laserCloud->clear();
     pcl::fromROSMsg(*laserCloud2, *laserCloud);
@@ -177,9 +176,6 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
     pcl::PointXYZI point;
     laserCloudCrop->clear();
     int laserCloudSize = laserCloud->points.size();
-
-    // std::cout << "---------- Received laser cloud with size: ---------" << laserCloudSize << std::endl;
-    // pubLaserCloudSize->publish(std_msgs::msg::Float32().set__data(float(laserCloudSize)));
 
     for (int i = 0; i < laserCloudSize; i++) {
       point = laserCloud->points[i];
@@ -190,10 +186,6 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
 
       /// TODO: send to drl-student for processing as input
       // laserCloudStudent->push_back(point);
-
-    //   std::cout << "laserCloudSize: " << laserCloudSize << std::endl;
-    //   std::cout << "Original point: (" << pointX << ", " << pointY << ", " << pointZ << ")" << std::endl;
-    //   std::cout << "intensity: " << point.intensity << std::endl;
 
       float dis = sqrt((pointX - vehicleX) * (pointX - vehicleX) + (pointY - vehicleY) * (pointY - vehicleY));
       if (dis < adjacentRange) {
@@ -750,7 +742,6 @@ int main(int argc, char** argv)
       float sinVehicleYaw = sin(vehicleYaw);
       float cosVehicleYaw = cos(vehicleYaw);
 
-      std::cout << "Debugging plannerCloud processing..." << std::endl;
       #define MAX_OBSTACLE_DISTANCE 1000
       float safety_condition_obstacle = MAX_OBSTACLE_DISTANCE;
 
@@ -762,15 +753,12 @@ int main(int argc, char** argv)
       plannerCloudCrop->clear();
       int plannerCloudSize = plannerCloud->points.size();
     //   int plannerCloudSize = std::max(1, (int)plannerCloud->points.size());  
-      std::cout << "Number of planner points: " << plannerCloudSize << std::endl;
       
       // Publish global goal distance for monitoring
       goal_distance_pub_->publish(std_msgs::msg::Float32().set__data(
         sqrt((globalGoalX - vehicleX) * (globalGoalX - vehicleX) + (globalGoalY - vehicleY) * (globalGoalY - vehicleY)))
       );
-      std::cout << "globalGoalX: " << globalGoalX << ", globalGoalY: " << globalGoalY << std::endl;
 
-      std::cout << "Processing planner cloud points..." << std::endl;
       for (int i = 0; i < plannerCloudSize; i++) {
         float pointX1 = plannerCloud->points[i].x - vehicleX;
         float pointY1 = plannerCloud->points[i].y - vehicleY;
@@ -798,7 +786,6 @@ int main(int argc, char** argv)
           if (dis < safety_condition_obstacle) {
               safety_condition_obstacle = dis;
           }
-        //   std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
           pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
         }
       }
@@ -809,19 +796,16 @@ int main(int argc, char** argv)
       } else {
         // When there are no points, set average distance to a large value
         obstacleAvgDistance = MAX_OBSTACLE_DISTANCE;
-        std::cout << "Warning: No points in plannerCloud, using default obstacle distance" << std::endl;
       }
 
         // Average obstacle reward
     //   obstacleReward = -1.0 / obstacleReward;
-    //   std::cout << "Cumulative obstacle reward: " << obstacleReward << std::endl;
       obstacle_avg_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleAvgDistance));
       obstacle_min_distance_pub_->publish(std_msgs::msg::Float32().set__data(obstacleMinDistance));
 
       // TODO: stddev of obstacle distances can be calculated here for more robust reward
 
       int boundaryCloudSize = boundaryCloud->points.size();
-    //   std::cout << "Number of boundary points: " << boundaryCloudSize << std::endl;
       for (int i = 0; i < boundaryCloudSize; i++) {
         point.x = ((boundaryCloud->points[i].x - vehicleX) * cosVehicleYaw 
                 + (boundaryCloud->points[i].y - vehicleY) * sinVehicleYaw);
@@ -836,7 +820,6 @@ int main(int argc, char** argv)
         // if (dis < safety_condition_obstacle) {
         //     safety_condition_obstacle = dis;
         // }
-        // std::cout << "Updated safety condition obstacle distance: " << safety_condition_obstacle << " m." << std::endl;
         // pubMinObstacleDis->publish(std_msgs::msg::Float32().set__data(safety_condition_obstacle));
 
         if (dis < adjacentRange) {
@@ -845,7 +828,6 @@ int main(int argc, char** argv)
       }
 
       int addedObstaclesSize = addedObstacles->points.size();
-    //   std::cout << "Number of added obstacles: " << addedObstaclesSize << std::endl;
 
       for (int i = 0; i < addedObstaclesSize; i++) {
         point.x = ((addedObstacles->points[i].x - vehicleX) * cosVehicleYaw 
@@ -872,15 +854,10 @@ int main(int argc, char** argv)
         float relativeGoalX = ((goalX - vehicleX) * cosVehicleYaw + (goalY - vehicleY) * sinVehicleYaw);
         float relativeGoalY = (-(goalX - vehicleX) * sinVehicleYaw + (goalY - vehicleY) * cosVehicleYaw);
         relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
-        std::cout << "Relative goal X: " << relativeGoalX << " m, Relative goal Y: " << relativeGoalY << " m." << std::endl;
-        std::cout << "Relative goal distance: " << relativeGoalDis << " m." << std::endl;
 
         // Publish relative goal distance for rewarding function
         // pubRelativeGoalDis->publish(std_msgs::msg::Float32().set__data(relativeGoalDis));
         // pubGoalXY->publish(geometry_msgs::msg::PointStamped().set__point(geometry_msgs::msg::Point().set__x(goalX).set__y(goalY).set__z(0.0)));
-        // std::cout << "Relative goal distance: " << relativeGoalDis << " m." << std::endl;
-        // std::cout << "goalX: " << goalX << ", goalY: " << goalY << std::endl;
-        // std::cout << "vehicleX: " << vehicleX << ", vehicleY: " << vehicleY << std::endl;
 
         joyDir = atan2(relativeGoalY, relativeGoalX) * 180 / PI;
 
@@ -909,7 +886,6 @@ int main(int argc, char** argv)
         float diameter = sqrt(vehicleLength / 2.0 * vehicleLength / 2.0 + vehicleWidth / 2.0 * vehicleWidth / 2.0);
         float angOffset = atan2(vehicleWidth, vehicleLength) * 180.0 / PI;
         int plannerCloudCropSize = plannerCloudCrop->points.size();
-        std::cout << "Number of cropped planner points: " << plannerCloudCropSize << std::endl;
         for (int i = 0; i < plannerCloudCropSize; i++) {
           float x = plannerCloudCrop->points[i].x / pathScale;
           float y = plannerCloudCrop->points[i].y / pathScale;
@@ -1024,13 +1000,6 @@ int main(int argc, char** argv)
           selectedGroupID = selectedGroupID % groupNum;
           int selectedPathLength = startPaths[selectedGroupID]->points.size();
           path.poses.resize(selectedPathLength);
-          std::cout << "Selected path group ID: " << selectedGroupID << ", score: " << maxScore << std::endl;
-          std::cout << "Selected path length: " << selectedPathLength << std::endl;
-
-          std::cout << "pathRange: " << pathRange << std::endl;
-          std::cout << "pathScale: " << pathScale << std::endl;
-          std::cout << "relativeGoalDis: " << relativeGoalDis << std::endl;
-          std::cout << "selectedPathLength: " << selectedPathLength << std::endl;
 
           for (int i = 0; i < selectedPathLength; i++) {
             float x = startPaths[selectedGroupID]->points[i].x;
@@ -1046,10 +1015,6 @@ int main(int argc, char** argv)
               path.poses.resize(i);
               break;
             }
-            std::cout << "Path point " << i << ": (" << path.poses[i].pose.position.x << ", " << path.poses[i].pose.position.y << ", " << path.poses[i].pose.position.z << ")" << std::endl;
-            std::cout << "Point " << i << " dis=" << dis 
-                      << " limit1=" << pathRange/pathScale 
-                      << " limit2=" << relativeGoalDis/pathScale << std::endl;
           }
 
           path.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));

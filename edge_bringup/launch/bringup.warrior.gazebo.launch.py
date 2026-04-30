@@ -15,7 +15,29 @@ from launch_ros.actions import Node
 
 def launch_setup(context, *args, **kwargs):
 
-    namespace = LaunchConfiguration("namespace").perform(context)
+    # ------------------------------
+    # ---    Launch Arguments    ---
+    # ------------------------------
+    namespace_arg = DeclareLaunchArgument(
+        "namespace", default_value="edge", description="Global namespace for all nodes"
+    )
+    robot_arg = DeclareLaunchArgument(
+        "robot", default_value="warrior", description="Robot name (e.g. go2, go1, a1)"
+    )
+    world_name_arg = DeclareLaunchArgument(
+        "world_name", default_value="openwild_outdoor.world", description="Gazebo world name"
+    )
+    use_global_rviz_arg = DeclareLaunchArgument(
+        "use_global_rviz", default_value="true", description="Use global RViz (integrated) or not"
+    )
+    use_sim_time_arg = DeclareLaunchArgument(
+        "use_sim_time", default_value="true", description="Use simulation (Gazebo) clock"
+    )
+
+    robot = LaunchConfiguration("robot")
+    namespace = LaunchConfiguration("namespace")
+    world_name = LaunchConfiguration("world_name")
+    use_global_rviz = LaunchConfiguration("use_global_rviz")
 
     # ---- FIX use_sim_time (convert string → bool) ----
     use_sim_time_raw = LaunchConfiguration("use_sim_time").perform(context)
@@ -91,7 +113,59 @@ def launch_setup(context, *args, **kwargs):
             # output='screen'
         )]
     )
+    
+    # -------- Trigger Launch --------
+    trigger_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_trigger"),
+                "launch",
+                "trigger.launch.py"
+            ])
+        ),
+        # launch_arguments={
+        #     "namespace": 'edge',
+        # }.items()
+    )
 
+    # -------- RL Runtime Env Split Launch --------
+    rl_runtime_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_rl_runtime"),
+                "launch",
+                "rl_runtime.launch.py"
+            ])
+        )
+        # launch_arguments={
+        #     "go2_network_interface": network_interface,
+        # }.items()
+    )
+
+    # -------- Gazebo Interaction Service Launch --------
+    gz_interact_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("edge_gazebo"),
+                "launch", "gz_interact.launch.py"
+            ])
+        ),
+        launch_arguments={
+            "robot_name": robot,
+            "namespace": namespace,
+            "world_name": world_name,
+            "use_sim_time": str(use_sim_time).lower()
+        }.items()
+    )
+
+    # -------- Virtual Status Indicator Node --------
+    virtual_status_indicator_node = Node(
+        package='edge_trigger',
+        executable='virtual_status_indicator_node',
+        name='virtual_status_indicator',
+        # output='screen',
+        parameters=[{'use_sim_time': use_sim_time}]
+    )
 
     tf_to_map_node = Node(
         package='lidar_to_map',
@@ -109,10 +183,20 @@ def launch_setup(context, *args, **kwargs):
     )
 
     return [
+        use_sim_time_arg,
+        namespace_arg,
+        robot_arg,
+        world_name_arg,
+        use_global_rviz_arg,
+        
         controller_launch,
         joy_node,
         # teleop,
         # tf_to_map_node,
+        virtual_status_indicator_node,
+        trigger_launch,
+        rl_runtime_launch,
+        gz_interact_launch,
         tf_static,
         publish_goal_point,
     ]

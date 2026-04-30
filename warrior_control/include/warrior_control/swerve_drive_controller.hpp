@@ -9,6 +9,8 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <edge_msgs/msg/edge_state.hpp>
+#include <edge_msgs/msg/edge_action.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <controller_interface/controller_interface.hpp>
 
@@ -35,11 +37,20 @@ private:
 
     // ROS2 Subscription for cmd_vel
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_sub_;
+    rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr edge_action_sub_;   
 
     // Desired velocities
     double vx_cmd_ = 0.0;
     double vy_cmd_ = 0.0;
     double wz_cmd_ = 0.0;
+
+    // Command velocity limits
+    double vx_limit_min_ = -0.3;
+    double vx_limit_max_ = 0.3;
+    double vy_limit_min_ = -0.3;
+    double vy_limit_max_ = 0.3;
+    double wz_limit_min_ = -0.5;
+    double wz_limit_max_ = 0.5;
 
     // Odom estimation variables
     double x_ = 0.0;
@@ -74,8 +85,11 @@ private:
     // ROS odometry publisher and TF broadcaster
     std::string odom_frame_;
     std::string base_frame_;
+    std::string edge_state_topic_;
+    std::string edge_state_frame_id_;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+    rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_gt_sub_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -98,6 +112,9 @@ private:
     double alpha_front_;
     double alpha_left_;
     double alpha_right_;
+
+    void applyCmdVelLimits();
+    void publishEdgeState();
 
     void computeJointCommand(double vx, double vy, double wz);
     void readWheelAngularVel();

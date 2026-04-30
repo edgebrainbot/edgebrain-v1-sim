@@ -54,7 +54,7 @@ class ACTRCognitiveSampler(BaseSampler):
         
         self.device = device
 
-        self._last_blending_action = torch.Tensor([0.] * 6).to(device)     # Blended action output
+        self._last_blending_action = torch.Tensor([0.] * 3).to(device)     # Blended action output
         # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
         # print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 

@@ -9,11 +9,12 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.actions import ExecuteProcess
 from launch.event_handlers import OnProcessExit
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     # Launch Arguments
-    use_sim_time = LaunchConfiguration('use_sim_time', default=True)
+    use_sim_time = LaunchConfiguration('use_sim_time')
     # gazebo_world = LaunchConfiguration('world_name', default='competition.world')
     gazebo_world = LaunchConfiguration('world_name', default='openwild_outdoor.world')
     
@@ -56,7 +57,7 @@ def generate_launch_description():
         executable="robot_state_publisher",
         output="screen",
         parameters=[{"robot_description": robot_description}, 
-                    {"use_sim_time": use_sim_time}],
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
     )
 
     joint_state_broadcaster_spawner = Node(
@@ -79,7 +80,7 @@ def generate_launch_description():
         output="screen",
         arguments=["-d", rviz2_config_file],
         parameters=[{"robot_description": robot_description},
-                    {"use_sim_time": use_sim_time}],
+                    {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
     )
     
     teleop_node = Node(
@@ -93,7 +94,7 @@ def generate_launch_description():
         # ],
         parameters=[
             {'stamped': True},
-            {'use_sim_time': use_sim_time}
+            {'use_sim_time': ParameterValue(use_sim_time, value_type=bool)}
         ]
     )
     
@@ -131,7 +132,7 @@ def generate_launch_description():
             "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
             "/odom_gt@nav_msgs/msg/Odometry[ignition.msgs.Odometry",
         ],
-        parameters=[{"use_sim_time": use_sim_time}],
+        parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
         remappings=[
             ('L1_lidar/scan/points', '/registered_scan'),
         ],
@@ -142,7 +143,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_sim_time',
-            default_value=use_sim_time,
+            default_value='true',
             description='If true, use simulated clock'
         ),
         DeclareLaunchArgument(

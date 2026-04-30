@@ -499,7 +499,7 @@ int main(int argc, char** argv)
         // cmd_vel.twist.linear.y = 0.0;
         // cmd_vel.twist.linear.z = 0.0;
 
-        pubSpeed->publish(cmd_vel);
+        // pubSpeed->publish(cmd_vel);
 
         // Publish teacher action for physical teacher
         phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;

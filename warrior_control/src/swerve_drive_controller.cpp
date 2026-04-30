@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
 #include <utility>
@@ -53,6 +54,8 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
 
     odom_frame_ = auto_declare<std::string>("odom_frame_id", "odom");
     base_frame_ = auto_declare<std::string>("base_frame_id", "base_footprint");
+    edge_state_topic_ = auto_declare<std::string>("edge_state_topic", "/edge/robot_state");
+    edge_state_frame_id_ = auto_declare<std::string>("edge_state_frame_id", "odom");
 
     process_noise_position_ = auto_declare<double>("kf.process_noise_position", 1e-3);
     process_noise_yaw_ = auto_declare<double>("kf.process_noise_yaw", 1e-3);
@@ -68,6 +71,26 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     alpha_front_ = auto_declare<double>("alpha.front", 0.0);
     alpha_left_  = auto_declare<double>("alpha.left", 0.0);
     alpha_right_ = auto_declare<double>("alpha.right", 0.0);
+
+    const auto vx_limit = auto_declare<std::vector<double>>("cmd_vel_limit.vx_limit", {-0.3, 0.3});
+    const auto vy_limit = auto_declare<std::vector<double>>("cmd_vel_limit.vy_limit", {-0.3, 0.3});
+    const auto wz_limit = auto_declare<std::vector<double>>("cmd_vel_limit.wz_limit", {-0.5, 0.5});
+
+    if (vx_limit.size() >= 2) {
+        vx_limit_min_ = vx_limit[0];
+        vx_limit_max_ = vx_limit[1];
+    }
+    if (vy_limit.size() >= 2) {
+        vy_limit_min_ = vy_limit[0];
+        vy_limit_max_ = vy_limit[1];
+    }
+    if (wz_limit.size() >= 2) {
+        wz_limit_min_ = wz_limit[0];
+        wz_limit_max_ = wz_limit[1];
+    }
+
+    RCLCPP_INFO(logger, "Cmd vel limits loaded: vx=[%.2f, %.2f], vy=[%.2f, %.2f], wz=[%.2f, %.2f]",
+                vx_limit_min_, vx_limit_max_, vy_limit_min_, vy_limit_max_, wz_limit_min_, wz_limit_max_);
 
     RCLCPP_INFO(logger, "SwerveDriveController initialized with %zu steer joints and %zu drive joints.",
                 steer_joint_names_.size(), drive_joint_names_.size());
@@ -105,11 +128,25 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
             vx_cmd_ = msg->twist.linear.x;
             vy_cmd_ = msg->twist.linear.y;
             wz_cmd_ = -msg->twist.angular.z;        // Invert angular command to match the errors
+            applyCmdVelLimits();
         });
 
     odom_pub_ = get_node()->create_publisher<nav_msgs::msg::Odometry>("/odom_est", 10);
+    edge_state_pub_ = get_node()->create_publisher<edge_msgs::msg::EdgeState>(edge_state_topic_, 10);
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(get_node());
+
+    edge_action_sub_ = get_node()->create_subscription<edge_msgs::msg::EdgeAction>(
+        "/edge/command_action", 10,
+        [this](const edge_msgs::msg::EdgeAction::SharedPtr msg)
+        {
+            if (msg->action_type == edge_msgs::msg::EdgeAction::CMD_VEL) {
+                vx_cmd_ = msg->action_value[0];
+                vy_cmd_ = msg->action_value[1];
+                wz_cmd_ = -msg->action_value[2];  // Invert angular command to match the errors
+                applyCmdVelLimits();
+            }
+        });
 
     // Subscribe to ground truth odometry for TF broadcasting
     odom_gt_sub_ = get_node()->create_subscription<nav_msgs::msg::Odometry>(
@@ -174,6 +211,8 @@ controller_interface::return_type SwerveDriveController::update(
     (void)time;
     double dt = period.seconds();
 
+    applyCmdVelLimits();
+
     readWheelAngularVel();  // Update wheel angular velocities from state interfaces
     readSteeringAngles();
 
@@ -191,6 +230,8 @@ controller_interface::return_type SwerveDriveController::update(
     kalmanPredict(dt);
     kalmanCorrect(body_twist);
 
+    publishEdgeState();
+
     // RCLCPP_INFO(get_node()->get_logger(), "Updating SwerveDriveController with vx: %.2f, vy: %.2f, wz: %.2f",
     //                 vx_cmd_, vy_cmd_, wz_cmd_);
 
@@ -199,6 +240,43 @@ controller_interface::return_type SwerveDriveController::update(
     // updateOdometry(dt, body_twist);  // Update odometry based on filtered estimate
 
     return controller_interface::return_type::OK;
+}
+
+void SwerveDriveController::applyCmdVelLimits() {
+    vx_cmd_ = std::clamp(vx_cmd_, vx_limit_min_, vx_limit_max_);
+    vy_cmd_ = std::clamp(vy_cmd_, vy_limit_min_, vy_limit_max_);
+    wz_cmd_ = std::clamp(wz_cmd_, wz_limit_min_, wz_limit_max_);
+}
+
+void SwerveDriveController::publishEdgeState() {
+    if (!edge_state_pub_) {
+        return;
+    }
+
+    x_ = kf_state_(0);
+    y_ = kf_state_(1);
+    yaw_ = kf_state_(2);
+
+    edge_msgs::msg::EdgeState edge_state;
+    edge_state.header.stamp = get_node()->now();
+    edge_state.header.frame_id = edge_state_frame_id_;
+    edge_state.state_type = edge_msgs::msg::EdgeState::ROBOT_STATE;
+    edge_state.state_value.resize(12);
+
+    edge_state.state_value[0] = x_;
+    edge_state.state_value[1] = y_;
+    edge_state.state_value[2] = 0.0;
+    edge_state.state_value[3] = 0.0;
+    edge_state.state_value[4] = 0.0;
+    edge_state.state_value[5] = yaw_;
+    edge_state.state_value[6] = kf_state_(3);
+    edge_state.state_value[7] = kf_state_(4);
+    edge_state.state_value[8] = 0.0;
+    edge_state.state_value[9] = 0.0;
+    edge_state.state_value[10] = 0.0;
+    edge_state.state_value[11] = kf_state_(5);
+
+    edge_state_pub_->publish(edge_state);
 }
 
 

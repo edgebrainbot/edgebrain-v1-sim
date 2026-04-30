@@ -31,7 +31,7 @@ def generate_launch_description():
     task_arg = DeclareLaunchArgument(
         "task",
         default_value="navigation",
-        description="Training task: navigation or locomotion"
+        description="Training task: navigation or locomotion or end2end"
     )
 
     run_arg = DeclareLaunchArgument(
@@ -42,7 +42,7 @@ def generate_launch_description():
     
     is_real_robot_arg = DeclareLaunchArgument(
         "is_real_robot",
-        default_value="true",
+        default_value="false",
         description="Whether to run on a real robot"
     )
 

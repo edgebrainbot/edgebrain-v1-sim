@@ -14,6 +14,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import DeclareLaunchArgument, TimerAction, ExecuteProcess, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch.actions import IncludeLaunchDescription, RegisterEventHandler, Shutdown
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -162,7 +163,7 @@ def generate_launch_description():
         executable='virtual_status_indicator_node',
         name='virtual_status_indicator',
         # output='screen',
-        parameters=[{'use_sim_time': use_sim_time}]
+        parameters=[{'use_sim_time': ParameterValue(use_sim_time, value_type=bool)}]
     )
 
     # -------- Goal Publisher Node --------
@@ -193,7 +194,7 @@ def generate_launch_description():
         name='global_rviz',
         output='screen',
         arguments=['-d', rviz_config_file],
-        parameters=[{'use_sim_time': use_sim_time}],
+        parameters=[{'use_sim_time': ParameterValue(use_sim_time, value_type=bool)}],
         condition=IfCondition(use_global_rviz)
     )
 

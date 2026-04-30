@@ -10,17 +10,18 @@ from launch_ros.actions import Node
 from ament_index_python import get_package_share_directory
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     # ------------------------
     # Launch Arguments
     # ------------------------
-    robot_name_arg = DeclareLaunchArgument("robot_name", default_value="go2", description="Robot name (e.g. go2, go1, a1)")
+    robot_name_arg = DeclareLaunchArgument("robot_name", default_value="warrior", description="Robot name (e.g. go2, go1, a1)")
     world_name_arg = DeclareLaunchArgument("world_name", default_value="openwild_outdoor.world", description="Gazebo world name")
     use_sim_time_arg = DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation (Gazebo) clock")
     reset_position_x_arg = DeclareLaunchArgument("reset_position_x", default_value="0.0", description="Reset X")
     reset_position_y_arg = DeclareLaunchArgument("reset_position_y", default_value="0.0", description="Reset Y")
-    reset_position_z_arg = DeclareLaunchArgument("reset_position_z", default_value="0.35", description="Reset Z")
+    reset_position_z_arg = DeclareLaunchArgument("reset_position_z", default_value="0.0", description="Reset Z")
 
     robot_name = LaunchConfiguration("robot_name")
     world_name = LaunchConfiguration("world_name")
@@ -38,7 +39,7 @@ def generate_launch_description():
         name='gz_reset_handler_node',
         output='screen',
         parameters=[{
-            'use_sim_time': use_sim_time,
+            'use_sim_time': ParameterValue(use_sim_time, value_type=bool),
             'world_name': world_name,
             'robot_name': robot_name,
             'reset_position_x': reset_position_x,
@@ -61,7 +62,7 @@ def generate_launch_description():
         name='gz_force_handler_node',
         output='screen',
         parameters=[{
-            'use_sim_time': use_sim_time,
+            'use_sim_time': ParameterValue(use_sim_time, value_type=bool),
             'robot_name': robot_name,
             'force_topic': '/external_force',
             'apply_rate': 100.0,

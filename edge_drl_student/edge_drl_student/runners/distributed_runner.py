@@ -320,7 +320,12 @@ class DistributedRunner:
         ep_mode = self.episode_manager.episode_mode
         
         # Handle episode done with MANUAL reason 
-        self._handle_episode_done(success=False, reason=ResetReason.MANUAL, ep_mode=ep_mode)
+        reset_success = self._handle_episode_done(success=False, reason=ResetReason.MANUAL, ep_mode=ep_mode)
+
+        if not reset_success and not self.is_real_robot:
+            response.success = False
+            response.message = 'Manual reset failed: environment reset did not complete successfully.'
+            return response
         
         response.success = True
         response.message = (
@@ -863,7 +868,7 @@ class DistributedRunner:
         self.node.get_logger().info(f"✅ Models and normalizers loaded from {load_path}")
     
     # ==================== Episode Management ====================
-    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE, ep_mode: DRLMode = DRLMode.TRAIN):
+    def _handle_episode_done(self, success: Optional[bool],reason: ResetReason = ResetReason.TASK_DONE, ep_mode: DRLMode = DRLMode.TRAIN) -> bool:
         """
         Handle end of episode: log stats, update normalizers, reset environment
         
@@ -940,7 +945,7 @@ class DistributedRunner:
                     f"   Activation Ratio: {stats.activation_ratio:.2%}\n"
                     f"{'='*70}"
             )
-            return # Skip reset for real robot to allow manual intervention
+            return True # Skip reset for real robot to allow manual intervention
         
         # Call reset service
         self.node.get_logger().info(f'🔄 Triggering reset (reason: {reason.value})')
@@ -948,8 +953,10 @@ class DistributedRunner:
         
         if success:
             self.node.get_logger().info(f'✅ Reset completed: {message}')
+            return True
         else:
             self.node.get_logger().error(f'❌ Reset failed: {message}')
+            return False
 
     
     # ==================== Statistics ====================

@@ -9,6 +9,8 @@ Panels:
         - /RobotModel1
         - /MarkerArray1
         - /PointCloud22
+        - /ControlMode1
+        - /SafetyMode1
       Splitter Ratio: 0.5
     Tree Height: 383
   - Class: rviz_common/Selection
@@ -195,28 +197,29 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          odom:
-            base_footprint:
-              base_link:
-                front_slewing_plate_link:
-                  front_steer_assembly_link:
-                    front_drive_wheel_link:
-                      {}
-                imu_link:
+          {}
+        odom:
+          base_footprint:
+            base_link:
+              front_slewing_plate_link:
+                front_steer_assembly_link:
+                  front_drive_wheel_link:
+                    {}
+              imu_link:
+                {}
+              left_slewing_plate_link:
+                left_steer_assembly_link:
+                  left_drive_wheel_link:
+                    {}
+              pole_link:
+                L1_lidar_link:
                   {}
-                left_slewing_plate_link:
-                  left_steer_assembly_link:
-                    left_drive_wheel_link:
-                      {}
-                pole_link:
-                  L1_lidar_link:
+                camera_link:
+                  {}
+              right_slewing_plate_link:
+                right_steer_assembly_link:
+                  right_drive_wheel_link:
                     {}
-                  camera_link:
-                    {}
-                right_slewing_plate_link:
-                  right_steer_assembly_link:
-                    right_drive_wheel_link:
-                      {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -268,7 +271,7 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: MarkerArray
       Namespaces:
         {}
@@ -278,7 +281,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /viz_node_topic
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -313,10 +316,36 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: ControlMode
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /edge/controller_indicator_marker
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: SafetyMode
+      Namespaces:
+        virtual_status_indicator: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /edge/safety_indicator_marker
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom
+    Fixed Frame: base_footprint
     Frame Rate: 30
   Name: root
   Tools:
@@ -359,25 +388,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 16.969942092895508
+      Distance: 12.871201515197754
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.7426561713218689
-        Y: -0.04402904212474823
-        Z: 0.5717006325721741
+        X: -0.001711960998363793
+        Y: 0.094759501516819
+        Z: 0.8712719082832336
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3353985548019409
+      Pitch: 0.4147964417934418
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.0253961086273193
+      Yaw: 2.6753909587860107
     Saved: ~
 Window Geometry:
   Displays:
@@ -397,5 +426,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1290
-  X: 630
-  Y: 166
+  X: 84
+  Y: 145

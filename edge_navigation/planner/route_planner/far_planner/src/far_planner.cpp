@@ -166,9 +166,6 @@ void FARMaster::ResetEnvironmentAndGraph() {
 
 void FARMaster::MainLoopCallBack() {
 
-  std::cout << "Main Loop Running..." << std::endl;
-
-  std::cout << "is_init_completed_: " << is_init_completed_ << std::endl;
   if (!is_init_completed_) {
     return;
   }
@@ -191,10 +188,6 @@ void FARMaster::MainLoopCallBack() {
     RCLCPP_WARN(nh_->get_logger(),"FAR: Waiting for Odometry...");
     return;
   }
-
-  std::cout << "obs size: "
-            << FARUtil::surround_obs_cloud_->size()
-            << std::endl;
 
   /* Extract Vertices and new nodes */
   FARUtil::Timer.start_time("Total V-Graph Update");
@@ -286,24 +279,17 @@ void FARMaster::MainLoopCallBack() {
 
 void FARMaster::PlanningCallBack() {
 
-  std::cout << "\033[1;34m Planning CallBack \033[0m" << std::endl;
-  std::cout << "is_init_completed_: " << is_init_completed_ << std::endl;
-  std::cout << "is_graph_init_: " << is_graph_init_ << std::endl;
-
   if (!is_init_completed_ || !is_graph_init_) return;
   const NavNodePtr goal_ptr = graph_planner_.GetGoalNodePtr();
   if (goal_ptr == NULL) {
     /* Graph Traversablity Update */
 
-    std::cout << "Goal Position: NULL" << std::endl;
-
     if (!FARUtil::IsDebug) printf("\033[2K");
-    std::cout<<"    "<<"Adding Goal to V-Graph "<<"Time: "<<0.f<<"ms"<<std::endl;
+    // std::cout<<"    "<<"Adding Goal to V-Graph "<<"Time: "<<0.f<<"ms"<<std::endl;
     graph_planner_.UpdateGraphTraverability(odom_node_ptr_, NULL);
     if (!FARUtil::IsDebug) printf("\033[2K");
     std::cout<<"    "<<"Path Search "<<"Time: "<<0.f<<"ms"<<std::endl;
   } else { 
-    std::cout << "Goal Position: " << goal_ptr->position << std::endl;
     // Update goal postion with nearby terrain cloud
     const Point3D ori_p = graph_planner_.GetOriginNodePos(true);
     PointCloudPtr goal_obs(new pcl::PointCloud<PCLPoint>());
@@ -334,7 +320,6 @@ void FARMaster::PlanningCallBack() {
     bool is_reach_goal = false;
     // std::cout << "nav_node_ptr_: " << (nav_node_ptr_ == NULL ? "NULL" : FARUtil::Point3DToString(nav_node_ptr_->position)) << std::endl;
     // std::cout << "goal_ptr_: " << (goal_ptr == NULL ? "NULL" : FARUtil::Point3DToString(goal_ptr->position)) << std::endl;
-    std::cout << "is_planning_running_: " << is_planner_running_ << std::endl;
     if (graph_planner_.PathToGoal(goal_ptr, global_path, nav_node_ptr_, current_free_goal, is_planning_fails, is_reach_goal, is_current_free_nav) && nav_node_ptr_ != NULL) {
       Point3D waypoint = nav_node_ptr_->position;
       if (nav_node_ptr_ != goal_ptr) {
@@ -748,9 +733,6 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
   if (!is_odom_init_) return;
   // update map grid robot center
   map_handler_.UpdateRobotPosition(FARUtil::robot_pos);
-  std::cout << "after UpdateRobotPosition" << std::endl;
-  std::cout << "\033[1;34m Terrain CallBack \033[0m" << std::endl;
-  std::cout << "is_stop_update_: " << is_stop_update_ << std::endl;
 
   if (!is_stop_update_) {
     this->ProcessCloud(pc, temp_cloud_ptr_);
@@ -759,16 +741,10 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
                                                                FARUtil::kTolerZ));
     FARUtil::ExtractFreeAndObsCloud(temp_cloud_ptr_, temp_free_ptr_, temp_obs_ptr_);
 
-
-    std::cout << "temp_cloud size: " << temp_cloud_ptr_->size() << std::endl;
-    std::cout << "temp_obs size: " << temp_obs_ptr_->size() << std::endl;
-    std::cout << "temp_free size: " << temp_free_ptr_->size() << std::endl;
-
     if (!master_params_.is_static_env) {
       FARUtil::RemoveOverlapCloud(temp_obs_ptr_, FARUtil::stack_dyobs_cloud_, true);
     }
     map_handler_.UpdateObsCloudGrid(temp_obs_ptr_);
-    std::cout << "after UpdateObsCloudGrid, temp_obs: " << temp_obs_ptr_->size() << std::endl;
 
     map_handler_.UpdateFreeCloudGrid(temp_free_ptr_);
     // extract new points
@@ -781,16 +757,11 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
   }
   // extract surround free cloud & update terrain height
   map_handler_.GetSurroundFreeCloud(FARUtil::surround_free_cloud_);
-  std::cout << "after GetSurroundFreeCloud: " << FARUtil::surround_free_cloud_->size() << std::endl;
 
   map_handler_.UpdateTerrainHeightGrid(FARUtil::surround_free_cloud_, terrain_height_ptr_);
 
-  std::cout << "before GetSurroundObsCloud: " << FARUtil::surround_obs_cloud_->size() << std::endl;
-
   // update surround obs cloud
   map_handler_.GetSurroundObsCloud(FARUtil::surround_obs_cloud_);
-
-  std::cout << "after GetSurroundObsCloud: " << FARUtil::surround_obs_cloud_->size() << std::endl;
 
   // extract dynamic obstacles
   FARUtil::cur_dyobs_cloud_->clear();
@@ -817,9 +788,6 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
   FARUtil::StackCloudByTime(FARUtil::cur_new_cloud_, FARUtil::stack_new_cloud_, FARUtil::kNewDecayTime, nh_);
   FARUtil::UpdateKdTrees(FARUtil::stack_new_cloud_);
 
-
-  std::cout << "surround_obs_cloud_ size: " << FARUtil::surround_obs_cloud_->size() << std::endl;
-  std::cout << "surround_obs_cloud_empty: " << FARUtil::surround_obs_cloud_->empty() << std::endl;
   if (!FARUtil::surround_obs_cloud_->empty()) is_cloud_init_ = true;
 
   /* visualize clouds */
