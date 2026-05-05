@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <!-- Gazebo colors -->
     <gazebo reference="base_link">
-        <material>Gazebo/Grey</material>
+        <material>Gazebo/red</material>
     </gazebo>
 
     <gazebo reference="left_steer_assembly_link">

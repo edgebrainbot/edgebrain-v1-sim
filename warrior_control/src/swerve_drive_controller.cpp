@@ -55,7 +55,9 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     odom_frame_ = auto_declare<std::string>("odom_frame_id", "odom");
     base_frame_ = auto_declare<std::string>("base_frame_id", "base_footprint");
     edge_state_topic_ = auto_declare<std::string>("edge_state_topic", "/edge/robot_state");
+    tracking_error_topic_ = auto_declare<std::string>("tracking_error_topic", "/edge/tracking_error");
     edge_state_frame_id_ = auto_declare<std::string>("edge_state_frame_id", "odom");
+    base_link_height_offset_ = auto_declare<double>("base_link_height_offset", 0.0);
 
     process_noise_position_ = auto_declare<double>("kf.process_noise_position", 1e-3);
     process_noise_yaw_ = auto_declare<double>("kf.process_noise_yaw", 1e-3);
@@ -133,6 +135,7 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
 
     odom_pub_ = get_node()->create_publisher<nav_msgs::msg::Odometry>("/odom_est", 10);
     edge_state_pub_ = get_node()->create_publisher<edge_msgs::msg::EdgeState>(edge_state_topic_, 10);
+    tracking_error_pub_ = get_node()->create_publisher<edge_msgs::msg::EdgeState>(tracking_error_topic_, 10);
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(get_node());
 
@@ -148,14 +151,13 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
             }
         });
 
-    // Subscribe to ground truth odometry for TF broadcasting
+    // Subscribe to simulation ground-truth odometry for TF broadcasting and base_link height.
     odom_gt_sub_ = get_node()->create_subscription<nav_msgs::msg::Odometry>(
         "/odom_gt", 10,  // Subscribe to ground truth odometry
     [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
-        
-        // Compensate for the height of the robot's center of mass (0.608m) to get the base_link position
         nav_msgs::msg::Odometry compensated = *msg;
-        compensated.pose.pose.position.z += 0.608;  // Adjust the z position to account for the height of the robot's center of mass
+        compensated.pose.pose.position.z += base_link_height_offset_;
+        base_link_height_ = compensated.pose.pose.position.z;
         odom_pub_->publish(compensated);  // Publish to /odom_est
 
         // Broadcast TF with the compensated values
@@ -231,6 +233,7 @@ controller_interface::return_type SwerveDriveController::update(
     kalmanCorrect(body_twist);
 
     publishEdgeState();
+    publishTrackingError();
 
     // RCLCPP_INFO(get_node()->get_logger(), "Updating SwerveDriveController with vx: %.2f, vy: %.2f, wz: %.2f",
     //                 vx_cmd_, vy_cmd_, wz_cmd_);
@@ -277,6 +280,25 @@ void SwerveDriveController::publishEdgeState() {
     edge_state.state_value[11] = kf_state_(5);
 
     edge_state_pub_->publish(edge_state);
+}
+
+void SwerveDriveController::publishTrackingError() {
+    if (!tracking_error_pub_) {
+        return;
+    }
+
+    edge_msgs::msg::EdgeState tracking_error;
+    tracking_error.header.stamp = get_node()->now();
+    tracking_error.header.frame_id = edge_state_frame_id_;
+    tracking_error.state_type = edge_msgs::msg::EdgeState::TRACKING_ERROR;
+    tracking_error.state_value.resize(12, 0.0);
+
+    tracking_error.state_value[2] = base_link_height_;
+    tracking_error.state_value[6] = vx_cmd_ - kf_state_(3);
+    tracking_error.state_value[7] = vy_cmd_ - kf_state_(4);
+    tracking_error.state_value[11] = wz_cmd_ - kf_state_(5);
+
+    tracking_error_pub_->publish(tracking_error);
 }
 
 

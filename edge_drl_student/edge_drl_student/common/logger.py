@@ -181,7 +181,8 @@ class Logger:
         
         try:
             # Load TensorBoard event file
-            ea = EventAccumulator(self.log_dir)
+            # Set size_guidance to unlimited for scalars to load all data points (not just 10k)
+            ea = EventAccumulator(self.log_dir, size_guidance={'scalars': 0})
             ea.Reload()
             
             tags = ea.Tags()['scalars']
@@ -250,7 +251,8 @@ class Logger:
         self.writer.flush()
         
         try:
-            ea = EventAccumulator(self.log_dir)
+            # Set size_guidance to unlimited for scalars to load all data points (not just 10k)
+            ea = EventAccumulator(self.log_dir, size_guidance={'scalars': 0})
             ea.Reload()
             
             tags = ea.Tags()['scalars']
@@ -295,7 +297,8 @@ class Logger:
         self.writer.flush()
         
         try:
-            ea = EventAccumulator(self.log_dir)
+            # Set size_guidance to unlimited for scalars to load all data points (not just 10k)
+            ea = EventAccumulator(self.log_dir, size_guidance={'scalars': 0})
             ea.Reload()
             
             tags = ea.Tags()['scalars']

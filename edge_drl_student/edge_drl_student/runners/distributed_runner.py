@@ -508,7 +508,7 @@ class DistributedRunner:
            ...
            Also update episode statistics (interaction-level, not learning)
         """
-        
+
         # Reset handling
         if self.reset_manager.is_resetting:
             self.node.get_logger().info('⏸️  Skipping transition during reset')
@@ -652,16 +652,8 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            # learned_action = 0.5 * policy_action + 0.5 * blended_action
+            # learned_action = 0.7 * policy_action + 0.3 * blended_action
             learned_action = 1.0 * policy_action + 0.0 * blended_action
-            
-
-            # a1 = 0.5 * policy_action
-            # a2 = 0.2 * blended_action
-
-            # print("aaaaaaaaaaaa",a1)
-            # print("bbbbbbbbbbbb",a2)
-
         else:
             learned_action = policy_action
         
@@ -1182,7 +1174,6 @@ class DistributedRunner:
         stepwise_total_reward = sum(reward_components.values())
         
         mode_str = mode.name.capitalize()
-        
         self.logger.writer.add_scalar(f'{mode_str}-Stepwise/total_reward', stepwise_total_reward, totalstep)
         self.logger.writer.add_scalar(f'{mode_str}-Stepwise/count/student_action', self.episode_manager.stu_action_count, totalstep)
         self.logger.writer.add_scalar(f'{mode_str}-Stepwise/count/teacher_action', self.episode_manager.tea_action_count, totalstep)

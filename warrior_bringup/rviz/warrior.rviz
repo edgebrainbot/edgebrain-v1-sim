@@ -162,6 +162,8 @@ Visualization Manager:
           Value: true
         base_link:
           Value: true
+        camera:
+          Value: true
         camera_link:
           Value: true
         front_drive_wheel_link:
@@ -190,6 +192,12 @@ Visualization Manager:
           Value: true
         right_steer_assembly_link:
           Value: true
+        sensor:
+          Value: true
+        sensor_at_scan:
+          Value: true
+        vehicle:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -197,29 +205,30 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          {}
-        odom:
-          base_footprint:
-            base_link:
-              front_slewing_plate_link:
-                front_steer_assembly_link:
-                  front_drive_wheel_link:
-                    {}
-              imu_link:
-                {}
-              left_slewing_plate_link:
-                left_steer_assembly_link:
-                  left_drive_wheel_link:
-                    {}
-              pole_link:
-                L1_lidar_link:
+          odom:
+            base_footprint:
+              base_link:
+                front_slewing_plate_link:
+                  front_steer_assembly_link:
+                    front_drive_wheel_link:
+                      {}
+                imu_link:
                   {}
-                camera_link:
-                  {}
-              right_slewing_plate_link:
-                right_steer_assembly_link:
-                  right_drive_wheel_link:
+                left_slewing_plate_link:
+                  left_steer_assembly_link:
+                    left_drive_wheel_link:
+                      {}
+                pole_link:
+                  L1_lidar_link:
                     {}
+                  camera_link:
+                    {}
+                right_slewing_plate_link:
+                  right_steer_assembly_link:
+                    right_drive_wheel_link:
+                      {}
+          sensor_at_scan:
+            {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -317,21 +326,8 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz_default_plugins/Marker
-      Enabled: false
-      Name: ControlMode
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /edge/controller_indicator_marker
-      Value: false
-    - Class: rviz_default_plugins/Marker
       Enabled: true
-      Name: SafetyMode
+      Name: ControlMode
       Namespaces:
         virtual_status_indicator: true
       Topic:
@@ -340,12 +336,25 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /edge/safety_indicator_marker
+        Value: /edge/controller_indicator_marker
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: SafetyMode
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /edge/safety_indicator_marker
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_footprint
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -403,10 +412,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4147964417934418
+      Pitch: 0.7547963261604309
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.6753909587860107
+      Yaw: 2.810391902923584
     Saved: ~
 Window Geometry:
   Displays:

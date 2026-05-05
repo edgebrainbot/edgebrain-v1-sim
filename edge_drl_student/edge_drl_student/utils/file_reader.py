@@ -200,7 +200,11 @@ class LogReader:
         print(f"Loading: {os.path.basename(self.event_file_path)}")
         
         # Load event data
-        self.event_acc = EventAccumulator(self.event_file_path)
+        # Set size_guidance to unlimited for scalars to load all data points (not just 10k)
+        self.event_acc = EventAccumulator(
+            self.event_file_path,
+            size_guidance={'scalars': 0}  # 0 means no limit on scalars
+        )
         self.event_acc.Reload()
         
         tags = self.get_all_tags()
@@ -367,7 +371,14 @@ class LogReader:
         
         return data
     
-    def export_to_separate_files(self, output_dir=None, file_format='csv', tags=None):
+    def export_to_separate_files(
+        self,
+        output_dir=None,
+        file_format='csv',
+        tags=None,
+        include_header=True,
+        include_step=False,
+    ):
         """
         Export each metric to a separate file in a folder named after the experiment
         
@@ -376,6 +387,8 @@ class LogReader:
                                        If None, creates 'exported_data' in current directory
             file_format (str): File format, either 'csv' or 'txt' (default: 'csv')
             tags (list, optional): List of tags to export. If None, exports all available tags
+            include_header (bool): Whether to write a header row
+            include_step (bool): Whether to include the step column in exported rows
         
         Returns:
             str: Path to the created experiment folder
@@ -425,15 +438,23 @@ class LogReader:
                 # Write to file
                 with open(filepath, 'w') as f:
                     if file_format == 'csv':
-                        # CSV format with header
-                        f.write("step,value\n")
+                        # CSV format with optional header and step column
+                        if include_header:
+                            f.write("step,value\n" if include_step else "field\n")
                         for step, value in zip(steps, values):
-                            f.write(f"{step},{value}\n")
+                            if include_step:
+                                f.write(f"{step},{value}\n")
+                            else:
+                                f.write(f"{value}\n")
                     else:  # txt format
-                        # Space-separated format with header
-                        f.write("# step value\n")
+                        # Space-separated format with optional header and step column
+                        if include_header:
+                            f.write("# step value\n" if include_step else "# field\n")
                         for step, value in zip(steps, values):
-                            f.write(f"{step} {value}\n")
+                            if include_step:
+                                f.write(f"{step} {value}\n")
+                            else:
+                                f.write(f"{value}\n")
                 
                 exported_files.append(filepath)
                 print(f"  ✓ {filename}.{file_format} ({len(values)} data points)")
@@ -447,7 +468,7 @@ class LogReader:
         
         return experiment_folder
     
-    def export_all_to_single_csv(self, output_dir=None, tags=None):
+    def export_all_to_single_csv(self, output_dir=None, tags=None, include_header=False, include_step=False):
         """
         Export all metrics to a single CSV file (wide format)
         
@@ -455,6 +476,8 @@ class LogReader:
             output_dir (str, optional): Output directory. 
                                        If None, creates 'exported_data' in current directory
             tags (list, optional): List of tags to export. If None, exports all available tags
+            include_header (bool): Whether to write a header row
+            include_step (bool): Whether to include the step column in exported rows
         
         Returns:
             str: Path to the created CSV file
@@ -498,12 +521,15 @@ class LogReader:
         
         with open(filepath, 'w') as f:
             # Write header
-            header = 'step,' + ','.join(data_dict.keys())
-            f.write(header + '\n')
+            if include_header:
+                header_fields = list(data_dict.keys())
+                if include_step:
+                    header_fields = ['step'] + header_fields
+                f.write(','.join(header_fields) + '\n')
             
             # Write data
             for step in all_steps:
-                row = [str(step)]
+                row = [str(step)] if include_step else []
                 for tag_name in data_dict.keys():
                     value = data_dict[tag_name].get(step, '')
                     row.append(str(value) if value != '' else '')
@@ -516,13 +542,14 @@ class LogReader:
         
         return filepath
     
-    def export_summary_stats(self, output_dir=None, tags=None):
+    def export_summary_stats(self, output_dir=None, tags=None, include_header=False):
         """
         Export summary statistics for all metrics to a CSV file
         
         Args:
             output_dir (str, optional): Output directory
             tags (list, optional): List of tags to export. If None, exports all available tags
+            include_header (bool): Whether to write a header row
         
         Returns:
             str: Path to the created CSV file
@@ -549,7 +576,8 @@ class LogReader:
         
         with open(filepath, 'w') as f:
             # Write header
-            f.write("metric,min,max,mean,std,latest,count\n")
+            if include_header:
+                f.write("metric,min,max,mean,std,latest,count\n")
             
             # Write statistics for each metric
             for tag in tags:
@@ -574,7 +602,14 @@ class LogReader:
         
         return filepath
     
-    def export_all(self, output_dir=None, file_format='csv', tags=None):
+    def export_all(
+        self,
+        output_dir=None,
+        file_format='csv',
+        tags=None,
+        include_header=False,
+        include_step=False,
+    ):
         """
         Export all data in multiple formats:
         1. Each metric in separate files
@@ -585,6 +620,8 @@ class LogReader:
             output_dir (str, optional): Output directory
             file_format (str): File format for individual files ('csv' or 'txt')
             tags (list, optional): List of tags to export. If None, exports all available tags
+            include_header (bool): Whether to write header rows in exported files
+            include_step (bool): Whether to include the step column in exported rows
         
         Returns:
             dict: Dictionary with paths to all created files
@@ -607,13 +644,28 @@ class LogReader:
         print(f"{'='*70}")
         
         # Export individual files
-        experiment_folder = self.export_to_separate_files(output_dir, file_format, tags)
+        experiment_folder = self.export_to_separate_files(
+            output_dir=output_dir,
+            file_format=file_format,
+            tags=tags,
+            include_header=include_header,
+            include_step=include_step,
+        )
         
         # Export combined CSV
-        combined_csv = self.export_all_to_single_csv(output_dir, tags)
+        combined_csv = self.export_all_to_single_csv(
+            output_dir=output_dir,
+            tags=tags,
+            include_header=include_header,
+            include_step=include_step,
+        )
         
         # Export summary statistics
-        summary_csv = self.export_summary_stats(output_dir, tags)
+        summary_csv = self.export_summary_stats(
+            output_dir=output_dir,
+            tags=tags,
+            include_header=include_header,
+        )
         
         print(f"{'='*70}")
         print(f"All exports completed!")
@@ -806,7 +858,15 @@ def list_experiments(log_dir):
     return experiment_dirs
 
 
-def export_all_experiments(log_dir, output_dir=None, file_format='csv', tags=None, name_pattern=None):
+def export_all_experiments(
+    log_dir,
+    output_dir=None,
+    file_format='csv',
+    tags=None,
+    name_pattern=None,
+    include_header=False,
+    include_step=False,
+):
     """
     Export all experiments (or filtered by name pattern) to separate folders
     
@@ -816,6 +876,8 @@ def export_all_experiments(log_dir, output_dir=None, file_format='csv', tags=Non
         file_format (str): File format for individual files ('csv' or 'txt')
         tags (list, optional): List of tags to export. If None, exports all available tags
         name_pattern (str, optional): Only export experiments matching this pattern
+        include_header (bool): Whether to write header rows in exported files
+        include_step (bool): Whether to include the step column in exported rows
     
     Returns:
         dict: Dictionary mapping experiment names to their export paths
@@ -895,7 +957,13 @@ def export_all_experiments(log_dir, output_dir=None, file_format='csv', tags=Non
             reader = LogReader(log_dir, experiment_index=experiment_dirs.index(exp_dir))
             
             # Export all data
-            paths = reader.export_all(output_dir=output_dir, file_format=file_format, tags=tags)
+            paths = reader.export_all(
+                output_dir=output_dir,
+                file_format=file_format,
+                tags=tags,
+                include_header=include_header,
+                include_step=include_step,
+            )
             results[exp_name] = paths
             
         except Exception as e:
@@ -1009,7 +1077,7 @@ def plot_comparison(log_dir, indices, tag, window=None):
 
 # Example usage
 if __name__ == "__main__":
-    log_dir = '/home/edgebot/edge_ws/data/locomotion/shielding/outputs/logs'
+    log_dir = '/home/wrclub/edge_ws/src/edge-brain-go2/edge_drl_student/edge_drl_student/outputs/logs'
     
     # print("="*70)
     # print("Example 1: List all experiments")
@@ -1034,7 +1102,7 @@ if __name__ == "__main__":
     print("\n" + "="*70)
     print("Example 4: Export ALL experiments")
     print("="*70)
-    export_all_experiments(log_dir, file_format='csv', output_dir='shielding')
+    export_all_experiments(log_dir, file_format='csv', output_dir='outputs_exports')
     
     # print("\n" + "="*70)
     # print("Example 5: Export only 'dual' experiments")

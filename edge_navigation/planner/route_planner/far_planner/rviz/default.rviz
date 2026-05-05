@@ -10,7 +10,6 @@ Panels:
         - /Goalpoint1/Namespaces1
         - /GlobalPath1/Namespaces1
         - /VGraph1/Namespaces1
-        - /RobotGo21
         - /PointCloud21
       Splitter Ratio: 0.5617647171020508
     Tree Height: 697
@@ -273,7 +272,13 @@ Visualization Manager:
       Enabled: true
       Name: Goalpoint
       Namespaces:
-        {}
+        clear_nodes: true
+        free_goal: true
+        free_odom_position: true
+        last_nav_node: true
+        original_goal: true
+        out_contour: true
+        waypoint: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -319,7 +324,7 @@ Visualization Manager:
       Enabled: true
       Name: GlobalPath
       Namespaces:
-        {}
+        global_path: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -332,7 +337,24 @@ Visualization Manager:
       Enabled: true
       Name: VGraph
       Namespaces:
-        {}
+        angle_direct: true
+        boundary_edge: true
+        boundary_vertex: true
+        freespace_vertex: true
+        freespace_vgraph: true
+        frontier_vertex: true
+        global_vertex: true
+        global_vgraph: true
+        localrange_vertex: true
+        odom_edge: true
+        polygon_edge: true
+        to_goal_edge: true
+        trajectory_edge: true
+        trajectory_vertex: true
+        updating_vertex: true
+        vertex_angle: true
+        vertices_matches: true
+        visibility_edge: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -344,7 +366,10 @@ Visualization Manager:
       Enabled: true
       Name: ViewpointExtend
       Namespaces:
-        {}
+        corner_direct: true
+        extend_viewpoint: true
+        origin_viewpoint: true
+        raytracing_line: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -503,6 +528,11 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_drive_wheel_link:
           Alpha: 1
           Show Axes: false
@@ -545,13 +575,6 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Class: rviz_default_plugins/Axes
-      Enabled: false
-      Length: 1.25
-      Name: RobotGo2
-      Radius: 0.15000000596046448
-      Reference Frame: vehicle
-      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -586,6 +609,32 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: SafetyMode
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /edge/safety_indicator_marker
+      Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: ControlMode
+      Namespaces:
+        virtual_status_indicator: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /edge/controller_indicator_marker
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -608,25 +657,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 16.241172790527344
+      Distance: 12.691973686218262
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.9160885810852051
-        Y: 1.4837008714675903
-        Z: 2.108678102493286
+        X: -0.14527757465839386
+        Y: 1.1909176111221313
+        Z: 3.6953210830688477
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6597961187362671
+      Pitch: 0.4947962760925293
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 2.9803996086120605
+      Yaw: 2.8953981399536133
     Saved: ~
 Window Geometry:
   Displays:
@@ -650,5 +699,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1387
-  X: 96
-  Y: 145
+  X: 196
+  Y: 137

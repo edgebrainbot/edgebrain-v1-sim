@@ -135,8 +135,12 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([0.35, -0.1, -0.4], device=self.device),
-                    torch.tensor([0.7, 0.1, 0.1], device=self.device))
+                    torch.tensor([0.205, -0.1, -0.86], device=self.device),
+                    torch.tensor([0.48, 0.1, 0.545], device=self.device)
+                )
+                # "action_bound":(
+                #     torch.tensor([0.25, -0.1, -0.8], device=self.device),
+                #     torch.tensor([0.6, 0.1, 0.35], device=self.device)) # for cognitive
             },
             "locomotion": {
                 "act_dim": 6,
@@ -289,7 +293,7 @@ class DRLStudentNode(Node):
         # ============================================================
         self.reset_manager = ResetManager(
             node=self,
-            reset_timeout=15.0,
+            reset_timeout=10.0,
             logger=self.logger,
             reset_service_name="/edge/reset",
             gz_reset_service_name="/edge/reset/gz_handler",

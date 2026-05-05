@@ -18,12 +18,14 @@
    <xacro:property name="right_plate_offset" value="0.024 -0.468 -0.349"/>
 
   <!-- Wheel properties -->
-  <xacro:property name="wheel_mass" value="0.5"/>
+  <!-- <xacro:property name="wheel_mass" value="2.5"/> -->
+  <xacro:property name="wheel_mass" value="5.0"/>
   <xacro:property name="wheel_offset_z" value="-0.15"/>
   <xacro:property name="wheel_radius" value="0.1"/>
 
   <!-- Base properties -->
-  <xacro:property name="base_mass" value="0.5"/>
+  <!-- <xacro:property name="base_mass" value="6.0"/> -->
+  <xacro:property name="base_mass" value="10.0"/> 
   <xacro:property name="base_footprint_height" value="${0.508 + wheel_radius}"/>
   
   <!-- Initial orientations (radians) -->
@@ -55,7 +57,7 @@
       <geometry>
         <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl"/>
       </geometry>
-      <material name="gray"/>
+      <material name="white"/>
     </visual>
     <collision>
       <geometry>

@@ -198,7 +198,8 @@ private:
             }
             return obs;
         } else {
-            std::vector<double> obs(last_robot_state_.state_value.begin(), last_robot_state_.state_value.end());
+            // std::vector<double> obs(last_robot_state_.state_value.begin(), last_robot_state_.state_value.end());
+            std::vector<double> obs(last_tracking_error_.begin(), last_tracking_error_.end());  // use tracking error as part of the observation for navigation task
             if (obs.size() >= 2) {
                 obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_robot_state_
                 obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
@@ -217,7 +218,9 @@ private:
             }
             return obs_next;
         } else {
-            std::vector<double> obs_next(curr_robot_state_.state_value.begin(), curr_robot_state_.state_value.end());
+            // std::vector<double> obs_next(curr_robot_state_.state_value.begin(), curr_robot_state_.state_value.end());
+            std::vector<double> obs_next(curr_tracking_error_.begin(), curr_tracking_error_.end());  // use tracking error as part of the observation for navigation task
+
             if (obs_next.size() >= 2) {
                 obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_robot_state_
                 obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
@@ -289,13 +292,14 @@ private:
             RCLCPP_INFO(get_logger(), "Episode done at step %d!", step_count_);
         }
 
-        if(done_flag_ && task_type_ == "navigation")
+        if(done_ && task_type_ == "navigation")
         {
-            edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
-            stop_action.action_value.assign(curr_edge_action_.action_value.size(), 0.0);    // set all action values to zero
-            command_action_pub_->publish(stop_action);
-            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
-                "Episode done: skip transition publish and send stop action [0, 0, 0]");
+            // edge_msgs::msg::EdgeAction stop_action = curr_edge_action_;
+            // stop_action.action_value.assign(curr_edge_action_.action_value.size(), 0.0);    // set all action values to zero
+            // command_action_pub_->publish(stop_action);
+            // RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+            //     "Episode done: skip transition publish and send stop action [0, 0, 0]");
+            reset();    // reset environment for the next episode
         } else {
             command_action_pub_->publish(curr_edge_action_);
         }
@@ -414,7 +418,6 @@ private:
 
             transition_pub_->publish(transition);
         }
-        
 
         return is_done;
     }
@@ -431,6 +434,7 @@ private:
         curr_robot_state_.state_value.assign(12, 0.0);
 
         last_edge_action_ = edge_msgs::msg::EdgeAction{};   // reset to default action
+        RCLCPP_INFO(get_logger(), "RL Environment reset to initial state.");
     }
 
 private:

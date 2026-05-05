@@ -56,6 +56,8 @@ private:
     double x_ = 0.0;
     double y_ = 0.0;
     double yaw_ = 0.0;
+    double base_link_height_ = 0.0;
+    double base_link_height_offset_ = 0.0;
 
     Eigen::Matrix<double, 6, 1> kf_state_ = Eigen::Matrix<double, 6, 1>::Zero();
     Eigen::Matrix<double, 6, 6> kf_cov_ = Eigen::Matrix<double, 6, 6>::Identity();
@@ -86,10 +88,12 @@ private:
     std::string odom_frame_;
     std::string base_frame_;
     std::string edge_state_topic_;
+    std::string tracking_error_topic_;
     std::string edge_state_frame_id_;
 
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr edge_state_pub_;
+    rclcpp::Publisher<edge_msgs::msg::EdgeState>::SharedPtr tracking_error_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_gt_sub_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -115,6 +119,7 @@ private:
 
     void applyCmdVelLimits();
     void publishEdgeState();
+    void publishTrackingError();
 
     void computeJointCommand(double vx, double vy, double wz);
     void readWheelAngularVel();

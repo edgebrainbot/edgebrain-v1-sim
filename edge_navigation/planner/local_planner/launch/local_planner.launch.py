@@ -21,7 +21,7 @@ def generate_launch_description():
         DeclareLaunchArgument("maxSpeed", default_value="1.0"),   # Original
         # DeclareLaunchArgument("maxSpeed", default_value="0.5"),   # For testing
         DeclareLaunchArgument("autonomyMode", default_value="true"),
-        DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original
+        DeclareLaunchArgument("autonomySpeed", default_value="1.0"),  # Original 1.0
         # DeclareLaunchArgument("autonomySpeed", default_value="0.5"),  # For testing
         DeclareLaunchArgument("joyToSpeedDelay", default_value="2.0"),
         DeclareLaunchArgument("goalCloseDis", default_value="2.0"),
@@ -44,18 +44,18 @@ def generate_launch_description():
             "pathFolder": PathJoinSubstitution([
                 FindPackageShare("local_planner"), "paths"
             ]),
-            "vehicleLength": 0.3,
-            "vehicleWidth": 0.7,
+            "vehicleLength": 1.0,  # 0.3
+            "vehicleWidth": 1.0,   # 0.7
             "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
             "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
             "laserVoxelSize": 0.05,
-            "terrainVoxelSize": 0.2, # 0.2 (orign) 1.0
+            "terrainVoxelSize": 1.0, # 0.2 (orign) 1.0
             "useTerrainAnalysis": True,
             "checkObstacle": True,
             "checkRotObstacle": False, # False (orign)
             # "adjacentRange": 3.0,     # Original
-            "adjacentRange": 2.0,
+            "adjacentRange": 4.0,
             # "obstacleHeightThre": 0.3,
             "obstacleHeightThre": 0.5,
 
@@ -105,7 +105,7 @@ def generate_launch_description():
             "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
             "pubSkipNum": 1,
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
-            "lookAheadDis": 0.5,    # Original 0.5
+            "lookAheadDis": 0.3,    # Original 0.5
             "yawRateGain": 2.5,    # Original 1.5
             "stopYawRateGain": 1.5,
             "maxYawRate": 80.0,

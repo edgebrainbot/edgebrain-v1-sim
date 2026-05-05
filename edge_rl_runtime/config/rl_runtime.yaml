@@ -2,11 +2,11 @@
   ros__parameters:
 
     navigation:
-      goal_threshold: 1.25     # distance threshold to consider episode done in real world
+      goal_threshold: 1.0     # distance threshold to consider episode done in real world
       # goal_threshold: 1.0   # distance threshold to consider episode done
 
     episode:
-      horizon_steps: 1200000     # maximum number of steps per episode, after which the episode is terminated
+      horizon_steps: 600000     # maximum number of steps per episode, after which the episode is terminated
 
     topics:
       odom_topic: "/odom_est"                             # topic name for GO2 odometry input
