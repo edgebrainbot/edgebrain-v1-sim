@@ -40,6 +40,7 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             action_dim=action_dim,
             device=device
         )
+
         
         # Initialize cognitive samplers for both buffers
         self.stu_cognitive_sampler = ACTRCognitiveSampler(

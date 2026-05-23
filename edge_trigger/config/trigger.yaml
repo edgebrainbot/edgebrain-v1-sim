@@ -1,7 +1,7 @@
 /edge/trigger:
   ros__parameters:
     trigger_mode: "self"         # trigger mode, options: "self" -- self-trigger, "event" -- event-trigger
-    dwell_steps: 150              # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
+    dwell_steps: 100             # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
     
     action_source: -1            # action source, options: -1 -- auto, 0 -- student, 1 -- teacher
     print_processing: false      # whether to print processing
@@ -10,7 +10,7 @@
     update_rate: 400.0           # trigger update rate in Hz
 
     monitor_state_name: "/edge/robot_state"  # topic name for robot state input to safety monitor
-    teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action (navigation)
-    # teacher_topic_name: "/edge/phy_teacher_action"  # topic name for teacher action (locomotion)
+    # teacher_topic_name: "/edge/phy_teacher_action_vel"  # topic name for teacher action (navigation)
+    teacher_topic_name: "/edge/phy_teacher_action"  # topic name for teacher action (locomotion)
     student_topic_name: "/edge/drl_student_action"  # topic name for student action
     terminal_action_name: "/edge/terminal_action"  # topic name for terminal action

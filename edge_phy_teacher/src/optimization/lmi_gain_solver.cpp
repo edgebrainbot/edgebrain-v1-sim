@@ -234,6 +234,9 @@ void LMIGainSolver::update_Matrix_B(){
 void LMIGainSolver::update_TrackingErrorSquare() {
     for (int i = 0; i < 10; ++i) {
         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
+        if (i == 3) {  // Cap the height error square to prevent numerical issues
+            tracking_err_square[i] = 0.0;  // Cap the value to prevent numerical issues
+        }
         cpg_update_tracking_err_square(i, tracking_err_square[i]);
     }
 }
@@ -263,13 +266,19 @@ void LMIGainSolver::post_processing() {
             F_kp(i-4, j+2) = -MAT_ELEMD(aF_, i, j);
         }
     }
+    F_kp(5,5) = 0.0;
+    F_kp(4,5) = 0.0;
+    F_kp(3,5) = 0.0;
+    F_kp(2,5) = 0.0;
 
+    
     // F_kd = -aF[4:10, 4:10]
     for (int i = 4; i < 10; ++i) {
         for (int j = 4; j < 10; ++j) {
             F_kd(i-4, j-4) = -MAT_ELEMD(aF_, i, j);
         }
     }
+
 }
 
 void LMIGainSolver::test_and_print() {

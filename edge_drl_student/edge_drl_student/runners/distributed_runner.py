@@ -201,6 +201,11 @@ class DistributedRunner:
         self.action_time = 0.0
         self.learn_time = 0.0
         
+        self.obstacle_distance = 0.0
+        self.roll_rate = 0.0
+        self.pitch_rate = 0.0
+    
+        
         # ⭐ Episode reward accumulator (for reward normalization)
         self.episode_rewards = []
         
@@ -274,6 +279,8 @@ class DistributedRunner:
         self.node.get_logger().info("🛑 Loops shutdown")
     
     # ==================== ROS2 Callbacks ====================
+    
+    # print("wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")
     def edge_state_callback(self, msg: EdgeState):
         """Edge State callback"""
         
@@ -290,8 +297,6 @@ class DistributedRunner:
                 tracking_error_data[0] = 0.0
             if len(tracking_error_data) > 1:
                 tracking_error_data[1] = 0.0
-
-            # self.tracking_error_ = Vec12Msg(data=tracking_error_data)
 
             tracking_errors = torch.tensor(tracking_error_data, dtype=torch.float32)
             self.logger.writer.add_scalar('Control/tracking_error/mean', torch.mean(torch.abs(tracking_errors)), self.transition_count)
@@ -409,6 +414,13 @@ class DistributedRunner:
             ),
             self.vision_processor.get_current_features()
         ), dim=0)
+        
+        self.roll_rate = next_observation[9]
+        self.pitch_rate = next_observation[10]
+        
+        # print("============")
+        # print(next_observation)
+    
         # observation = torch.tensor(
         #     np.array(msg.obs, dtype=np.float32),
         #     dtype=torch.float32,
@@ -564,6 +576,10 @@ class DistributedRunner:
         # Extract reward components
         rew_comp: List[EdgeReward] = msg.reward_components   
         reward_components = {c.name: c.value for c in rew_comp}
+        
+        #  Extract minimum distance with obstacles
+        self.obstacle_distance = -1.0/((reward_components.get("obstacle_min_distance"))/0.05)
+        
                 
         # Calculate stepwise total reward
         stepwise_total_reward = sum(reward_components.values())
@@ -651,8 +667,12 @@ class DistributedRunner:
         
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
+            
+            terminal_blending_weight = 1.2 * (4.0*(self.obstacle_distance * self.obstacle_distance) + 3.3*(self.roll_rate * self.roll_rate) + 3.3*(self.pitch_rate * self.pitch_rate))
+            terminal_blending_weight = min(1.0, terminal_blending_weight)
+        
             blended_action = self.replay_buffer.get_weighted_blended_action()
-            # learned_action = 0.7 * policy_action + 0.3 * blended_action
+            # learned_action = (1 - terminal_blending_weight) * policy_action + terminal_blending_weight * blended_action
             learned_action = 1.0 * policy_action + 0.0 * blended_action
         else:
             learned_action = policy_action
@@ -661,6 +681,8 @@ class DistributedRunner:
 
         # Final output action
         drl_student_action = learned_action
+        
+        # print(f"blended_action: {blended_action}")
         
         return drl_student_action, learned_action
 

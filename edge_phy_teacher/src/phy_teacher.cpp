@@ -26,6 +26,8 @@ PhyTeacher::PhyTeacher(const rclcpp::NodeOptions & options)
     // Initialize member variables
     curr_action_  = edge::ros_interfaces::Vector6d::Zero();
     last_action_  = edge::ros_interfaces::Vector6d::Zero();
+    curr_comstate_ = edge::ros_interfaces::Vector6d::Zero();
+    last_comstate_ = edge::ros_interfaces::Vector6d::Zero();    
 
     // Initialize Safety Monitor
     safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
@@ -147,21 +149,27 @@ void PhyTeacher::controlCallback() {
 
         // Compute the action according to the center of the safety patch
         edge::ros_interfaces::Vector12d error_from_patch = error_state_ - patch_center_;
+        curr_comstate_ = error_from_patch.tail(6);
+
+        compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_)*-0.6;  // A simple compensation term to account for model mismatch
+
         if (opt_status_ == 0) {
             RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
             auto kp_term = F_kp * error_from_patch.head(6);     // Apply LMI-solved Kp to position error
             auto kd_term = F_kd * error_from_patch.tail(6);     // Apply LMI-solved Kd to velocity error
-            curr_action_ = kp_term + kd_term;
+            curr_action_ = kp_term + kd_term + compensation_action_;  // Total action includes compensation for dynamics
         } else {
             RCLCPP_ERROR(this->get_logger(), "LMI optimization failed! Using default Kp and Kd gains.");
             auto kp_term = default_F_kp * error_from_patch.head(6);
             auto kd_term = default_F_kd * error_from_patch.tail(6);
-            curr_action_ = kp_term + kd_term;
+            curr_action_ = kp_term + kd_term + compensation_action_;  // Total action includes compensation for dynamics
         }
     } else {
         RCLCPP_INFO(this->get_logger(), "Real-time patch is disabled. Using default Kp and Kd gains directly.");
-        curr_action_ = default_F_kp * error_state_.head(6) + default_F_kd * error_state_.tail(6);
+        curr_action_ = default_F_kp * error_state_.head(6) + default_F_kd * error_state_.tail(6) + compensation_action_;
     }
+
+    
 
     // Prepare and publish action message
     edge_msgs::msg::EdgeAction teacher_action_msg;
@@ -174,6 +182,9 @@ void PhyTeacher::controlCallback() {
 
     got_msg_ = false;                   // Reset flag until next message is received
     last_action_ = curr_action_;        // Update last action
+    last_comstate_ = curr_comstate_;    // Update last commanded state
+
+
 }
 
 } // namespace edge::phy_teacher

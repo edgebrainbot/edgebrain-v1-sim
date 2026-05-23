@@ -283,10 +283,12 @@ def generate_launch_description():
     return LaunchDescription([
         # -- Launch Arguments --
         namespace_arg,
+        # use_sim_time_arg,
+        
         robot_arg,
         
         record_bag_arg,
-        use_real_robot_arg,         
+        # use_real_robot_arg,         
         network_interface_arg,   
         dds_domain_arg,       
         ros_rmw_implementation_arg,

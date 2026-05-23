@@ -40,7 +40,7 @@ private:
     void sythesizedGainCallback(const edge_msgs::msg::ControlGain::SharedPtr msg);
     
     // For real-time patch
-    double chi_ = 0.25;                       // Hyperparameter χ
+    double chi_ = 0.0;                       // Hyperparameter χ
     bool rt_patch_enable_ = true;             // Whether the real-time patch method is enabled
     std::string synthesis_state_topic_;       // topic name for subscribing the state used for gain synthesis
     std::string synthesized_gain_topic_;      // topic name for publishing synthesized gain
@@ -61,6 +61,9 @@ private:
     edge::ros_interfaces::Vector12d  patch_center_;         // Center of the safety patch
     edge::ros_interfaces::Vector6d   curr_action_;          // Current action sent
     edge::ros_interfaces::Vector6d   last_action_;          // Last action sent
+    edge::ros_interfaces::Vector6d   curr_comstate_;        // Current ddq sent
+    edge::ros_interfaces::Vector6d   last_comstate_;        // Last ddq sent
+    edge::ros_interfaces::Vector6d   compensation_action_;    // compensation action
 
     // For profiling
     rclcpp::Time start_time_;   
