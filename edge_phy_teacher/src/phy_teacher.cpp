@@ -153,6 +153,13 @@ void PhyTeacher::controlCallback() {
 
         compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_)*-0.6;  // A simple compensation term to account for model mismatch
 
+        // printf("================== Control Callback =================\n");
+        // printf("compensation action: ");
+        // for (int i = 0; i < 6; i++) {
+        //     printf("%.3f ", compensation_action_(i));
+        // }
+        // printf("\n");
+
         if (opt_status_ == 0) {
             RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
             auto kp_term = F_kp * error_from_patch.head(6);     // Apply LMI-solved Kp to position error

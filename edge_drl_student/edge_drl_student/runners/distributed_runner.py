@@ -304,6 +304,7 @@ class DistributedRunner:
             self.logger.writer.add_scalar('Control/tracking_error/std', torch.std(tracking_errors), self.transition_count)
             
             self.node.get_logger().debug(f"Received TRACKING_ERROR: {tracking_error_data}")
+            
         else:
             self.node.get_logger().error(f"Unknown EdgeState type: {msg.state_type}")
 
@@ -418,8 +419,8 @@ class DistributedRunner:
         self.roll_rate = next_observation[9]
         self.pitch_rate = next_observation[10]
         
-        # print("============")
-        # print(next_observation)
+        print("============")
+        print(next_observation)
     
         # observation = torch.tensor(
         #     np.array(msg.obs, dtype=np.float32),
