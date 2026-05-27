@@ -59,6 +59,8 @@ private:
 
     edge::ros_interfaces::Vector12d  error_state_;          // received error state
     edge::ros_interfaces::Vector12d  patch_center_;         // Center of the safety patch
+    edge::ros_interfaces::Vector6d   curr_action_com_;          // Current action sent
+    edge::ros_interfaces::Vector6d   last_action_com_;          // Last action sent
     edge::ros_interfaces::Vector6d   curr_action_;          // Current action sent
     edge::ros_interfaces::Vector6d   last_action_;          // Last action sent
     edge::ros_interfaces::Vector6d   curr_comstate_;        // Current ddq sent
