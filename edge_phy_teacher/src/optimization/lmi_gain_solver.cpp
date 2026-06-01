@@ -7,6 +7,9 @@
 #include <iomanip>
 #include "lmi_gain_solver.hpp"
 
+#include <fstream>
+
+
 #ifdef __cplusplus
 extern "C" {
     #include "ecvxcone/cpg_solve.h"
@@ -231,14 +234,47 @@ void LMIGainSolver::update_Matrix_B(){
 
 }
 
+// void LMIGainSolver::update_TrackingErrorSquare() {
+//     for (int i = 0; i < 10; ++i) {
+//         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
+//         if (i == 3) {  // Cap the height error square to prevent numerical issues
+//             tracking_err_square[i] = 0.0;  // Cap the value to prevent numerical issues
+//         }
+//         cpg_update_tracking_err_square(i, tracking_err_square[i]);
+//     }
+// }
+
 void LMIGainSolver::update_TrackingErrorSquare() {
     for (int i = 0; i < 10; ++i) {
         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
-        if (i == 3) {  // Cap the height error square to prevent numerical issues
-            tracking_err_square[i] = 0.0;  // Cap the value to prevent numerical issues
-        }
         cpg_update_tracking_err_square(i, tracking_err_square[i]);
     }
+    tracking_err_square[3] = 0.0;  // Set yaw error square to zero to remove its influence
+    // printf("=================== Tracking Error Square =================\n");
+    // printf("tracking_err_square: [");
+    // for (int i = 0; i < 10; ++i) {
+    //     printf("%.6f", tracking_err_square[i]);
+    //     if (i < 9) printf(", ");
+    // }
+    // printf("]\n");
+
+    static std::ofstream outFile("/home/wrclub/tracking_err_square.txt",
+                                 std::ios::app);
+    if (outFile.is_open()) {
+        outFile << std::fixed << std::setprecision(6);
+
+        for (int i = 0; i < 10; ++i) {
+            outFile << tracking_err_square[i];
+
+            if (i < 9)
+                outFile << " ";
+        }
+
+        outFile << "\n";
+    }
+
+
+
 }
 
 /********************************  Post Processing  *******************************/
