@@ -43,7 +43,7 @@ typedef struct {
 // Dual start structure  
 typedef struct {
     matrix* y;
-    matrix* z;
+    matrix* z;              
 } DualStart;
 
 // Result structure

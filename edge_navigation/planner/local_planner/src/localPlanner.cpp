@@ -807,13 +807,14 @@ int main(int argc, char** argv)
 
         // Cumulative obstacle reward based on distance
         obstacleSumDistance += dis;
-        if (dis < obstacleMinDistance) {
-          obstacleMinDistance = dis;
-        }
+        
 
         // Crop points within adjacent range and height limits
         if (dis < adjacentRange && ((point.z > minRelZ && point.z < maxRelZ) || useTerrainAnalysis)) {
           plannerCloudCrop->push_back(point);
+          if (dis < obstacleMinDistance) {
+            obstacleMinDistance = dis;
+          }
 
           // Update safety condition based on closest obstacle in boundary
           if (dis < safety_condition_obstacle) {

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <chrono>
+#include <fstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
@@ -470,14 +471,23 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
 
+          
+          
+          FILE *fp = fopen("data.txt", "a");
+          if (fp != NULL) {
+             fprintf(fp, "%.6f\n", minObstacleDist);
+             fclose(fp);
+          }
+          
+          
           // Slow down if minimum distance to obstacle is small (threhold to be determined)
-          // double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
-          // double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
-          // if (minObstacleDist < safeDistanceThreshold) {
-          //   std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
-          //   cmd_vel.twist.linear.x *= slowDownGain;
-          //   cmd_vel.twist.linear.y *= slowDownGain;
-          // }
+          double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
+          double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
+          if (minObstacleDist < safeDistanceThreshold) {
+            std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
+            cmd_vel.twist.linear.x *= slowDownGain;
+            cmd_vel.twist.linear.y *= slowDownGain;
+          }
         }
         cmd_vel.twist.angular.z = vehicleYawRate;
         

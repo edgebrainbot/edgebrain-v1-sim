@@ -28,12 +28,31 @@ void cpg_update_tracking_err_square(cpg_int idx, cpg_float val){
 
 // Map user-defined to canonical parameters
 void cpg_canonicalize_G(){
+
+  // FILE *fp = fopen("/home/wrclub/G_map.txt", "a");
+
   for(i=0; i<3616; i++){
     Canon_Params.G->x[i] = 0;
     for(j=canon_G_map.p[i]; j<canon_G_map.p[i+1]; j++){
+      
+      // int param_idx = canon_G_map.i[j];
+      // if (param_idx == 71 ||
+      //     param_idx == 72 ||
+      //     param_idx == 73 ||
+      //     param_idx == 81 ||
+      //     param_idx == 82 ||
+      //     param_idx == 83 ||
+      //     param_idx == 91 ||
+      //     param_idx == 92 ||
+      //     param_idx == 93)
+      //     {
+      //       fprintf(fp, "param[%d] --> G->x[%d]\n", param_idx, i);
+      //     }
+
       Canon_Params.G->x[i] += canon_G_map.x[j]*cpg_params_vec[canon_G_map.i[j]];
     }
   }
+  // fclose(fp);
 }
 
 void cpg_canonicalize_h(){

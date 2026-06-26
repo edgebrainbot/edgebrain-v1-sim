@@ -6,6 +6,7 @@
 #include "phy_teacher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
+#include <fstream>
 
 namespace edge::phy_teacher {
   
@@ -157,12 +158,14 @@ void PhyTeacher::controlCallback() {
         compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_com_)*-0.8;  // A simple compensation term to account for model mismatch
 
 
-        printf("================== Control Callback =================\n");
-        printf("compensation action: ");
-        for (int i = 0; i < 6; i++) {
-            printf("%.3f ", compensation_action_(i));
-        }
-        printf("\n");
+        // printf("================== Control Callback =================\n");
+        // printf("compensation action: ");
+        // for (int i = 0; i < 6; i++) {
+        //     printf("%.3f ", compensation_action_(i));
+        // }
+        // printf("\n");
+
+        // opt_status_ = 1;
 
         if (opt_status_ == 0) {
             RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
@@ -170,12 +173,37 @@ void PhyTeacher::controlCallback() {
             auto kd_term = F_kd * error_from_patch.tail(6);     // Apply LMI-solved Kd to velocity error
             curr_action_com_ = kp_term + kd_term;  // Total action includes compensation for dynamics
             curr_action_ = kp_term + kd_term + compensation_action_;  // Total action includes compensation for dynamics
+            // std::ofstream kp_file("/home/wrclub/kp.txt", std::ios::app);
+            // std::ofstream kd_file("/home/wrclub/kd.txt", std::ios::app);
+            // kp_file << "F_kp:\n" << F_kp << "\n\n";
+            // kd_file << "F_kd:\n" << F_kd << "\n\n";
+            // for (int i = 0; i < 6; i++) {
+            //     kp_file << F_kp(i,i) << " ";
+            // }
+            // kp_file << "\n";
+    
+            // for (int i = 0; i < 6; i++) {
+            //     kd_file << F_kd(i,i) << " ";
+            // }
+            // kd_file << "\n";
         } else {
             RCLCPP_ERROR(this->get_logger(), "LMI optimization failed! Using default Kp and Kd gains.");
             auto kp_term = default_F_kp * error_from_patch.head(6);
             auto kd_term = default_F_kd * error_from_patch.tail(6);
             curr_action_com_ = kp_term + kd_term;
             curr_action_ = kp_term + kd_term + compensation_action_;  // Total action includes compensation for dynamics
+
+            // std::ofstream kp_file("/home/wrclub/kp.txt", std::ios::app);
+            // std::ofstream kd_file("/home/wrclub/kd.txt", std::ios::app);
+            // for (int i = 0; i < 6; i++) {
+            //     kp_file << default_F_kp(i,i) << " ";
+            // }
+            // kp_file << "\n";
+    
+            // for (int i = 0; i < 6; i++) {
+            //     kd_file << default_F_kd(i,i) << " ";
+            // }
+            // kd_file << "\n";
         }
     } else {
         RCLCPP_INFO(this->get_logger(), "Real-time patch is disabled. Using default Kp and Kd gains directly.");
