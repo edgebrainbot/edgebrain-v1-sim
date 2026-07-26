@@ -1,8 +1,3 @@
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 import torch
 import numpy as np
 from dataclasses import asdict
@@ -45,10 +40,14 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Initialize cognitive samplers for both buffers
         self.stu_cognitive_sampler = ACTRCognitiveSampler(
             replay_buf=self.stu_buf,
+            fr_weight = 0.7,
+            sm_weight = 0.3,
             device=device
         )
         self.tea_cognitive_sampler = ACTRCognitiveSampler(
             replay_buf=self.tea_buf,
+            fr_weight = 0.1,
+            sm_weight = 0.9,
             device=device
         )
         

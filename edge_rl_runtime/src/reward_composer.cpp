@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2025-2026 Yihao Cai - All rights reserved
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #pragma once
 
 #include <vector>
@@ -56,7 +51,7 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
         const std::string& name = kv.first;
         double scale = kv.second;
 
-        std::cout << "[RewardComposer] Computing reward for '" << name << "' with scale " << scale << "\n";
+        // std::cout << "[RewardComposer] Computing reward for '" << name << "' with scale " << scale << "\n";
 
         // Lookup the reward function
         auto rew_fn = registry.lookupRewardFunc(name);
@@ -70,8 +65,8 @@ std::vector<edge_msgs::msg::EdgeReward> RewardComposer::computeTotalReward(const
         // Compute the reward
         double r = rew_fn->compute(factors);
 
-        std::cout << "[RewardComposer] Reward '" << name << "': " << r 
-                << " (scale: " << scale << ", scaled: " << r*scale << ")\n";
+        // std::cout << "[RewardComposer] Reward '" << name << "': " << r 
+        //         << " (scale: " << scale << ", scaled: " << r*scale << ")\n";
 
         // Validate the reward value
         bool valid = std::isfinite(r);

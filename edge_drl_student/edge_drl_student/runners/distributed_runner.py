@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 import os
 import time
 
@@ -669,10 +663,26 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             
-            terminal_blending_weight = 1.2 * (4.0*(self.obstacle_distance * self.obstacle_distance) + 3.3*(self.roll_rate * self.roll_rate) + 3.3*(self.pitch_rate * self.pitch_rate))
-            terminal_blending_weight = min(1.0, terminal_blending_weight)
-        
             blended_action = self.replay_buffer.get_weighted_blended_action()
+            ini_cri = blended_action.abs().sum().item()
+            
+            
+            if ini_cri < 0.0001:
+                terminal_blending_weight = 1.0
+            else:
+                terminal_blending_weight = 1.2 * (4.0*(self.obstacle_distance * self.obstacle_distance) + 3.3*(self.roll_rate * self.roll_rate) + 3.3*(self.pitch_rate * self.pitch_rate))
+                terminal_blending_weight = min(1.0, terminal_blending_weight)
+                
+            with open("/home/wrclub/blended_action.txt", "a") as f:
+                f.write(f"{terminal_blending_weight}\n")
+            
+
+            # with open("/home/wrclub/blended_action.txt", "a") as f:
+            #     np.savetxt(f,
+            #                blended_action.detach().cpu().numpy().reshape(1, -1),
+            #                fmt="%.6f"
+            #                )
+            
             # learned_action = (1 - terminal_blending_weight) * policy_action + terminal_blending_weight * blended_action
             learned_action = 1.0 * policy_action + 0.0 * blended_action
         else:

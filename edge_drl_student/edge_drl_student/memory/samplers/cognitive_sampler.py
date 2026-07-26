@@ -1,8 +1,3 @@
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 import time
 import torch
 import numpy as np
@@ -61,6 +56,20 @@ class ACTRCognitiveSampler(BaseSampler):
         self._last_time = time.time()
 
     def fetch(self, plant_state: torch.Tensor, batch_size: int, valid_size: int) -> torch.Tensor:
+        
+        # print(
+        #     f"{self.replay_buf.buf_name}: "
+        #     f"fr={self.fr_weight}, sm={self.sm_weight}"
+        # )
+        
+        # with open("/home/wrclub/cognitive_weight.txt", "a") as f:
+        #     f.write(
+        #         f"{self.replay_buf.buf_name}, "
+        #         f"fr_weight={self.fr_weight:.3f}, "
+        #         f"sm_weight={self.sm_weight:.3f}\n"
+        #     )
+
+        
         """
         Uniformly sample indices from [0, valid_size).
 

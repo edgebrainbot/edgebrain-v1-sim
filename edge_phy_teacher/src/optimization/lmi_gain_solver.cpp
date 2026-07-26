@@ -475,6 +475,8 @@ void LMIGainSolver::update() {
         // Post processing to finalize the matrices
         post_processing();
     } else {
+        F_kp = SAFE_KP;
+        F_kd = SAFE_KD;
         std::cerr << "LMI optimization failed with status: " << CPG_Info.status << std::endl;
     }
 
