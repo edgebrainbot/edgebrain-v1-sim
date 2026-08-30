@@ -4,10 +4,15 @@
  */
 
 #include "edge_trigger/trigger.hpp"
+#include <algorithm>
+#include <stdio.h>
+#include <math.h>
 
 using std::placeholders::_1;
 using std::placeholders::_2;
 using namespace std::chrono_literals;
+
+int counter = 0;
 
 namespace edge::trigger {
 
@@ -95,6 +100,26 @@ Trigger::Trigger(const rclcpp::NodeOptions & options)
 
     // Initialize Safety Monitor
     safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
+
+    state_file_.open("/home/wrclub/state_log.txt", std::ios::out | std::ios::trunc);
+    if (!state_file_.is_open())
+    {
+        RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to open state log file"
+        );
+    }
+    else
+    {
+        RCLCPP_INFO(
+            this->get_logger(),
+            "State logging started"
+        );
+    }
+
+
+
+
 
     RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
 
@@ -343,6 +368,7 @@ void Trigger::updateLoop()
 {
     // Convert states
     std::vector<double> robot_state(last_edge_state_.state_value.begin(), last_edge_state_.state_value.end());
+
     
     // Evaluate safety and fall status
     is_last_state_safe_ = safety_monitor_->evaluateSafety(edge::trigger::RuleType::RELATIVE, robot_state, obstacle_distance_, goal_distance_);
@@ -388,6 +414,65 @@ void Trigger::updateLoop()
         return;
     }
 
+    
+    obstacle_distance_map_ = 1.0 / obstacle_distance_;
+    roll_rate_ = robot_state[9];
+    pitch_rate_ = robot_state[10]; 
+
+
+
+    // Generate multiple P 
+    // double oP[3][3] = {
+    //     {0.01, 0,  0},
+    //     {0,    2,  0},
+    //     {0,    0,  2}
+    // };
+
+    // double theta = 0.5 * M_PI;
+    // double Rx[3][3] = {                
+    //     {1, 0, 0},
+    //     {0, cos(theta), -sin(theta)},
+    //     {0, sin(theta),  cos(theta)}
+    // };
+
+    // double Ry[3][3] = {
+    //     {cos(theta), 0, sin(theta)},
+    //     {0,          1, 0},
+    //     {-sin(theta),0, cos(theta)}
+    // };
+
+    // double Rz[3][3] = {
+    //     {cos(theta), -sin(theta), 0},
+    //     {sin(theta),  cos(theta), 0},
+    //     {0,           0,          1}
+    // };
+
+    
+    // If student action is not available, fully trust teacher
+    if (last_stu_action_.action_value.empty()) {
+        terminal_blending_weight_ = 1.0;
+    }
+    else {
+        terminal_blending_weight_ = 0.01 * obstacle_distance_map_ * obstacle_distance_map_ + 2.0 * roll_rate_ * roll_rate_ + 2.0 * pitch_rate_ * pitch_rate_;
+        terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.4, 1.0);
+    }
+
+    // terminal_blending_weight_ = 0.01 * obstacle_distance_map_ * obstacle_distance_map_ + 2.0 * roll_rate_ * roll_rate_ + 2.0 * pitch_rate_ * pitch_rate_;
+    // terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.5, 1.0);
+
+    // // ===== debug start =====
+    // if (state_file_.is_open()){
+    //     state_file_ << "terminal_action: ";
+    //     for (size_t i = 0; i < terminal_action.action_value.size(); i++)
+    //     {
+    //         state_file_ << terminal_action.action_value[i];
+    //         if (i + 1 < terminal_action.action_value.size())
+    //             state_file_ << " ";
+    //     }
+    //     state_file_ << std::endl;   // 换行 + flush
+    // }
+    // // ===== debug end =====
+
     // Prepare terminal action message
     if (terminal_mode == edge::utils::ActionMode::STUDENT) {
         terminal_action = last_stu_action_;
@@ -398,8 +483,88 @@ void Trigger::updateLoop()
         terminal_action.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
     }
 
+    // terminal_action = last_stu_action_ * (1-terminal_blending_weight_) + last_tea_action_ *  terminal_blending_weight_;
+    terminal_action = last_tea_action_;
+    size_t dim = last_tea_action_.action_value.size();
+    terminal_action.action_value.resize(dim);
+    for(size_t i=0; i<dim; i++){
+        terminal_action.action_value[i] = (1.0-terminal_blending_weight_) * last_stu_action_.action_value[i] + terminal_blending_weight_ * last_tea_action_.action_value[i];
+    }
+
     // Set timestamp for terminal action
     terminal_action.header.stamp = this->now();
+    counter++;
+
+    if (counter % 2 == 0) {
+        terminal_action.action_mode = edge_msgs::msg::EdgeAction::STUDENT;
+    } else {
+        terminal_action.action_mode = edge_msgs::msg::EdgeAction::TEACHER;
+    }
+
+    // if (state_file_.is_open()){
+    //     for (double x : robot_state){
+    //         state_file_ << x << " ";
+    //     }
+    //     state_file_ << "\n";
+
+    //     state_file_ << obstacle_distance_map_ << " ";
+    //     state_file_ << roll_rate_ << " ";
+    //     state_file_ << pitch_rate_ << "\n";
+
+    //     for (double a : terminal_action.action_value){
+    //         state_file_ << a << " ";
+    //     }
+    //     state_file_ << "\n";
+    // }
+
+
+    if (state_file_.is_open()) {
+
+        // Save robot state
+        // for (double x : robot_state) {
+        //     state_file_ << x << " ";
+        // }
+        // state_file_ << "\n";
+
+        // Save safety information
+        state_file_ << obstacle_distance_map_ << " ";
+        // state_file_ << roll_rate_ << " ";
+        // state_file_ << pitch_rate_ << "\n";
+        
+        // Save student action
+        state_file_ << "student_action: ";
+        for (double a : last_stu_action_.action_value) {
+            state_file_ << a << " ";
+        }
+        state_file_ << "\n";
+        
+        // Save teacher action
+        state_file_ << "teacher_action: ";
+        for (double a : last_tea_action_.action_value) {
+            state_file_ << a << " ";
+        }
+        state_file_ << "\n";
+        
+        // Save terminal blended action
+        state_file_ << "terminal_action: ";
+        for (double a : terminal_action.action_value) {
+            state_file_ << a << " ";
+        }
+        state_file_ << "\n";
+
+        // Save blending weight
+        state_file_ << "blending_weight: " << terminal_blending_weight_ << "\n";
+        
+        // Optional: save action mode
+        state_file_ << "terminal_mode: " << static_cast<int>(terminal_action.action_mode) << "\n";
+
+        // separator
+        state_file_ << "--------------------\n";
+    }
+
+    
+
+
 
     // Update switching statistics
     updateStats(terminal_mode);

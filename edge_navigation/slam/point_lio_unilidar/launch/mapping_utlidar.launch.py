@@ -76,7 +76,8 @@ def generate_launch_description():
         remappings=[
             ("/cloud_registered", "/registered_scan"),
             # ("/aft_mapped_to_init", "/state_estimation"),
-            ("/aft_mapped_to_init", LaunchConfiguration("odom_topic")),
+            # ("/aft_mapped_to_init", LaunchConfiguration("odom_topic")),
+            ("/aft_mapped_to_init", "/odom_slam")
         ],
     )
 

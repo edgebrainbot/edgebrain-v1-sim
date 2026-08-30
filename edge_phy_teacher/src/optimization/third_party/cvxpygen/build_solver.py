@@ -11,9 +11,8 @@ import shutil
 import importlib
 import logging
 import numpy as np
-import cvxpy as cp
 from cvxpygen import cpg
-
+# from ddp_lmi_12dim_solver import cvxpy_ddp
 from ddp_lmi_solver import cvxpy_ddp
 
 np.set_printoptions(suppress=True)

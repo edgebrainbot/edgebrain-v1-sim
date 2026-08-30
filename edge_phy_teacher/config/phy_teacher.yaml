@@ -10,13 +10,13 @@
 
     update_rate: 400          # update rate in Hz
     realtime_patch:
-      chi: 0.2                # safety scaling factor χ
+      chi: 0.0                # safety scaling factor χ
       enable: true            # whether to enable the real-time patch for faster processing (experimental, use with caution)
 
 # Gain synthesizer settings
 /edge/gain_synthesizer:
   ros__parameters:
 
-    sampling_rate: 40              # sampling rate in Hz
+    sampling_rate: 40             # sampling rate in Hz
     set_cpu_affinity: 1            # specify which CPU core(s) the node should run on
     print_process_time: true      # whether to print the process time

@@ -16,4 +16,4 @@
 
 
     is_real_robot: false  # whether the system is running on a real robot or in simulation
-    task_type: "navigation"  # type of task, e.g., "navigation", "locomotion", "end2end" etc.
+    task_type: "end2end"  # type of task, e.g., "navigation", "locomotion", "end2end" etc.

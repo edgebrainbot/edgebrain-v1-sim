@@ -14,6 +14,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include <fstream>
 
 #include "msg_utils.hpp"
 
@@ -23,6 +24,8 @@
 #include "edge_msgs/srv/get_switching_stats.hpp"
 #include "edge_msgs/srv/reset_switching_stats.hpp"
 #include "edge_ros_interfaces/msg_conversion.hpp"
+
+
 
 namespace edge::trigger {
 
@@ -55,6 +58,12 @@ private:
     void updateStats(edge::utils::ActionMode);      // Update switching statistics
     void resetCachedVariables(); // Reset cached variables
     edge::utils::ActionMode selectAction();   // Select action based on current state and trigger mode
+    std::ofstream state_file_;
+    double obstacle_distance_map_;
+    double roll_rate_;
+    double pitch_rate_;
+    double terminal_blending_weight_;
+
 
     
     // ROS2 Callbacks

@@ -12,7 +12,7 @@ far_planner:
     is_viewpoint_extend: true
     is_multi_layer: false
     is_opencv_visual: false # Obstacle Image Display
-    is_static_env: true
+    is_static_env: false
     is_pub_boundary: false  
     is_debug_output: false
     is_attempt_autoswitch: true  # Auto switch to attemptable navigation
@@ -25,7 +25,7 @@ far_planner:
     map_handler/floor_height: 2.0    # Unit: meter
     map_handler/cell_length: 2.5    # Unit: meter
     map_handler/map_grid_max_length: 200.0  # Unit: meter
-    map_handler/map_grad_max_height: 10.0   # Unit: meter
+    map_handler/map_grad_max_height: 10.0   # Unit: meter #
 
     # Dynamic Planner Utility Params
     util/angle_noise: 15.0  # Unit: degree

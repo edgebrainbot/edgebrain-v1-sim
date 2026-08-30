@@ -1,8 +1,3 @@
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 import time
 import torch
 import numpy as np
@@ -32,8 +27,8 @@ class ACTRCognitiveSampler(BaseSampler):
                  family_criteria: float = 0.5,
                  family_number: int = 55,
                  memory_decay_factor: float = -0.5,
-                 fr_weight: float = 0.8,
-                 sm_weight: float = 0.2,
+                 fr_weight: float = 0.4,
+                 sm_weight: float = 0.6,
                 #  fr_weight: float = 0.1  
                 #  sm_weight: float = 0.9,
                  blending_size: int = 5,  #good: 10, 20
@@ -54,13 +49,27 @@ class ACTRCognitiveSampler(BaseSampler):
         
         self.device = device
 
-        self._last_blending_action = torch.Tensor([0.] * 3).to(device)     # Blended action output
+        self._last_blending_action = torch.Tensor([0.] * 6).to(device)     # Blended action output
         # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
         # print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
 
         self._last_time = time.time()
 
     def fetch(self, plant_state: torch.Tensor, batch_size: int, valid_size: int) -> torch.Tensor:
+        
+        # print(
+        #     f"{self.replay_buf.buf_name}: "
+        #     f"fr={self.fr_weight}, sm={self.sm_weight}"
+        # )
+        
+        # with open("/home/wrclub/cognitive_weight.txt", "a") as f:
+        #     f.write(
+        #         f"{self.replay_buf.buf_name}, "
+        #         f"fr_weight={self.fr_weight:.3f}, "
+        #         f"sm_weight={self.sm_weight:.3f}\n"
+        #     )
+
+        
         """
         Uniformly sample indices from [0, valid_size).
 
@@ -152,7 +161,10 @@ class ACTRCognitiveSampler(BaseSampler):
             # sum_fr_score_i = torch.matmul(self.upper_triangular_matrix, elementwise_fr_score_i)  # This is matrix-vector multiplication. 
 
             
-            sum_fr_score_i = torch.log(sum_fr_score_i + 1e-8)
+            # sum_fr_score_i = torch.log(sum_fr_score_i + 1e-8)
+            
+            sum_fr_score_i = torch.log(sum_fr_score_i + 1.0)
+            
             
             fr_score_i = sum_fr_score_i * family_freezing_i  # This is elementwise multiplications.
             
@@ -169,8 +181,9 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"obs: {obs}")
         # print(f"sm_error: {sm_error}")
         
-        sm_score = torch.sqrt(sm_error[:,:].square().sum(dim=1))
+        sm_score = (0.1 + torch.sqrt(sm_error[:,:].square().sum(dim=1))).pow(-1)  # Similarity score (the smaller the error, the higher the score)  
         # print(f"sm_score: {sm_score}")
+        # print(f"fr_score: {fr_score}")
         
         cog_ranking = fr_score * self.fr_weight + sm_score * self.sm_weight
         # print(f"cog_ranking: {cog_ranking}")
@@ -190,7 +203,7 @@ class ACTRCognitiveSampler(BaseSampler):
         
         temperature = torch.tensor(0.5, device=self.device)
         blending_topk_values = torch.softmax(blending_topk_values / temperature, dim=-1)
-        # print(f"topk_values after softmax: {topk_values}")
+        # print(f"topk_values after softmax: {blending_topk_values}")
         
         blending_action_pool = actions[blending_topk_ids]
         # print(f"actions: {actions}")

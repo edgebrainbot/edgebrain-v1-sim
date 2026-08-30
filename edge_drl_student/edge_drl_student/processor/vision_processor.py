@@ -147,11 +147,15 @@ class VisionProcessor:
         # Ensure vis_feature_mat is the right shape for matrix multiplication
         pcd_dim = points_tensor.shape[0]
         pcd_base_vec = torch.arange(0.1, pcd_dim + 0.1, 1, dtype=torch.float32).to(self.device) * 50
-        pcd_x = torch.log(pcd_base_vec) * 0.0001
+        pcd_x = torch.log(pcd_base_vec) * 0.05
         self.vis_feature_mat = torch.vander(pcd_x, N=8, increasing=True).T.to(self.device)
         
         res = self.vis_feature_mat @ points_tensor
-        res *= 0.01
+        res *= 0.0001
+        
+        # print("=================")
+        # # print(self.vis_feature_mat)
+        # print(res)
         
         # Update vision features
         self.last_vision_feature = self.curr_vision_feature.clone()  # Last frame

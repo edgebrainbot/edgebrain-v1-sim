@@ -42,6 +42,10 @@
 #include "message_filters/synchronizer.h"
 #include "message_filters/sync_policies/approximate_time.h"
 
+// newly added for checking deadzone
+#include <fstream>
+#include <iomanip>
+
 
 using namespace std;
 
@@ -209,6 +213,35 @@ void terrainCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr ter
   if (useTerrainAnalysis) {
     terrainCloud->clear();
     pcl::fromROSMsg(*terrainCloud2, *terrainCloud);
+
+    // save point cloud for checking deadzone
+    static bool saved_cloud = false;
+    if (!saved_cloud) {
+      std::ofstream outFile("/home/wrclub/terrain_cloud.txt");
+      if (outFile.is_open()) {
+        outFile << std::fixed << std::setprecision(6);
+        for (size_t i = 0; i < terrainCloud->points.size(); ++i) {
+          const pcl::PointXYZI& point = terrainCloud->points[i];
+          outFile
+              << point.x << " "
+              << point.y << " "
+              << point.z << " "
+              << point.intensity
+              << "\n";
+        }
+        outFile.close();
+        std::cout
+            << "Point cloud saved!"
+            << std::endl;
+        saved_cloud = true;
+      }
+      else {
+        std::cout
+            << "Failed to save point cloud!"
+            << std::endl;
+      }
+    }
+    // end save point cloud
 
     pcl::PointXYZI point;
     terrainCloudCrop->clear();
@@ -774,13 +807,14 @@ int main(int argc, char** argv)
 
         // Cumulative obstacle reward based on distance
         obstacleSumDistance += dis;
-        if (dis < obstacleMinDistance) {
-          obstacleMinDistance = dis;
-        }
+        
 
         // Crop points within adjacent range and height limits
         if (dis < adjacentRange && ((point.z > minRelZ && point.z < maxRelZ) || useTerrainAnalysis)) {
           plannerCloudCrop->push_back(point);
+          if (dis < obstacleMinDistance) {
+            obstacleMinDistance = dis;
+          }
 
           // Update safety condition based on closest obstacle in boundary
           if (dis < safety_condition_obstacle) {
@@ -1067,7 +1101,7 @@ int main(int argc, char** argv)
           freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
         //   freePaths2.header.frame_id = "vehicle";
           freePaths2.header.frame_id = "base_link";
-          pubFreePaths->publish(freePaths2);
+          // pubFreePaths->publish(freePaths2);
           #endif
         }
 
@@ -1103,7 +1137,7 @@ int main(int argc, char** argv)
         freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
         // freePaths2.header.frame_id = "vehicle";
         freePaths2.header.frame_id = "base_link";
-        pubFreePaths->publish(freePaths2);
+        // pubFreePaths->publish(freePaths2);
         #endif
       }
 

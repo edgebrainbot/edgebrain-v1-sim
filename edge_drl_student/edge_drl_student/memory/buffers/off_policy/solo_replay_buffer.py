@@ -40,6 +40,7 @@ class SoloReplayBuffer(BaseBuffer):
         
         self.obs_dim = obs_dim
         self.action_dim = action_dim
+        
 
     def add_transition(self, t: Transition, action_mode: ActionMode = ActionMode.UNCERTAIN):
         """
@@ -47,7 +48,7 @@ class SoloReplayBuffer(BaseBuffer):
         Typically called at every environment step.
         """
         idx = self._idx
-
+                
         self.obs[idx] = t.obs
         self.actions[idx] = t.action
         self.rewards[idx] = t.reward

@@ -27,7 +27,14 @@ def cvxpy_ddp(random=False, threshold=0.1):
     else:
         # tracking_err = np.array([-0.0158, -0.0417, -0.1517, 0.0032, 0.2703, -0.1057, 0.0472, 0.3559, -0.2925, -0.6624])
         # tracking_err = np.array([-0.00137003, 0.02392, -0.442369, -0.0794646, 0.074993, -0.134433, 0.086083, -0.194055, -0.12749, -0.530516])
-        tracking_err = np.array([0., 0., 0., 0., 0., 0., 0., 0., 0., -0.1])
+        tracking_err = np.array([0.01, 0.0, 0.0, 0.0, 0.0, 0.1, 0.0, 0.2, 0.35, 0.2])
+        
+        # tracking_err = np.array([-0.02660352433676827,0.14805019826884,-0.0595005349958908,0.0,0.20000000000000007,-0.19999999999999996,0.48657597326175694,1.4496146727664916,-0.5081289475003636,-1.9609610094956196])
+        
+    #  0.0005104982034788152,0.023319979828025958,0.04381140993141436,0.4695783032806546,0.04921871985054433,0.03442495422208401,0.024108697774741242,0.02489817568826482,0.042420213761241554,0.1131831179823633,
+
+
+
 
     roll = tracking_err[1]
     pitch = tracking_err[2]
@@ -52,35 +59,54 @@ def cvxpy_ddp(random=False, threshold=0.1):
     B_param = cp.Parameter((10, 6), name='B')
 
     # Sampling period
-    Ts = 1 / 40  # work in 25 to 30
+    Ts = 1 / 30  # work in 25 to 30
 
-    alpha = 0.65
-    hd = 1e-10
-    phi = 0.15
+    alpha = 0.9
+    # hd = 1e-10
+    # phi = 0.15
         
-    # State
-    b1 = 1 / 0.5         # height
-    b2 = 1 / 10000.0         # roll
-    b3 = 1 / 0.4         # pitch
-    b4 = 1 / 10000.0         # yaw
-    b5 = 1 / 5.0         # vx
-    b6 = 1 / 5.0         # vy
-    b7 = 1 / 10000.0         # vz
-    b8 = 1 / 15.0         # roll rate
-    b9 = 1 / 15.0         # pitch rate
-    b10 = 1 / 5.0        # yaw rate
+    # # State
+    # b1 = 1 / 0.3       # height
+    # b2 = 1 / 10000.0         # roll
+    # b3 = 1 / 0.4         # pitch
+    # b4 = 1 / 10000.0         # yaw
+    # b5 = 1 / 5.0         # vx
+    # b6 = 1 / 5.0         # vy
+    # b7 = 1 / 10000.0         # vz
+    # b8 = 1 / 15.0         # roll rate
+    # b9 = 1 / 15.0         # pitch rate
+    # b10 = 1 / 5.0        # yaw rate
+    
     
     c1 = 1 / 50
     c2 = 1 / 100
 
     # constraint matrices
-    D = np.diag([b1, b2, b3, b4, b5, b6, b7, b8, b9, b10])
-    C = np.array([[c1, 0, 0, 0, 0, 0],
-                   [0, c1, 0, 0, 0, 0],
-                   [0, 0, c1, 0, 0, 0],
-                   [0, 0, 0, c2, 0, 0],
-                   [0, 0, 0, 0, c2, 0],
-                   [0, 0, 0, 0, 0, c2]])
+    # D = np.diag([b1, b2, b3, b4, b5, b6, b7, b8, b9, b10])
+    
+    D = np.array([[1/0.5, 0,     0,     0,  0,     0,     0,   0,   0,   0],                   # hegiht
+                  [0,     0,     0,     0,  0,     0,     0,   0,   0,   1/1.0],               # yaw rate
+                  [0,     0,     0.,    0,  1/0.5, 0,     0,   0,   0,   0],                   # vx
+                  [0,     0,     0.,    0,  0.,    1/0.5, 0,   0,   0,   0],                    # vy
+                  [0,     0,     0.,    0,  0.,    0,     0,   0,   1/2.5,   0],                    # vy
+                  ])   
+    
+    # D = np.array([[1/1.0, 0,     0,     0,  0,     0,   0,   0,   0,   0],                   # hegiht
+    #               [0,     1/0.5, 0,     0,  0,     0,   0,   0,   0,   0],                   # yaw rate
+    #               [0,     0,     1/0.5, 0,  0,     0,   0,   0,   0,   0],
+    #               [0,     0,     0,     0,  1/0.5, 0,   0,   0,   0,   0],
+    #               [0,     0,     0,     0,  0,   1/0.3, 0,   0,   0,   0],
+    #               [0,     0,     0,     0,  0,     0,  1/0.2,  0,   0,   0],
+    #               [0,     0,     0,     0,  0,     0,   0,  1/1,  0,   0],
+    #               [0,     0,     0,     0,  0,     0,   0,   0,   1/1, 0],
+    #               [0,     0,     0,     0,  0,     0.,  0,   0,   0,   1/1]])                    
+    
+    # C = np.array([[c1, 0, 0, 0, 0, 0],
+    #                [0, c1, 0, 0, 0, 0],
+    #                [0, 0, c1, 0, 0, 0],
+    #                [0, 0, 0, c2, 0, 0],
+    #                [0, 0, 0, 0, c2, 0],
+    #                [0, 0, 0, 0, 0, c2]])
 
 
     # System matrices (continuous-time)
@@ -97,19 +123,26 @@ def cvxpy_ddp(random=False, threshold=0.1):
     Z = cp.diag(zz_param) 
 
     Q = cp.Variable((10, 10), PSD=True, name='Q')
-    T = cp.Variable((6, 6), PSD=True, name='T')
+    # M = cp.Variable((6, 6), PSD=True, name='T')
     R = cp.Variable((6, 10), name='R')
 
     # Constraints
+    # constraints = [
+    #     cp.bmat([[alpha * Q, (A_param @ Q).T + (B_param @ R).T],
+    #              [A_param @ Q + B_param @ R, Q / (1 + phi)]]) >> 0,
+    #     cp.bmat([[Q, R.T],
+    #              [R, T]]) >> 0,
+    #     Q - 10 * Z >> 0,
+    #     np.identity(9) - D @ Q @ D.T >> 0,
+    #     np.identity(6) - C @ T @ C.T >> 0,
+    #     T - hd * np.identity(6) >> 0
+    # ]
+    
     constraints = [
         cp.bmat([[alpha * Q, (A_param @ Q).T + (B_param @ R).T],
-                 [A_param @ Q + B_param @ R, Q / (1 + phi)]]) >> 0,
-        cp.bmat([[Q, R.T],
-                 [R, T]]) >> 0,
+                 [A_param @ Q + B_param @ R,  Q]]) >> 0,
         Q - 10 * Z >> 0,
-        np.identity(10) - D @ Q @ D.T >> 0,
-        np.identity(6) - C @ T @ C.T >> 0,
-        T - hd * np.identity(6) >> 0
+        np.identity(5) - D @ Q @ D.T >> 0,
     ]
     
     # Define problem and objective
@@ -227,5 +260,3 @@ if __name__ == "__main__":
         
     # Benchmark
     # benchmark_ddp(cvxpy_ddp, repeat=100, warmup=5, random=False)
-
-    

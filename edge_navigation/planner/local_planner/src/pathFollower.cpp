@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <chrono>
+#include <fstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
@@ -470,14 +471,23 @@ int main(int argc, char** argv)
           cmd_vel.twist.linear.x = cos(dirDiff) * vehicleSpeed;
           cmd_vel.twist.linear.y = -sin(dirDiff) * vehicleSpeed;
 
+          
+          
+          FILE *fp = fopen("data.txt", "a");
+          if (fp != NULL) {
+             fprintf(fp, "%.6f\n", minObstacleDist);
+             fclose(fp);
+          }
+          
+          
           // Slow down if minimum distance to obstacle is small (threhold to be determined)
-          // double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
-          // double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
-          // if (minObstacleDist < safeDistanceThreshold) {
-          //   std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
-          //   cmd_vel.twist.linear.x *= slowDownGain;
-          //   cmd_vel.twist.linear.y *= slowDownGain;
-          // }
+          double slowDownGain = 0.5; // Placeholder, to be replaced by actual computation
+          double safeDistanceThreshold = 0.2; // Placeholder, to be replaced by actual computation
+          if (minObstacleDist < safeDistanceThreshold) {
+            std::cout << "Slowing down due to obstacle proximity. Min Obstacle Distance: " << minObstacleDist << std::endl;
+            cmd_vel.twist.linear.x *= slowDownGain;
+            cmd_vel.twist.linear.y *= slowDownGain;
+          }
         }
         cmd_vel.twist.angular.z = vehicleYawRate;
         
@@ -488,9 +498,9 @@ int main(int argc, char** argv)
         }
 
         // Truncate the velocity command to be within limits
-        double vx_limit = 0.48;
+        double vx_limit = 0.4;
         double vy_limit = 0.1;
-        double min_forward_vx = 0.205;   // Set the minimum forwarding velocity to stop local minima
+        double min_forward_vx = 0.1;   // Set the minimum forwarding velocity to stop local minima
         cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, vx_limit), min_forward_vx);  
         if(cmd_vel.twist.linear.y > vy_limit) cmd_vel.twist.linear.y = vy_limit;
         else if(cmd_vel.twist.linear.y < -vy_limit) cmd_vel.twist.linear.y = -vy_limit;
@@ -501,7 +511,7 @@ int main(int argc, char** argv)
         // cmd_vel.twist.linear.y = 0.0;
         // cmd_vel.twist.linear.z = 0.0;
 
-        // pubSpeed->publish(cmd_vel);
+        pubSpeed->publish(cmd_vel);
 
         // Publish teacher action for physical teacher
         phy_teacher_action_vel.header.stamp = cmd_vel.header.stamp;

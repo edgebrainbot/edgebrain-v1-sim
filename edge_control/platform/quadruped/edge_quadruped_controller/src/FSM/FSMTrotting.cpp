@@ -74,6 +74,10 @@ void FSMTrotting::enter()
     Rd = rotz(yaw_cmd_);
     w_cmd_global_.setZero();
 
+    d_yaw_cmd_ = 0.0;
+    d_yaw_cmd_past_ = 0.0;
+    v_cmd_body_past_.setZero();   
+
     ctrl_interfaces_.control_inputs_.command = 0;
     gait_generator_.restart();
     
@@ -186,15 +190,37 @@ void FSMTrotting::getUserCmd(double cmd_vx, double cmd_vy, double cmd_wz)
     d_yaw_cmd_ = wz_in;
 
     // Smoothing -- vx vy
-    double alpha_vx = 0.9;
-    double alpha_vy = 0.9;
-    v_cmd_body_(0) = alpha_vx * v_cmd_body_past_(0) + (1 - alpha_vx) * v_cmd_body_(0);
-    v_cmd_body_(1) = alpha_vy * v_cmd_body_past_(1) + (1 - alpha_vy) * v_cmd_body_(1);
-    v_cmd_body_past_ = v_cmd_body_;
+    // double alpha_vx = 0.9;
+    // double alpha_vy = 0.9;
+    // v_cmd_body_(0) = alpha_vx * v_cmd_body_past_(0) + (1 - alpha_vx) * v_cmd_body_(0);
+    // v_cmd_body_(1) = alpha_vy * v_cmd_body_past_(1) + (1 - alpha_vy) * v_cmd_body_(1);
+    // v_cmd_body_past_ = v_cmd_body_;
+    // // Smoothing -- wz
+    // double alpha_wz = 0.9;
+    // d_yaw_cmd_ = alpha_wz * d_yaw_cmd_past_ + (1 - alpha_wz) * d_yaw_cmd_;
+    // d_yaw_cmd_past_ = d_yaw_cmd_;
 
-    // Smoothing -- wz
-    double alpha_wz = 0.9;
-    d_yaw_cmd_ = alpha_wz * d_yaw_cmd_past_ + (1 - alpha_wz) * d_yaw_cmd_;
+    // For vx
+    double max_acc_x = 0.5;   // m/s²
+    double dvx = vx_in - v_cmd_body_past_(0);
+    dvx = std::clamp(dvx, -max_acc_x*dt_, max_acc_x*dt_);
+    v_cmd_body_(0) = v_cmd_body_past_(0) + dvx;
+
+    // For vy
+    double max_acc_y = 0.5;
+    double dvy = vy_in - v_cmd_body_past_(1);
+    dvy = std::clamp(dvy, -max_acc_y*dt_, max_acc_y*dt_);
+    v_cmd_body_(1) = v_cmd_body_past_(1) + dvy;
+
+    // For wz
+    double max_yaw_acc = 1.0; // rad/s²
+    double dw = wz_in - d_yaw_cmd_past_;
+    dw = std::clamp(dw, -max_yaw_acc*dt_, max_yaw_acc*dt_);
+    d_yaw_cmd_ = d_yaw_cmd_past_ + dw;
+   
+
+    // update past commands for smoothing
+    v_cmd_body_past_ = v_cmd_body_;
     d_yaw_cmd_past_ = d_yaw_cmd_;
 }
 

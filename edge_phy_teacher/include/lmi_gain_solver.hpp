@@ -85,6 +85,9 @@ private:
     Mat3x3 Rz_;
     Mat3x3 Rzyx_;
 
+    static const Eigen::Matrix<double, 6, 6> SAFE_KP;
+    static const Eigen::Matrix<double, 6, 6> SAFE_KD;
+
     // Initialization helpers
     void lmi_init();                 // Initialize LMI matrices
     void test_tracking_err();       // Set up tracking error for testing

@@ -93,13 +93,22 @@ public:
             });
 
         /* Robot State Input */
+        // robot_state_sub_ = create_subscription<edge_msgs::msg::EdgeState>(
+        //     robot_state_topic_,
+        //     100,
+        //     [this](const edge_msgs::msg::EdgeState::SharedPtr msg)
+        //     {
+        //         curr_robot_state_ = *msg;
+        //         has_robot_state_input_ = true;
+        //     });
         robot_state_sub_ = create_subscription<edge_msgs::msg::EdgeState>(
             robot_state_topic_,
             100,
             [this](const edge_msgs::msg::EdgeState::SharedPtr msg)
             {
-                curr_robot_state_ = *msg;
-                has_robot_state_input_ = true;
+                for (size_t i = 0; i < 12 && i < msg->state_value.size(); ++i) {
+                    curr_robot_state_[i] = msg->state_value[i];
+                }
             });
 
         /* Control Input */
@@ -189,7 +198,25 @@ private:
     }
 
     // obs
-	std::vector<double> getObservation() const
+	// std::vector<double> getObservation() const
+	// {
+    //     if (task_type_ == "locomotion") {
+    //         std::vector<double> obs(12, 0.0);
+    //         for (size_t i = 0; i < 12; ++i) {
+    //             obs[i] = last_tracking_error_[i];
+    //         }
+    //         return obs;
+    //     } else {
+    //         // std::vector<double> obs(last_robot_state_.state_value.begin(), last_robot_state_.state_value.end());
+    //         std::vector<double> obs(last_tracking_error_.begin(), last_tracking_error_.end());  // use tracking error as part of the observation for navigation task
+    //         if (obs.size() >= 2) {
+    //             obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_robot_state_
+    //             obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
+    //         }
+    //         return obs;
+    //     }
+	// }
+    std::vector<double> getObservation() const
 	{
         if (task_type_ == "locomotion") {
             std::vector<double> obs(12, 0.0);
@@ -199,17 +226,36 @@ private:
             return obs;
         } else {
             // std::vector<double> obs(last_robot_state_.state_value.begin(), last_robot_state_.state_value.end());
-            std::vector<double> obs(last_tracking_error_.begin(), last_tracking_error_.end());  // use tracking error as part of the observation for navigation task
-            if (obs.size() >= 2) {
-                obs[0] = latest_goal_x_ - last_odom_.pose.pose.position.x;      // use last_odom_ to align with last_robot_state_
-                obs[1] = latest_goal_y_ - last_odom_.pose.pose.position.y;
+            std::vector<double> obs(12, 0.0);
+            for (size_t i = 0; i < 12; ++i) {
+                obs[i] = last_robot_state_[i]; 
             }
             return obs;
         }
 	}
 
 	// obs_next
-	std::vector<double> getObservationNext() const
+	// std::vector<double> getObservationNext() const
+	// {
+    //     if (task_type_ == "locomotion") {
+    //         std::vector<double> obs_next(12, 0.0);
+    //         for (size_t i = 0; i < 12; ++i) {
+    //             obs_next[i] = curr_tracking_error_[i];
+    //         }
+    //         return obs_next;
+    //     } else {
+    //         // std::vector<double> obs_next(curr_robot_state_.state_value.begin(), curr_robot_state_.state_value.end());
+    //         std::vector<double> obs_next(curr_tracking_error_.begin(), curr_tracking_error_.end());  // use tracking error as part of the observation for navigation task
+
+    //         if (obs_next.size() >= 2) {
+    //             obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_robot_state_
+    //             obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
+    //         }
+    //         return obs_next;
+    //     }
+        
+	// }
+    std::vector<double> getObservationNext() const
 	{
         if (task_type_ == "locomotion") {
             std::vector<double> obs_next(12, 0.0);
@@ -219,11 +265,9 @@ private:
             return obs_next;
         } else {
             // std::vector<double> obs_next(curr_robot_state_.state_value.begin(), curr_robot_state_.state_value.end());
-            std::vector<double> obs_next(curr_tracking_error_.begin(), curr_tracking_error_.end());  // use tracking error as part of the observation for navigation task
-
-            if (obs_next.size() >= 2) {
-                obs_next[0] = latest_goal_x_ - curr_odom_.pose.pose.position.x;  // use curr_odom_ to align with curr_robot_state_
-                obs_next[1] = latest_goal_y_ - curr_odom_.pose.pose.position.y;
+            std::vector<double> obs_next(12, 0.0);
+            for (size_t i = 0; i < 12; ++i) {
+                obs_next[i] = curr_robot_state_[i];  
             }
             return obs_next;
         }
@@ -336,25 +380,25 @@ private:
             }
         }
 
-        if(curr_robot_state_.state_type == edge_msgs::msg::EdgeState::ROBOT_STATE)
-        {
-            robot_pos <<  curr_odom_.pose.pose.position.x,  // x
-                          curr_odom_.pose.pose.position.y,  // y
-                          curr_robot_state_.state_value[5];  // yaw
+        // if(curr_robot_state_.state_type == edge_msgs::msg::EdgeState::ROBOT_STATE)
+        // {
+        robot_pos <<  curr_odom_.pose.pose.position.x,  // x
+                      curr_odom_.pose.pose.position.y,  // y
+                      curr_robot_state_[5];  // yaw
 
-            robot_state << latest_goal_x_ - curr_odom_.pose.pose.position.x,   // delta_x
-                           latest_goal_y_ - curr_odom_.pose.pose.position.y,  // delta_y
-                           curr_robot_state_.state_value[2],  // z
-                           curr_robot_state_.state_value[3],  // roll
-                           curr_robot_state_.state_value[4],  // pitch
-                           curr_robot_state_.state_value[5],  // yaw
-                           curr_robot_state_.state_value[6],  // vx
-                           curr_robot_state_.state_value[7],  // vy
-                           curr_robot_state_.state_value[8],  // vz
-                           curr_robot_state_.state_value[9],  // wx
-                           curr_robot_state_.state_value[10], // wy
-                           curr_robot_state_.state_value[11]; // wz
-        }
+        robot_state << latest_goal_x_ - curr_odom_.pose.pose.position.x,   // delta_x
+                        latest_goal_y_ - curr_odom_.pose.pose.position.y,  // delta_y
+                        curr_robot_state_[2],  // z
+                        curr_robot_state_[3],  // roll
+                        curr_robot_state_[4],  // pitch
+                        curr_robot_state_[5],  // yaw
+                        curr_robot_state_[6],  // vx
+                        curr_robot_state_[7],  // vy
+                        curr_robot_state_[8],  // vz
+                        curr_robot_state_[9],  // wx
+                        curr_robot_state_[10], // wy
+                        curr_robot_state_[11]; // wz
+        // }
 
 
         // double goal_distance = std::hypot(latest_goal_x_ - curr_robot_state_.state_value[0],
@@ -383,8 +427,8 @@ private:
             {"time_elapsed", (double)step_count_},
             {"is_teacher_activated", curr_edge_action_.action_mode == 1 ? true : false},
             {"obstacle_distance_min", obstacle_min_distance_},
-            {"vx", curr_robot_state_.state_value[6]},
-            {"vy", curr_robot_state_.state_value[7]}
+            {"vx", curr_robot_state_[6]},
+            {"vy", curr_robot_state_[7]}
         };
 
         std::vector<edge_msgs::msg::EdgeReward> reward_components;
@@ -430,8 +474,8 @@ private:
         // is_started_ = false;
         // is_paused_ = true;
 
-        last_robot_state_.state_value.assign(12, 0.0);
-        curr_robot_state_.state_value.assign(12, 0.0);
+        // last_robot_state_.state_value.assign(12, 0.0);
+        // curr_robot_state_.state_value.assign(12, 0.0);
 
         last_edge_action_ = edge_msgs::msg::EdgeAction{};   // reset to default action
         RCLCPP_INFO(get_logger(), "RL Environment reset to initial state.");
@@ -469,11 +513,13 @@ private:
 
     double obstacle_min_distance_{0.0};
 
-    edge_msgs::msg::EdgeState last_robot_state_;
-    edge_msgs::msg::EdgeState curr_robot_state_;
+    // edge_msgs::msg::EdgeState last_robot_state_;
+    // edge_msgs::msg::EdgeState curr_robot_state_;
     Vector12d last_tracking_error_ = Vector12d::Zero();
     Vector12d curr_tracking_error_ = Vector12d::Zero();
-    Vector12d latest_robot_state_ = Vector12d::Zero();
+    Vector12d last_robot_state_ =  Vector12d::Zero();
+    Vector12d curr_robot_state_ = Vector12d::Zero();
+    
     nav_msgs::msg::Odometry last_odom_;
     nav_msgs::msg::Odometry curr_odom_;
 

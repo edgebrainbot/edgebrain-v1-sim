@@ -7,6 +7,9 @@
 #include <iomanip>
 #include "lmi_gain_solver.hpp"
 
+#include <fstream>
+
+
 #ifdef __cplusplus
 extern "C" {
     #include "ecvxcone/cpg_solve.h"
@@ -114,6 +117,26 @@ ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, in
 }
 
 namespace lmi {
+
+    const Eigen::Matrix<double, 6, 6> LMIGainSolver::SAFE_KP =
+    (Eigen::Matrix<double, 6, 6>() <<
+        0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0.,
+        0., 0., 121.043, 0., 0., 0.,
+        0., 0., 0., 101.2548, -0.1378, 0.0,
+        0., 0., 0., 0.7708, 93.1583, 0.0,
+        0., 0., 0., 8.3474, -7.9608, 0.0
+    ).finished();
+
+const Eigen::Matrix<double, 6, 6> LMIGainSolver::SAFE_KD =
+    (Eigen::Matrix<double, 6, 6>() <<
+        40., 0., 0., 0., 0., 0.,
+        0., 40., 0., 0., 0., 0.,
+        0., 0., 48.3812, 0., 0., 0.,
+        0., 0., 0., 44.9226, -0.0321, -0.1146,
+        0., 0., 0., -0.0453, 43.8888, 0.3672,
+        0., 0., 0., 0.119, 0.084, 41.2322
+    ).finished();
 
 LMIGainSolver::LMIGainSolver(double Ts) : Ts_(Ts) {
     lmi_init();
@@ -231,11 +254,47 @@ void LMIGainSolver::update_Matrix_B(){
 
 }
 
+// void LMIGainSolver::update_TrackingErrorSquare() {
+//     for (int i = 0; i < 10; ++i) {
+//         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
+//         if (i == 3) {  // Cap the height error square to prevent numerical issues
+//             tracking_err_square[i] = 0.0;  // Cap the value to prevent numerical issues
+//         }
+//         cpg_update_tracking_err_square(i, tracking_err_square[i]);
+//     }
+// }
+
 void LMIGainSolver::update_TrackingErrorSquare() {
     for (int i = 0; i < 10; ++i) {
         tracking_err_square[i] = tracking_err[i] * tracking_err[i];
         cpg_update_tracking_err_square(i, tracking_err_square[i]);
     }
+    tracking_err_square[3] = 0.0;  // Set yaw error square to zero to remove its influence
+    // printf("=================== Tracking Error Square =================\n");
+    // printf("tracking_err_square: [");
+    // for (int i = 0; i < 10; ++i) {
+    //     printf("%.6f", tracking_err_square[i]);
+    //     if (i < 9) printf(", ");
+    // }
+    // printf("]\n");
+
+    static std::ofstream outFile("/home/wrclub/tracking_err_square.txt",
+                                 std::ios::app);
+    if (outFile.is_open()) {
+        outFile << std::fixed << std::setprecision(6);
+
+        for (int i = 0; i < 10; ++i) {
+            outFile << tracking_err_square[i];
+
+            if (i < 9)
+                outFile << " ";
+        }
+
+        outFile << "\n";
+    }
+
+
+
 }
 
 /********************************  Post Processing  *******************************/
@@ -263,6 +322,10 @@ void LMIGainSolver::post_processing() {
             F_kp(i-4, j+2) = -MAT_ELEMD(aF_, i, j);
         }
     }
+    F_kp(5,5) = 0.0;
+    F_kp(4,5) = 0.0;
+    F_kp(3,5) = 0.0;
+    F_kp(2,5) = 0.0;
 
     // F_kd = -aF[4:10, 4:10]
     for (int i = 4; i < 10; ++i) {
@@ -270,6 +333,113 @@ void LMIGainSolver::post_processing() {
             F_kd(i-4, j-4) = -MAT_ELEMD(aF_, i, j);
         }
     }
+    
+    std::ofstream kp_file("/home/wrclub/kp.txt", std::ios::app);
+
+
+
+    // Check Stability of the system with the new gains
+    // Eigen::MatrixXd con_system_A = Eigen::MatrixXd::Zero(10, 10);
+    // Eigen::MatrixXd con_system_I = Eigen::MatrixXd::Identity(10, 10);
+    // Eigen::MatrixXd con_system_O = Eigen::MatrixXd::Zero(4, 12);
+    // con_system_A(0,6) = 1.0;
+    // con_system_A.block<3,3>(1, 7) = Rzyx_;
+    // con_system_A = con_system_A * Ts_ + con_system_I;
+    // Eigen::MatrixXd con_system_Fa(F_kp.rows(), F_kp.cols() + F_kd.cols());
+    // con_system_Fa << F_kp, F_kd;
+    // Eigen::MatrixXd con_system_F(con_system_O.rows() + con_system_Fa.rows(), con_system_O.cols());
+    // con_system_F << con_system_O, con_system_Fa;
+    // con_system_F = con_system_F.rightCols(con_system_F.cols() - 2);
+    // con_system_A = con_system_A - con_system_F;
+    // Eigen::EigenSolver<Eigen::MatrixXd> solver(con_system_A);
+
+    Eigen::MatrixXd con_system_A = Eigen::MatrixXd::Zero(10, 10);
+    Eigen::MatrixXd con_system_I = Eigen::MatrixXd::Identity(10, 10);
+    Eigen::MatrixXd con_system_O = Eigen::MatrixXd::Zero(4, 12);
+    con_system_A(0,6) = 1.0;
+    con_system_A.block<3,3>(1, 7) = Rzyx_;
+    Eigen::MatrixXd con_system_Fa(F_kp.rows(), F_kp.cols() + F_kd.cols());
+    con_system_Fa << F_kp, F_kd;
+    Eigen::MatrixXd con_system_F(con_system_O.rows() + con_system_Fa.rows(), con_system_O.cols());
+    con_system_F << con_system_O, con_system_Fa;
+    con_system_F = con_system_F.rightCols(con_system_F.cols() - 2);
+    con_system_A = con_system_A - con_system_F;
+    
+    Eigen::EigenSolver<Eigen::MatrixXd> solver(con_system_A);
+    Eigen::VectorXcd eigvals = solver.eigenvalues();
+    
+    double max_real = -std::numeric_limits<double>::infinity();
+    for (int i = 0; i < eigvals.size(); ++i) {
+        max_real = std::max(max_real, eigvals(i).real());
+    }
+
+    if (max_real > 0.0) {
+        kp_file << "Maximum real part of eigenvalues: " << max_real << "\n\n";
+        kp_file << "old k_p: " << F_kp << "\n\n";
+        kp_file << "old k_d: " << F_kd << "\n\n";
+        F_kp = SAFE_KP;
+        F_kd = SAFE_KD;
+        kp_file << "default k_p: " << F_kp << "\n\n";
+        kp_file << "default k_d: " << F_kd << "\n\n";
+
+    }
+
+
+
+
+
+
+
+    
+
+
+    // // kp_file << "system_matrix P:\n" << F_kp << "\n\n";
+    // // kp_file << "system_matrix D:\n" << F_kd << "\n\n";
+    // // kp_file << "system_matrix F:\n" << con_system_A << "\n\n";
+    // kp_file << "Eigenvalues of con_system_A:\n" << solver.eigenvalues() << "\n\n";
+
+
+
+
+  
+  
+
+    // kp_file << "A nonzeros:\n";
+    // for (int col = 0; col < A_sp->obj->ncols; ++col) {
+    //     for (int k = A_sp->obj->colptr[col];
+    //         k < A_sp->obj->colptr[col + 1];
+    //          ++k) {
+    //         int row = A_sp->obj->rowind[k];
+    //         double val = A_sp->obj->values[k];
+    //         kp_file << "A(" << row << "," << col << ") = "<< val << "\n";
+    //     }
+    // }
+    // kp_file << "\n";
+
+    // kp_file << "rows = " << SP_NROWS(A_sp) << "\n";
+    // kp_file << "cols = " << SP_NCOLS(A_sp) << "\n";
+    // kp_file << "nnz  = " << SP_NNZ(A_sp) << "\n";
+
+
+
+
+
+
+
+
+    // std::ofstream kp_file("/home/wrclub/kp.txt", std::ios::app);
+    // // std::ofstream kd_file("/home/wrclub/kd.txt", std::ios::app);
+    // kp_file << "kp:\n" << A_sp << "\n\n";
+    // // kd_file << "kd:\n" << F_kd << "\n\n";
+
+    // kp_file << "ecvxcone_data.A = " << ecvxcone_data.A << "\n\n";
+
+
+
+
+
+
+
 }
 
 void LMIGainSolver::test_and_print() {
@@ -295,12 +465,18 @@ void LMIGainSolver::update() {
     // Call the solver
     cpg_solve();
 
+
+
+
+
     // Check solver status and post-process results if successful
     if(CPG_Info.status == OPTIMAL) {
         std::cout << "LMI optimization successful. Processing results..." << std::endl;
         // Post processing to finalize the matrices
         post_processing();
     } else {
+        F_kp = SAFE_KP;
+        F_kd = SAFE_KD;
         std::cerr << "LMI optimization failed with status: " << CPG_Info.status << std::endl;
     }
 

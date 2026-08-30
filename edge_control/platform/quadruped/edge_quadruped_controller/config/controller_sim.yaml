@@ -28,7 +28,7 @@ edge_quadruped_controller:
 
     vx_limit: [0.1, 0.3]  # m/s
     vy_limit: [-0.3, 0.3]  # m/s
-    wz_limit: [-0.5, 0.5]  # rad/s
+    wz_limit: [-0.3, 0.3]  # rad/s
 
     topic_namespace: "edge"
     odom_frame_id: "leg_odom"
