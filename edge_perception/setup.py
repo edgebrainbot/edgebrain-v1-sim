@@ -19,7 +19,7 @@ setup(
     install_requires=['setuptools', 'numpy', 'torch', 'opencv-python', 'cv_bridge', 'segment_anything', 'transformers'],
     zip_safe=True,
     maintainer='Yihao Cai',
-    maintainer_email='yihao.cai@wayne.edu',
+    maintainer_email='yihaocai007@gmail.com',
     description='Instance/Semantic/Panoptic segmentation projection onto point clouds for Jetson.',
     license='Apache-2.0',
     extras_require={

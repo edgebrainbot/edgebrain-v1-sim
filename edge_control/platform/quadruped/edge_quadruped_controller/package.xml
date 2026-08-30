@@ -4,7 +4,7 @@
   <name>edge_quadruped_controller</name>
   <version>0.0.0</version>
   <description>A ros2-based Controller for Quadruped Robot on Edge Devices</description>
-  <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
+  <maintainer email="yihaocai007@gmail.com">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

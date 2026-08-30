@@ -33,7 +33,8 @@ esac
 echo "[INFO] Detected architecture: ${ARCH} -> ${PLATFORM}"
 
 # -------- Assigned CPU Jobs --------
-MAKE_JOBS=$(nproc)
+MAKE_JOBS=$(( $(nproc) / 2 ))           # Use half of the available CPU cores for building
+# MAKE_JOBS=$(nproc)
 echo "[INFO] Using MAKE_JOBS=${MAKE_JOBS}"
 
 # -------- Image Names --------
