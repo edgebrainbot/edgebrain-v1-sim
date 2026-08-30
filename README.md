@@ -2,7 +2,7 @@
 
 # 🐾 Edge-Brain
 
-### An On-device Runtime Learning Framework for Real-World Robots in Open-World Environments
+### An On-device Runtime Learning Framework for Robots in Open-World Environments
 
 [![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-red?logo=ubuntu)](https://ubuntu.com/)
 [![ROS2 Foxy/Humble](https://img.shields.io/badge/ros2-foxy/humble-brightgreen.svg?logo=ros)](https://wiki.ros.org/foxy)
@@ -13,13 +13,33 @@
 
 </div>
 
-Edge-Brain is a modular and scalable robotics framework designed for deploying learning-based control systems on real-world quadruped platforms.
-It bridges simulation and real-world deployment, integrating learning, safety supervision, and system-level coordination into a unified architecture.
+<!-- Edge-Brain is a modular and scalable Edge-AI framework designed to empower robots with online learning and adaptation in open-world environments. Rather than assuming that all operating conditions can be predefined or fully captured through simulation and offline training, Edge-Brain enables robots to continuously improve their capabilities through real-time interaction with dynamic and previously unseen environments. Robots can leverage pretrained models as prior knowledge or learn from scratch, while continuing to learn and adapt after deployment.
+
+The framework is designed for resource-constrained real-world scenarios, where connectivity and external infrastructure may be limited or unavailable—for example, without reliable Wi-Fi, GPS, or access to cloud computing. Edge-Brain therefore supports runtime learning, inference, and decision-making directly on the robot.
+
+By connecting simulation-based development with real-world online learning, Edge-Brain integrates learning, safety supervision, and system-level coordination into a unified architecture. Its goal is to enable robots to autonomously explore, learn from real-world interactions, and continuously adapt beyond the boundaries of predefined environments and the limitations of pretrained models. -->
+
+Edge-Brain is a modular and scalable Edge-AI framework that enpowers on-robot learning in open-world environments. Its key features include:
+
+* **🌍 Open-World Interaction:** Enables robots to continuously learn and improve performance through real-time interaction with dynamic and previously unseen physical environments, beyond predefined simulated environments.
+
+* **🤖 On-Robot Runtime Learning:** Supports on-device runtime learning directly on robots, enabling them to continuously learn and adapt after deployment by leveraging pretrained knowledge or learning from scratch.
+
+* **📡 Resource-Constrained Deployment:** Designed for real-world scenarios with limited connectivity and computational resources, supporting onboard learning, inference, and decision-making without relying on cloud infrastructure.
+
+* **🛡️ Unified Robotics Architecture:** Integrates learning, safety supervision, and system-level coordination into a modular and scalable framework built on ROS2.
+
+In all, Edge-Brain enables robots to autonomously **explore, learn, and adapt/evolve** in the open world beyond the boundaries of predefined environments and pretrained capabilities.
+
+
+
+
+
 
 ## Table of Contents
 
-- [� Edge-Brain](#-edge-brain)
-    - [An On-device Runtime Learning Framework for Real-World Robots in Open-World Environments](#an-on-device-runtime-learning-framework-for-real-world-robots-in-open-world-environments)
+- [🐾 Edge-Brain](#-edge-brain)
+    - [An On-device Runtime Learning Framework for Robots in Open-World Environments](#an-on-device-runtime-learning-framework-for-robots-in-open-world-environments)
   - [Table of Contents](#table-of-contents)
   - [💡 User Guide](#-user-guide)
     - [⚙️ Dependencies](#️-dependencies)
@@ -27,11 +47,11 @@ It bridges simulation and real-world deployment, integrating learning, safety su
       - [🐳 Option A: Docker](#-option-a-docker)
         - [A.1 Build it yourself](#a1-build-it-yourself)
         - [A.2 Pull the pre-built image](#a2-pull-the-pre-built-image)
-      - [📟 Option B: Bare-Metal (Native)](#-option-b-bare-metal-native)
+      - [🖥️ Option B: Bare-Metal (Native)](#️-option-b-bare-metal-native)
     - [🔧 Build Script](#-build-script)
   - [🏷️ Misc](#️-misc)
   - [🧩 Features](#-features)
-  - [💻 Jetson Deployment Guide](#-jetson-deployment-guide)
+  - [🔌 Jetson Deployment Guide](#-jetson-deployment-guide)
   - [🎉 Acknowledgments](#-acknowledgments)
 
 ---
@@ -98,7 +118,7 @@ cd docker/scripts
 
 ```bash
 # TODO: replace with the published image, e.g. ghcr.io/<org>/edge-brain-go2:<platform>
-docker pull <TODO-registry>/edge-brain-go2:<platform>
+docker pull charlescai/edge-brain-go2:<platform>
 
 # start.sh expects the local tag edge-brain-go2:<platform>, so re-tag the pulled image
 docker tag <TODO-registry>/edge-brain-go2:<platform> edge-brain-go2:<platform>
@@ -107,7 +127,7 @@ cd docker/scripts
 ./start.sh
 ```
 
-#### 📟 <a id="option-b-bare-metal-native"></a>Option B: Bare-Metal (Native)
+#### 🖥️ <a id="option-b-bare-metal-native"></a>Option B: Bare-Metal (Native)
 
 **Prerequisites:** Ubuntu 22.04, [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html), and either the CUDA 12.6 Toolkit (x86_64/dGPU) or a flashed JetPack 6.2 / L4T r36.4.3 (Jetson).
 
@@ -295,7 +315,7 @@ Please star or cite below papers if you find this repo helpful
 }
 ``` -->
 
-## 💻 <a id="jetson-deployment-guide"></a>Jetson Deployment Guide
+## 🔌 <a id="jetson-deployment-guide"></a>Jetson Deployment Guide
 
 To ensure optimal performance on Jetson platforms, it is strongly recommended to use an NVMe SSD instead of the onboard 64GB eMMC. NVMe storage provides significantly higher read/write throughput. After installing the NVMe drive, use [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe device.
 

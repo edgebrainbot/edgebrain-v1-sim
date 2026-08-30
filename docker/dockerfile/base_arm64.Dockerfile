@@ -102,7 +102,8 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
 
 # ------------ Build Pinocchio ------------
 RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
-    cd pinocchio && git submodule update --init --recursive && \
+    cd pinocchio && git checkout v3.7.0 && \
+    git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=Release \

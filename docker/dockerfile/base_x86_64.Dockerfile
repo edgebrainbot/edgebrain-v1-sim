@@ -101,7 +101,8 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
 
 # ------------ Build Pinocchio ------------
 RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
-    cd pinocchio && git submodule update --init --recursive && \
+    cd pinocchio && git checkout v3.7.0 && \
+    git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
@@ -130,7 +131,7 @@ RUN sudo apt update && \
     git clone https://github.com/ros2/rmw_cyclonedds -b ${ROS_DISTRO} && \
     git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x && \
     cd .. && colcon build --packages-select cyclonedds && \
-    source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build
+    source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --parallel-workers 1
 
 
 # ------------ Build mujoco ------------
