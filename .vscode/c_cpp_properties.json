@@ -1,0 +1,63 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/wrclub/edge_ws/install/warrior_control/include/**",
+        "/home/wrclub/edge_ws/install/visibility_graph_msg/include/**",
+        "/home/wrclub/edge_ws/install/edge_quadruped_controller/include/**",
+        "/home/wrclub/edge_ws/install/unitree_go2_hardware/include/**",
+        "/home/wrclub/edge_ws/install/go2_sport_api/include/**",
+        "/home/wrclub/edge_ws/install/unitree_go/include/**",
+        "/home/wrclub/edge_ws/install/unitree_api/include/**",
+        "/home/wrclub/edge_ws/install/gz_quadruped_hardware/include/**",
+        "/home/wrclub/edge_ws/install/edge_phy_teacher/include/**",
+        "/home/wrclub/edge_ws/install/edge_trigger/include/**",
+        "/home/wrclub/edge_ws/install/edge_ros_interfaces/include/**",
+        "/home/wrclub/edge_ws/install/edge_msgs/include/**",
+        "/home/wrclub/edge_ws/install/controller_common/include/**",
+        "/home/wrclub/edge_ws/install/control_input_msgs/include/**",
+        "/usr/local/include/**",
+        "/opt/ros/humble/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/common/controller_common/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/edge_quadruped_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/leg_pd_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/ocs2_quadruped_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/rl_quadruped_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/safety_patch_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_control/platform/quadruped/unitree_guide_controller/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_hardware/unitree_go2_hardware/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_interfaces/edge_msgs/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_interfaces/edge_ros_interfaces/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_interfaces/input_interfaces/joystick_input/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_interfaces/input_interfaces/keyboard_input/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_interfaces/input_interfaces/unitree_joystick_input/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_localization/point_lio_unilidar_origin/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/planner/local_planner/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/planner/route_planner/boundary_handler/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/planner/route_planner/far_planner/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/planner/route_planner/graph_decoder/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/slam/point_lio_unilidar/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/utilities/calibrate_imu/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/utilities/goalpoint_rviz_plugin/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/utilities/unitree_pkgs/go2_sport_api/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_navigation/utilities/waypoint_rviz_plugin/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_phy_teacher/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_rl_runtime/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_simulation/gz_interfaces/gz_quadruped_hardware/include/**",
+        "${workspaceFolder}/edge-brain-go2/edge_trigger/include/**",
+        "${workspaceFolder}/edge-brain-go2/warrior_control/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ros2",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}

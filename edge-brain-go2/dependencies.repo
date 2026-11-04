@@ -1,0 +1,26 @@
+repositories:
+  third_party/unitree_sdk2:
+    type: git
+    url: https://github.com/unitreerobotics/unitree_sdk2.git
+    version: 211dad48
+  
+  third_party/mujoco:
+    type: git
+    url: https://github.com/google-deepmind/mujoco.git
+    version: 3.3.3
+  
+  third_party/unitree_ros2:
+    type: git
+    url: https://github.com/unitreerobotics/unitree_ros2.git
+    version: 3ff13ea0
+
+  third_party/unitree_mujoco:
+    type: git
+    url: https://github.com/Charlescai123/unitree_mujoco.git
+    version: 1fda6580
+  
+  edge_hardware/safety_led_driver/safety_led_driver/go2_webrtc_connect:
+    type: git
+    url: https://github.com/legion1581/unitree_webrtc_connect.git
+    version: cbf7c3f1
+
