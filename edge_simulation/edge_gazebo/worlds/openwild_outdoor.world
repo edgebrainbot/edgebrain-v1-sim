@@ -182,14 +182,6 @@
       <static>true</static>
     </include>
 
-    <!-- Falling Rock -->
-    <include>
-      <uri>model://props/falling_rock3</uri>
-      <pose relative_to='world_offset'>-1.26847 -0.977565 0.3 0 0 0</pose>
-      <name>falling_rock</name>
-      <static>true</static>
-    </include>
-
     <!-- Falling Rock2 -->
     <include>
       <uri>model://props/falling_rock3</uri>
