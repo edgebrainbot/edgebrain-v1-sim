@@ -14,7 +14,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='edgebot',
-    maintainer_email='yihao.cai@wayne.edu',
+    maintainer_email='yihaocai007@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     extras_require={

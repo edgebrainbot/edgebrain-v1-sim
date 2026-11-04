@@ -32,7 +32,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Yihao Cai',
-    maintainer_email='yihao.cai@wayne.edu',
+    maintainer_email='yihaocai007@gmail.com',
     description='The ros2 package for Gazebo Simulation in Edge Brain Go2',
     license='Apache-2.0',
     extras_require={

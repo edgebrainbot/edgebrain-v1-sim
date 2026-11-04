@@ -4,7 +4,7 @@
   <name>edge_nav_bringup</name>
   <version>1.0.0</version>
   <description>The bringup package for the navigation system on Edge</description>
-  <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
+  <maintainer email="yihaocai007@gmail.com">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
   <test_depend>ament_copyright</test_depend>

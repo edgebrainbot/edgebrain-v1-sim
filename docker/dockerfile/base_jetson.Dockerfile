@@ -6,7 +6,7 @@
 # FROM nvcr.io/nvidia/l4t-ml:r36.2.0-py3
 FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0
 
-LABEL maintainer="Yihao Cai <yihao.cai@wayne.edu>" \
+LABEL maintainer="Yihao Cai <yihaocai007@gmail.com>" \
       version="v2.0.0" \
       description="Nvidia Jetson: ROS2 Humble + CUDA 12.6 + Robotics Libraries" \
       license="Apache-2.0"
@@ -108,7 +108,8 @@ RUN git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &
 
 # ------------ Build Pinocchio ------------
 RUN git clone --recursive https://github.com/stack-of-tasks/pinocchio.git && \
-    cd pinocchio && git submodule update --init --recursive && \
+    cd pinocchio && git checkout v3.7.0 && \
+    git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake .. \
     -DCMAKE_BUILD_TYPE=Release \

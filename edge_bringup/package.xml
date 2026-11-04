@@ -4,7 +4,7 @@
   <name>edge_bringup</name>
   <version>0.1.0</version>
   <description>Bringup package for the Edge system with unified namespace</description>
-  <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
+  <maintainer email="yihaocai007@gmail.com">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
   <test_depend>ament_copyright</test_depend>

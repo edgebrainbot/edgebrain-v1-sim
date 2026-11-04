@@ -4,7 +4,7 @@
   <name>lidar_to_map</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="yihao.cai@wayne.edu">edgebot</maintainer>
+  <maintainer email="yihaocai007@gmail.com">edgebot</maintainer>
   <license>TODO: License declaration</license>
 
   <exec_depend>rclpy</exec_depend>

@@ -4,7 +4,7 @@
   <name>unitree_go2_hardware</name>
   <version>1.5.0</version>
   <description>The ros2_control hardware interface/API for Unitree GO2 robot</description>
-  <maintainer email="yihao.cai@wayne.edu">Yihao Cai</maintainer>
+  <maintainer email="yihaocai007@gmail.com">Yihao Cai</maintainer>
   <license>Apache-2.0</license>
 
   <depend>rclcpp</depend>

@@ -66,6 +66,16 @@ target_include_directories(${PROJECT_NAME}
   src
 )
 
+# ament_target_dependencies() does not forward pinocchio's
+# INTERFACE_COMPILE_DEFINITIONS, so JointModelTpl's boost::variant (>20 joint
+# types) gets built against Boost.MPL's default 20-type limit here while
+# Pinocchio's own headers/library use 30 -- an ODR mismatch that surfaces as
+# bogus "invalid field 'storage_'" errors. Match Pinocchio's limits explicitly.
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+  BOOST_MPL_LIMIT_LIST_SIZE=30
+  BOOST_MPL_LIMIT_VECTOR_SIZE=30
+)
+
 ament_target_dependencies(
   ${PROJECT_NAME} PUBLIC
   ${CONTROLLER_DEPENDENCIES}
