@@ -12,6 +12,9 @@ def generate_launch_description():
     # -----------------------------
     #      Declare Arguments 
     # -----------------------------
+    planning_frequency = DeclareLaunchArgument("main_run_freq", default_value="10.0", description="FAR graph and planning update frequency in Hz")
+    far_config = DeclareLaunchArgument("far_config", default_value="matterport", description="FAR Planner configuration name")
+    far_rviz_config = DeclareLaunchArgument("far_rviz_config", default_value="default", description="FAR RViz configuration name")
     use_rviz = DeclareLaunchArgument("use_rviz", default_value="false", description="Whether to launch RViz for visualization")
     world_name = DeclareLaunchArgument("world_name", default_value="unity", description="Gazebo world name")
     vehicleHeight = DeclareLaunchArgument("vehicleHeight", default_value="0.30", description="Height of the vehicle")
@@ -59,6 +62,7 @@ def generate_launch_description():
         "odom_topic": LaunchConfiguration("odom_topic"),
         "use_sim_time": "true",
         "useGazebo": LaunchConfiguration("useGazebo"),
+        "require_start_command": "true",
         }.items()
     )
 
@@ -142,6 +146,9 @@ def generate_launch_description():
         launch_arguments={
             "use_sim_time": "true",
             "use_rviz": LaunchConfiguration("use_rviz"),
+            "main_run_freq": LaunchConfiguration("main_run_freq"),
+            "config": LaunchConfiguration("far_config"),
+            "rviz_config": LaunchConfiguration("far_rviz_config"),
             "odom_topic": LaunchConfiguration("odom_topic"),
         }.items()
     )
@@ -151,6 +158,9 @@ def generate_launch_description():
     # -----------------------------
     return LaunchDescription([
         use_rviz,
+        planning_frequency,
+        far_config,
+        far_rviz_config,
         world_name,
         vehicleHeight,
         sensorOffsetX,

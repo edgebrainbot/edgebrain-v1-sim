@@ -20,9 +20,9 @@ from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
 from edge_drl_student.common.normalizer import RunningMeanStdNormalizer
 from edge_drl_student.agents.distributed.ddpg_actor_learner import DDPGActorLearner
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 from edge_drl_student.utils.utils import ActionMode, ResetReason, DRLMode, ExperimentRunType
 
 RESIDUAL_GAIN = torch.tensor([
@@ -164,6 +164,8 @@ class DistributedRunner:
         self.is_real_robot = is_real_robot
         self.save_flag = False
         self.is_real_robot_ready = False
+        
+        self.episode_done_handled = False
         
         # ============================================================
         # Edge State/Action Initialization
@@ -413,8 +415,8 @@ class DistributedRunner:
         self.roll_rate = next_observation[9]
         self.pitch_rate = next_observation[10]
         
-        print("============")
-        print(next_observation)
+        # print("============")
+        # print(next_observation)
     
         # observation = torch.tensor(
         #     np.array(msg.obs, dtype=np.float32),
@@ -559,6 +561,7 @@ class DistributedRunner:
                 if self.is_learning_running:
                     self.node.get_logger().info('⏸️  Learning loop paused during teacher transition in SHIELDING run')
                     self.pause_learning_loop()
+                self._check_episode_done(msg.done, self.episode_manager.episode_mode)
                 return
             elif msg.action.action_mode == ActionMode.STUDENT:
                 if not self.is_learning_running:
@@ -599,14 +602,28 @@ class DistributedRunner:
         # Log stepwise statistics
         self._log_stepwise_stats(reward_components, ep_mode)
         
-        # Check episode done
-        if msg.done or self.episode_manager.is_episode_done:
-            reason = (
-                ResetReason.TIMEOUT if self.episode_manager.is_episode_done
-                else ResetReason.TASK_DONE
-            )
-            success = True if msg.done and reason == ResetReason.TASK_DONE else False
-            self._handle_episode_done(success=success, reason=reason, ep_mode=ep_mode)
+        self._check_episode_done(msg.done, ep_mode)
+
+    def _check_episode_done(self, done: bool, ep_mode: DRLMode) -> None:
+        """Handle terminal transitions once, including SHIELDING teacher actions."""
+        episode_done = done or self.episode_manager.is_episode_done
+        if not episode_done:
+            self.episode_done_handled = False
+            return
+
+        if self.episode_done_handled:
+            return
+
+        self.episode_done_handled = True
+        reason = (
+            ResetReason.TIMEOUT if self.episode_manager.is_episode_done
+            else ResetReason.TASK_DONE
+        )
+        self._handle_episode_done(
+            success=(done and reason == ResetReason.TASK_DONE),
+            reason=reason,
+            ep_mode=ep_mode,
+        )
 
     # ==================== Action Loop ====================
     def compute_output_action(self, mode: DRLMode) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -663,18 +680,18 @@ class DistributedRunner:
         # Blend with teacher action (for cognitive buffer)
         if isinstance(self.replay_buffer, CognitiveReplayBuffer):
             
-            blended_action = self.replay_buffer.get_weighted_blended_action()
-            ini_cri = blended_action.abs().sum().item()
+            # blended_action = self.replay_buffer.get_weighted_blended_action()
+            # ini_cri = blended_action.abs().sum().item()
             
             
-            if ini_cri < 0.0001:
-                terminal_blending_weight = 1.0
-            else:
-                terminal_blending_weight = 1.2 * (4.0*(self.obstacle_distance * self.obstacle_distance) + 3.3*(self.roll_rate * self.roll_rate) + 3.3*(self.pitch_rate * self.pitch_rate))
-                terminal_blending_weight = min(1.0, terminal_blending_weight)
+            # if ini_cri < 0.0001:
+            #     terminal_blending_weight = 1.0
+            # else:
+            #     terminal_blending_weight = 1.2 * (4.0*(self.obstacle_distance * self.obstacle_distance) + 3.3*(self.roll_rate * self.roll_rate) + 3.3*(self.pitch_rate * self.pitch_rate))
+            #     terminal_blending_weight = min(1.0, terminal_blending_weight)
                 
-            with open("/home/wrclub/blended_action.txt", "a") as f:
-                f.write(f"{terminal_blending_weight}\n")
+            # with open("/home/wrclub/blended_action.txt", "a") as f:
+            #     f.write(f"{terminal_blending_weight}\n")
             
 
             # with open("/home/wrclub/blended_action.txt", "a") as f:
@@ -684,7 +701,8 @@ class DistributedRunner:
             #                )
             
             # learned_action = (1 - terminal_blending_weight) * policy_action + terminal_blending_weight * blended_action
-            learned_action = 1.0 * policy_action + 0.0 * blended_action
+            # learned_action = 1.0 * policy_action + 0.0 * blended_action
+            learned_action =  policy_action 
         else:
             learned_action = policy_action
         
@@ -978,10 +996,9 @@ class DistributedRunner:
         
         if success:
             self.node.get_logger().info(f'✅ Reset completed: {message}')
-            return True
         else:
             self.node.get_logger().error(f'❌ Reset failed: {message}')
-            return False
+        return success
 
     
     # ==================== Statistics ====================

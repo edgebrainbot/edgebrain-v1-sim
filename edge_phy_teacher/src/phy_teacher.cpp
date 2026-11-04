@@ -155,7 +155,7 @@ void PhyTeacher::controlCallback() {
         curr_comstate_ = error_from_patch.tail(6);
 
         // compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_)*-0.6;  // A simple compensation term to account for model mismatch
-        compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_com_)*-0.8;  // A simple compensation term to account for model mismatch
+        compensation_action_ = (curr_comstate_ - last_comstate_ - last_action_com_)*-0.7;  // A simple compensation term to account for model mismatch
 
 
         // printf("================== Control Callback =================\n");
@@ -169,8 +169,10 @@ void PhyTeacher::controlCallback() {
 
         if (opt_status_ == 0) {
             RCLCPP_INFO(this->get_logger(), "LMI optimization succeeded! Using optimized gains.");
-            auto kp_term = F_kp * error_from_patch.head(6);     // Apply LMI-solved Kp to position error
-            auto kd_term = F_kd * error_from_patch.tail(6);     // Apply LMI-solved Kd to velocity error
+            // auto kp_term = F_kp * error_from_patch.head(6);     // Apply LMI-solved Kp to position error
+            // auto kd_term = F_kd * error_from_patch.tail(6);     // Apply LMI-solved Kd to velocity error
+            auto kp_term = default_F_kp * error_from_patch.head(6);
+            auto kd_term = default_F_kd * error_from_patch.tail(6);
             curr_action_com_ = kp_term + kd_term;  // Total action includes compensation for dynamics
             curr_action_ = kp_term + kd_term + compensation_action_;  // Total action includes compensation for dynamics
             // std::ofstream kp_file("/home/wrclub/kp.txt", std::ios::app);

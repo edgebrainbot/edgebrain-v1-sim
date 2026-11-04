@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, List, Union
 from dataclasses import dataclass
 
+from edge_drl_student.utils.utils import ActionMode
 from edge_drl_student.memory.samplers import BaseSampler
 from edge_drl_student.memory.samplers import UniformSampler
 
@@ -25,6 +26,7 @@ class Transition:
     reward: torch.Tensor    # Reward received
     next_obs: torch.Tensor  # Next observation
     done: torch.Tensor      # Whether the episode is done
+    action_mode: ActionMode = ActionMode.UNCERTAIN  # Optional action mode (e.g., for dual buffers)
     info: Any = None        # Additional info
 
 
@@ -36,6 +38,7 @@ class TransitionBatch:
     reward: torch.Tensor
     next_obs: torch.Tensor
     done: torch.Tensor
+    action_mode: Optional[ActionMode] = None
     info: Optional[List[Any]] = None
 
     def to(self, device: str) -> "TransitionBatch":
@@ -46,6 +49,7 @@ class TransitionBatch:
             reward=self.reward.to(device),
             next_obs=self.next_obs.to(device),
             done=self.done.to(device),
+            action_mode=self.action_mode,
             info=self.info
         )
 

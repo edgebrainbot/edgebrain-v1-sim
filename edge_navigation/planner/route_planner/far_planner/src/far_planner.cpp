@@ -122,9 +122,6 @@ void FARMaster::Init() {
   nav_heading_ = Point3D(0,0,0);
   goal_waypoint_stamped_.header.frame_id = master_params_.world_frame;
 
-  // waiting for one second
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-
   printf("\033[2J"), printf("\033[0;0H"); // cleanup screen
   std::cout<<std::endl;
   if (master_params_.is_static_env) {
@@ -177,6 +174,10 @@ void FARMaster::MainLoopCallBack() {
   }
 
   if (!this->PreconditionCheck()) {
+      RCLCPP_INFO_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 3000,
+                          "FAR waiting for input: odometry=%s, terrain=%s",
+                          is_odom_init_ ? "ready" : "waiting",
+                          is_cloud_init_ ? "ready" : "waiting");
       return;
   }
 
@@ -271,6 +272,13 @@ void FARMaster::MainLoopCallBack() {
 
   if (!is_graph_init_ && !nav_graph_.empty()) {
     is_graph_init_ = true;
+    RCLCPP_INFO(nh_->get_logger(), "FAR planning graph ready");
+    if (pending_goal_) {
+      auto goal = pending_goal_;
+      pending_goal_.reset();
+      this->WaypointCallBack(goal);
+      RCLCPP_INFO(nh_->get_logger(), "FAR applied buffered goal after graph initialization");
+    }
     printf("\033[A"), printf("\033[A"), printf("\033[2K");
     std::cout<< "\033[1;32m V-Graph Initialized \033[0m\n" << std::endl;
   }
@@ -282,6 +290,8 @@ void FARMaster::PlanningCallBack() {
   if (!is_init_completed_ || !is_graph_init_) return;
   const NavNodePtr goal_ptr = graph_planner_.GetGoalNodePtr();
   if (goal_ptr == NULL) {
+    RCLCPP_INFO_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 5000,
+                        "FAR no active goal; updating graph without publishing a route");
     /* Graph Traversablity Update */
 
     if (!FARUtil::IsDebug) printf("\033[2K");
@@ -333,9 +343,14 @@ void FARMaster::PlanningCallBack() {
       planner_viz_.VizPoint3D(waypoint, "waypoint", VizColor::MAGNA, 1.5);
       planner_viz_.VizPoint3D(current_free_goal, "free_goal", VizColor::GREEN, 1.5);
       planner_viz_.VizPath(global_path, is_current_free_nav);
-    } else if (is_planner_running_) { // stop robot
-      global_path.clear();
-      planner_viz_.VizPath(global_path);
+    } else { // Stop on failure even if no route has succeeded yet.
+      if (is_planner_running_) {
+        RCLCPP_WARN(nh_->get_logger(),
+                    "FAR clearing displayed route: search_failed=%s, waypoint_available=%s",
+                    is_planning_fails ? "true" : "false", nav_node_ptr_ ? "true" : "false");
+        global_path.clear();
+        planner_viz_.VizPath(global_path);
+      }
       is_planner_running_ = false;
       nav_heading_ = Point3D(0,0,0);
       if (is_planning_fails) { // stops the robot
@@ -731,6 +746,8 @@ void FARMaster::TerrainLocalCallBack(const sensor_msgs::msg::PointCloud2::Shared
 
 void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr pc) {
   if (!is_odom_init_) return;
+  std::size_t classified_obstacles = 0;
+  std::size_t mapped_obstacles = 0;
   // update map grid robot center
   map_handler_.UpdateRobotPosition(FARUtil::robot_pos);
 
@@ -740,11 +757,13 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
                                                                master_params_.terrain_range,
                                                                FARUtil::kTolerZ));
     FARUtil::ExtractFreeAndObsCloud(temp_cloud_ptr_, temp_free_ptr_, temp_obs_ptr_);
+    classified_obstacles = temp_obs_ptr_->size();
 
     if (!master_params_.is_static_env) {
       FARUtil::RemoveOverlapCloud(temp_obs_ptr_, FARUtil::stack_dyobs_cloud_, true);
     }
     map_handler_.UpdateObsCloudGrid(temp_obs_ptr_);
+    mapped_obstacles = temp_obs_ptr_->size();
 
     map_handler_.UpdateFreeCloudGrid(temp_free_ptr_);
     // extract new points
@@ -785,10 +804,17 @@ void FARMaster::TerrainCallBack(const sensor_msgs::msg::PointCloud2::SharedPtr p
   }
   
   // create and update kdtrees
+  RCLCPP_INFO_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 5000,
+                      "FAR obstacle pipeline: classified=%zu, mapped=%zu, surround=%zu, dynamic=%zu, free=%zu",
+                      classified_obstacles, mapped_obstacles, FARUtil::surround_obs_cloud_->size(),
+                      FARUtil::cur_dyobs_cloud_->size(), FARUtil::surround_free_cloud_->size());
   FARUtil::StackCloudByTime(FARUtil::cur_new_cloud_, FARUtil::stack_new_cloud_, FARUtil::kNewDecayTime, nh_);
   FARUtil::UpdateKdTrees(FARUtil::stack_new_cloud_);
 
-  if (!FARUtil::surround_obs_cloud_->empty()) is_cloud_init_ = true;
+  // Open terrain can contain valid free-space observations without obstacles.
+  if (!FARUtil::surround_obs_cloud_->empty() || !FARUtil::surround_free_cloud_->empty()) {
+    is_cloud_init_ = true;
+  }
 
   /* visualize clouds */
   planner_viz_.VizPointCloud(new_PCL_pub_, FARUtil::stack_new_cloud_);
@@ -821,7 +847,9 @@ void FARMaster::ExtractDynamicObsFromScan(const PointCloudPtr scanCloudIn,
 
 void FARMaster::WaypointCallBack(const geometry_msgs::msg::PointStamped::SharedPtr route_goal) {
   if (!is_graph_init_) {
-    if (FARUtil::IsDebug) RCLCPP_WARN(nh_->get_logger(),"FARMaster: wait for v-graph to init before sending any goals");
+    // Keep the latest goal even when it is sent only once during startup.
+    pending_goal_ = std::make_shared<geometry_msgs::msg::PointStamped>(*route_goal);
+    RCLCPP_INFO_ONCE(nh_->get_logger(), "FAR goal buffered until planning graph is ready");
     return;
   }
   Point3D goal_p(route_goal->point.x, route_goal->point.y, route_goal->point.z);

@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 """
 DDPG Actor-Learner Implementation
 
@@ -16,8 +10,8 @@ from typing import Tuple, Optional, Union
 
 from edge_drl_student.agents.off_policy.ddpg_agent import DDPGAgent
 from edge_drl_student.agents.distributed.actor_learner import ActorLearner
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 
 
 class DDPGActorLearner(ActorLearner):
@@ -270,7 +264,7 @@ if __name__ == "__main__":
     
     # Fill buffer with random data
     print("Filling replay buffer...")
-    from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
+    from edge_drl_student.common.memory.buffers.base_buffer import TransitionBatch
     for _ in range(1500):
         transition = TransitionBatch(
             obs=torch.randn(1, obs_dim, device=device),

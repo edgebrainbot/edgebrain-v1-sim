@@ -36,6 +36,7 @@ enum VizColor {
 class DPVisualizer {
 private:
     rclcpp::Node::SharedPtr nh_;
+    double path_height_offset_ = 0.0;
     // Utility Cloud 
     PointCloudPtr point_cloud_ptr_;
     // rviz publisher 

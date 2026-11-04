@@ -56,6 +56,18 @@
   </material>
 
   <!-- ========== Low-Saturation Engineering Colors ========== -->
+  <material name="rover_aqua">
+    <color rgba="0.0 1.0 1.0 1"/>
+  </material>
+
+  <material name="rover_charcoal">
+    <color rgba="0.07 0.08 0.09 1"/>
+  </material>
+
+  <material name="rover_wheel_red">
+    <color rgba="0.65 0.03 0.045 1"/>
+  </material>
+
   <material name="steel_blue">
     <color rgba="0.27 0.51 0.71 1"/>
   </material>
@@ -89,4 +101,14 @@
     <color rgba="0.72 0.45 0.20 1"/>
   </material>
 
+  <!-- Rover exterior palette -->
+  <material name="rover_orange">
+    <color rgba="1.0 0.30 0.025 1"/>
+  </material>
+  <material name="rover_gunmetal">
+    <color rgba="0.20 0.23 0.26 1"/>
+  </material>
+  <material name="rover_matte_black">
+    <color rgba="0.025 0.028 0.032 1"/>
+  </material>
 </robot>

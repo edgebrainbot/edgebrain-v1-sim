@@ -27,10 +27,9 @@ class ACTRCognitiveSampler(BaseSampler):
                  family_criteria: float = 0.5,
                  family_number: int = 55,
                  memory_decay_factor: float = -0.5,
-                 fr_weight: float = 0.4,
-                 sm_weight: float = 0.6,
-                #  fr_weight: float = 0.1  
-                #  sm_weight: float = 0.9,
+                 fr_weight: float = 0.0,
+                 sm_weight: float = 1.0,
+                 critic_weight: float = 1.0, 
                  blending_size: int = 5,  #good: 10, 20
                  device: str = "cpu"):
         
@@ -44,30 +43,25 @@ class ACTRCognitiveSampler(BaseSampler):
         self.blending_size = blending_size
         self.memory_decay_factor = memory_decay_factor
         
-        self.fr_weight = fr_weight     # frequency + recency weight
-        self.sm_weight = sm_weight     # similarity weight
+        self.fr_weight = fr_weight         # frequency + recency weight
+        self.sm_weight = sm_weight         # similarity weight
+        self.critic_weight = critic_weight # per weight
         
         self.device = device
+        
+        # for per 
+        self.critic_scores = torch.zeros(
+            self.replay_buf.buffer_size,
+            device=self.device
+        )
+        self._last_indices = None
 
         self._last_blending_action = torch.Tensor([0.] * 6).to(device)     # Blended action output
-        # print(f"upper_triangular_matrix: {self.upper_triangular_matrix}")
-        # print(f"Initialized ACTRCognitiveSampler with obs_weight={obs_weight}, action_weight={action_weight}, device={device}")
+
 
         self._last_time = time.time()
 
     def fetch(self, plant_state: torch.Tensor, batch_size: int, valid_size: int) -> torch.Tensor:
-        
-        # print(
-        #     f"{self.replay_buf.buf_name}: "
-        #     f"fr={self.fr_weight}, sm={self.sm_weight}"
-        # )
-        
-        # with open("/home/wrclub/cognitive_weight.txt", "a") as f:
-        #     f.write(
-        #         f"{self.replay_buf.buf_name}, "
-        #         f"fr_weight={self.fr_weight:.3f}, "
-        #         f"sm_weight={self.sm_weight:.3f}\n"
-        #     )
 
         
         """
@@ -182,10 +176,28 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"sm_error: {sm_error}")
         
         sm_score = (0.1 + torch.sqrt(sm_error[:,:].square().sum(dim=1))).pow(-1)  # Similarity score (the smaller the error, the higher the score)  
-        # print(f"sm_score: {sm_score}")
-        # print(f"fr_score: {fr_score}")
         
-        cog_ranking = fr_score * self.fr_weight + sm_score * self.sm_weight
+        # --------------------------------------------------
+        # Critic loss score
+         # --------------------------------------------------
+        critic_score = self.critic_scores[:self.replay_buf.size]
+
+        # normalize，防止 critic loss 数值尺度压过 FR / similarity
+        if critic_score.numel() > 1:
+            critic_score = (
+                critic_score - critic_score.min()
+            ) / (
+                critic_score.max() - critic_score.min() + 1e-8
+            )
+
+      
+      
+      
+      
+      
+        
+        # cog_ranking = fr_score * self.fr_weight + sm_score * self.sm_weight
+        cog_ranking = fr_score*0.4 + sm_score*0.0 + self.critic_weight*critic_score
         # print(f"cog_ranking: {cog_ranking}")
         
         # cog_sum = torch.sum(cog_ranking)
@@ -193,6 +205,11 @@ class ACTRCognitiveSampler(BaseSampler):
         # print(f"cog_sum: {cog_sum}")
         
         topk_values, topk_ids = torch.topk(cog_ranking, batch_size)
+        
+        # Save sampled replay-buffer indices for per
+        self._last_indices = topk_ids.detach().clone()
+        
+        
         batch_samples = self.replay_buf.gather(topk_ids)
         
         # print(f"topk_values: {topk_values}")
@@ -223,9 +240,29 @@ class ACTRCognitiveSampler(BaseSampler):
         
         return batch_samples
 
-    def update(self, indices: np.ndarray, **kwargs):
-        """ Update sampling priorities based on provided criteria."""
-        pass
+   
+    # out for per
+    # def update(self, indices: np.ndarray, **kwargs):
+    #     """ Update sampling priorities based on provided criteria."""
+    #     pass      
+    
+    def update(self, indices, critic_loss=None, **kwargs):
+        """Update critic score for sampled experiences."""
+        if critic_loss is None:
+            return
+        
+        indices = torch.as_tensor(
+            indices,
+            dtype=torch.long,
+            device=self.device
+        )
+        
+        critic_loss = torch.as_tensor(
+            critic_loss,
+            dtype=torch.float32,
+            device=self.device
+            ).detach().reshape(-1)
+        self.critic_scores[indices] = critic_loss
 
     def get_blending_action(self) -> torch.Tensor:
         """Get the last blended action computed during sampling.

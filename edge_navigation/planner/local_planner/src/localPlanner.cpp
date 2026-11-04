@@ -1101,7 +1101,7 @@ int main(int argc, char** argv)
           freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
         //   freePaths2.header.frame_id = "vehicle";
           freePaths2.header.frame_id = "base_link";
-          // pubFreePaths->publish(freePaths2);
+          pubFreePaths->publish(freePaths2);
           #endif
         }
 
@@ -1137,7 +1137,7 @@ int main(int argc, char** argv)
         freePaths2.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
         // freePaths2.header.frame_id = "vehicle";
         freePaths2.header.frame_id = "base_link";
-        // pubFreePaths->publish(freePaths2);
+        pubFreePaths->publish(freePaths2);
         #endif
       }
 

@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sdf version="1.8"><model name="lunar_rock_small"><static>true</static><link name="rock">
+<collision name="collision"><geometry><mesh><uri>model://props/lunar_rock_small/meshes/rock.dae</uri><scale>1.575 1.575 1.575</scale></mesh></geometry></collision>
+<visual name="visual"><geometry><mesh><uri>model://props/lunar_rock_small/meshes/rock.dae</uri><scale>1.575 1.575 1.575</scale></mesh></geometry><material><ambient>0.80 0.80 0.80 1</ambient><diffuse>1.0 1.0 1.0 1</diffuse><specular>0 0 0 1</specular><pbr><metal><albedo_map>model://props/falling_rock3/materials/textures/FallingRocks_Albedo.jpg</albedo_map><normal_map>model://props/falling_rock3/materials/textures/FallingRocks_Normal.jpg</normal_map><roughness_map>model://props/falling_rock3/materials/textures/FallingRocks_Roughness.jpg</roughness_map><roughness>1.0</roughness><metalness>0.0</metalness></metal></pbr></material></visual>
+</link></model></sdf>

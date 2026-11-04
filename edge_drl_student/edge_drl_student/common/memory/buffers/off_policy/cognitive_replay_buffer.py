@@ -3,12 +3,12 @@ import numpy as np
 from dataclasses import asdict
 from typing import Callable, Dict, Generator, Tuple, Optional
 
-from edge_drl_student.memory.buffers import SoloReplayBuffer
-from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer, ENVELOPE_P
-from edge_drl_student.memory.samplers.cognitive_sampler import ACTRCognitiveSampler
-from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import Transition, TransitionBatch
+from edge_drl_student.common.memory.buffers import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.base_buffer import BaseBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer, ENVELOPE_P
+from edge_drl_student.common.memory.samplers.cognitive_sampler import ACTRCognitiveSampler
+from edge_drl_student.common.memory.samplers.uniform_sampler import UniformSampler
+from edge_drl_student.common.memory.buffers import Transition, TransitionBatch
 from edge_drl_student.utils.utils import ActionMode, safety_value
 
 
@@ -100,7 +100,7 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         Vs = safety_value(boundary_state[2:].cpu().numpy(), ENVELOPE_P) * 0.01
 
         # Batch size for PHY-Teacher Buffer
-        tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
+        # tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
         
         tea_batch_size = 100 # 150
 
@@ -143,6 +143,27 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             merged_dict[k] = torch.cat(vals, dim=0)
 
         return TransitionBatch(**merged_dict)
+    
+    
+    # added for per
+    def update_critic_scores(self, critic_loss_per_sample):
+        critic_loss_per_sample = (
+            critic_loss_per_sample.detach().reshape(-1)
+        )
+        stu_indices = self.stu_cognitive_sampler._last_indices
+        tea_indices = self.tea_cognitive_sampler._last_indices
+        stu_n = 0 if stu_indices is None else len(stu_indices)
+        tea_n = 0 if tea_indices is None else len(tea_indices)
+        if stu_n > 0:
+            self.stu_cognitive_sampler.update(
+                stu_indices,
+                critic_loss=critic_loss_per_sample[:stu_n]
+            )
+        if tea_n > 0:
+            self.tea_cognitive_sampler.update(
+                tea_indices,
+                critic_loss=critic_loss_per_sample[stu_n:stu_n + tea_n]
+            )
 
     def get_weighted_blended_action(self) -> torch.Tensor:
         """Get the weighted blended action from both cognitive samplers.

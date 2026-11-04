@@ -43,6 +43,8 @@ public:
         goal_reached_threshold_ = declare_parameter<double>("navigation.goal_threshold", 0.5);
         episode_horizon_steps_ = declare_parameter<int>("episode.horizon_steps", 120000);
         is_real_robot_ = declare_parameter<bool>("is_real_robot", false);
+        const bool auto_start = declare_parameter<bool>("auto_start", false);
+        is_started_ = auto_start && !is_real_robot_;
 
         RCLCPP_INFO(get_logger(), "RL Runtime Node initialized with parameters:");
         RCLCPP_INFO(get_logger(), "Task type for RL Runtime: %s", task_type_.c_str());
@@ -52,6 +54,9 @@ public:
         RCLCPP_INFO(get_logger(), "Use goal done threshold: %.3f", goal_reached_threshold_);
         RCLCPP_INFO(get_logger(), "Use episode horizon steps: %d", episode_horizon_steps_);
         RCLCPP_INFO(get_logger(), "Is real robot: %s", is_real_robot_ ? "true" : "false");
+
+        RCLCPP_INFO(get_logger(), "Episode processing: %s",
+            is_started_ ? "auto-start enabled" : "waiting for /control_input command=4");
 
         /* ACTION SUBSCRIBER
          * action arrival triggers environment step */
@@ -77,6 +82,7 @@ public:
             {
                 latest_goal_x_ = msg->point.x;
                 latest_goal_y_ = msg->point.y;
+                has_goal_ = true;
             });
 
         /* Tracking Error */
@@ -125,6 +131,7 @@ public:
             [this](const nav_msgs::msg::Odometry::SharedPtr msg)
             {
                 curr_odom_ = *msg;
+                has_odom_ = true;
             }
         );
 
@@ -170,7 +177,17 @@ private:
         curr_edge_action_ = *msg;
         has_cmd_ = true;
 
-        if(!is_started_) return;
+        if (!is_started_) {
+            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
+                "Waiting for start command on /control_input (command=4)...");
+            return;
+        }
+        // Auto-start must not evaluate the default (0, 0) goal/odometry.
+        if (!has_goal_ || !has_odom_) {
+            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 5000,
+                "Waiting for goal and odometry before processing an episode...");
+            return;
+        }
 
         stepOnce();
     }
@@ -505,6 +522,8 @@ private:
     int step_count_{0};
 
     bool is_started_{false};
+    bool has_goal_{false};
+    bool has_odom_{false};
     bool is_paused_{false};
     bool is_manual_done_{false};
 

@@ -59,11 +59,16 @@ def generate_launch_description():
                 'print_processing': LaunchConfiguration('print_processing'),
                 'start_with_teacher': LaunchConfiguration('start_with_teacher'),
                 'action_source': LaunchConfiguration('action_source'),
+                'teacher_topic_name': LaunchConfiguration('teacher_topic_name'),
             }
         ]
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'teacher_topic_name', default_value='/edge/phy_teacher_action',
+            description='Teacher action topic for the selected task',
+        ),
         update_rate_arg,
         print_processing_arg,
         start_with_teacher_arg,

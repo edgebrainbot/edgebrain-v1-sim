@@ -176,6 +176,8 @@ bool GraphPlanner::PathToGoal(const NavNodePtr& goal_ptr,
         global_path.push_back(goal_ptr);
         _nav_node_ptr = goal_ptr;
         _is_free_nav = is_free_nav_goal_;
+        RCLCPP_INFO_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 3000,
+                            "GP goal reached; clearing active goal");
         this->GoalReset();
         is_goal_init_ = false;
         return true;
@@ -249,15 +251,25 @@ bool GraphPlanner::PathToGoal(const NavNodePtr& goal_ptr,
                 is_free_nav_goal_ = false;
                 return true;
             }
-            if (FARUtil::IsDebug) RCLCPP_ERROR(nh_->get_logger(), "****************** FAIL TO REACH GOAL ******************");
-            this->GoalReset();
-            is_goal_init_ = false, _is_fail = true;
+            RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 3000,
+                                "GP search failed: goal has no reachable parent; mode=%s, goal_edges=%zu, graph_nodes=%zu; retaining goal for retry",
+                                is_free_nav_goal_ ? "free" : "attemptable",
+                                goal_ptr->connect_nodes.size(), current_graph_.size());
+            is_global_path_init_ = false;
+            recorded_path_.clear();
+            _nav_node_ptr = NULL;
+            _is_fail = true;
             return false;
         }
     }
-    if (FARUtil::IsDebug) RCLCPP_ERROR(nh_->get_logger(), "GP: unexpected error happend within planning, navigation to goal fails.");
-    this->GoalReset();
-    is_goal_init_ = false, _is_fail = true;
+    RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 3000,
+                        "GP path reconstruction failed: mode=%s, goal_edges=%zu, graph_nodes=%zu; retaining goal for retry",
+                        is_free_nav_goal_ ? "free" : "attemptable",
+                        goal_ptr->connect_nodes.size(), current_graph_.size());
+    is_global_path_init_ = false;
+    recorded_path_.clear();
+    _nav_node_ptr = NULL;
+    _is_fail = true;
     return false;
 }
 
@@ -316,6 +328,12 @@ NavNodePtr GraphPlanner::NextNavWaypointFromPath(const NodePtrStack& global_path
 }
 
 void GraphPlanner::UpdateGoal(const Point3D& goal) {
+    if (is_goal_init_ && goal_node_ptr_ && (goal - requested_goal_pos_).norm() < 1e-4f) {
+        return; // Repeated goal publications must not erase connection votes or path history.
+    }
+    requested_goal_pos_ = goal;
+    RCLCPP_INFO(nh_->get_logger(), "GP accepting new goal (%.3f, %.3f, %.3f)",
+                double(goal.x), double(goal.y), double(goal.z));
     this->GoalReset();
     is_use_internav_goal_ = false;
     float min_dist = FARUtil::kNearDist;

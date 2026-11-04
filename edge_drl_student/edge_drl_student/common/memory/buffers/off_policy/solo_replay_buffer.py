@@ -7,9 +7,9 @@ import torch
 from pathlib import Path
 from edge_drl_student.utils.utils import ActionMode
 from typing import Dict, Generator, Tuple, Optional, Union
-from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
-from edge_drl_student.memory.samplers.uniform_sampler import UniformSampler
-from edge_drl_student.memory.buffers import Transition, TransitionBatch
+from edge_drl_student.common.memory.buffers.base_buffer import BaseBuffer
+from edge_drl_student.common.memory.samplers.uniform_sampler import UniformSampler
+from edge_drl_student.common.memory.buffers import Transition, TransitionBatch
 
 
 class SoloReplayBuffer(BaseBuffer):
@@ -37,6 +37,7 @@ class SoloReplayBuffer(BaseBuffer):
         self.rewards = torch.zeros((buffer_size, 1), dtype=torch.float32, device=self.device)
         self.next_obs = torch.zeros((buffer_size, obs_dim), dtype=torch.float32, device=self.device)
         self.dones = torch.zeros((buffer_size, 1), dtype=torch.float32, device=self.device)
+        self.action_modes = torch.zeros((buffer_size, 1), dtype=torch.int8, device=self.device)  # Store action modes as integers
         
         self.obs_dim = obs_dim
         self.action_dim = action_dim
@@ -54,6 +55,7 @@ class SoloReplayBuffer(BaseBuffer):
         self.rewards[idx] = t.reward
         self.next_obs[idx] = t.next_obs
         self.dones[idx] = t.done
+        self.action_modes[idx] = action_mode.value
 
         self._idx = (self._idx + 1) % self.buffer_size  # Circular buffer
         self._history_count += 1                        # Total transitions added
@@ -70,7 +72,8 @@ class SoloReplayBuffer(BaseBuffer):
             action=self.actions[indices],
             reward=self.rewards[indices],
             next_obs=self.next_obs[indices],
-            done=self.dones[indices]
+            done=self.dones[indices],
+            action_mode=self.action_modes[indices]
         )
     
     def sample(self, batch_size: int) -> TransitionBatch:

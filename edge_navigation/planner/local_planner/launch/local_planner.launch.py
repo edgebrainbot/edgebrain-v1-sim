@@ -14,6 +14,7 @@ def generate_launch_description():
     # Declare arguments
     # -----------------------------
     args = [
+        DeclareLaunchArgument("require_start_command", default_value="true"),
         DeclareLaunchArgument("sensorOffsetX", default_value="0.0"),
         DeclareLaunchArgument("sensorOffsetY", default_value="0.0"),
         DeclareLaunchArgument("cameraOffsetZ", default_value="0.0"),
@@ -44,20 +45,20 @@ def generate_launch_description():
             "pathFolder": PathJoinSubstitution([
                 FindPackageShare("local_planner"), "paths"
             ]),
-            "vehicleLength": 1.0,  # 0.3
-            "vehicleWidth": 1.0,   # 0.7
+            "vehicleLength": 1.2,  # 0.3
+            "vehicleWidth": 1.2,   # 0.7
             "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
             "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
-            "laserVoxelSize": 0.05,
-            "terrainVoxelSize": 1.0, # 0.2 (orign) 1.0
+            "laserVoxelSize": 0.05,  # 0.05
+            "terrainVoxelSize": 0.2, # 0.2 (orign) 1.0
             "useTerrainAnalysis": True,
             "checkObstacle": True,
             "checkRotObstacle": False, # False (orign)
             # "adjacentRange": 3.0,     # Original
-            "adjacentRange": 4.0,
+            "adjacentRange": 6.0,
             # "obstacleHeightThre": 0.3,
-            "obstacleHeightThre": 0.5,
+            "obstacleHeightThre": 0.3,
 
             "groundHeightThre": 0.1,
             "costHeightThre": 0.1,
@@ -101,14 +102,15 @@ def generate_launch_description():
         name="pathFollower",
         output="screen",
         parameters=[{
+            "require_start_command": LaunchConfiguration("require_start_command"),
             "sensorOffsetX": LaunchConfiguration("sensorOffsetX"),
             "sensorOffsetY": LaunchConfiguration("sensorOffsetY"),
             "pubSkipNum": 1,
             "twoWayDrive": LaunchConfiguration("twoWayDrive"),
-            "lookAheadDis": 0.3,    # Original 0.5
-            "yawRateGain": 2.5,    # Original 1.5
+            "lookAheadDis": 0.5,    # Original 0.5
+            "yawRateGain": 1.5,    # Original 1.5
             "stopYawRateGain": 1.5,
-            "maxYawRate": 80.0,
+            "maxYawRate": 45.0,
             "maxSpeed": LaunchConfiguration("maxSpeed"),
             "maxAccel": 2.0,
             "switchTimeThre": 1.0,

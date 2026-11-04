@@ -8,7 +8,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="${pi/2} 0 -${pi/2}"/>
       <geometry>
-        <mesh filename="file://$(find warrior_description)/meshes/insta360_camera.stl"/>
+        <mesh filename="file://$(find warrior_description)/meshes/insta360_camera.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
       </geometry>
       <material name="light_grey">
         <color rgba="0.8 0.8 0.8 1"/>
@@ -17,12 +17,12 @@
     <collision>
       <origin xyz="0 0 0" rpy="${pi/2} 0 -${pi/2}"/>
       <geometry>
-        <mesh filename="file://$(find warrior_description)/meshes/insta360_camera.stl"/>
+        <mesh filename="file://$(find warrior_description)/meshes/insta360_camera.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
       </geometry>
     </collision>
     <inertial>
         <mass value="${mass}"/>
-        <inertia ixx="0.005" ixy="0" ixz="0" iyy="0.005" iyz="0" izz="0.002"/>
+        <inertia ixx="${0.005 * vehicle_scale**2}" ixy="${0 * vehicle_scale**2}" ixz="${0 * vehicle_scale**2}" iyy="${0.005 * vehicle_scale**2}" iyz="${0 * vehicle_scale**2}" izz="${0.002 * vehicle_scale**2}"/>
     </inertial> 
   </link>
 

@@ -1,22 +1,18 @@
-#!/usr/bin/env python3
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 import os
 import torch
 import warnings
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Union
 
+from edge_drl_student.utils.utils import ActionMode
 from edge_drl_student.agents.off_policy_agent import OffPolicyAgent
-from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
+from edge_drl_student.common.memory.buffers.base_buffer import TransitionBatch
 from edge_drl_student.common.noise import Noise, OUNoise, GaussianNoise
 from edge_drl_student.networks.actor_critic import ActorCritic, ActorNetwork, CriticNetwork
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
 from edge_drl_student.common.normalizer import BaseNormalizer, MinMaxNormalizer, EmpiricalNormalizer
 
 
@@ -42,6 +38,14 @@ class DDPGAgent(OffPolicyAgent):
                  noise: Noise = None,
                  model_load_path: str = None,
                  model_save_path: str = None,
+                 # ==========================================
+                 # Q-margin ranking loss (Bradley-Terry style)
+                 # ==========================================
+                 lambda_q_margin: float = 1.0,
+                 q_std_ema_decay: float = 0.99,
+                 q_std_min: float = 1e-2,
+                 # Actor-side BC / safety-guidance loss weight
+                 lambda_safety_guidance: float = 0.5,
                  device="cpu"):
         
         super().__init__(replay_buffer=replay_buffer, gamma=gamma, tau=tau, device=device)
@@ -55,6 +59,19 @@ class DDPGAgent(OffPolicyAgent):
         # Optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+        
+        # ==========================================
+        # Q-margin ranking loss: running stats for
+        # scale-free temperature (Bradley-Terry style)
+        # ==========================================
+        self.q_std_ema_decay = q_std_ema_decay
+        self.q_std_min = q_std_min  # floor to avoid tau -> 0
+        self.q_std = torch.tensor(1.0, device=device)
+ 
+        # Weight on the Q-ranking (safety-margin) loss in the critic objective
+        self.lambda_q_margin = lambda_q_margin
+        # Weight on the actor-side BC/safety-guidance loss
+        self.lambda_safety_guidance = lambda_safety_guidance
         
         # Learning rate schedulers
         if use_adaptive_lr:
@@ -133,46 +150,137 @@ class DDPGAgent(OffPolicyAgent):
         return self.actor_normalizer.denormalize(action_clipped)
 
     def update(self, batch_size) -> tuple[torch.Tensor, torch.Tensor]:
-        """DDPG update step."""
-        
-        t_batch = self.replay_buffer.sample(batch_size)
-        obs, act, rew, next_obs, done = t_batch.obs, t_batch.action, t_batch.reward, t_batch.next_obs, t_batch.done
-
-        with torch.no_grad():
-            target_act = self.target_actor(next_obs)
-            target_q = self.target_critic(self._critic_input(next_obs, target_act))
-            target_val: torch.Tensor = rew + self.gamma * (1 - done) * target_q
-
-        q: torch.Tensor = self.critic(self._critic_input(obs, act))
-        critic_loss = ((q - target_val) ** 2).mean()
-
-        # actor_loss = -self.critic(self._critic_input(obs, self.actor(obs))).mean()
-
-        # Critic network update
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
-
-        # Actor network update
-        actor_actions = self.actor(obs)
-        q_values: torch.Tensor = self.critic(self._critic_input(obs, actor_actions))
-        actor_loss = -q_values.mean()
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
-        
+        """DDPG update step, with Q-margin ranking loss (critic) and
+        safety-guidance BC loss (actor) on teacher-intervened transitions.
+ 
+        `t_batch.action_mode` carries the `ActionMode` enum value (stored as
+        int8) that produced each row's action. Teacher-intervened rows are
+        wherever `action_mode == ActionMode.TEACHER` — adjust the enum
+        member name below if yours differs.
+        """
+        t_batch: TransitionBatch = self.replay_buffer.sample(batch_size)
+        obs, act, rew = t_batch.obs, t_batch.action, t_batch.reward
+        next_obs, done = t_batch.next_obs, t_batch.done
+        teacher_mask = (t_batch.action_mode == ActionMode.TEACHER.value).float()
+ 
+        td_loss, q_margin_loss = self._update_critic(obs, act, rew, next_obs, done, teacher_mask)
+        surrogate_loss, safety_guidance_loss, actor_loss = self._update_actor(obs, act, teacher_mask)
+ 
         # Update learning rate schedulers
         if self.use_adaptive_lr:
             self.actor_lr_scheduler.step()
             self.critic_lr_scheduler.step()
-            
-        self.noise.step()   # update noise process if needed
-
+ 
+        self.noise.step()  # update noise process if needed
+ 
         self._soft_update(self.target_critic, self.critic, self.tau)
         self._soft_update(self.target_actor, self.actor, self.tau)
+ 
+        print(
+            f"[DDPG Update] Actor Loss: {actor_loss.item():.4f} "
+            f"(surrogate {surrogate_loss.item():.4f}, safety {safety_guidance_loss.item():.4f}) | "
+            f"Critic Loss: TD {td_loss.item():.4f}, Q-margin {q_margin_loss.item():.4f}"
+        )
+        return actor_loss, td_loss
         
-        print(f"[DDPG Update] Actor Loss: {actor_loss.item():.4f}, Critic Loss: {critic_loss.item():.4f}")
-        return actor_loss, critic_loss
+        
+    def _update_critic(self, obs, act, rew, next_obs, done, teacher_mask) -> tuple[torch.Tensor, torch.Tensor]:
+        teacher_mask = teacher_mask.to(dtype=torch.float32, device=self.device)
+        if teacher_mask.dim() == 1:
+            teacher_mask = teacher_mask.unsqueeze(-1)  # [B, 1], broadcast against Q [B, 1]
+ 
+        with torch.no_grad():
+            target_act = self.target_actor(next_obs)
+            target_q = self.target_critic(self._critic_input(next_obs, target_act))
+            target_val: torch.Tensor = rew + self.gamma * (1 - done) * target_q
+ 
+        q: torch.Tensor = self.critic(self._critic_input(obs, act))
+        # td_loss = ((q - target_val) ** 2).mean() 
+       
+        # for per 
+        critic_loss_per_sample = ((q - target_val) ** 2).reshape(-1)
+        td_loss = critic_loss_per_sample.mean()
+        
+        
+        
+        
+ 
+        # ==========================================
+        # Q-margin ranking loss (Bradley-Terry style)
+        # Only meaningful on teacher-intervened samples:
+        # `act` IS a_teacher there. Compare against the
+        # CURRENT student policy's action at the same
+        # state. The student action is computed under
+        # no_grad so this loss only shapes the critic,
+        # not the actor.
+        # ==========================================
+        with torch.no_grad():
+            a_student_now = self.actor(obs)
+            
+        q_student = self.critic(self._critic_input(obs, a_student_now))  # Q(s, a_student)
+        q_teacher = q  # Q(s, a_teacher) on teacher-masked rows; Q(s, a_student_taken) elsewhere
+ 
+        # scale-free temperature from running std of Q, floored to avoid instability
+        tau = torch.clamp(self.q_std, min=self.q_std_min)
+ 
+        logits = (q_teacher - q_student) / tau
+        # -log(sigmoid(x)) = softplus(-x), numerically stable form
+        rank_loss_per_sample = F.softplus(-logits)
+ 
+        q_margin_loss = (
+            (teacher_mask * rank_loss_per_sample).sum() / (teacher_mask.sum() + 1e-6)
+        )
+ 
+        critic_loss = td_loss #+ self.lambda_q_margin * q_margin_loss
+ 
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+        
+        # for per
+        if hasattr(self.replay_buffer, "update_critic_scores"):
+            self.replay_buffer.update_critic_scores(
+                critic_loss_per_sample.detach()
+            )
+ 
+        # ---- update running std of Q for next step's temperature ----
+        with torch.no_grad():
+            batch_q_std = q.std()
+            self.q_std.mul_(self.q_std_ema_decay).add_((1.0 - self.q_std_ema_decay) * batch_q_std)
+ 
+        return td_loss.detach(), q_margin_loss.detach()
+ 
+    def _update_actor(self, obs, act, teacher_mask) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        teacher_mask = teacher_mask.to(dtype=torch.float32, device=self.device)
+        if teacher_mask.dim() == 1:
+            teacher_mask = teacher_mask.unsqueeze(-1)  # [B, 1]
+ 
+        a_predict = self.actor(obs)
+ 
+        # ==========================================
+        # 1. RL Surrogate Loss
+        # ==========================================
+        q_value = self.critic(self._critic_input(obs, a_predict))
+        surrogate_loss = -q_value.mean()
+ 
+        # ==========================================
+        # 2. Safety Guidance (BC) Loss — teacher samples only
+        # ==========================================
+        action_error = ((a_predict - act) ** 2).mean(dim=-1, keepdim=True)  # [B, 1]
+        safety_guidance_loss = (
+            (teacher_mask * action_error).sum() / (teacher_mask.sum() + 1e-6)
+        )
+ 
+        # ==========================================
+        # 3. Total Actor Loss
+        # ==========================================
+        actor_loss = surrogate_loss #+ self.lambda_safety_guidance * safety_guidance_loss
+ 
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+ 
+        return surrogate_loss.detach(), safety_guidance_loss.detach(), actor_loss.detach()
         
         
     def save_models(self, path: str=None):

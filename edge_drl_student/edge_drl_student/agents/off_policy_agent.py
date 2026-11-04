@@ -7,10 +7,10 @@ import torch
 import torch.nn as nn
 
 from .base_agent import BaseAgent
-from edge_drl_student.memory.buffers.base_buffer import TransitionBatch
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
+from edge_drl_student.common.memory.buffers.base_buffer import TransitionBatch
+from edge_drl_student.common.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 from typing import Union
 
 

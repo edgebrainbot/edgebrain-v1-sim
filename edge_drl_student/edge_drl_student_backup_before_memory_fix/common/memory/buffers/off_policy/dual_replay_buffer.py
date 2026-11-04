@@ -84,11 +84,11 @@ class DualReplayBuffer(BaseBuffer):
         """
 
         if action_mode == ActionMode.TEACHER:
-            self.tea_buf.add_transition(t=transition)
+            self.tea_buf.add_transition(t=transition, action_mode=ActionMode.TEACHER)
             self.last_data_type = ActionMode.TEACHER
 
         elif action_mode == ActionMode.STUDENT:
-            self.stu_buf.add_transition(t=transition)
+            self.stu_buf.add_transition(t=transition, action_mode=ActionMode.STUDENT)
             self.last_data_type = ActionMode.STUDENT
 
         else:

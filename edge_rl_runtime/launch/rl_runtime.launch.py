@@ -1,5 +1,6 @@
 import os
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -23,10 +24,20 @@ def generate_launch_description():
         output="screen",
         parameters=[
             config_file,
+            {"task_type": LaunchConfiguration("task_type"),
+             "auto_start": ParameterValue(LaunchConfiguration("auto_start"), value_type=bool)},
         ],
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            "auto_start", default_value="false",
+            description="Automatically start episode processing in simulation",
+        ),
+        DeclareLaunchArgument(
+            "task_type", default_value="end2end",
+            description="Runtime task: navigation, locomotion or end2end",
+        ),
         DeclareLaunchArgument(
             "go2_state_topic",
             default_value="/edge/go2/high_state_vec12",

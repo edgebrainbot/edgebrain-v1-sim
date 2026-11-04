@@ -21,7 +21,7 @@ from typing import Tuple, Optional
 
 from edge_drl_student.agents.off_policy.sac_agent import SACAgent
 from edge_drl_student.agents.distributed.actor_learner import ActorLearner
-from edge_drl_student.memory.buffers.base_buffer import BaseBuffer
+from edge_drl_student.common.memory.buffers.base_buffer import BaseBuffer
 
 
 class SACActorLearner(ActorLearner):

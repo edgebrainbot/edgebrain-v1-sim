@@ -34,6 +34,20 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    - Class: rviz_default_plugins/PointStamped
+      Enabled: true
+      Name: Goal
+      Color: 0; 255; 255
+      Alpha: 1
+      Radius: 0.45
+      History Length: 1
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /goal_point
+      Value: true
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz_default_plugins/Grid
@@ -250,14 +264,14 @@ Visualization Manager:
       Autocompute Value Bounds:
         Max Value: 1.1299999952316284
         Min Value: -0.004080414772033691
-        Value: true
+        Value: false
       Axis: Z
       Channel Name: ring
       Class: rviz_default_plugins/PointCloud2
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: true
       Max Color: 255; 255; 255
       Max Intensity: 29
@@ -278,7 +292,7 @@ Visualization Manager:
         Value: /L1_lidar/scan/points
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: false
       Name: MarkerArray

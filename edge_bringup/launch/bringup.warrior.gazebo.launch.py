@@ -100,7 +100,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # -------- Goal Publisher Node --------
-    goal = [16.0, -6.0, 0.0]
+    goal = [30.0, -20.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0,
         actions=[ExecuteProcess(
@@ -123,9 +123,9 @@ def launch_setup(context, *args, **kwargs):
                 "trigger.launch.py"
             ])
         ),
-        # launch_arguments={
-        #     "namespace": 'edge',
-        # }.items()
+        launch_arguments={
+            "teacher_topic_name": "/edge/phy_teacher_action_vel",
+        }.items()
     )
 
     # -------- RL Runtime Env Split Launch --------
@@ -136,10 +136,8 @@ def launch_setup(context, *args, **kwargs):
                 "launch",
                 "rl_runtime.launch.py"
             ])
-        )
-        # launch_arguments={
-        #     "go2_network_interface": network_interface,
-        # }.items()
+        ),
+        launch_arguments={"task_type": "navigation", "auto_start": "false"}.items()
     )
 
     # -------- Gazebo Interaction Service Launch --------
@@ -169,10 +167,18 @@ def launch_setup(context, *args, **kwargs):
 
     tf_to_map_node = Node(
         package='lidar_to_map',
-        executable='lidar_to_map',
+        executable='registered_scan',
         name='lidar_to_map_node',
         output='screen',
-        parameters=[{'use_sim_time': True}],
+        parameters=[{'use_sim_time': True,
+                     'input_topic': '/warrior/lidar/points',
+                     'output_topic': '/registered_scan',
+                     'target_frame': 'map',
+                     'self_filter_enabled': True,
+                     'self_filter_frame': 'base_link',
+                     # Warrior at vehicle_scale=1.5; keep the ground below the wheels.
+                     'self_filter_min': [-0.3, -1.0, -0.86],
+                     'self_filter_max': [1.55, 1.0, 0.86]}],
     )
 
     tf_static = Node(
@@ -192,7 +198,7 @@ def launch_setup(context, *args, **kwargs):
         controller_launch,
         joy_node,
         # teleop,
-        # tf_to_map_node,
+        tf_to_map_node,
         virtual_status_indicator_node,
         trigger_launch,
         rl_runtime_launch,

@@ -11,6 +11,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual1">
        <pose>-0.134528 0 0 0 -0 0</pose>
@@ -19,6 +32,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual2">
        <pose>0 0.103163 0 0 -0 0</pose>
@@ -27,6 +53,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual3">
        <pose>0.060517 -0.10277 0.000346 -0.508176 -0.296696 1.08741</pose>
@@ -35,6 +74,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual4">
        <pose>0.099166 0 0 0 -0 0</pose>
@@ -43,6 +95,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual5">
        <pose>0 -0.103685 0.101457 0 0 -1.12847</pose>
@@ -51,6 +116,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
      <visual name="visual6">
        <pose>-0.015971 0 0 0 -0 0</pose>
@@ -59,6 +137,19 @@
            <uri>meshes/FallingRock06.dae</uri>
          </mesh>
        </geometry>
+       <material>
+         <ambient>0.61 0.46 0.36 1</ambient>
+         <diffuse>0.61 0.46 0.36 1</diffuse>
+         <specular>0.04 0.04 0.04 1</specular>
+         <pbr>
+           <metal>
+             <albedo_map>model://props/small_rock_fall/materials/textures/FallingRocks_Albedo.jpg</albedo_map>
+             <normal_map>model://props/small_rock_fall/materials/textures/FallingRocks_Normal.jpg</normal_map>
+             <roughness_map>model://props/small_rock_fall/materials/textures/FallingRocks_Roughness.jpg</roughness_map>
+             <metalness>0</metalness>
+           </metal>
+         </pbr>
+       </material>
      </visual>
     </link>
     <!-- <plugin filename="libignition-gazebo-breadcrumbs-system.so" name="ignition::gazebo::systems::Breadcrumbs">

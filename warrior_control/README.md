@@ -65,10 +65,26 @@ ros2 launch warrior_control warrior_control.launch.py
 
 ### Configuration
 
-Edit `config/warrior_params.yaml` to configure:
-- Wheel positions relative to robot center
-- Maximum wheel velocities and accelerations
-- Control loop frequency
+Edit `config/warrior_controllers.yaml` to configure wheel geometry and body
+velocity capability limits:
+
+```yaml
+swerve_drive_controller:
+  ros__parameters:
+    cmd_vel_limit:
+      vx_limit: [0.205, 0.48]  # forward velocity, m/s
+      vy_limit: [-0.1, 0.1]    # lateral velocity, m/s
+      wz_limit: [-0.86, 0.545] # yaw rate, rad/s
+```
+
+Each range must contain exactly two finite numbers with minimum <= maximum.
+Nonzero commands are clamped to these ranges; zero is always allowed on each
+axis so stop commands remain stationary. Nonfinite commands stop all three
+axes. Limits apply to both `/cmd_vel` and `/edge/command_action`, before inverse
+kinematics. Yaw limits use the controller's internal sign convention, after
+inverting incoming yaw commands. Rebuild and restart the controller after
+changing the configuration. These limits do not impose wheel acceleration or
+steering rate constraints.
 
 ### API
 

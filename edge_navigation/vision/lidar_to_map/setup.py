@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'lidar_to_map = lidar_to_map.lidar_to_map:main',
+            'registered_scan = lidar_to_map.registered_scan:main',
             'debug_pcd = lidar_to_map.debug_pcd:main',
         ],
     },

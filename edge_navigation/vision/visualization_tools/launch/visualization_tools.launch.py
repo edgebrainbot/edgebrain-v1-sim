@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
@@ -12,6 +13,9 @@ def generate_launch_description():
     # ---    Launch Arguments    ---
     # ------------------------------
     
+    log_dir = os.path.join(os.environ.get("ROS_LOG_DIR", os.path.expanduser("~/.ros/log")), "navigation")
+    os.makedirs(log_dir, exist_ok=True)
+
     odom_topic_arg = DeclareLaunchArgument(
         "odom_topic",
         default_value="odom",
@@ -33,17 +37,15 @@ def generate_launch_description():
         output="screen",
         parameters=[{
             "metricFile": PathJoinSubstitution([
-                FindPackagePrefix("edge_nav_bringup"),
-                "log",
+                log_dir,
                 "metrics",
             ]),
             "trajFile": PathJoinSubstitution([
-                FindPackagePrefix("edge_nav_bringup"),
-                "log",
+                log_dir,
                 "trajectory",
             ]),
             "mapFile": PathJoinSubstitution([
-                FindPackagePrefix("edge_nav_bringup"),
+                FindPackageShare("edge_nav_bringup"),
                 "mesh",
                 LaunchConfiguration("world_name"),
                 "map.ply"

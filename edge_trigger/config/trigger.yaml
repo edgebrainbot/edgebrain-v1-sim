@@ -1,7 +1,7 @@
 /edge/trigger:
   ros__parameters:
     trigger_mode: "self"         # trigger mode, options: "self" -- self-trigger, "event" -- event-trigger
-    dwell_steps: 1             # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
+    dwell_steps: 200             # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
     
     action_source: -1            # action source, options: -1 -- auto, 0 -- student, 1 -- teacher
     print_processing: false      # whether to print processing

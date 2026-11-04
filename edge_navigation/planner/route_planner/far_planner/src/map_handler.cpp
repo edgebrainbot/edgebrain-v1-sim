@@ -418,7 +418,8 @@ void MapHandler::UpdateTerrainHeightGrid(const PointCloudPtr& freeCloudIn, const
     this->TraversableAnalysis(terrainHeightOut);
     if (terrainHeightOut->empty()) { // set terrain height kdtree
         FARUtil::ClearKdTree(flat_terrain_cloud_, kdtree_terrain_clould_);
-        // return;      // Add this return to avoid empty terrain cloud causing issues in kdtree search, but it may cause some edge cases where no terrain height is detected
+        // Keep the observed obstacle neighborhood until ground association is available.
+        return;
     } else {
         this->AssignFlatTerrainCloud(terrainHeightOut, flat_terrain_cloud_);
         kdtree_terrain_clould_->setInputCloud(flat_terrain_cloud_);
@@ -479,7 +480,11 @@ void MapHandler::TraversableAnalysis(const PointCloudPtr& terrainHeightOut) {
                 float avg_h = 0.0f;
                 int counter = 0;
                 for (const auto& e : terrain_height_grid_->GetCell(cur_id)) {
-                    if (abs(e - FARUtil::robot_pos.z + FARUtil::vehicle_height) > H_THRED) continue;
+                    // Planar odometry need not contain the observed ground elevation.
+                    // Single-layer maps can seed from classified free ground in the
+                    // nearest occupied cell; multi-layer maps retain floor selection.
+                    if (FARUtil::IsMultiLayer &&
+                        abs(e - FARUtil::robot_pos.z + FARUtil::vehicle_height) > H_THRED) continue;
                     avg_h += e, counter ++;
                 }
                 if (counter > 0) {

@@ -167,7 +167,7 @@ def generate_launch_description():
     )
 
     # -------- Goal Publisher Node --------
-    goal = [6.0, -6.0, 0.0]
+    goal = [12.0, -0.0, 0.0]
     publish_goal_point = TimerAction(
         period=1.0,
         actions=[ExecuteProcess(
@@ -180,6 +180,7 @@ def generate_launch_description():
             # output='screen'
         )]
     )
+    
 
     # -------- Global Rviz Node --------
     rviz_config_file = PathJoinSubstitution([

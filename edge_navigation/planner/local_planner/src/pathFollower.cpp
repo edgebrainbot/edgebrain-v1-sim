@@ -30,6 +30,7 @@
 #include <pcl/point_types.h>
 
 #include "edge_msgs/msg/edge_action.hpp"
+#include "control_input_msgs/msg/inputs.hpp"
 
 #include "message_filters/subscriber.h"
 #include "message_filters/synchronizer.h"
@@ -321,6 +322,14 @@ int main(int argc, char** argv)
 
   auto pubSpeed = nh->create_publisher<geometry_msgs::msg::TwistStamped>("/cmd_vel", 5);
 
+  // Gate every velocity output until the operator explicitly starts navigation.
+  bool navigationStarted = !nh->declare_parameter<bool>("require_start_command", true);
+  auto subControlInput = nh->create_subscription<control_input_msgs::msg::Inputs>(
+      "/control_input", 10,
+      [&navigationStarted](const control_input_msgs::msg::Inputs::SharedPtr msg) {
+        if (msg->command == 4) navigationStarted = true;
+      });
+
   auto pubPhyTeacherActionVel = nh->create_publisher<edge_msgs::msg::EdgeAction>("/edge/phy_teacher_action_vel", 5);
 
   auto pubGo2Request = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
@@ -497,13 +506,14 @@ int main(int argc, char** argv)
           cmd_vel.twist.angular.z = maxYawRate * PI / 180.0 * joyManualYaw;
         }
 
-        // Truncate the velocity command to be within limits
-        double vx_limit = 0.4;
-        double vy_limit = 0.1;
-        double min_forward_vx = 0.1;   // Set the minimum forwarding velocity to stop local minima
-        cmd_vel.twist.linear.x = std::max(std::min(cmd_vel.twist.linear.x, vx_limit), min_forward_vx);  
-        if(cmd_vel.twist.linear.y > vy_limit) cmd_vel.twist.linear.y = vy_limit;
-        else if(cmd_vel.twist.linear.y < -vy_limit) cmd_vel.twist.linear.y = -vy_limit;
+        // Preserve stops and the planned direction while limiting translation.
+        const double vx_limit = 0.3;
+        const double vy_limit = 0.1;
+        const double velocity_scale = std::max(
+            1.0, std::max(std::fabs(cmd_vel.twist.linear.x) / vx_limit,
+                          std::fabs(cmd_vel.twist.linear.y) / vy_limit));
+        cmd_vel.twist.linear.x /= velocity_scale;
+        cmd_vel.twist.linear.y /= velocity_scale;
 
 
 
@@ -511,6 +521,10 @@ int main(int argc, char** argv)
         // cmd_vel.twist.linear.y = 0.0;
         // cmd_vel.twist.linear.z = 0.0;
 
+        // Apply the operator start gate after all velocity limits.
+        if (!navigationStarted) {
+          cmd_vel.twist = geometry_msgs::msg::Twist();
+        }
         pubSpeed->publish(cmd_vel);
 
         // Publish teacher action for physical teacher

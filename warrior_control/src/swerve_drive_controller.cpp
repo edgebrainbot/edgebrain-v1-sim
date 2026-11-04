@@ -78,7 +78,17 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     const auto vy_limit = auto_declare<std::vector<double>>("cmd_vel_limit.vy_limit", {-0.3, 0.3});
     const auto wz_limit = auto_declare<std::vector<double>>("cmd_vel_limit.wz_limit", {-0.5, 0.5});
 
-    if (vx_limit.size() >= 2) {
+    const auto valid_limit = [](const std::vector<double> & limit) {
+        return limit.size() == 2 && std::isfinite(limit[0]) &&
+               std::isfinite(limit[1]) && limit[0] <= limit[1];
+    };
+    if (!valid_limit(vx_limit) || !valid_limit(vy_limit) || !valid_limit(wz_limit)) {
+        RCLCPP_ERROR(logger,
+            "Each cmd_vel_limit must contain exactly two finite values [min, max], with min <= max.");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
+    if (vx_limit.size() == 2) {
         vx_limit_min_ = vx_limit[0];
         vx_limit_max_ = vx_limit[1];
     }
@@ -246,9 +256,17 @@ controller_interface::return_type SwerveDriveController::update(
 }
 
 void SwerveDriveController::applyCmdVelLimits() {
-    vx_cmd_ = std::clamp(vx_cmd_, vx_limit_min_, vx_limit_max_);
-    vy_cmd_ = std::clamp(vy_cmd_, vy_limit_min_, vy_limit_max_);
-    wz_cmd_ = std::clamp(wz_cmd_, wz_limit_min_, wz_limit_max_);
+    // Reject an invalid command as a whole, and always permit a stationary axis.
+    if (!std::isfinite(vx_cmd_) || !std::isfinite(vy_cmd_) || !std::isfinite(wz_cmd_)) {
+        vx_cmd_ = vy_cmd_ = wz_cmd_ = 0.0;
+        return;
+    }
+    const auto limit_command = [](double value, double minimum, double maximum) {
+        return value == 0.0 ? 0.0 : std::clamp(value, minimum, maximum);
+    };
+    vx_cmd_ = limit_command(vx_cmd_, vx_limit_min_, vx_limit_max_);
+    vy_cmd_ = limit_command(vy_cmd_, vy_limit_min_, vy_limit_max_);
+    wz_cmd_ = limit_command(wz_cmd_, wz_limit_min_, wz_limit_max_);
 }
 
 void SwerveDriveController::publishEdgeState() {

@@ -13,6 +13,7 @@
 
 void DPVisualizer::Init(const rclcpp::Node::SharedPtr nh) {
     nh_ = nh;
+    path_height_offset_ = nh_->declare_parameter<double>("visualization/path_height_offset", 0.0);
     point_cloud_ptr_ = PointCloudPtr(new pcl::PointCloud<PCLPoint>());
     // Rviz Publisher
     viz_path_pub_    = nh_->create_publisher<visualization_msgs::msg::Marker>("/viz_path_topic", 5);
@@ -66,12 +67,18 @@ void DPVisualizer::VizPath(const NodePtrStack& global_path, const bool& is_free_
     path_marker.type = Marker::LINE_STRIP;
     const VizColor color = is_free_nav ? VizColor::GREEN : VizColor::BLUE;
     this->SetMarker(nh_, color, "global_path", 0.75f, 0.9f, path_marker);
+    // Lift only the displayed line above terrain; navigation coordinates stay unchanged.
+    path_marker.pose.position.z = path_height_offset_;
     geometry_msgs::msg::Point geo_p;
     for (const auto& node_ptr : global_path) {
         geo_p = FARUtil::Point3DToGeoMsgPoint(node_ptr->position);
         path_marker.points.push_back(geo_p);
     }
     viz_path_pub_->publish(path_marker);
+    RCLCPP_INFO_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 3000,
+                        "FAR route publish: points=%zu, subscribers=%zu, frame=%s",
+                        path_marker.points.size(), viz_path_pub_->get_subscription_count(),
+                        path_marker.header.frame_id.c_str());
 }
 
 void DPVisualizer::VizViewpointExtend(const NavNodePtr& ori_nav_ptr, const Point3D& extend_point) {

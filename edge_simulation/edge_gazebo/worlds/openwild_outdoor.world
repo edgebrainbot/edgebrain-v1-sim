@@ -49,11 +49,12 @@
       <render_engine>ogre</render_engine>
     </plugin> -->
 
-    <!-- Main directional light - softer warm indoor lighting -->
+    <!-- Main directional light - neutral lunar sunlight -->
     <light name='sun' type='directional'>
+      <!-- Avoid legacy Ogre sensor shadow rendering during startup. -->
       <cast_shadows>false</cast_shadows>
       <pose relative_to='world_offset'>5 5 10 0 0 0</pose>
-      <diffuse>0.7 0.68 0.65 1</diffuse>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
       <specular>0.2 0.2 0.2 1</specular>
       <attenuation>
         <range>1000</range>
@@ -67,7 +68,7 @@
     <!-- Soft point light for ambient effect -->
     <light name='point_light_1' type='point'>
       <pose relative_to='world_offset'>0 0 5 0 0 0</pose>
-      <diffuse>0.4 0.4 0.4 1</diffuse>
+      <diffuse>0.35 0.35 0.35 1</diffuse>
       <specular>0.1 0.1 0.1 1</specular>
       <attenuation>
         <range>20</range>
@@ -78,16 +79,15 @@
       <cast_shadows>false</cast_shadows>
     </light>
 
-    <!-- Ground plane - gray tile effect -->
+    <!-- Gray-white lunar surface - matching visual and collision meshes -->
     <model name='ground_plane'>
       <static>true</static>
       <link name='link'>
         <collision name='collision'>
           <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
+            <mesh>
+              <uri>model://props/lunar_ground/meshes/terrain.dae</uri>
+            </mesh>
           </geometry>
           <surface>
             <friction>
@@ -101,56 +101,22 @@
         <visual name='visual'>
           <cast_shadows>false</cast_shadows>
           <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
+            <mesh>
+              <uri>model://props/lunar_ground/meshes/ground.dae</uri>
+            </mesh>
           </geometry>
-          <material>
-            <ambient>0.65 0.65 0.65 1</ambient>
-            <diffuse>0.65 0.65 0.65 1</diffuse>
-            <specular>0.05 0.05 0.05 1</specular>
-          </material>
+        </visual>
+        <visual name="hill_visual">
+          <cast_shadows>false</cast_shadows>
+          <geometry>
+            <mesh>
+              <uri>model://props/lunar_ground/meshes/hill.dae</uri>
+            </mesh>
+          </geometry>
         </visual>
       </link>
     </model>
 
-    <model name="uneven_terrain">
-      <static>true</static>
-      <pose>6.5 0.5 -0.1 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <mesh>
-              <uri>file:///home/wrclub/edge_ws/src/edge-brain-go2/edge_simulation/edge_gazebo/worlds/terrains/terrain.dae</uri>
-              <scale>0.1 0.1 0.1</scale>
-            </mesh>
-          </geometry>
-          <surface>
-            <friction>
-              <ode>
-                <mu>100</mu>
-                <mu2>50</mu2>
-              </ode>
-            </friction>
-          </surface>
-        </collision>
-        <visual name="visual">
-          <cast_shadows>false</cast_shadows>
-          <geometry>
-            <mesh>
-              <uri>file:///home/wrclub/edge_ws/src/edge-brain-go2/edge_simulation/edge_gazebo/worlds/terrains/terrain.dae</uri>
-              <scale>0.1 0.1 0.1</scale>
-            </mesh>
-          </geometry>
-          <material>
-            <ambient>0.4 0.35 0.25 1</ambient>
-            <diffuse>0.55 0.45 0.3 1</diffuse>
-            <specular>0.02 0.02 0.02 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
 
     <!-- Room walls model -->
     <!-- <include>
@@ -161,159 +127,491 @@
 
     <!-- Falling rock -->
     <!-- <include>
-      <uri>model://props/falling_rock3</uri>
-      <pose relative_to='world_offset'>4 4 0.5 0 0 0</pose>   
+      <uri>model://props/lunar_rock</uri>
+      <pose relative_to='world_offset'>4.000000 4.000000 0.790945 0.000000 0.000000 0.000000</pose>   
       <name>falling_rock</name>
     </include> -->
 
-    <!-- Pine tree -->
-    <include>
-      <uri>model://props/pine_tree</uri>
-      <pose relative_to='world_offset'>3 2 0 0 0 0</pose>   
-      <name>pine_tree</name>
-      <static>true</static>
-    </include>
 
-    <!-- Oak tree -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-2 -10 0 0 0 0</pose>   
-      <name>oak_tree</name>
-      <static>true</static>
-    </include>
 
     <!-- Falling Rock2 -->
     <include>
-      <uri>model://props/falling_rock3</uri>
-      <pose relative_to='world_offset'>-10.26847 8.977565 0.3 0 0 0</pose>
+      <uri>model://props/lunar_rock</uri>
+      <pose relative_to='world_offset'>-18 14 0.826450 0.000000 0.000000 0.000000</pose>
       <name>falling_rock2</name>
       <static>true</static>
     </include>
 
-    <!-- Construction cone -->
-    <include>
-      <uri>model://props/construction_cone</uri>
-      <pose relative_to='world_offset'>-4.96847 2.677565 0 0 0 0</pose>
-      <name>construction_cone</name>
-    </include>
 
-    <!-- Pine Tree 2 -->
-    <include>
-      <uri>model://props/pine_tree</uri>
-      <pose relative_to='world_offset'>5.58412 -3.73836 0 0 0 0</pose>
-      <name>pine_tree2</name>
-    </include>
 
-    <!-- Pine Tree 3 -->
-    <include>
-      <uri>model://props/pine_tree</uri>
-      <pose relative_to='world_offset'>-13.58412 3.93836 0 0 0 0</pose>
-      <name>pine_tree3</name>
-    </include>
 
-    <!-- Pine Tree 4 -->
-    <include>
-      <uri>model://props/pine_tree</uri>
-      <pose relative_to='world_offset'>-21.58412 3.93836 0 0 0 0</pose>
-      <name>pine_tree4</name>
-    </include>
 
-    <!-- Oak Tree 2 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-1 4 0 0 0 0</pose>
-      <name>oak_tree2</name>
-    </include>
 
     <!-- Small Rock Fall -->
     <include>
-      <uri>model://props/small_rock_fall</uri>
-      <pose relative_to='world_offset'>-7.5 2.8 0.05 0 0 0</pose>
+      <uri>model://props/lunar_rock_small</uri>
+      <pose relative_to='world_offset'>-11 5 1.151263 0.000000 0.000000 0.000000</pose>
       <name>small_rock_fall</name>
       <static>true</static>
     </include>
 
-    <!-- Oak Tree 3 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-7.5 10.8 0 0 0 1.57</pose>
-      <name>oak_tree3</name>
-      <static>true</static>
-    </include>
 
-    <!-- Oak Tree 4 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-11.5 -7.5 0 0 0 -2.8</pose>
-      <name>oak_tree4</name>
-    </include>
 
-    <!-- Oak Tree 5 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-7.5 3.0 0 0 0 -0.47</pose>
-      <name>oak_tree5</name>
-    </include>
 
-    <!-- Oak Tree 6 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-17.5 8.8 0 0 0 1.07</pose>
-      <name>oak_tree6</name>
-    </include>
 
-    <!-- Oak Tree 7 -->
-    <include>
-      <uri>model://props/oak_tree</uri>
-      <pose relative_to='world_offset'>-20.5 -4.5 0 0 0 -0.97</pose>
-      <name>oak_tree7</name>
-    </include>
 
-    <!-- Construction barrel 2 -->
-    <include>
-      <uri>model://props/construction_barrel</uri>
-      <name>construction_barrel2</name>
-      <pose relative_to='world_offset'>-8.04248 -6.232954 0 0 0 1.57</pose>
-    </include>
 
     <!-- Cylinder Large -->
     <include>
-      <uri>model://props/falling_rock3</uri>
+      <uri>model://props/lunar_rock</uri>
       <name>cylinder_large</name>
-      <pose relative_to='world_offset'>0 -1.5 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>5 -6 1.415332 0.000000 0.000000 0.000000</pose>
       <static>true</static>
     </include>
 
     <!-- Cuboid Medium -->
     <include>
-      <uri>model://props/falling_rock3</uri>
+      <uri>model://props/lunar_rock</uri>
       <name>cuboid_medium</name>
-      <pose relative_to='world_offset'>2.5 -5 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>12 -15 0.821415 0.000000 0.000000 0.000000</pose>
       <static>true</static>
     </include>
 
     <!-- Cubic Medium -->
     <include>
-      <uri>model://props/falling_rock3</uri>
+      <uri>model://props/lunar_rock</uri>
       <name>cubic_medium</name>
-      <pose relative_to='world_offset'>-0.5 -7.25 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>-6 -13 0.830334 0.000000 0.000000 0.000000</pose>
       <static>true</static>
     </include>
 
 
     <!-- Cubic Medium2 -->
     <include>
-      <uri>model://props/falling_rock3</uri>
+      <uri>model://props/lunar_rock</uri>
       <name>cubic_medium2</name>
-      <pose relative_to='world_offset'>-11.0 -2.0 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>-22 -5 1.395857 0.000000 0.000000 0.000000</pose>
       <static>true</static>
     </include>
 
     <!-- Cylinder Medium -->
     <include>
-      <uri>model://props/falling_rock3</uri>
+      <uri>model://props/lunar_rock</uri>
       <name>cylinder_medium</name>
-      <pose relative_to='world_offset'>-2. 6.3 0.5 0 0 0</pose>
+      <pose relative_to='world_offset'>1 13 1.122850 0.000000 0.000000 0.000000</pose>
+      <static>true</static>
+    </include>
+
+    <!-- Additional scattered lunar rocks -->
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>additional_lunar_rock_1</name>
+      <pose relative_to='world_offset'>-13 -9 0.974572 0 0 0.4</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>additional_lunar_rock_2</name>
+      <pose relative_to='world_offset'>-23 -18 0.847553 0 0 1.2</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>additional_lunar_rock_3</name>
+      <pose relative_to='world_offset'>-28 12 1.342319 0 0 2.1</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>additional_lunar_rock_4</name>
+      <pose relative_to='world_offset'>-10 23 0.843941 0 0 0.8</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>additional_lunar_rock_5</name>
+      <pose relative_to='world_offset'>14 9 0.443830 0 0 1.6</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>additional_lunar_rock_6</name>
+      <pose relative_to='world_offset'>-29 -10 0.465089 0 0 2.7</pose>
+      <static>true</static>
+    </include>
+
+    <!-- Widely scattered outer rocks -->
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_1</name>
+      <pose relative_to='world_offset'>-35 -22 1.090995 0 0 0.730</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_2</name>
+      <pose relative_to='world_offset'>-32 23 0.993961 0 0 1.460</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>scattered_lunar_rock_3</name>
+      <pose relative_to='world_offset'>-21 28 0.482376 0 0 2.190</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_4</name>
+      <pose relative_to='world_offset'>-3 30 1.060178 0 0 2.920</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_5</name>
+      <pose relative_to='world_offset'>12 24 0.936810 0 0 3.650</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>scattered_lunar_rock_6</name>
+      <pose relative_to='world_offset'>24 16 0.661993 0 0 4.380</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_7</name>
+      <pose relative_to='world_offset'>27 1 0.980397 0 0 5.110</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_8</name>
+      <pose relative_to='world_offset'>23 -18 0.846700 0 0 5.840</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>scattered_lunar_rock_9</name>
+      <pose relative_to='world_offset'>8 -28 0.316644 0 0 0.290</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_10</name>
+      <pose relative_to='world_offset'>-9 -26 1.004158 0 0 1.020</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>scattered_lunar_rock_11</name>
+      <pose relative_to='world_offset'>-30 2 1.049353 0 0 1.750</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>scattered_lunar_rock_12</name>
+      <pose relative_to='world_offset'>-17 9 0.595134 0 0 2.480</pose>
+      <static>true</static>
+    </include>
+
+    <!-- Extra mixed-size lunar rocks -->
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_1</name>
+      <pose relative_to='world_offset'>-38 -12 0.359781 0 0 0.910</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_2</name>
+      <pose relative_to='world_offset'>-37 10 0.364931 0 0 1.820</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_3</name>
+      <pose relative_to='world_offset'>-30 -29 0.260682 0 0 2.730</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_4</name>
+      <pose relative_to='world_offset'>-27 30 0.125009 0 0 3.640</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_5</name>
+      <pose relative_to='world_offset'>-25 20 0.392924 0 0 4.550</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_6</name>
+      <pose relative_to='world_offset'>-21 -25 0.110174 0 0 5.460</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_7</name>
+      <pose relative_to='world_offset'>-19 -13 0.267870 0 0 0.087</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_8</name>
+      <pose relative_to='world_offset'>-15 19 0.055238 0 0 0.997</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_9</name>
+      <pose relative_to='world_offset'>-14 -20 0.253442 0 0 1.907</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_10</name>
+      <pose relative_to='world_offset'>-8 12 0.334572 0 0 2.817</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_11</name>
+      <pose relative_to='world_offset'>-7 21 0.545293 0 0 3.727</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_12</name>
+      <pose relative_to='world_offset'>-2 -20 0.092259 0 0 4.637</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_13</name>
+      <pose relative_to='world_offset'>2 22 0.323930 0 0 5.547</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_14</name>
+      <pose relative_to='world_offset'>5 7 0.660825 0 0 0.174</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_15</name>
+      <pose relative_to='world_offset'>9 16 0.228675 0 0 1.084</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_16</name>
+      <pose relative_to='world_offset'>13 -7 0.698012 0 0 1.994</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_18</name>
+      <pose relative_to='world_offset'>20 4 0.472826 0 0 3.814</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_19</name>
+      <pose relative_to='world_offset'>29 -10 0.224939 0 0 4.724</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_20</name>
+      <pose relative_to='world_offset'>30 26 0.237915 0 0 5.634</pose>
+      <static>true</static>
+    </include>
+
+    <!-- More mixed-size lunar rocks -->
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_21</name>
+      <pose relative_to='world_offset'>17.31 -27.61 0.342897 0 0 1.085</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_22</name>
+      <pose relative_to='world_offset'>9.5 -23.9 0.126188 0 0 5.159</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_23</name>
+      <pose relative_to='world_offset'>-7.76 -19.26 0.218828 0 0 2.560</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_24</name>
+      <pose relative_to='world_offset'>5.41 -19.89 0.100232 0 0 5.580</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_25</name>
+      <pose relative_to='world_offset'>-15.55 23.39 0.230752 0 0 4.273</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_26</name>
+      <pose relative_to='world_offset'>-33.9 -17.49 0.110240 0 0 0.012</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_27</name>
+      <pose relative_to='world_offset'>-13.84 -25.73 0.340760 0 0 1.232</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_28</name>
+      <pose relative_to='world_offset'>-30.07 17.61 0.292564 0 0 6.047</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_29</name>
+      <pose relative_to='world_offset'>1.56 30.05 0.573319 0 0 5.899</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_30</name>
+      <pose relative_to='world_offset'>-24.48 15.87 0.261992 0 0 4.767</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_31</name>
+      <pose relative_to='world_offset'>22.1 20.09 0.356110 0 0 3.861</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_32</name>
+      <pose relative_to='world_offset'>-9.57 29.28 0.265748 0 0 4.971</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_33</name>
+      <pose relative_to='world_offset'>-21.73 23.39 0.289588 0 0 1.437</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_34</name>
+      <pose relative_to='world_offset'>21.58 8.15 0.198079 0 0 6.246</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_35</name>
+      <pose relative_to='world_offset'>11.73 4.12 0.789679 0 0 4.292</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_36</name>
+      <pose relative_to='world_offset'>7.44 2.28 0.029020 0 0 2.542</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_37</name>
+      <pose relative_to='world_offset'>17.96 11.45 0.243133 0 0 1.232</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_38</name>
+      <pose relative_to='world_offset'>-19.54 19.76 0.052513 0 0 6.088</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>dense_lunar_rock_39</name>
+      <pose relative_to='world_offset'>-2.29 21.6 0.319855 0 0 2.450</pose>
+      <static>true</static>
+    </include>
+
+    <include>
+      <uri>model://props/lunar_rock_small</uri>
+      <name>dense_lunar_rock_40</name>
+      <pose relative_to='world_offset'>24.12 -14.01 0.250745 0 0 5.085</pose>
+      <static>true</static>
+    </include>
+
+    <!-- Obstacle to the right of the start-to-goal line, in world/map coordinates. -->
+    <include>
+      <uri>model://props/lunar_rock</uri>
+      <name>forward_route_rock</name>
+      <pose relative_to='world'>8 -2 1.385541 0 0 0.4</pose>
       <static>true</static>
     </include>
 
@@ -471,9 +769,11 @@
 
     <!-- Scene configuration -->
     <scene>
-      <ambient>0.4 0.4 0.4 1</ambient>
-      <background>0.65 0.65 0.65 1</background>
-      <shadows>true</shadows>
+      <grid>false</grid>
+      <ambient>0.42 0.42 0.42 1</ambient>
+      <background>0.015 0.015 0.025 1</background>
+      <!-- Warrior camera / GPU lidar use the legacy Ogre renderer. -->
+      <shadows>false</shadows>
     </scene>
 
     <!-- Gravity -->
@@ -485,5 +785,7 @@
     <!-- Atmosphere -->
     <atmosphere type='adiabatic'/>
 
+
+    <include><uri>model://props/lunar_rock</uri><name>mouse_placed_lunar_rock_1</name><pose>15.949189 -10.735563 1.214631 0 0 0</pose></include>
   </world>
 </sdf>

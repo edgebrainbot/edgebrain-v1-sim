@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <robot name="warrior_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <!-- Uniform geometric scale; controller dimensions must match. -->
+  <xacro:property name="vehicle_scale" value="1.5"/>
+
   <!-- ========== Includes ========== -->
   <xacro:include filename="$(find warrior_description)/xacro/material.xacro"/>
   <xacro:include filename="$(find warrior_description)/xacro/swerve_module/swerve_module.xacro"/>
@@ -13,20 +16,20 @@
   <!-- ========== Properties ========== -->
   <xacro:property name="angle_offset" value="${pi/6}"/>
 
-   <xacro:property name="front_plate_offset" value="0.838 0.003 -0.349"/>
-   <xacro:property name="left_plate_offset" value="0.025 0.47 -0.349"/>
-   <xacro:property name="right_plate_offset" value="0.024 -0.468 -0.349"/>
+   <xacro:property name="front_plate_offset" value="${0.838 * vehicle_scale} ${0.003 * vehicle_scale} ${-0.349 * vehicle_scale}"/>
+   <xacro:property name="left_plate_offset" value="${0.025 * vehicle_scale} ${0.47 * vehicle_scale} ${-0.349 * vehicle_scale}"/>
+   <xacro:property name="right_plate_offset" value="${0.024 * vehicle_scale} ${-0.468 * vehicle_scale} ${-0.349 * vehicle_scale}"/>
 
   <!-- Wheel properties -->
   <!-- <xacro:property name="wheel_mass" value="2.5"/> -->
   <xacro:property name="wheel_mass" value="5.0"/>
-  <xacro:property name="wheel_offset_z" value="-0.15"/>
-  <xacro:property name="wheel_radius" value="0.1"/>
+  <xacro:property name="wheel_offset_z" value="${-0.15 * vehicle_scale}"/>
+  <xacro:property name="wheel_radius" value="${0.1 * vehicle_scale}"/>
 
   <!-- Base properties -->
   <!-- <xacro:property name="base_mass" value="6.0"/> -->
   <xacro:property name="base_mass" value="10.0"/> 
-  <xacro:property name="base_footprint_height" value="${0.508 + wheel_radius}"/>
+  <xacro:property name="base_footprint_height" value="${0.508 * vehicle_scale + wheel_radius}"/>
   
   <!-- Initial orientations (radians) -->
   <xacro:property name="front_initial_angle" value="${pi/2}"/>   <!-- forwarding -->
@@ -34,12 +37,14 @@
   <xacro:property name="right_initial_angle" value="-${pi/3 + pi}"/>  <!-- forwarding -->
   
   <!-- lidar properties -->
-  <xacro:property name="pole_height" value="0.527"/>
-  <xacro:property name="lidar_offset_x" value="0.32"/>
-  <xacro:property name="lidar_offset_z" value="0.005"/>
+  <xacro:property name="pole_height" value="${0.527 * vehicle_scale}"/>
+  <xacro:property name="lidar_offset_x" value="${0.32 * vehicle_scale}"/>
+  <!-- pole_link is rotated by pi about X, so negative local Z raises the LiDAR. -->
+  <xacro:property name="lidar_raise" value="0.20"/>
+  <xacro:property name="lidar_offset_z" value="${0.005 * vehicle_scale - lidar_raise}"/>
 
   <!-- camera properties -->
-  <xacro:property name="camera_offset" value="0.32 0.0 -0.115"/>
+  <xacro:property name="camera_offset" value="${0.32 * vehicle_scale} 0.0 ${-0.115 * vehicle_scale}"/>
 
   <!-- ========== Base Footprint Link ========== -->
   <link name="base_footprint"/>
@@ -55,19 +60,19 @@
   <link name="base_link">
     <visual>
       <geometry>
-        <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl"/>
+        <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
       </geometry>
-      <material name="white"/>
+      <material name="rover_orange"><color rgba="1.0 0.30 0.025 1"/></material>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl"/>
+        <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
       </geometry>
     </collision>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="${base_mass}"/>
-      <inertia ixx="0.125" ixy="0" ixz="0" iyy="0.125" iyz="0" izz="0.225"/>
+      <inertia ixx="${0.125 * vehicle_scale**2}" ixy="${0 * vehicle_scale**2}" ixz="${0 * vehicle_scale**2}" iyy="${0.125 * vehicle_scale**2}" iyz="${0 * vehicle_scale**2}" izz="${0.225 * vehicle_scale**2}"/>
     </inertial>
   </link>
 

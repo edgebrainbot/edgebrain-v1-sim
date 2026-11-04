@@ -12,6 +12,7 @@ Centralized reset management - receives all reset requests and forwards to Reset
 import time
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from std_srvs.srv import Trigger
 from typing import Tuple, Dict, Optional
 from edge_drl_student.common.logger import Logger
@@ -104,7 +105,13 @@ class ResetManager:
         node.create_service(Trigger, reset_service_name, self._reset_service_callback)
         
         # ========== Service Client (Call Gz Reset Handler) ==========
-        self.gz_reset_client = node.create_client(Trigger, gz_reset_service_name)
+        # Service responses must run while the caller blocks in a subscription
+        # or service callback in the node's default callback group.
+        self.reset_client_callback_group = MutuallyExclusiveCallbackGroup()
+        self.gz_reset_client = node.create_client(
+            Trigger, gz_reset_service_name,
+            callback_group=self.reset_client_callback_group,
+        )
         
         # Statistics
         self.reset_count: int = 0

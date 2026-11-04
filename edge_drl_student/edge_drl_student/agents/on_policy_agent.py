@@ -10,7 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from base_agent import BaseAgent
-from edge_drl_student.memory.buffers.on_policy.rollout_buffer import RolloutBuffer
+from edge_drl_student.common.memory.buffers.on_policy.rollout_buffer import RolloutBuffer
 
 
 class OnPolicyAgent(BaseAgent, ABC):

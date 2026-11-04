@@ -78,6 +78,7 @@ private:
     bool is_reset_env_, is_stop_update_, is_init_completed_;
 
     geometry_msgs::msg::PointStamped goal_waypoint_stamped_;
+    geometry_msgs::msg::PointStamped::SharedPtr pending_goal_;
 
     bool is_cloud_init_, is_scan_init_, is_odom_init_, is_planner_running_;
     bool is_graph_init_;
@@ -233,6 +234,7 @@ private:
         odom_node_ptr_ = NULL;
         is_planner_running_ = false;  
         is_graph_init_      = false; 
+        pending_goal_.reset();
         ClearTempMemory();
     }
 };

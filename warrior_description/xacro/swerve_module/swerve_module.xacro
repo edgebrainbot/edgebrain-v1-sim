@@ -11,14 +11,14 @@
       <visual>
         <origin xyz="0 0 0" rpy="${pi} 0 ${pi}"/>
         <geometry> 
-          <mesh filename="file://$(find warrior_description)/meshes/slewing_plate.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/slewing_plate.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
-        <material name="${slewing_plate_color}"/>
+        <material name="${slewing_plate_color}"><color rgba="0.20 0.23 0.26 1"/></material>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="${pi} 0 ${pi}"/>
         <geometry>
-          <mesh filename="file://$(find warrior_description)/meshes/slewing_plate.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/slewing_plate.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
       </collision>
       <xacro:wheel_inertia mass="${slewing_plate_mass}"/>
@@ -36,13 +36,13 @@
     <link name="${prefix}_steer_assembly_link">
       <visual>
         <geometry>
-          <mesh filename="file://$(find warrior_description)/meshes/steer_assembly.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/steer_assembly.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
-        <material name="${steer_assembly_color}"/>
+        <material name="${steer_assembly_color}"><color rgba="0.20 0.23 0.26 1"/></material>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find warrior_description)/meshes/steer_assembly.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/steer_assembly.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
       </collision>
       <xacro:wheel_inertia mass="${steer_assembly_mass}"/>
@@ -61,16 +61,27 @@
       <visual>
        <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="file://$(find warrior_description)/meshes/drive_wheel.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/drive_wheel.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
-        <material name="${drive_wheel_color}"/>
+        <material name="${drive_wheel_color}"><color rgba="0.025 0.028 0.032 1"/></material>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="file://$(find warrior_description)/meshes/drive_wheel.stl"/>
+          <mesh filename="file://$(find warrior_description)/meshes/drive_wheel.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
         </geometry>
       </collision>
+      <!-- Visual-only hub caps, aligned with the X wheel axle. -->
+      <visual name="${prefix}_hub_outer">
+        <origin xyz="${0.0405 * vehicle_scale} 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry><cylinder radius="${0.040 * vehicle_scale}" length="${0.004 * vehicle_scale}"/></geometry>
+        <material name="rover_orange"><color rgba="1.0 0.30 0.025 1"/></material>
+      </visual>
+      <visual name="${prefix}_hub_inner">
+        <origin xyz="${-0.0405 * vehicle_scale} 0 0" rpy="0 ${pi/2} 0"/>
+        <geometry><cylinder radius="${0.040 * vehicle_scale}" length="${0.004 * vehicle_scale}"/></geometry>
+        <material name="rover_orange"><color rgba="1.0 0.30 0.025 1"/></material>
+      </visual>
       <xacro:wheel_inertia mass="${wheel_mass}"/>
     </link>
     

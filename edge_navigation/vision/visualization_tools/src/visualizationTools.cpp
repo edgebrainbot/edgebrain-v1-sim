@@ -135,7 +135,7 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
   vehicleY = odom->pose.pose.position.y;
   vehicleZ = odom->pose.pose.position.z;
 
-  fprintf(trajFilePtr, "%f %f %f %f %f %f %f\n", vehicleX, vehicleY, vehicleZ, roll, pitch, yaw, timeDuration);
+  if (trajFilePtr) fprintf(trajFilePtr, "%f %f %f %f %f %f %f\n", vehicleX, vehicleY, vehicleZ, roll, pitch, yaw, timeDuration);
 
   pcl::PointXYZI point;
   point.x = vehicleX;
@@ -207,7 +207,7 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
     exploredAreaDisplayCount = 0;
   }
 
-  fprintf(metricFilePtr, "%f %f %f %f\n", exploredVolume, travelingDis, runtime, timeDuration);
+  if (metricFilePtr) fprintf(metricFilePtr, "%f %f %f %f\n", exploredVolume, travelingDis, runtime, timeDuration);
 
   std_msgs::msg::Float32 exploredVolumeMsg;
   exploredVolumeMsg.data = exploredVolume;
@@ -249,11 +249,6 @@ int main(int argc, char** argv)
   nh->get_parameter("yawInterval", yawInterval);
   nh->get_parameter("overallMapDisplayInterval", overallMapDisplayInterval);
   nh->get_parameter("exploredAreaDisplayInterval", exploredAreaDisplayInterval);
-
-  // No direct replacement present for $(find pkg) in ROS2. Edit file path.
-  mapFile.replace(mapFile.find("/install/"), 8, "/src/base_autonomy");
-  metricFile.replace(metricFile.find("/install/"), 8, "/src/base_autonomy");
-  trajFile.replace(trajFile.find("/install/"), 8, "/src/base_autonomy");
 
   auto subOdometry = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odometryHandler);
 
@@ -299,6 +294,10 @@ int main(int argc, char** argv)
   metricFilePtr = fopen(metricFile.c_str(), "w");
   trajFilePtr = fopen(trajFile.c_str(), "w");
 
+  if (!metricFilePtr || !trajFilePtr) {
+    RCLCPP_WARN(nh->get_logger(), "Cannot open metric or trajectory log; unavailable file logging is disabled. metric=%s trajectory=%s", metricFile.c_str(), trajFile.c_str());
+  }
+
   rclcpp::Rate rate(100);
   bool status = rclcpp::ok();
   while (status) {
@@ -316,8 +315,8 @@ int main(int argc, char** argv)
     rate.sleep();
   }
 
-  fclose(metricFilePtr);
-  fclose(trajFilePtr);
+  if (metricFilePtr) fclose(metricFilePtr);
+  if (trajFilePtr) fclose(trajFilePtr);
 
   RCLCPP_INFO(nh->get_logger(), "Exploration metrics and vehicle trajectory are saved in 'src/vehicle_simulator/log'.");
 

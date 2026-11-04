@@ -134,7 +134,7 @@ def generate_launch_description():
         ],
         parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
         remappings=[
-            ('L1_lidar/scan/points', '/registered_scan'),
+            ('L1_lidar/scan/points', '/warrior/lidar/points'),
         ],
         output='screen',
     )

@@ -12,6 +12,7 @@ import os
 import rclpy
 import torch
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 
 from edge_msgs.msg import EdgeState, EdgeAction
 from edge_drl_student.common.logger import Logger
@@ -20,9 +21,9 @@ from edge_drl_student.common.reset_manager import ResetManager
 from edge_drl_student.common.episode_handler import EpisodeManager
 from edge_drl_student.processor.vision_processor import VisionProcessor
 from edge_drl_student.runners.distributed_runner import DistributedRunner
-from edge_drl_student.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
-from edge_drl_student.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.solo_replay_buffer import SoloReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.dual_replay_buffer import DualReplayBuffer
+from edge_drl_student.common.memory.buffers.off_policy.cognitive_replay_buffer import CognitiveReplayBuffer
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -135,8 +136,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([0.205, -0.1, -0.86], device=self.device),
-                    torch.tensor([0.48, 0.1, 0.545], device=self.device)
+                    torch.tensor([0.25,  -0.1, -0.2], device=self.device),
+                    torch.tensor([0.6,   0.1,  0.2], device=self.device)
                 )
                 # "action_bound":(
                 #     torch.tensor([0.25, -0.1, -0.8], device=self.device),
@@ -156,7 +157,7 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.BASE_ACCEL,
                 "action_bound":(
-                    torch.tensor([-10., -10., -10., -15., -15., -15.], device=self.device),
+                    torch.tensor([-5., -10., -10., -15., -15., -15.], device=self.device),
                     torch.tensor([10., 10., 10., 15., 15., 15.], device=self.device)
                 )
             },
@@ -220,8 +221,8 @@ class DRLStudentNode(Node):
         elif self.run_type in {ExperimentRunType.DUAL, ExperimentRunType.COGNITIVE}:
             
             self.batch_size = 256
-            stu_buf_size = int(1e5) 
-            tea_buf_size = int(1e5)
+            stu_buf_size = int(2e5) 
+            tea_buf_size = int(1e3)
             teacher_prefill_size = 200
             
             # self.batch_size = 512
@@ -293,7 +294,7 @@ class DRLStudentNode(Node):
         # ============================================================
         self.reset_manager = ResetManager(
             node=self,
-            reset_timeout=10.0,
+            reset_timeout=self.declare_parameter("reset_timeout", 30.0).value,
             logger=self.logger,
             reset_service_name="/edge/reset",
             gz_reset_service_name="/edge/reset/gz_handler",
@@ -322,7 +323,7 @@ class DRLStudentNode(Node):
             "sync_interval": 5,
             "normalize_obs": True,
             "normalize_reward": True,
-            "auto_reset_on_fall": True,
+            "auto_reset_on_fall": False,
             "batch_size": self.batch_size,
             "save_interval": 500,
             "model_save_path": self.model_path,
@@ -392,15 +393,20 @@ def main(args=None):
     rclpy.init(args=args)
 
     node = DRLStudentNode()
+    # Keep one worker available for reset service responses while the default
+    # callback group waits for the reset to complete.
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
 
     try:
-        rclpy.spin(node)
+        executor.spin()
 
     except KeyboardInterrupt:
         node.get_logger().info("⌨️ Keyboard interrupt received")
 
     finally:
 
+        executor.shutdown()
         node.destroy_node()
 
         if rclpy.ok():
