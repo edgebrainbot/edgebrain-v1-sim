@@ -134,14 +134,6 @@
 
 
 
-    <!-- Falling Rock -->
-    <include>
-      <uri>model://props/lunar_rock</uri>
-      <pose relative_to='world_offset'>-4 -3 0.211644 0.000000 0.000000 0.000000</pose>
-      <name>falling_rock</name>
-      <static>true</static>
-    </include>
-
     <!-- Falling Rock2 -->
     <include>
       <uri>model://props/lunar_rock</uri>
