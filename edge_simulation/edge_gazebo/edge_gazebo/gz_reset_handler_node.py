@@ -5,6 +5,7 @@
 # ============================================================================
 
 import os
+import re
 import time
 import rclpy
 import subprocess
@@ -562,6 +563,19 @@ class GzResetHandlerNode(Node):
             
             return False, error_msg
     
+    def _gazebo_service_succeeded(self, result):
+        """Require an affirmative Boolean reply; ign may exit zero on timeout."""
+        success = (
+            result.returncode == 0
+            and re.search(r"\bdata\s*:\s*true\b", result.stdout) is not None
+        )
+        if not success:
+            details = (result.stdout + "\n" + result.stderr).strip()
+            self.get_logger().error(
+                f'Gazebo service failed (exit {result.returncode}): {details or "No Boolean response"}'
+            )
+        return success
+
     def _pause_physics(self, pause=True):
         """Pause or unpause physics simulation"""
         try:
@@ -584,7 +598,7 @@ class GzResetHandlerNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            success = result.returncode == 0
+            success = self._gazebo_service_succeeded(result)
             
             if not success and result.stderr:
                 self.get_logger().debug(f'Pause/unpause stderr: {result.stderr[:100]}')
@@ -625,7 +639,7 @@ class GzResetHandlerNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            success = result.returncode == 0
+            success = self._gazebo_service_succeeded(result)
             
             if not success and result.stderr:
                 self.get_logger().debug(f'Clear velocity stderr: {result.stderr[:100]}')
@@ -682,7 +696,7 @@ class GzResetHandlerNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            return result.returncode == 0
+            return self._gazebo_service_succeeded(result)
                 
         except subprocess.TimeoutExpired:
             self.get_logger().debug('World reset timeout')
@@ -719,7 +733,7 @@ class GzResetHandlerNode(Node):
                 timeout=self.timeout / 1000.0 + 2.0
             )
             
-            success = result.returncode == 0
+            success = self._gazebo_service_succeeded(result)
             
             if not success and result.stderr:
                 self.get_logger().debug(f'Pose reset stderr: {result.stderr[:100]}')

@@ -64,6 +64,18 @@
       </geometry>
       <material name="rover_orange"><color rgba="1.0 0.30 0.025 1"/></material>
     </visual>
+    <!-- Thin top cover closing the triangular chassis. -->
+    <visual name="top_cover">
+      <geometry>
+        <mesh filename="file://$(find warrior_description)/meshes/warrior_top_cover.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
+      </geometry>
+      <material name="rover_orange"><color rgba="1.0 0.30 0.025 1"/></material>
+    </visual>
+    <collision name="top_cover_collision">
+      <geometry>
+        <mesh filename="file://$(find warrior_description)/meshes/warrior_top_cover.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>
+      </geometry>
+    </collision>
     <collision>
       <geometry>
         <mesh filename="file://$(find warrior_description)/meshes/warrior_body.stl" scale="${vehicle_scale} ${vehicle_scale} ${vehicle_scale}"/>

@@ -131,6 +131,7 @@ def generate_launch_description():
             '/L1_lidar/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
             "/navsat@sensor_msgs/msg/NavSatFix@gz.msgs.NavSat",
             "/odom_gt@nav_msgs/msg/Odometry[ignition.msgs.Odometry",
+            "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU",
         ],
         parameters=[{"use_sim_time": ParameterValue(use_sim_time, value_type=bool)}],
         remappings=[

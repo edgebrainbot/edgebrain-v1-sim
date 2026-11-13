@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <atomic>
+#include <sensor_msgs/msg/imu.hpp>
 #include <eigen3/Eigen/Dense>
 #include <vector>
 #include <string>
@@ -38,6 +40,10 @@ private:
     // ROS2 Subscription for cmd_vel
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr cmd_vel_sub_;
     rclcpp::Subscription<edge_msgs::msg::EdgeAction>::SharedPtr edge_action_sub_;   
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+    std::string imu_topic_;
+    std::atomic<double> imu_wx_{0.0};
+    std::atomic<double> imu_wy_{0.0};
 
     // Desired velocities
     double vx_cmd_ = 0.0;

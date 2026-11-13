@@ -136,8 +136,8 @@ class DRLStudentNode(Node):
                 "edge_state_type": EdgeState.ROBOT_STATE,
                 "edge_action_type": EdgeAction.CMD_VEL,
                 "action_bound":(
-                    torch.tensor([0.25,  -0.1, -0.2], device=self.device),
-                    torch.tensor([0.6,   0.1,  0.2], device=self.device)
+                    torch.tensor([0.4,  -0.1, -0.3], device=self.device),
+                    torch.tensor([0.8,   0.1,  0.3], device=self.device)
                 )
                 # "action_bound":(
                 #     torch.tensor([0.25, -0.1, -0.8], device=self.device),
@@ -223,7 +223,7 @@ class DRLStudentNode(Node):
             self.batch_size = 256
             stu_buf_size = int(2e5) 
             tea_buf_size = int(1e3)
-            teacher_prefill_size = 200
+            teacher_prefill_size = 20
             
             # self.batch_size = 512
             # stu_buf_size = int(2e5) 

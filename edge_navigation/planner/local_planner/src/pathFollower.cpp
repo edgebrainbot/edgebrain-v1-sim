@@ -482,11 +482,11 @@ int main(int argc, char** argv)
 
           
           
-          FILE *fp = fopen("data.txt", "a");
-          if (fp != NULL) {
-             fprintf(fp, "%.6f\n", minObstacleDist);
-             fclose(fp);
-          }
+          // FILE *fp = fopen("data.txt", "a");
+          // if (fp != NULL) {
+          //    fprintf(fp, "%.6f\n", minObstacleDist);
+          //    fclose(fp);
+          // }
           
           
           // Slow down if minimum distance to obstacle is small (threhold to be determined)

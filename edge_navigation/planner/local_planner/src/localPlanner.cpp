@@ -214,33 +214,33 @@ void terrainCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr ter
     terrainCloud->clear();
     pcl::fromROSMsg(*terrainCloud2, *terrainCloud);
 
-    // save point cloud for checking deadzone
-    static bool saved_cloud = false;
-    if (!saved_cloud) {
-      std::ofstream outFile("/home/wrclub/terrain_cloud.txt");
-      if (outFile.is_open()) {
-        outFile << std::fixed << std::setprecision(6);
-        for (size_t i = 0; i < terrainCloud->points.size(); ++i) {
-          const pcl::PointXYZI& point = terrainCloud->points[i];
-          outFile
-              << point.x << " "
-              << point.y << " "
-              << point.z << " "
-              << point.intensity
-              << "\n";
-        }
-        outFile.close();
-        std::cout
-            << "Point cloud saved!"
-            << std::endl;
-        saved_cloud = true;
-      }
-      else {
-        std::cout
-            << "Failed to save point cloud!"
-            << std::endl;
-      }
-    }
+    // // save point cloud for checking deadzone
+    // static bool saved_cloud = false;
+    // if (!saved_cloud) {
+      // std::ofstream outFile("/home/wrclub/terrain_cloud.txt");
+      // if (outFile.is_open()) {
+        // outFile << std::fixed << std::setprecision(6);
+        // for (size_t i = 0; i < terrainCloud->points.size(); ++i) {
+          // const pcl::PointXYZI& point = terrainCloud->points[i];
+          // outFile
+              // << point.x << " "
+              // << point.y << " "
+              // << point.z << " "
+              // << point.intensity
+              // << "\n";
+        // }
+        // outFile.close();
+        // std::cout
+            // << "Point cloud saved!"
+            // << std::endl;
+        // saved_cloud = true;
+      // }
+      // else {
+        // std::cout
+            // << "Failed to save point cloud!"
+            // << std::endl;
+      // }
+    // }
     // end save point cloud
 
     pcl::PointXYZI point;

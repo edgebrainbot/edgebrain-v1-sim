@@ -1,7 +1,9 @@
 /edge/trigger:
   ros__parameters:
+    # angular_rates_log_file: "/home/wrclub/edge_ws/angular_rates.txt"
+    # obstacle_distance_log_file: "/home/wrclub/edge_ws/obstacle_distance.txt"
     trigger_mode: "self"         # trigger mode, options: "self" -- self-trigger, "event" -- event-trigger
-    dwell_steps: 200             # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
+    dwell_steps: 50             # 300 number of steps to hold teacher action in self-trigger mode (tested in real robot)
     
     action_source: -1            # action source, options: -1 -- auto, 0 -- student, 1 -- teacher
     print_processing: false      # whether to print processing

@@ -25,18 +25,18 @@ switching:
   conditions:
     # ===== Orientation Limits =====
     # roll limit in degrees (relative mode: |roll| <= 2 deg)
-    roll:   
-      type: relative
-      index: 3
-      limit: 0.00001   # 15
-      unit: deg
+    # roll:   
+    #   type: relative
+    #   index: 3
+    #   limit: 30  # 15
+    #   unit: deg
 
-    # pitch limit in degrees (relative mode)
-    pitch:
-      type: relative
-      index: 4
-      limit: 0.00001
-      unit: deg
+    # # pitch limit in degrees (relative mode)
+    # pitch:
+    #   type: relative
+    #   index: 4
+    #   limit: 30
+      # unit: deg
 
     # ===== Position Limits =====
     # height limit in meters (relative mode)
@@ -70,18 +70,18 @@ switching:
 
     # ===== Angular Velocity Limits =====
     # roll_rate limit in degrees per second (relative mode) 8.0
-    # wx: 
-    #   type: relative
-    #   index: 9
-    #   limit: 5
-    #   unit: deg/s
+    wx: 
+      type: relative
+      index: 9
+      limit: 30
+      unit: deg/s
     
     # pitch_rate limit in degrees per second (relative mode)
-    # wy:
-    #   type: relative
-    #   index: 10
-    #   limit: 5  # 15
-    #   unit: deg/s
+    wy:
+      type: relative
+      index: 10
+      limit: 30 # 15
+      unit: deg/s
 
     # angular velocity limit in radians per second (relative mode)
     # wz:
@@ -92,11 +92,11 @@ switching:
 
     # ===== Obstacle Avoidance =====
     # distance limit to obstacles in meters (reference to local planner)
-    # obstacle_distance:
-    #   type: relative
-    #   index: -1   # -1 means not used for errorState
-    #   limit: 1.0    # 0.55
-    #   unit: m
+    obstacle_distance:
+      type: relative
+      index: -1   # -1 means not used for errorState
+      limit: 0.325    # 0.55
+      unit: m
 
     # goal_distance:
     #   type: relative
@@ -134,5 +134,5 @@ fall_detection:
   
   thresholds:
     height: 0.10      # in meters - critical height drop (below this is a fall)
-    roll: 1.845       # in radians - critical roll angle  (approx 135 degrees)
-    pitch: 1.845      # in radians - critical pitch angle (approx 135 degrees)
+    roll: 0.9       # in radians - critical roll angle  (approx 135 degrees)
+    pitch: 0.9      # in radians - critical pitch angle (approx 135 degrees)

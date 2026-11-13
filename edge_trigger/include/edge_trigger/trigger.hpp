@@ -59,6 +59,8 @@ private:
     void resetCachedVariables(); // Reset cached variables
     edge::utils::ActionMode selectAction();   // Select action based on current state and trigger mode
     std::ofstream state_file_;
+    // std::ofstream obstacle_distance_file_;
+    // std::ofstream angular_rates_file_;
     double obstacle_distance_map_;
     double roll_rate_;
     double pitch_rate_;

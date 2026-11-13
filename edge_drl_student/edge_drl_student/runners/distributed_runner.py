@@ -804,12 +804,7 @@ class DistributedRunner:
                 )
                 return
             
-            if not self.replay_buffer.tea_buf.is_ready:
-                self.node.get_logger().info(
-                    f"Teacher Buffer not ready. "
-                    f"Size: {self.replay_buffer.tea_buf_size}/{self.replay_buffer.tea_buf.prefill_size}"
-                )
-                return
+            # Teacher data is optional; sampling falls back to student data.
 
         learn_start = time.time()
         

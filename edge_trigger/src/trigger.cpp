@@ -5,6 +5,7 @@
 
 #include "edge_trigger/trigger.hpp"
 #include <algorithm>
+#include <iomanip>
 #include <stdio.h>
 #include <math.h>
 
@@ -19,130 +20,174 @@ namespace edge::trigger {
 Trigger::Trigger(const rclcpp::NodeOptions & options)
 : Node("trigger", options)
 {
-    // Load parameters
-    dwell_steps_ = this->declare_parameter<int>("dwell_steps", 20);
-    action_source_ = this->declare_parameter<int>("action_source", -1);
-    update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
-    print_processing_ = this->declare_parameter<bool>("print_processing", false);
-    is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
-    teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
-    student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
-    terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
-    monitor_state_topic_name_ = this->declare_parameter<std::string>("monitor_state_name", "/edge/robot_state");
+    // // Append received obstacle distances; an empty path disables logging.
+    // const auto distance_log_path = this->declare_parameter<std::string>(
+    //     "obstacle_distance_log_file", "obstacle_distance.txt");
+    // if (!distance_log_path.empty()) {
+    //     obstacle_distance_file_.open(distance_log_path, std::ios::out | std::ios::app);
+    //     if (obstacle_distance_file_.is_open()) {
+    //         obstacle_distance_file_ << "# New session: receipt_ros_time_s obstacle_distance_m\n";
+    //         obstacle_distance_file_.flush();
+    //         RCLCPP_INFO(this->get_logger(), "Obstacle distance TXT: %s (relative paths use the working directory)", distance_log_path.c_str());
+    //     } else {
+    //         RCLCPP_ERROR(this->get_logger(), "Cannot open obstacle distance TXT: %s", distance_log_path.c_str());
+    //     }
+    // }
 
-    std::string trigger_mode_str = this->declare_parameter<std::string>("trigger_mode", "self");
+    // const auto rates_log_path = this->declare_parameter<std::string>(
+    //     "angular_rates_log_file", "/home/wrclub/edge_ws/angular_rates.txt");
+    // if (!rates_log_path.empty()) {
+    //     angular_rates_file_.open(rates_log_path, std::ios::out | std::ios::app);
+    //     // if (angular_rates_file_.is_open()) {
+    // //         angular_rates_file_ << "# New session: receipt_ros_time_s roll_rate_rad_s pitch_rate_rad_s\n";
+    // //         angular_rates_file_.flush();
+    // //         RCLCPP_INFO(this->get_logger(), "Angular rates TXT: %s", rates_log_path.c_str());
+    // //     } else {
+    // //         RCLCPP_ERROR(this->get_logger(), "Cannot open angular rates TXT: %s", rates_log_path.c_str());
+    // //     }
+    // // }
+
+    // // Load parameters
+    // dwell_steps_ = this->declare_parameter<int>("dwell_steps", 20);
+    // action_source_ = this->declare_parameter<int>("action_source", -1);
+    // update_rate_ = this->declare_parameter<double>("update_rate", 150.0);
+    // print_processing_ = this->declare_parameter<bool>("print_processing", false);
+    // is_start_with_teacher_ = this->declare_parameter<bool>("start_with_teacher", true);
+    // teacher_topic_name_ = this->declare_parameter<std::string>("teacher_topic_name", "/edge/teacher_action");
+    // student_topic_name_ = this->declare_parameter<std::string>("student_topic_name", "/edge/student_action");
+    // terminal_action_name_ = this->declare_parameter<std::string>("terminal_action_name", "/edge/terminal_action");
+    // monitor_state_topic_name_ = this->declare_parameter<std::string>("monitor_state_name", "/edge/robot_state");
+
+    // std::string trigger_mode_str = this->declare_parameter<std::string>("trigger_mode", "self");
     
-    try {
-        trigger_mode_ = TriggerModeFromString(trigger_mode_str);
-    }
-    catch (const std::exception& e)
-    {
-        RCLCPP_FATAL(this->get_logger(), "%s", e.what());
-        throw;
-    }
+    // try {
+    //     trigger_mode_ = TriggerModeFromString(trigger_mode_str);
+    // }
+    // catch (const std::exception& e)
+    // {
+    //     RCLCPP_FATAL(this->get_logger(), "%s", e.what());
+    //     throw;
+    // }
     
 
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
-        (action_source_ == 1) ? "teacher" :
-        (action_source_ == 0) ? "student" : "auto");
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger mode is set to %s", 
-        (trigger_mode_ == TriggerMode::SELF) ? "self-trigger" : "event-trigger");
-    if(trigger_mode_ == TriggerMode::SELF) {
-        RCLCPP_INFO(this->get_logger(), "🔘 Trigger dwell steps in self-trigger mode is set to %d", dwell_steps_);
-    }
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger teacher topic: %s", teacher_topic_name_.c_str());
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger student topic: %s", student_topic_name_.c_str());
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger terminal action topic: %s", terminal_action_name_.c_str());
-    RCLCPP_INFO(this->get_logger(), "🔘 Trigger monitor state topic: %s", monitor_state_topic_name_.c_str());
-    // Initialize statistical tracking variables
-    resetStats();
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger action source is set to %s",
+    //     (action_source_ == 1) ? "teacher" :
+    //     (action_source_ == 0) ? "student" : "auto");
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger mode is set to %s", 
+    //     (trigger_mode_ == TriggerMode::SELF) ? "self-trigger" : "event-trigger");
+    // if(trigger_mode_ == TriggerMode::SELF) {
+    //     RCLCPP_INFO(this->get_logger(), "🔘 Trigger dwell steps in self-trigger mode is set to %d", dwell_steps_);
+    // }
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger update rate is set to %.1f Hz", update_rate_);
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger print processing is set to %s", print_processing_ ? "true" : "false");
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger start with teacher mode is set to %s", is_start_with_teacher_ ? "true" : "false");
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger teacher topic: %s", teacher_topic_name_.c_str());
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger student topic: %s", student_topic_name_.c_str());
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger terminal action topic: %s", terminal_action_name_.c_str());
+    // RCLCPP_INFO(this->get_logger(), "🔘 Trigger monitor state topic: %s", monitor_state_topic_name_.c_str());
+    // // Initialize statistical tracking variables
+    // resetStats();
 
-    // Initialize cached variables
-    resetCachedVariables();
+    // // Initialize cached variables
+    // resetCachedVariables();
 
-    // Subscribers (state, teacher action, student action, obstacle distance)
-    sub_edge_state_ = this->create_subscription<edge_msgs::msg::EdgeState>(
-        monitor_state_topic_name_, 50, std::bind(&Trigger::edgeStateCallback, this, _1));
+    // // Subscribers (state, teacher action, student action, obstacle distance)
+    // sub_edge_state_ = this->create_subscription<edge_msgs::msg::EdgeState>(
+    //     monitor_state_topic_name_, 50, std::bind(&Trigger::edgeStateCallback, this, _1));
 
-    sub_teacher_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
-        teacher_topic_name_, 50, std::bind(&Trigger::teacherActionCallback, this, _1));
+    // sub_teacher_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
+    //     teacher_topic_name_, 50, std::bind(&Trigger::teacherActionCallback, this, _1));
 
-    sub_student_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
-        student_topic_name_, 50, std::bind(&Trigger::studentActionCallback, this, _1));
+    // sub_student_action_ = this->create_subscription<edge_msgs::msg::EdgeAction>(
+    //     student_topic_name_, 50, std::bind(&Trigger::studentActionCallback, this, _1));
 
-    sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
-        "/obstacle_min_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
+    // sub_obstacle_distance_ = this->create_subscription<std_msgs::msg::Float32>(
+    //     "/obstacle_min_distance", 50, std::bind(&Trigger::obstacleDistanceCallback, this, _1));
 
-    sub_goal_distance_ = this->create_subscription<std_msgs::msg::Float32>(
-        "/goal_distance", 50, std::bind(&Trigger::goalDistanceCallback, this, _1));
+    // sub_goal_distance_ = this->create_subscription<std_msgs::msg::Float32>(
+    //     "/goal_distance", 50, std::bind(&Trigger::goalDistanceCallback, this, _1));
 
-    // Publishers (for alert and terminal action)
-    pub_alert_  = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
-    pub_fall_   = this->create_publisher<std_msgs::msg::Bool>("is_fall", 50);
-    pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>(terminal_action_name_, 50);
+    // // Publishers (for alert and terminal action)
+    // pub_alert_  = this->create_publisher<std_msgs::msg::Bool>("is_safe", 50);
+    // pub_fall_   = this->create_publisher<std_msgs::msg::Bool>("is_fall", 50);
+    // pub_action_ = this->create_publisher<edge_msgs::msg::EdgeAction>(terminal_action_name_, 50);
 
-    // Service for getting switching statistics
-    srv_get_switching_stats_ = this->create_service<edge_msgs::srv::GetSwitchingStats>(
-        "get_switching_stats",
-        std::bind(&Trigger::getStatsCallback, this, _1, _2));
+    // // Service for getting switching statistics
+    // srv_get_switching_stats_ = this->create_service<edge_msgs::srv::GetSwitchingStats>(
+    //     "get_switching_stats",
+    //     std::bind(&Trigger::getStatsCallback, this, _1, _2));
 
-    // Service for resetting switching statistics
-    srv_reset_switching_stats_ = this->create_service<edge_msgs::srv::ResetSwitchingStats>(
-        "reset_switching_stats",
-        std::bind(&Trigger::resetStatsCallback, this, _1, _2));
+    // // Service for resetting switching statistics
+    // srv_reset_switching_stats_ = this->create_service<edge_msgs::srv::ResetSwitchingStats>(
+    //     "reset_switching_stats",
+    //     std::bind(&Trigger::resetStatsCallback, this, _1, _2));
 
-    // Timer for periodic update
-    auto period = std::chrono::duration<double>(1.0 / update_rate_);
-    timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
+    // // Timer for periodic update
+    // auto period = std::chrono::duration<double>(1.0 / update_rate_);
+    // timer_ = this->create_wall_timer(period, std::bind(&Trigger::updateLoop, this));
 
-    // Initialize Safety Monitor
-    safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
+    // // Initialize Safety Monitor
+    // safety_monitor_ = std::make_shared<edge::trigger::SafetyMonitor>();
 
-    state_file_.open("/home/wrclub/state_log.txt", std::ios::out | std::ios::trunc);
-    if (!state_file_.is_open())
-    {
-        RCLCPP_ERROR(
-            this->get_logger(),
-            "Failed to open state log file"
-        );
-    }
-    else
-    {
-        RCLCPP_INFO(
-            this->get_logger(),
-            "State logging started"
-        );
-    }
-
-
+    // // state_file_.open("/home/wrclub/state_log.txt", std::ios::out | std::ios::app);
+    // // if (!state_file_.is_open())
+    // // {
+    //     // RCLCPP_ERROR(
+    //         // this->get_logger(),
+    //         // "Failed to open state log file: /home/wrclub/state_log.txt"
+    //     // );
+    // // }
+    // // else
+    // // {
+    //     // RCLCPP_INFO(
+    //         // this->get_logger(),
+    //         // "State logging started: /home/wrclub/state_log.txt"
+    //     // );
+    // // }
 
 
 
-    RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
+
+
+    // RCLCPP_INFO(this->get_logger(), "🔘 The Trigger Component is initialized.");
 
 }
 
 void Trigger::studentActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-    last_stu_action_ = *msg;
-    if (!is_stu_action_initialized_) is_stu_action_initialized_ = true;
+    // last_stu_action_ = *msg;
+    // if (!is_stu_action_initialized_) is_stu_action_initialized_ = true;
 }
 
 void Trigger::teacherActionCallback(const edge_msgs::msg::EdgeAction::SharedPtr msg)
 {
-    last_tea_action_ = *msg;
-    if (!is_tea_action_initialized_) is_tea_action_initialized_ = true;
+    // last_tea_action_ = *msg;
+    // if (!is_tea_action_initialized_) is_tea_action_initialized_ = true;
 }
 
 void Trigger::edgeStateCallback(const edge_msgs::msg::EdgeState::SharedPtr msg)
 {
-    if(msg->state_type != edge_msgs::msg::EdgeState::ROBOT_STATE) {
-        RCLCPP_WARN(this->get_logger(), "Received EdgeState message with unsupported state_type: %d", msg->state_type);
-        return;
-    }
+    // if(msg->state_type != edge_msgs::msg::EdgeState::ROBOT_STATE) {
+    //     RCLCPP_WARN(this->get_logger(), "Received EdgeState message with unsupported state_type: %d", msg->state_type);
+    //     return;
+    // }
+    // if (msg->state_value.size() < 12) {
+    //     RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
+    //         "Ignoring incomplete robot state: expected at least 12 values.");
+    //     return;
+    // }
+    // roll_rate_ = msg->state_value[9];
+    // pitch_rate_ = msg->state_value[10];
+    // if (angular_rates_file_.is_open()) {
+    //     angular_rates_file_ << std::fixed << std::setprecision(9)
+    //                         << this->now().seconds() << ' '
+    //                         << roll_rate_ << ' ' << pitch_rate_ << '\n';
+    //     angular_rates_file_.flush();
+    //     if (!angular_rates_file_) {
+    //         RCLCPP_ERROR(this->get_logger(), "Angular rates TXT write failed; disabling file logging.");
+    //         angular_rates_file_.close();
+    //     }
+    // }
     last_edge_state_ = *msg;  // Store the entire EdgeState message for later use
     if (!is_robot_state_initialized_) is_robot_state_initialized_ = true;
 }
@@ -151,6 +196,16 @@ void Trigger::obstacleDistanceCallback(const std_msgs::msg::Float32::SharedPtr m
 {
     // Placeholder for distance callback
     obstacle_distance_ = msg->data;
+    // if (obstacle_distance_file_.is_open()) {
+    //     obstacle_distance_file_ << std::fixed << std::setprecision(9)
+    //                             << this->now().seconds() << ' '
+    //                             << obstacle_distance_ << '\n';
+    //     obstacle_distance_file_.flush();
+    //     if (!obstacle_distance_file_) {
+    //         RCLCPP_ERROR(this->get_logger(), "Obstacle distance TXT write failed; disabling file logging.");
+    //         obstacle_distance_file_.close();
+    //     }
+    // }
 }
 
 void Trigger::goalDistanceCallback(const std_msgs::msg::Float32::SharedPtr msg)
@@ -425,12 +480,19 @@ void Trigger::updateLoop()
         terminal_blending_weight_ = 1.0;
     }
     else {
-        terminal_blending_weight_ = 0.01 * obstacle_distance_map_ * obstacle_distance_map_ + 2.0 * roll_rate_ * roll_rate_ + 2.0 * pitch_rate_ * pitch_rate_;
-        terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.5, 1.0);
+        terminal_blending_weight_ = 0.05 * obstacle_distance_map_ * obstacle_distance_map_ + 20.0 * roll_rate_ * roll_rate_ + 20.0 * pitch_rate_ * pitch_rate_;
+        terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.3, 1.0);
     }
 
-    // terminal_blending_weight_ = 0.01 * obstacle_distance_map_ * obstacle_distance_map_ + 2.0 * roll_rate_ * roll_rate_ + 2.0 * pitch_rate_ * pitch_rate_;
-    terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.55, 1.0);  // 0.5
+    // terminal_blending_weight_ = 0.05 * obstacle_distance_map_ * obstacle_distance_map_ + 20.0 * roll_rate_ * roll_rate_ + 20.0 * pitch_rate_ * pitch_rate_;
+    // terminal_blending_weight_ = std::clamp(terminal_blending_weight_, 0.3, 1.0);  // 0.5
+
+    // if (state_file_.is_open()) {
+    //     state_file_ << "terminal_blending_weight_ = " << terminal_blending_weight_
+    //                 << ", roll_rate_squared = " << roll_rate_
+    //                 << ", pitch_rate_squared = " << pitch_rate_
+    //                 << std::endl;
+    // }
 
     // // ===== debug start =====
     // if (state_file_.is_open()){
@@ -476,6 +538,8 @@ void Trigger::updateLoop()
     //             + terminal_blending_weight_ * last_tea_action_.action_value[i];
     //     }
     // }
+
+
     if (terminal_action.action_value.empty()) {
         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
             "Selected action is empty; waiting for a valid action");

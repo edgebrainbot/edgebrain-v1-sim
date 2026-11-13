@@ -70,7 +70,7 @@ class CognitiveReplayBuffer(DualReplayBuffer):
             raise ValueError("Batch size must be positive.")
         elif batch_size > self.stu_buf.size + self.tea_buf.size:
             raise ValueError(
-                f"Requested batch size {L} exceeds total stored transitions "
+                f"Requested batch size {batch_size} exceeds total stored transitions "
                 f"({self.stu_buf.size + self.tea_buf.size})."
             )
 
@@ -102,11 +102,21 @@ class CognitiveReplayBuffer(DualReplayBuffer):
         # Batch size for PHY-Teacher Buffer
         # tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
         
-        tea_batch_size = 100 # 150
+        tea_batch_size = 10 # 150
 
-        # Batch size for DRL-Student Buffer
+        # Teacher samples are optional until its buffer is ready.
+        tea_batch_size = (
+            min(tea_batch_size, L, self.tea_buf.size)
+            if self.tea_buf.is_ready else 0
+        )
+
+        # Fill the rest of the batch with student samples.
         stu_batch_size = L - tea_batch_size
         
+        # Clear indices for skipped samplers so score updates use this batch only.
+        self.stu_cognitive_sampler._last_indices = None
+        self.tea_cognitive_sampler._last_indices = None
+
         stu_batch = self.stu_cognitive_sampler.fetch(self.boundary_obs, stu_batch_size, self.stu_buf.size) if stu_batch_size > 0 else None
         tea_batch = self.tea_cognitive_sampler.fetch(self.boundary_obs, tea_batch_size, self.tea_buf.size) if tea_batch_size > 0 else None
 

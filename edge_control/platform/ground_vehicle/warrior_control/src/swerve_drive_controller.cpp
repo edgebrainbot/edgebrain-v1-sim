@@ -49,6 +49,7 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     RCLCPP_INFO(logger, "Initializing SwerveDriveController...");
 
     wheel_radius_ = auto_declare<double>("wheel_radius", 0.1);
+    imu_topic_ = auto_declare<std::string>("imu_topic", "/imu");
     steer_joint_names_ = auto_declare<std::vector<std::string>>("steer_joint_names", {});
     drive_joint_names_ = auto_declare<std::vector<std::string>>("drive_joint_names", {});
 
@@ -160,6 +161,22 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
                 applyCmdVelLimits();
             }
         });
+
+    // The Warrior IMU is mounted with its axes aligned to base_link.
+    imu_wx_.store(0.0);
+    imu_wy_.store(0.0);
+    imu_sub_ = get_node()->create_subscription<sensor_msgs::msg::Imu>(
+        imu_topic_, rclcpp::SensorDataQoS(),
+        [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+            if (msg->angular_velocity_covariance[0] == -1.0 ||
+                !std::isfinite(msg->angular_velocity.x) ||
+                !std::isfinite(msg->angular_velocity.y)) {
+                return;
+            }
+            imu_wx_.store(msg->angular_velocity.x);
+            imu_wy_.store(msg->angular_velocity.y);
+        });
+    RCLCPP_INFO(logger, "Reading roll/pitch angular velocity from %s", imu_topic_.c_str());
 
     // Subscribe to simulation ground-truth odometry for TF broadcasting and base_link height.
     odom_gt_sub_ = get_node()->create_subscription<nav_msgs::msg::Odometry>(
@@ -293,8 +310,8 @@ void SwerveDriveController::publishEdgeState() {
     edge_state.state_value[6] = kf_state_(3);
     edge_state.state_value[7] = kf_state_(4);
     edge_state.state_value[8] = 0.0;
-    edge_state.state_value[9] = 0.0;
-    edge_state.state_value[10] = 0.0;
+    edge_state.state_value[9] = imu_wx_.load();
+    edge_state.state_value[10] = imu_wy_.load();
     edge_state.state_value[11] = kf_state_(5);
 
     edge_state_pub_->publish(edge_state);

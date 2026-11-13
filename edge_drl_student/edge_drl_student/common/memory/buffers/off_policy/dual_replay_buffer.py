@@ -139,7 +139,7 @@ class DualReplayBuffer(BaseBuffer):
             raise ValueError("Batch size must be positive.")
         elif batch_size > self.stu_buf.size + self.tea_buf.size:
             raise ValueError(
-                f"Requested batch size {L} exceeds total stored transitions "
+                f"Requested batch size {batch_size} exceeds total stored transitions "
                 f"({self.stu_buf.size + self.tea_buf.size})."
             )
 
@@ -171,9 +171,15 @@ class DualReplayBuffer(BaseBuffer):
         # Batch size for PHY-Teacher Buffer
         tea_batch_size = max(min(L - 1, int(L * Vs)), 1)
         
-        tea_batch_size = 50
+        tea_batch_size = 10
 
-        # Batch size for DRL-Student Buffer
+        # Teacher samples are optional until its buffer is ready.
+        tea_batch_size = (
+            min(tea_batch_size, L, self.tea_buf.size)
+            if self.tea_buf.is_ready else 0
+        )
+
+        # Fill the rest of the batch with student samples.
         stu_batch_size = L - tea_batch_size
         if stu_batch_size < 0:
             raise RuntimeError("Negative student batch size encountered.")

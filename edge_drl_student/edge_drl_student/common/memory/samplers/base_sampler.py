@@ -1,8 +1,3 @@
-# ============================================================================
-# Copyright (c) 2025-2026 Yihao Cai - All rights reserved
-# SPDX-License-Identifier: Apache-2.0
-# ============================================================================
-
 from __future__ import annotations
 
 import torch
